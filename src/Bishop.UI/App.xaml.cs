@@ -12,6 +12,8 @@ public partial class App : Application
 
     public static IServiceProvider Services { get; private set; } = null!;
 
+    public static MainWindow? MainWindow { get; private set; }
+
     public App()
     {
         InitializeComponent();
@@ -30,8 +32,8 @@ public partial class App : Application
         _host.Start();
         Services = _host.Services;
 
-        var window = new MainWindow(_host.Services.GetRequiredService<MainWindowViewModel>());
-        window.Activate();
+        MainWindow = new MainWindow(_host.Services.GetRequiredService<MainWindowViewModel>());
+        MainWindow.Activate();
     }
 
     private static string GetConnectionString()

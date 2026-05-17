@@ -1,0 +1,16 @@
+<Page
+    x:Class="Bishop.UI.Views.WorkspaceDetailPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+            <TextBlock x:Name="WorkspaceNameText"
+                       Style="{StaticResource TitleTextBlockStyle}"
+                       HorizontalAlignment="Center"/>
+            <TextBlock x:Name="WorkspacePathText"
+                       Style="{StaticResource BodyTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</Page>

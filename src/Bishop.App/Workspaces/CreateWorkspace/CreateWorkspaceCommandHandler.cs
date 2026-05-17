@@ -2,6 +2,7 @@ using Bishop.Core;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace Bishop.App.Workspaces.CreateWorkspace;
 
@@ -13,6 +14,20 @@ public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorksp
 
     public async Task<Workspace> Handle(CreateWorkspaceCommand request, CancellationToken cancellationToken)
     {
+        if (request.InitGit)
+        {
+            Directory.CreateDirectory(request.Path);
+            var psi = new ProcessStartInfo("git", "init")
+            {
+                WorkingDirectory = request.Path,
+                CreateNoWindow = true,
+                UseShellExecute = false,
+            };
+            using var proc = Process.Start(psi);
+            if (proc is not null)
+                await proc.WaitForExitAsync(cancellationToken);
+        }
+
         var position = await _db.Workspaces.CountAsync(cancellationToken) + 1;
         var workspace = new Workspace
         {
