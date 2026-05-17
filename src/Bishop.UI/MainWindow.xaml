@@ -1,0 +1,20 @@
+<Window
+    x:Class="Bishop.UI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Bishop.IO">
+    <NavigationView
+        x:Name="NavView"
+        PaneTitle="Bishop.IO"
+        IsSettingsVisible="True"
+        PaneDisplayMode="Left">
+        <NavigationView.MenuItems>
+            <NavigationViewItem Content="Workspaces" Tag="workspaces">
+                <NavigationViewItem.Icon>
+                    <FontIcon Glyph="&#xE8B7;"/>
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+        </NavigationView.MenuItems>
+        <Frame x:Name="ContentFrame"/>
+    </NavigationView>
+</Window>
