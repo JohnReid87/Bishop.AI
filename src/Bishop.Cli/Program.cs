@@ -4,6 +4,7 @@ using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
+using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Lanes.AddLane;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Lanes.MoveLane;
@@ -268,6 +269,43 @@ cardRemoveCmd.SetHandler(async (string prefix, string? workspace) =>
     Console.WriteLine($"Removed card {cardId}");
 }, cardRemoveIdArg, workspaceOpt);
 
+// ── card edit ─────────────────────────────────────────────────────────────────
+
+var cardEditIdArg = new Argument<string>("card-id", "Card short ID or prefix");
+var editTitleOpt = new Option<string?>("--title", "New card title");
+var editDescOpt = new Option<string?>("--description", "New card description");
+var editDescFileOpt = new Option<string?>("--description-file", "Read description from file (use - for stdin)");
+var editTagOpt = new Option<string[]>("--tag", "Replace all tags with these names (repeatable)") { Arity = ArgumentArity.ZeroOrMore };
+var editClearTagsOpt = new Option<bool>("--clear-tags", "Remove all tags from the card");
+
+var cardEditCmd = new Command("edit", "Edit a card's title, description, or tags");
+cardEditCmd.AddArgument(cardEditIdArg);
+cardEditCmd.AddOption(workspaceOpt);
+cardEditCmd.AddOption(editTitleOpt);
+cardEditCmd.AddOption(editDescOpt);
+cardEditCmd.AddOption(editDescFileOpt);
+cardEditCmd.AddOption(editTagOpt);
+cardEditCmd.AddOption(editClearTagsOpt);
+cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, string? description, string? descFile, string[] tags, bool clearTags) =>
+{
+    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    if (resolved is null) return;
+    var (cardId, _) = resolved.Value;
+
+    var desc = descFile switch
+    {
+        "-" => await Console.In.ReadToEndAsync(),
+        not null => await File.ReadAllTextAsync(descFile),
+        null => description
+    };
+
+    var updateTags = clearTags || tags.Length > 0;
+    var tagNames = clearTags ? (string[])[] : tags;
+
+    var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTags, tagNames));
+    Console.WriteLine($"Updated card {card.Id} — '{card.Title}'");
+}, cardEditIdArg, workspaceOpt, editTitleOpt, editDescOpt, editDescFileOpt, editTagOpt, editClearTagsOpt);
+
 // ── card list ─────────────────────────────────────────────────────────────────
 
 var cardListCmd = new Command("list", "List cards in a workspace");
@@ -375,6 +413,7 @@ cardCmd.AddCommand(cardAddCmd);
 cardCmd.AddCommand(cardViewCmd);
 cardCmd.AddCommand(cardMoveCmd);
 cardCmd.AddCommand(cardRemoveCmd);
+cardCmd.AddCommand(cardEditCmd);
 cardCmd.AddCommand(cardListCmd);
 root.AddCommand(cardCmd);
 

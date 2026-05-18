@@ -2,6 +2,7 @@ using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
+using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
@@ -207,5 +208,89 @@ public sealed class CardHandlerTests : IDisposable
 
         cards.Select(x => x.Title).Should().Equal("B", "C", "A");
         cards.Select(x => x.Position).Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public async Task EditCard_UpdatesTitle()
+    {
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Original"), default);
+
+        var handler = new UpdateCardCommandHandler(_db);
+        var result = await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: "Renamed", Description: null, UpdateTags: false, TagNames: []),
+            default);
+
+        result.Title.Should().Be("Renamed");
+        (await _db.Cards.FindAsync(card.Id))!.Title.Should().Be("Renamed");
+    }
+
+    [Fact]
+    public async Task EditCard_UpdatesDescription()
+    {
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task", "Old desc"), default);
+
+        var handler = new UpdateCardCommandHandler(_db);
+        var result = await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: "New desc", UpdateTags: false, TagNames: []),
+            default);
+
+        result.Description.Should().Be("New desc");
+    }
+
+    [Fact]
+    public async Task EditCard_ReplacesTags()
+    {
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task", TagNames: ["bug", "urgent"]), default);
+
+        var handler = new UpdateCardCommandHandler(_db);
+        await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTags: true, TagNames: ["feature"]),
+            default);
+
+        var tagNames = await _db.CardTags
+            .Where(ct => ct.CardId == card.Id)
+            .Include(ct => ct.Tag)
+            .Select(ct => ct.Tag.Name)
+            .ToListAsync();
+
+        tagNames.Should().BeEquivalentTo(["feature"]);
+    }
+
+    [Fact]
+    public async Task EditCard_ClearsTags()
+    {
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task", TagNames: ["bug"]), default);
+
+        var handler = new UpdateCardCommandHandler(_db);
+        await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTags: true, TagNames: []),
+            default);
+
+        var tagCount = await _db.CardTags.CountAsync(ct => ct.CardId == card.Id);
+        tagCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task EditCard_NoFieldsSupplied_Throws()
+    {
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+
+        var handler = new UpdateCardCommandHandler(_db);
+        var act = async () => await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTags: false, TagNames: []),
+            default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*At least one field*");
     }
 }
