@@ -11,6 +11,16 @@
                        Style="{StaticResource BodyTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        HorizontalAlignment="Center"/>
+            <InfoBar x:Name="PathWarningBar"
+                     IsOpen="False"
+                     IsClosable="False"
+                     Severity="Warning"
+                     Title="Directory not found"
+                     Message="The workspace directory is missing. Right-click the workspace and choose Repath to locate it."/>
+            <Button x:Name="LaunchButton"
+                    Content="Launch in Claude Code"
+                    HorizontalAlignment="Center"
+                    Click="LaunchButton_Click"/>
         </StackPanel>
     </Grid>
 </Page>

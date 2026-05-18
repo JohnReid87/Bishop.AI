@@ -2,6 +2,8 @@ using Bishop.UI.ViewModels;
 using Bishop.UI.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace Bishop.UI;
 
@@ -76,6 +78,20 @@ public sealed partial class MainWindow : Window
             item.Name = nameBox.Text;
             await ViewModel.RenameWorkspaceAsync(item);
         }
+    }
+
+    private async void RepathWorkspace_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
+            return;
+
+        var picker = new FolderPicker();
+        picker.FileTypeFilter.Add("*");
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is not null)
+            await ViewModel.RepathWorkspaceAsync(item, folder.Path);
     }
 
     private async void DeleteWorkspace_Click(object sender, RoutedEventArgs e)

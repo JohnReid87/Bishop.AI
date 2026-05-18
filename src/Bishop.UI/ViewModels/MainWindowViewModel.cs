@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using MediatR;
 using Microsoft.UI.Xaml;
 using System.Collections.ObjectModel;
+using System.IO;
 
 namespace Bishop.UI.ViewModels;
 
@@ -38,6 +39,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Workspaces.Add(ToViewModel(w));
     }
 
+    partial void OnSelectedWorkspaceChanged(WorkspaceItemViewModel? value)
+    {
+        if (value is not null)
+            value.IsPathMissing = !Directory.Exists(value.Path);
+    }
+
     [RelayCommand]
     public async Task AddWorkspaceAsync(AddWorkspaceDialogViewModel dialogVm)
     {
@@ -60,6 +67,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public async Task RenameWorkspaceAsync(WorkspaceItemViewModel item)
     {
         await _mediator.Send(new UpdateWorkspaceCommand(item.Id, item.Name, item.Path));
+    }
+
+    public async Task RepathWorkspaceAsync(WorkspaceItemViewModel item, string newPath)
+    {
+        var workspace = await _mediator.Send(new UpdateWorkspaceCommand(item.Id, item.Name, newPath));
+        item.Path = workspace.Path;
     }
 
     public async Task PersistReorderAsync(IEnumerable<WorkspaceItemViewModel> orderedItems)
