@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Bishop.App/Bishop.App.csproj" />
+    <Project Path="src/Bishop.Cli/Bishop.Cli.csproj" />
     <Project Path="src/Bishop.Core/Bishop.Core.csproj" />
     <Project Path="src/Bishop.Data/Bishop.Data.csproj" />
     <Project Path="src/Bishop.Tests/Bishop.Tests.csproj" />

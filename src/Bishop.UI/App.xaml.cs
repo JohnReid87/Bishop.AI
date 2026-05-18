@@ -36,12 +36,5 @@ public partial class App : Application
         MainWindow.Activate();
     }
 
-    private static string GetConnectionString()
-    {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Bishop.AI");
-        Directory.CreateDirectory(dir);
-        return $"Data Source={Path.Combine(dir, "bishop.db")}";
-    }
+    private static string GetConnectionString() => BishopDbConnectionString.Resolve();
 }
