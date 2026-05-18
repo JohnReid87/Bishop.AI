@@ -7,6 +7,6 @@
     <Project Path="src/Bishop.UI/Bishop.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="src/Bishop.Tests/Bishop.Tests.csproj" />
+    <Project Path="tests/Bishop.Tests/Bishop.Tests.csproj" />
   </Folder>
 </Solution>
