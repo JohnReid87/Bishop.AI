@@ -9,7 +9,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\johne\\\\source\\\\repos\\\\Bishop.IO\\\\src\" -Recurse -Filter \"*.csproj\")",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(grep -E \"\\\\.cs$\")",
-      "Bash(dotnet build *)"
+      "Bash(dotnet build *)",
+      "Bash(git mv *)",
+      "Bash(git remote *)"
     ]
   }
 }

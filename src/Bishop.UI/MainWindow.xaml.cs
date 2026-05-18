@@ -86,7 +86,7 @@ public sealed partial class MainWindow : Window
         var confirmDialog = new ContentDialog
         {
             Title = $"Delete \"{item.Name}\"?",
-            Content = "This will remove the workspace from Bishop.IO. Your files will not be deleted.",
+            Content = "This will remove the workspace from Bishop.AI. Your files will not be deleted.",
             PrimaryButtonText = "Delete",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close,

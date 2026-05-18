@@ -40,7 +40,7 @@ public partial class App : Application
     {
         var dir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Bishop.IO");
+            "Bishop.AI");
         Directory.CreateDirectory(dir);
         return $"Data Source={Path.Combine(dir, "bishop.db")}";
     }

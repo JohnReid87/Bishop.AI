@@ -3,10 +3,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:Bishop.UI.ViewModels"
-    Title="Bishop.IO">
+    Title="Bishop.AI">
     <NavigationView
         x:Name="NavView"
-        PaneTitle="Bishop.IO"
+        PaneTitle="Bishop.AI"
         IsSettingsVisible="False"
         PaneDisplayMode="Left"
         IsBackButtonVisible="Collapsed">

@@ -1,4 +1,4 @@
-# Bishop.IO ↔ Claude Code Integration — Pre-Grill Notes
+# Bishop.AI ↔ Claude Code Integration — Pre-Grill Notes
 
 Seed material for a future `/grill-me` session on the Claude Code integration design. Captures decisions reached in an earlier exploratory discussion, plus open questions to drill.
 
@@ -8,7 +8,7 @@ These are **pre-decisional notes**, not specs. The decisions below are working p
 
 The current `CONTEXT.md` includes "a one-click launcher for the Claude Code Windows app" as a workspace feature. This doc explores what that integration actually looks like, given:
 
-- Bishop.IO is single-user, local-first, Windows-only.
+- Bishop.AI is single-user, local-first, Windows-only.
 - The per-workspace kanban is the source of truth for work state.
 - Existing skills (`grill-me`, `push-tasks`, `work-on-issue`) already encode a human-in-the-loop pattern.
 
@@ -16,9 +16,9 @@ The current `CONTEXT.md` includes "a one-click launcher for the Claude Code Wind
 
 ### 1. Terminal launcher is an external Windows Terminal session, not embedded
 
-Spawn `wt -d <workspace_path> -- claude` (or equivalent). No WebView2 / xterm.js / ConPTY embedding inside Bishop.IO.
+Spawn `wt -d <workspace_path> -- claude` (or equivalent). No WebView2 / xterm.js / ConPTY embedding inside Bishop.AI.
 
-**Reasoning:** state lives in the kanban, not in the agent session. Closing the terminal loses nothing because the card lifecycle captures intent + progress. Embedding would invite scope creep — last-activity timestamps on cards, agent-todo sidebar surfacing, session resume, etc. — all of which become non-features once the kanban owns state. Keeps Bishop.IO from drifting into "agent observability dashboard".
+**Reasoning:** state lives in the kanban, not in the agent session. Closing the terminal loses nothing because the card lifecycle captures intent + progress. Embedding would invite scope creep — last-activity timestamps on cards, agent-todo sidebar surfacing, session resume, etc. — all of which become non-features once the kanban owns state. Keeps Bishop.AI from drifting into "agent observability dashboard".
 
 ### 2. Terminal is a dumb shell — no card context passed
 
@@ -28,13 +28,13 @@ Just opens at the workspace root. The launcher does **not** pass card ID, descri
 
 ### 3. Card lifecycle is human-driven, with skill assist
 
-Skills *can* propose card moves (via the `bishop` CLI). Human-in-the-loop QA gates the actual move — Bishop.IO surfaces pending move requests for review before applying them.
+Skills *can* propose card moves (via the `bishop` CLI). Human-in-the-loop QA gates the actual move — Bishop.AI surfaces pending move requests for review before applying them.
 
 **Reasoning:** mirrors the existing pattern in `push-tasks` (explicit user trigger) and `work-on-issue` (no auto-close, no auto-commit-push without confirmation). Human QA is part of the workflow's intent, not a limitation.
 
 ### 4. Bishop ships a CLI (`bishop`) for skill integration
 
-Standalone `bishop.exe` process that reads/writes the same SQLite DB (`%AppData%\Bishop.IO\bishop.db`) the WinUI app uses. Skills shell out:
+Standalone `bishop.exe` process that reads/writes the same SQLite DB (`%AppData%\Bishop.AI\bishop.db`) the WinUI app uses. Skills shell out:
 
 ```
 bishop card move <id> --to <lane> --note "<summary>"
@@ -46,7 +46,7 @@ Mirrors the `gh` pattern existing skills already know.
 
 ### 5. Claude is informed of the CLI via per-workspace `CLAUDE.md`
 
-When Bishop.IO creates a workspace, it seeds (or updates) a `CLAUDE.md` in the workspace root with a stanza describing the `bishop` CLI and how to use it for card lifecycle. Self-documenting per workspace; no skill changes needed.
+When Bishop.AI creates a workspace, it seeds (or updates) a `CLAUDE.md` in the workspace root with a stanza describing the `bishop` CLI and how to use it for card lifecycle. Self-documenting per workspace; no skill changes needed.
 
 **Reasoning:** Claude Code auto-loads `CLAUDE.md` from the project root. A single seed block gives every skill instant awareness without coupling skills to Bishop. Stanza overwrite policy is an open question (see below).
 
@@ -74,6 +74,6 @@ SQLite WAL mode is required for concurrent UI + CLI access. EF Core / `Microsoft
 
 5. **Stale pending moves.** If the user never reviews pending moves, the queue grows indefinitely. Auto-apply after N days? Auto-expire? Just leave them forever and let the user clean house? Implication for kanban hygiene.
 
-6. **CLI install / discovery.** Does `bishop.exe` get added to PATH by Bishop.IO? The current tech stack says **unpackaged** WinUI 3 — so the installer (if any) is a `dotnet publish` artifact, not an MSIX. How does the user get `bishop` on PATH? Manual instructions, an opt-in "add to PATH" toggle in settings, or shipping a small installer that handles it?
+6. **CLI install / discovery.** Does `bishop.exe` get added to PATH by Bishop.AI? The current tech stack says **unpackaged** WinUI 3 — so the installer (if any) is a `dotnet publish` artifact, not an MSIX. How does the user get `bishop` on PATH? Manual instructions, an opt-in "add to PATH" toggle in settings, or shipping a small installer that handles it?
 
-7. **Skill design for Bishop.IO workspaces.** Should a future Bishop-specific skill (`work-on-card <id>`?) exist, paralleling `work-on-issue` for GitHub? Or does the existing `work-on-issue` shape generalise — fetch card → explore code → implement → propose card-move? Related: does Bishop ever need its own backlog flow analogous to `grill-me` → `push-tasks` → `work-on-issue`, or do users just keep using the GitHub flow and import results into Bishop?
+7. **Skill design for Bishop.AI workspaces.** Should a future Bishop-specific skill (`work-on-card <id>`?) exist, paralleling `work-on-issue` for GitHub? Or does the existing `work-on-issue` shape generalise — fetch card → explore code → implement → propose card-move? Related: does Bishop ever need its own backlog flow analogous to `grill-me` → `push-tasks` → `work-on-issue`, or do users just keep using the GitHub flow and import results into Bishop?

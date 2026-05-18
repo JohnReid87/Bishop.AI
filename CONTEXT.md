@@ -1,14 +1,14 @@
-# Bishop.IO — Project Context
+# Bishop.AI — Project Context
 
 ## Domain
-A Windows desktop app for managing AI-assisted coding workflows. The user has many local code directories (workspaces); Bishop.IO is a single place to organise them, track work against each one via a per-workspace kanban board, and launch the Claude Code Windows app pointed at the chosen directory. Single-user, local-first. The name is a nod to Bishop, the synthetic science officer in *Aliens*.
+A Windows desktop app for managing AI-assisted coding workflows. The user has many local code directories (workspaces); Bishop.AI is a single place to organise them, track work against each one via a per-workspace kanban board, and launch the Claude Code Windows app pointed at the chosen directory. Single-user, local-first. The name is a nod to Bishop, the synthetic science officer in *Aliens*.
 
 ## Tech Stack
 - **UI:** WinUI 3 (Windows App SDK), unpackaged.
 - **Architecture pattern:** MVVM via `CommunityToolkit.Mvvm` (source generators for `ObservableProperty` / `RelayCommand`).
 - **App layer:** MediatR for commands/queries.
 - **DI:** `Microsoft.Extensions.DependencyInjection` via the generic host.
-- **Data:** EF Core 8 + SQLite. DB file at `%AppData%\Bishop.IO\bishop.db`.
+- **Data:** EF Core 8 + SQLite. DB file at `%AppData%\Bishop.AI\bishop.db`.
 - **Markdown:** Markdig + a WinUI markdown renderer for card descriptions.
 - **Testing:** xUnit + FluentAssertions. Handlers and repos tested against in-memory or temp SQLite. No UI tests for MVP.
 - **Target framework:** `net8.0-windows10.0.19041.0` (or current LTS WindowsAppSDK target).

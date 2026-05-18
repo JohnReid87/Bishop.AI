@@ -1,4 +1,4 @@
-# Bishop.IO — Context Pane — Pre-Grill Notes
+# Bishop.AI — Context Pane — Pre-Grill Notes
 
 Seed material for a future `/grill-me` session on whether (and how) Bishop should surface project-context markdown files (`CLAUDE.md`, `README.md`, etc.) inside a workspace. Spawned from a "should we build something mdpeek-shaped into Bishop?" discussion.
 
