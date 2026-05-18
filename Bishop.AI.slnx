@@ -4,7 +4,9 @@
     <Project Path="src/Bishop.Cli/Bishop.Cli.csproj" />
     <Project Path="src/Bishop.Core/Bishop.Core.csproj" />
     <Project Path="src/Bishop.Data/Bishop.Data.csproj" />
-    <Project Path="src/Bishop.Tests/Bishop.Tests.csproj" />
     <Project Path="src/Bishop.UI/Bishop.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="src/Bishop.Tests/Bishop.Tests.csproj" />
   </Folder>
 </Solution>
