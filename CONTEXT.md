@@ -42,11 +42,15 @@ The `bishop` console executable is the primary integration surface for skills (e
 
 - `bishop workspace list [--json]`
 - `bishop workspace current [--json]` — resolves the workspace from the current working directory by ancestor match
+- `bishop workspace init [--path <dir>] [--name <name>]` — register a directory (defaults to cwd) as a workspace and seed the default lanes; idempotent (no-op when fully seeded, fills gaps when partial)
 - `bishop card add --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>...] [-w <workspace>]`
 - `bishop card list [-w] [--json]`
 - `bishop card view <card-id> [-w] [--json]`
 - `bishop card move <card-id> --to-lane <name> --to-position <int> [-w]`
+- `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path>] [--tag <name>...] [--clear-tags] [-w]` — updates only the supplied fields; `--clear-tags` empties tags; `--tag` replaces all tags
+- `bishop card claim [--lane <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; exits non-zero if the source lane is empty
 - `bishop card remove <card-id> [-w]`
+- `bishop lane list|add|rename|move|remove [-w]` — lane CRUD; `remove` refuses non-empty lanes
 - `bishop tag list|add|remove [-w]`
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
 

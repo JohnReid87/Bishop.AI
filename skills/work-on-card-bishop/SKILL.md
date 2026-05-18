@@ -4,7 +4,9 @@ description: Fetches a Bishop card by short-ID prefix from the current workspace
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git:*), Read, Edit, Write, Glob, Grep, Agent
 ---
 
-Accepts a single card short-ID prefix (`work-on-card-bishop 1a2b3c4d`).
+Accepts an **optional** card short-ID prefix (`work-on-card-bishop 1a2b3c4d`).
+If omitted, claims the top card from "To Do" and asks the user to confirm
+before proceeding.
 
 If the user passes multiple IDs or a range, STOP and tell them this skill
 works on one card per session — long-running sessions accumulate context
@@ -31,17 +33,41 @@ Run `bishop workspace current --json`.
 
 **For the card:**
 
-1. Fetch the card via:
+1. **Fetch the card.** Two paths depending on what the user supplied.
+
+   **Path A — user supplied a short-ID prefix:**
    ```
    bishop card view <short-id> --json
    ```
-
    If the command exits non-zero (no match, or ambiguous prefix), STOP and
-   surface the stderr message as-is. Do NOT guess which card the user meant
-   — the resolver lists all candidates on stderr; relay them and ask the user
+   surface the stderr message as-is. Do NOT guess which card the user meant —
+   the resolver lists all candidates on stderr; relay them and ask the user
    to disambiguate with a longer prefix.
 
-   Parse the JSON and capture:
+   **Path B — no short-ID supplied:** claim the top of "To Do":
+   ```
+   bishop card claim --json
+   ```
+   If the command exits non-zero (empty source lane), STOP and surface the
+   stderr message as-is — do not invent a card.
+
+   Parse the JSON and ask the user to confirm:
+
+   > Claimed `<short-id>` — '<title>' from [To Do]. Work on this card?
+   > (`y` to proceed / paste a different short-ID / `n` to skip)
+
+   - On `y` → proceed. The card is already in "Doing", so step 2 is a no-op.
+   - On a different short-ID → revert the claim, then restart this step
+     using their ID (Path A):
+     ```
+     bishop card move <claimed-id> --to-lane "To Do" --to-position 1
+     ```
+   - On `n` → revert the claim and STOP:
+     ```
+     bishop card move <claimed-id> --to-lane "To Do" --to-position 1
+     ```
+
+   Parse the JSON of the final chosen card and capture:
    - `id` — extract the first 8 hex chars for the canonical short-ID (used in
      the commit message and headings, regardless of what prefix the user typed)
    - `title`, `description`, `laneName`, `tags`
@@ -60,7 +86,8 @@ Run `bishop workspace current --json`.
    If the move fails (e.g. the workspace has no "Doing" lane), STOP and surface
    the error. Do not invent a substitute lane name.
 
-   Skip this step if `laneName` from step 1 is already "Doing".
+   Skip this step if `laneName` from step 1 is already "Doing" (this includes
+   the Path B happy-path, where `card claim` already moved the card).
 
 3. Read CONTEXT.md to orient yourself in the domain and solution structure.
 
