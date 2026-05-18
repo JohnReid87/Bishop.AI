@@ -57,17 +57,28 @@ The `bishop` console executable is the primary integration surface for skills (e
 Card identifiers accept the first 8 hex chars of the GUID as a short-ID prefix (ambiguous prefixes are rejected with a list of candidates on stderr).
 
 ### Current UI scope
-Bishop.UI ships as a read-only viewer over the kanban:
+Bishop.UI is the interactive surface; the CLI remains the automation surface for skills. UI affordances by entity:
 
-- Left-hand workspace list with drag-to-reorder.
-- Workspace board pane showing lanes and the cards in each lane.
-- Per-workspace launch-terminal button (spawns Windows Terminal with `claude` at the workspace path).
-- Add-workspace dialog (create new folder or attach an existing one).
+- **Workspaces:** left-hand list with drag-to-reorder; add-workspace dialog (create new folder or attach existing); per-workspace launch-terminal button (Windows Terminal + `claude` at the workspace path); per-workspace notes panel below the kanban (persisted text + drag-to-resize; expanded state stored per workspace).
+- **Lanes:** add / rename / delete / reorder via inline board UI. `remove` refuses non-empty lanes, matching the CLI.
+- **Cards:** view detail dialog; edit title/description/tags; delete; drag-and-drop between lanes and within a lane (writes position immediately).
+- **Tags:** create / remove / recolour via the card edit dialog.
+- **Skills:** launcher buttons on each card and on the workspace header — see [Skill integration](#skill-integration).
+- **Theming:** dark theme applied across shell, nav, board chrome, and dialogs.
 
-The UI does not currently edit cards or tags — those mutations go through the CLI.
+### Skill integration
+Bundled Claude Code skills (`skills/work-on-card-bishop`, `skills/grill-me-bishop`) ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
+
+- `name` — skill identifier (required).
+- `description` — user-facing summary.
+- `allowed-tools` — comma-separated Claude Code tool allowlist.
+- `bishop.scope` — `card` (button on each card) or `workspace` (button on workspace header); null/missing → not surfaced in the UI.
+- `bishop.command` — slash-command template launched on click. Placeholders: `{{card_short_id}}` (card scope) and `{{workspace_path}}` (workspace scope).
+
+`DiscoverSkillsQueryHandler` (Bishop.App) scans `~/.claude/skills/` at workspace load and feeds two button groups in `WorkspaceDetailPage`. Clicking a skill renders the template, opens Windows Terminal at the workspace path, and runs `claude "<rendered command>"` (`LaunchSkillCommandHandler`; falls back to PowerShell if `wt.exe` is unavailable). Adding a new skill: drop a directory under `skills/`, set scope + command, rebuild, run `bishop install-skills`.
 
 ## Conventions
-- **CLI is the primary mutation surface; UI is read-only.** Skills and humans alike change state through `bishop` invocations. The UI reflects state but does not edit it (today).
+- **CLI is the automation surface; UI is the interactive surface.** Skills mutate state through `bishop` CLI invocations; humans use the UI directly for card / lane / tag edits. Both writers share the SQLite DB in WAL mode.
 - **Naming:** standard .NET (PascalCase types/members, _camelCase private fields, `I`-prefix interfaces). One public type per file.
 - **Async:** all I/O async; `Async` suffix; pass `CancellationToken` through handlers.
 - **MVVM:** ViewModels derive from `ObservableObject`; commands use `[RelayCommand]`. No code-behind beyond constructor + `InitializeComponent`.
