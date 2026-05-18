@@ -6,6 +6,7 @@ State is mutated via the `bishop` CLI (used by skills like `work-on-card-bishop`
 
 ## Getting started
 
+- Requires: .NET 10.0 SDK, Windows 10+, Visual Studio or VS Code with .NET extension
 - Build: `dotnet build Bishop.AI.slnx`
 - Tests: `dotnet test`
 - Per-user MSI: `pwsh installer/build.ps1` (one-time prereq: `dotnet tool install --global wix --version 5.0.2`). Output at `installer/bin/Release/Bishop.AI.msi`. After installing the MSI, run `bishop install-skills` once to populate `~/.claude/skills/` with the bundled Claude Code skills.
