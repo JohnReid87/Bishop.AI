@@ -1,6 +1,7 @@
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.DeleteWorkspace;
 using Bishop.App.Workspaces.GetWorkspace;
+using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.UpdateWorkspace;
 using Bishop.Data;
@@ -127,5 +128,84 @@ public sealed class WorkspaceHandlerTests : IDisposable
             .Handle(new ListWorkspacesQuery(), default);
 
         remaining.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InitWorkspace_FirstRun_CreatesWorkspaceAndSeeds()
+    {
+        var handler = new InitWorkspaceCommandHandler(_db);
+        var result = await handler.Handle(new InitWorkspaceCommand(@"C:\projects\my-repo", "My Repo"), default);
+
+        result.Created.Should().BeTrue();
+        result.LanesAdded.Should().Equal("To Do", "Doing", "Done");
+        result.Workspace.Name.Should().Be("My Repo");
+        result.Workspace.Path.Should().Be(Path.GetFullPath(@"C:\projects\my-repo"));
+
+        var lanes = await _db.Lanes
+            .Where(l => l.WorkspaceId == result.Workspace.Id)
+            .OrderBy(l => l.Position)
+            .ToListAsync();
+
+        lanes.Select(l => l.Name).Should().Equal("To Do", "Doing", "Done");
+        lanes.Select(l => l.Position).Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public async Task InitWorkspace_DefaultsNameToDirectoryName()
+    {
+        var handler = new InitWorkspaceCommandHandler(_db);
+        var result = await handler.Handle(new InitWorkspaceCommand(@"C:\projects\my-repo"), default);
+
+        result.Workspace.Name.Should().Be("my-repo");
+    }
+
+    [Fact]
+    public async Task InitWorkspace_Rerun_IsNoOp()
+    {
+        var handler = new InitWorkspaceCommandHandler(_db);
+        await handler.Handle(new InitWorkspaceCommand(@"C:\projects\alpha", "Alpha"), default);
+
+        var result = await handler.Handle(new InitWorkspaceCommand(@"C:\projects\alpha", "Alpha"), default);
+
+        result.Created.Should().BeFalse();
+        result.LanesAdded.Should().BeEmpty();
+
+        var workspaceCount = await _db.Workspaces.CountAsync();
+        workspaceCount.Should().Be(1);
+
+        var laneCount = await _db.Lanes.CountAsync();
+        laneCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task InitWorkspace_PartiallySeeded_FillsGap()
+    {
+        // Arrange: create workspace with only "To Do" and "Done"
+        var ws = await new CreateWorkspaceCommandHandler(_db)
+            .Handle(new CreateWorkspaceCommand("Partial", @"C:\projects\partial"), default);
+        var doingLane = await _db.Lanes.FirstAsync(l => l.WorkspaceId == ws.Id && l.Name == "Doing");
+        _db.Lanes.Remove(doingLane);
+        await _db.SaveChangesAsync();
+
+        var handler = new InitWorkspaceCommandHandler(_db);
+        var result = await handler.Handle(new InitWorkspaceCommand(@"C:\projects\partial"), default);
+
+        result.Created.Should().BeFalse();
+        result.LanesAdded.Should().Equal("Doing");
+
+        var laneCount = await _db.Lanes.CountAsync(l => l.WorkspaceId == ws.Id);
+        laneCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task InitWorkspace_PathMatchIsCaseInsensitive()
+    {
+        var handler = new InitWorkspaceCommandHandler(_db);
+        await handler.Handle(new InitWorkspaceCommand(@"C:\Projects\Repo", "Repo"), default);
+
+        var result = await handler.Handle(new InitWorkspaceCommand(@"C:\projects\repo"), default);
+
+        result.Created.Should().BeFalse();
+        result.LanesAdded.Should().BeEmpty();
     }
 }

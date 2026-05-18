@@ -12,6 +12,7 @@ using Bishop.App.Lanes.RenameLane;
 using Bishop.App.Tags.AddTag;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.App.Tags.RemoveTag;
+using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.Cli;
 using MediatR;
@@ -90,9 +91,38 @@ workspaceCurrentCmd.SetHandler(async (bool json) =>
     }
 }, jsonOpt);
 
+// ── workspace init ──────────────────────────────────────────────────────────
+
+var initPathOpt = new Option<string?>("--path", "Directory to initialise (defaults to cwd)");
+var initNameOpt = new Option<string?>("--name", "Workspace name (defaults to directory name)");
+
+var workspaceInitCmd = new Command("init", "Register a directory as a workspace and seed default lanes");
+workspaceInitCmd.AddOption(initPathOpt);
+workspaceInitCmd.AddOption(initNameOpt);
+workspaceInitCmd.SetHandler(async (string? path, string? name) =>
+{
+    var dir = path ?? Directory.GetCurrentDirectory();
+    var result = await mediator.Send(new InitWorkspaceCommand(dir, name));
+    var ws = result.Workspace;
+    if (result.Created)
+    {
+        Console.WriteLine($"Initialized workspace '{ws.Name}' at {ws.Path}");
+        Console.WriteLine($"  Lanes: {string.Join(", ", result.LanesAdded)}");
+    }
+    else if (result.LanesAdded.Count > 0)
+    {
+        Console.WriteLine($"Workspace '{ws.Name}' already registered — added lanes: {string.Join(", ", result.LanesAdded)}");
+    }
+    else
+    {
+        Console.WriteLine($"Workspace '{ws.Name}' is already initialized");
+    }
+}, initPathOpt, initNameOpt);
+
 var workspaceCmd = new Command("workspace", "Manage workspaces");
 workspaceCmd.AddCommand(workspaceListCmd);
 workspaceCmd.AddCommand(workspaceCurrentCmd);
+workspaceCmd.AddCommand(workspaceInitCmd);
 root.AddCommand(workspaceCmd);
 
 // ── card add ─────────────────────────────────────────────────────────────────
