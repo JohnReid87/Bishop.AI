@@ -10,6 +10,9 @@ public sealed partial class LaneViewModel : ObservableObject
     public string Name { get; init; } = string.Empty;
     public ObservableCollection<CardViewModel> Cards { get; } = [];
 
+    [ObservableProperty]
+    public partial bool IsDropTarget { get; set; }
+
     public Visibility EmptyPlaceholderVisibility =>
         Cards.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 

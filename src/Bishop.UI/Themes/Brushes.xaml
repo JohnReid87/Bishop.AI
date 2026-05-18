@@ -1,0 +1,18 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="AppBackgroundBrush"       Color="#0A0A0C"/>
+    <SolidColorBrush x:Key="AppSurfaceBrush"          Color="#14141A"/>
+    <SolidColorBrush x:Key="AppSurfaceElevatedBrush"  Color="#1E1E26"/>
+    <SolidColorBrush x:Key="AppAccentBrush"           Color="#00B894"/>
+    <SolidColorBrush x:Key="AppTextPrimaryBrush"      Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="AppTextSecondaryBrush"    Color="#99FFFFFF"/>
+    <SolidColorBrush x:Key="AppTextTertiaryBrush"     Color="#55FFFFFF"/>
+    <SolidColorBrush x:Key="AppDividerBrush"          Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="AppLaneBackgroundBrush"   Color="#14141A"/>
+    <SolidColorBrush x:Key="AppCardBackgroundBrush"   Color="#1E1E26"/>
+    <SolidColorBrush x:Key="AppDragTargetBrush"       Color="#3300B894"/>
+    <SolidColorBrush x:Key="AppDragTargetBorderBrush" Color="#00B894"/>
+
+</ResourceDictionary>

@@ -1,0 +1,49 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Lucide icons, 24×24 viewBox, hand-extracted path data strings.
+        Usage with PathIconSource (controls that accept IconSource):
+            <PathIconSource x:Key="..." Data="{StaticResource IconAddData}"/>
+        Usage with Path element:
+            <Path Data="{StaticResource IconAddData}"
+                  Stroke="{ThemeResource TextFillColorPrimaryBrush}"
+                  StrokeThickness="1.5" StrokeLineCap="Round" StrokeLineJoin="Round"
+                  Width="16" Height="16" Stretch="Uniform"/>
+        Fill-based icons (grip-vertical, dots-menu): use Fill instead of Stroke.
+    -->
+
+    <x:String x:Key="IconAddData">M12 5v14M5 12h14</x:String>
+
+    <x:String x:Key="IconDeleteData">M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6</x:String>
+
+    <!-- fill-based: six filled dots -->
+    <x:String x:Key="IconGripVerticalData">M9 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM15 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM9 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM15 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM15 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2z</x:String>
+
+    <x:String x:Key="IconTerminalData">M4 17l6-6-6-6M12 19h8</x:String>
+
+    <x:String x:Key="IconEditData">M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z</x:String>
+
+    <x:String x:Key="IconWorkspaceData">M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z</x:String>
+
+    <x:String x:Key="IconLaneData">M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7M12 3v18</x:String>
+
+    <x:String x:Key="IconCardData">M3 3h18v18H3z</x:String>
+
+    <x:String x:Key="IconTagData">M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01</x:String>
+
+    <x:String x:Key="IconSearchData">M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z</x:String>
+
+    <x:String x:Key="IconSettingsData">M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z</x:String>
+
+    <x:String x:Key="IconChevronRightData">M9 18l6-6-6-6</x:String>
+
+    <x:String x:Key="IconCloseData">M18 6L6 18M6 6l12 12</x:String>
+
+    <!-- fill-based: three filled dots -->
+    <x:String x:Key="IconDotsMenuData">M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z</x:String>
+
+    <x:String x:Key="IconWarningData">M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01</x:String>
+
+</ResourceDictionary>

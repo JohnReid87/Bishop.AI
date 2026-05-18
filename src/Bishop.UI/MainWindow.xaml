@@ -4,102 +4,121 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:Bishop.UI.ViewModels"
     Title="Bishop.AI">
-    <NavigationView
-        x:Name="NavView"
-        PaneTitle="Bishop.AI"
-        IsSettingsVisible="False"
-        PaneDisplayMode="Left"
-        IsBackButtonVisible="Collapsed">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-        <NavigationView.PaneCustomContent>
-            <Grid Margin="0,8,0,0" RowSpacing="4">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+        <!-- Custom title bar drag region -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0"
+              Background="{StaticResource AppSurfaceBrush}">
+            <TextBlock Text="Bishop.AI"
+                       VerticalAlignment="Center"
+                       Margin="12,0,0,0"
+                       FontSize="12"
+                       Opacity="0.5"/>
+        </Grid>
 
-                <!-- Header row: label + add button -->
-                <Grid Grid.Row="0" Margin="16,0,8,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0"
-                               Text="WORKSPACES"
+        <NavigationView
+            x:Name="NavView"
+            Grid.Row="1"
+            PaneDisplayMode="Left"
+            IsSettingsVisible="False"
+            IsBackButtonVisible="Collapsed"
+            IsTitleBarAutoPaddingEnabled="False"
+            OpenPaneLength="180">
+
+            <NavigationView.PaneCustomContent>
+                <Grid Margin="0,8,0,0" RowSpacing="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header row: label + add button -->
+                    <Grid Grid.Row="0" Margin="16,0,8,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="WORKSPACES"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="1"
+                                x:Name="AddWorkspaceButton"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="AddWorkspaceButton_Click"
+                                ToolTipService.ToolTip="Add workspace">
+                            <FontIcon Glyph="&#xE710;" FontSize="12"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Empty state -->
+                    <TextBlock Grid.Row="1"
+                               x:Name="EmptyStateText"
+                               Text="No workspaces yet"
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               VerticalAlignment="Center"/>
-                    <Button Grid.Column="1"
-                            x:Name="AddWorkspaceButton"
-                            Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                            Click="AddWorkspaceButton_Click"
-                            ToolTipService.ToolTip="Add workspace">
-                        <FontIcon Glyph="&#xE710;" FontSize="12"/>
-                    </Button>
+                               HorizontalAlignment="Center"
+                               Margin="0,16,0,0"/>
+
+                    <!-- Workspace list -->
+                    <ListView Grid.Row="1"
+                              x:Name="WorkspacesListView"
+                              ItemsSource="{x:Bind ViewModel.Workspaces}"
+                              SelectedItem="{x:Bind ViewModel.SelectedWorkspace, Mode=TwoWay}"
+                              CanReorderItems="True"
+                              AllowDrop="True"
+                              SelectionMode="Single"
+                              DragItemsCompleted="WorkspacesListView_DragItemsCompleted">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:WorkspaceItemViewModel">
+                                <Grid RightTapped="WorkspaceItem_RightTapped">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{x:Bind Name, Mode=OneWay}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <FontIcon Grid.Column="1"
+                                              Glyph="&#xE7BA;"
+                                              FontSize="12"
+                                              Foreground="Orange"
+                                              Margin="4,0,0,0"
+                                              VerticalAlignment="Center"
+                                              Visibility="{x:Bind PathMissingVisibility, Mode=OneWay}"/>
+                                    <FlyoutBase.AttachedFlyout>
+                                        <MenuFlyout>
+                                            <MenuFlyoutItem Text="Rename" Click="RenameWorkspace_Click">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8AC;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Repath…" Click="RepathWorkspace_Click">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8DA;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutSeparator/>
+                                            <MenuFlyoutItem Text="Remove" Click="DeleteWorkspace_Click">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                        </MenuFlyout>
+                                    </FlyoutBase.AttachedFlyout>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                    </ListView>
                 </Grid>
+            </NavigationView.PaneCustomContent>
 
-                <!-- Empty state -->
-                <TextBlock Grid.Row="1"
-                           x:Name="EmptyStateText"
-                           Text="No workspaces yet"
-                           Style="{StaticResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           HorizontalAlignment="Center"
-                           Margin="0,16,0,0"/>
-
-                <!-- Workspace list -->
-                <ListView Grid.Row="1"
-                          x:Name="WorkspacesListView"
-                          ItemsSource="{x:Bind ViewModel.Workspaces}"
-                          SelectedItem="{x:Bind ViewModel.SelectedWorkspace, Mode=TwoWay}"
-                          CanReorderItems="True"
-                          AllowDrop="True"
-                          SelectionMode="Single"
-                          DragItemsCompleted="WorkspacesListView_DragItemsCompleted">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:WorkspaceItemViewModel">
-                            <Grid RightTapped="WorkspaceItem_RightTapped">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0"
-                                           Text="{x:Bind Name, Mode=OneWay}"
-                                           VerticalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis"/>
-                                <FontIcon Grid.Column="1"
-                                          Glyph="&#xE7BA;"
-                                          FontSize="12"
-                                          Foreground="Orange"
-                                          Margin="4,0,0,0"
-                                          VerticalAlignment="Center"
-                                          Visibility="{x:Bind PathMissingVisibility, Mode=OneWay}"/>
-                                <FlyoutBase.AttachedFlyout>
-                                    <MenuFlyout>
-                                        <MenuFlyoutItem Text="Rename" Click="RenameWorkspace_Click">
-                                            <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8AC;"/></MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutItem Text="Repath…" Click="RepathWorkspace_Click">
-                                            <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8DA;"/></MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutSeparator/>
-                                        <MenuFlyoutItem Text="Remove" Click="DeleteWorkspace_Click">
-                                            <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;"/></MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                    </MenuFlyout>
-                                </FlyoutBase.AttachedFlyout>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                </ListView>
-            </Grid>
-        </NavigationView.PaneCustomContent>
-
-        <Frame x:Name="ContentFrame"/>
-    </NavigationView>
+            <Frame x:Name="ContentFrame" Background="{StaticResource AppBackgroundBrush}"/>
+        </NavigationView>
+    </Grid>
 </Window>

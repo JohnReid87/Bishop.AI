@@ -11,7 +11,7 @@
 
         <!-- Persistent header bar -->
         <Grid Grid.Row="0" Padding="16,12"
-              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderBrush="{StaticResource AppDividerBrush}"
               BorderThickness="0,0,0,1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -23,7 +23,7 @@
                            Style="{StaticResource SubtitleTextBlockStyle}"/>
                 <TextBlock x:Name="WorkspacePathText"
                            Style="{StaticResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
             </StackPanel>
 
             <Grid x:Name="LaunchButtonWrapper"
@@ -71,7 +71,7 @@
 
             <!-- Board subheader -->
             <Grid Grid.Row="1" Padding="16,8"
-                  BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                  BorderBrush="{StaticResource AppDividerBrush}"
                   BorderThickness="0,0,0,1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -118,7 +118,7 @@
                         <DataTemplate x:DataType="vm:LaneViewModel">
                             <Grid Width="220"
                                   VerticalAlignment="Top"
-                                  Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                  Background="{StaticResource AppLaneBackgroundBrush}"
                                   CornerRadius="8"
                                   Padding="0,0,0,8">
                                 <Grid.RowDefinitions>
@@ -150,6 +150,7 @@
                                           AllowDrop="True"
                                           MinHeight="40"
                                           DragOver="Cards_DragOver"
+                                          DragLeave="Cards_DragLeave"
                                           Drop="Cards_Drop">
                                     <ListView.ItemContainerStyle>
                                         <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
@@ -160,7 +161,7 @@
                                     </ListView.ItemContainerStyle>
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="vm:CardViewModel">
-                                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                            <Border Background="{StaticResource AppCardBackgroundBrush}"
                                                     CornerRadius="4"
                                                     Padding="10,8"
                                                     Margin="8,0,8,4"
@@ -191,9 +192,18 @@
                                 <TextBlock Grid.Row="2"
                                            Text="No cards"
                                            Visibility="{x:Bind EmptyPlaceholderVisibility, Mode=OneWay}"
-                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                           Foreground="{StaticResource AppTextTertiaryBrush}"
                                            FontStyle="Italic"
                                            Padding="12,4"/>
+
+                                <!-- Drag-target highlight overlay -->
+                                <Border Grid.RowSpan="3"
+                                        IsHitTestVisible="False"
+                                        CornerRadius="8"
+                                        BorderBrush="{StaticResource AppDragTargetBorderBrush}"
+                                        BorderThickness="2"
+                                        Background="{StaticResource AppDragTargetBrush}"
+                                        Visibility="{x:Bind IsDropTarget, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>

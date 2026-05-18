@@ -109,6 +109,14 @@ public sealed partial class WorkspaceDetailPage : Page
         e.AcceptedOperation = DataPackageOperation.Move;
         e.DragUIOverride.IsGlyphVisible = false;
         e.DragUIOverride.Caption = string.Empty;
+        if ((sender as FrameworkElement)?.DataContext is LaneViewModel lane)
+            lane.IsDropTarget = true;
+    }
+
+    private void Cards_DragLeave(object sender, DragEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is LaneViewModel lane)
+            lane.IsDropTarget = false;
     }
 
     private async void Cards_Drop(object sender, DragEventArgs e)

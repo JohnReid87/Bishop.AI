@@ -1,9 +1,11 @@
 using Bishop.UI.ViewModels;
 using Bishop.UI.Views;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Windows.Storage.Pickers;
+using Windows.UI;
 using WinRT.Interop;
 
 namespace Bishop.UI;
@@ -17,10 +19,26 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ViewModel = viewModel;
 
+        SetupTitleBar();
+
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         WorkspacesListView.DragItemsCompleted += WorkspacesListView_DragItemsCompleted;
 
         _ = ViewModel.LoadAsync();
+    }
+
+    private void SetupTitleBar()
+    {
+        AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
+        AppWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
+        AppWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        AppWindow.TitleBar.ButtonForegroundColor = Colors.White;
+        AppWindow.TitleBar.ButtonInactiveForegroundColor = Color.FromArgb(255, 100, 100, 120);
+        AppWindow.TitleBar.ButtonHoverBackgroundColor = Color.FromArgb(255, 30, 30, 38);
+        AppWindow.TitleBar.ButtonHoverForegroundColor = Colors.White;
+        AppWindow.TitleBar.ButtonPressedBackgroundColor = Color.FromArgb(255, 40, 40, 50);
+        AppWindow.TitleBar.ButtonPressedForegroundColor = Colors.White;
+        SetTitleBar(AppTitleBar);
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
