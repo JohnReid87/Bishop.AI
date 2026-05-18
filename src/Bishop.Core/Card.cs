@@ -11,4 +11,5 @@ public sealed class Card
     public DateTimeOffset UpdatedAt { get; set; }
 
     public Lane Lane { get; set; } = null!;
+    public ICollection<CardTag> CardTags { get; set; } = [];
 }

@@ -4,6 +4,9 @@ using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Lanes.ListLanesByWorkspace;
+using Bishop.App.Tags.AddTag;
+using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.RemoveTag;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.Cli;
 using MediatR;
@@ -90,22 +93,33 @@ root.AddCommand(workspaceCmd);
 var laneNameOpt = new Option<string>("--lane", "Lane name") { IsRequired = true };
 var titleOpt = new Option<string>("--title", "Card title") { IsRequired = true };
 var descOpt = new Option<string?>("--description", "Card description (optional)");
+var tagOpt = new Option<string[]>("--tag", "Tag name (repeatable)") { Arity = ArgumentArity.ZeroOrMore };
+var descFileOpt = new Option<string?>("--description-file", "Read description from file (use - for stdin)");
 
 var cardAddCmd = new Command("add", "Add a card to a lane");
 cardAddCmd.AddOption(workspaceOpt);
 cardAddCmd.AddOption(laneNameOpt);
 cardAddCmd.AddOption(titleOpt);
 cardAddCmd.AddOption(descOpt);
-cardAddCmd.SetHandler(async (string? workspace, string lane, string title, string? description) =>
+cardAddCmd.AddOption(tagOpt);
+cardAddCmd.AddOption(descFileOpt);
+cardAddCmd.SetHandler(async (string? workspace, string lane, string title, string? description, string[] tags, string? descFile) =>
 {
+    var desc = descFile switch
+    {
+        "-" => await Console.In.ReadToEndAsync(),
+        not null => await File.ReadAllTextAsync(descFile),
+        null => description ?? ""
+    };
     var ws = await resolver.ResolveAsync(workspace);
     var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
     var targetLane = lanes.FirstOrDefault(l =>
         string.Equals(l.Name, lane, StringComparison.OrdinalIgnoreCase))
         ?? throw new InvalidOperationException($"Lane '{lane}' not found in workspace '{ws.Name}'.");
-    var card = await mediator.Send(new AddCardCommand(targetLane.Id, title, description ?? ""));
-    Console.WriteLine($"Added card {card.Id} — '{card.Title}' → [{targetLane.Name}]");
-}, workspaceOpt, laneNameOpt, titleOpt, descOpt);
+    var card = await mediator.Send(new AddCardCommand(targetLane.Id, title, desc, tags.Length > 0 ? tags : null));
+    var tagSuffix = tags.Length > 0 ? $"  [{string.Join(", ", tags)}]" : "";
+    Console.WriteLine($"Added card {card.Id} — '{card.Title}' → [{targetLane.Name}]{tagSuffix}");
+}, workspaceOpt, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt);
 
 // ── card move ─────────────────────────────────────────────────────────────────
 
@@ -162,7 +176,8 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
             description = c.Description,
             laneId = c.LaneId,
             laneName = laneById.TryGetValue(c.LaneId, out var l) ? l.Name : "",
-            position = c.Position
+            position = c.Position,
+            tags = c.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
         });
         Console.WriteLine(JsonSerializer.Serialize(output, jsonOpts));
     }
@@ -179,10 +194,66 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
         {
             Console.WriteLine($"\n[{lane?.Name ?? "?"}]");
             foreach (var c in laneCards)
-                Console.WriteLine($"  {c.Id.ToString("N")[..8]}  {c.Title}");
+            {
+                var tags = c.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
+                var tagSuffix = tags.Count > 0 ? $"  [{string.Join(", ", tags)}]" : "";
+                Console.WriteLine($"  {c.Id.ToString("N")[..8]}  {c.Title}{tagSuffix}");
+            }
         }
     }
 }, workspaceOpt, jsonOpt);
+
+// ── tag list ──────────────────────────────────────────────────────────────────
+
+var tagListCmd = new Command("list", "List tags in a workspace");
+tagListCmd.AddOption(workspaceOpt);
+tagListCmd.AddOption(jsonOpt);
+tagListCmd.SetHandler(async (string? workspace, bool json) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    var tags = await mediator.Send(new ListTagsByWorkspaceQuery(ws.Id));
+    if (json)
+        Console.WriteLine(JsonSerializer.Serialize(tags, jsonOpts));
+    else
+        foreach (var t in tags)
+            Console.WriteLine(t.Name);
+}, workspaceOpt, jsonOpt);
+
+// ── tag add ───────────────────────────────────────────────────────────────────
+
+var tagAddNameArg = new Argument<string>("name", "Tag name");
+
+var tagAddCmd = new Command("add", "Add a tag to a workspace");
+tagAddCmd.AddArgument(tagAddNameArg);
+tagAddCmd.AddOption(workspaceOpt);
+tagAddCmd.SetHandler(async (string name, string? workspace) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    var tag = await mediator.Send(new AddTagCommand(ws.Id, name));
+    Console.WriteLine($"Added tag '{tag.Name}' to workspace '{ws.Name}'");
+}, tagAddNameArg, workspaceOpt);
+
+// ── tag remove ────────────────────────────────────────────────────────────────
+
+var tagRemoveNameArg = new Argument<string>("name", "Tag name");
+
+var tagRemoveCmd = new Command("remove", "Remove a tag from a workspace");
+tagRemoveCmd.AddArgument(tagRemoveNameArg);
+tagRemoveCmd.AddOption(workspaceOpt);
+tagRemoveCmd.SetHandler(async (string name, string? workspace) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    await mediator.Send(new RemoveTagCommand(ws.Id, name));
+    Console.WriteLine($"Removed tag '{name}' from workspace '{ws.Name}'");
+}, tagRemoveNameArg, workspaceOpt);
+
+// ── wire tag command ──────────────────────────────────────────────────────────
+
+var tagCmd = new Command("tag", "Manage workspace tags");
+tagCmd.AddCommand(tagListCmd);
+tagCmd.AddCommand(tagAddCmd);
+tagCmd.AddCommand(tagRemoveCmd);
+root.AddCommand(tagCmd);
 
 // ── wire card command ─────────────────────────────────────────────────────────
 

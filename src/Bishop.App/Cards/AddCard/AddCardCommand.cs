@@ -3,4 +3,8 @@ using MediatR;
 
 namespace Bishop.App.Cards.AddCard;
 
-public sealed record AddCardCommand(Guid LaneId, string Title, string Description = "") : IRequest<Card>;
+public sealed record AddCardCommand(
+    Guid LaneId,
+    string Title,
+    string Description = "",
+    IReadOnlyList<string>? TagNames = null) : IRequest<Card>;

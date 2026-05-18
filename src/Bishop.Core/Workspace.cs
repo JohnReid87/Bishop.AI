@@ -10,4 +10,5 @@ public sealed class Workspace
     public DateTimeOffset UpdatedAt { get; set; }
 
     public ICollection<Lane> Lanes { get; set; } = [];
+    public ICollection<Tag> Tags { get; set; } = [];
 }
