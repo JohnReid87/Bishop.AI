@@ -10,8 +10,11 @@ internal sealed class DatabaseInitializer : IHostedService
 
     public DatabaseInitializer(BishopDbContext db) => _db = db;
 
-    public Task StartAsync(CancellationToken cancellationToken)
-        => _db.Database.MigrateAsync(cancellationToken);
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        await _db.Database.MigrateAsync(cancellationToken);
+        await _db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
+    }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

@@ -13,7 +13,7 @@ public static class ServiceCollectionExtensions
         services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(PingQueryHandler).Assembly));
         services.AddDbContext<BishopDbContext>(options =>
-            options.UseSqlite($"{dbConnectionString};Journal Mode=WAL"));
+            options.UseSqlite(dbConnectionString));
         services.AddHostedService<DatabaseInitializer>();
         return services;
     }
