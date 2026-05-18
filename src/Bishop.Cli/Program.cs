@@ -32,10 +32,11 @@ var jsonOpts = new JsonSerializerOptions
     DefaultIgnoreCondition = JsonIgnoreCondition.Never
 };
 
-using var host = Host.CreateDefaultBuilder()
-    .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning))
-    .ConfigureServices(services => services.AddBishopApp(BishopDbConnectionString.Resolve()))
-    .Build();
+var builder = Host.CreateEmptyApplicationBuilder(null);
+builder.Logging.ClearProviders();
+builder.Logging.SetMinimumLevel(LogLevel.Warning);
+builder.Services.AddBishopApp(BishopDbConnectionString.Resolve());
+using var host = builder.Build();
 
 await host.StartAsync();
 

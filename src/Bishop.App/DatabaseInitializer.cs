@@ -12,9 +12,37 @@ internal sealed class DatabaseInitializer : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await _db.Database.MigrateAsync(cancellationToken);
+        if (IsStampCurrent())
+            return;
+
+        var pending = await _db.Database.GetPendingMigrationsAsync(cancellationToken);
+        if (pending.Any())
+            await _db.Database.MigrateAsync(cancellationToken);
         await _db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
+        await WriteStampAsync(cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    private bool IsStampCurrent()
+    {
+        var stampFile = StampFilePath();
+        if (!File.Exists(stampFile)) return false;
+        var latest = _db.Database.GetMigrations().LastOrDefault();
+        return latest is not null && File.ReadAllText(stampFile).Trim() == latest;
+    }
+
+    private async Task WriteStampAsync(CancellationToken cancellationToken)
+    {
+        var applied = await _db.Database.GetAppliedMigrationsAsync(cancellationToken);
+        var latest = applied.LastOrDefault();
+        if (latest is null) return;
+        await File.WriteAllTextAsync(StampFilePath(), latest, cancellationToken);
+    }
+
+    private static string StampFilePath() =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Bishop.AI",
+            "migration_stamp");
 }
