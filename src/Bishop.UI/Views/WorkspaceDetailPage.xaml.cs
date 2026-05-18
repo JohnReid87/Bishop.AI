@@ -24,10 +24,12 @@ public sealed partial class WorkspaceDetailPage : Page
     private LaneViewModel? _dragSourceLane;
 
     public WorkspaceBoardViewModel Board { get; }
+    public WorkspaceNotesViewModel Notes { get; }
 
     public WorkspaceDetailPage()
     {
         Board = App.Services.GetRequiredService<WorkspaceBoardViewModel>();
+        Notes = App.Services.GetRequiredService<WorkspaceNotesViewModel>();
         InitializeComponent();
     }
 
@@ -51,6 +53,7 @@ public sealed partial class WorkspaceDetailPage : Page
         base.OnNavigatedFrom(e);
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
+        _ = Notes.FlushAsync();
     }
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -65,6 +68,7 @@ public sealed partial class WorkspaceDetailPage : Page
         WorkspacePathText.Text = vm.Path;
         UpdatePathStatus();
         _ = Board.LoadAsync(vm.Id);
+        _ = Notes.LoadAsync(vm.Path);
     }
 
     private void UpdatePathStatus()

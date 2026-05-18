@@ -42,6 +42,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Notification bars -->
@@ -209,6 +210,64 @@
                     </ListView.ItemTemplate>
                 </ListView>
             </ScrollViewer>
+
+            <!-- Notes panel -->
+            <Grid Grid.Row="3"
+                  BorderBrush="{StaticResource AppDividerBrush}"
+                  BorderThickness="0,1,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Button Grid.Row="0"
+                        Command="{x:Bind Notes.ToggleCommand}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="16,8"
+                        CornerRadius="0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="{x:Bind Notes.ChevronGlyph, Mode=OneWay}"
+                                  FontSize="12"
+                                  VerticalAlignment="Center"/>
+                        <TextBlock Text="Notes"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <StackPanel Grid.Row="1"
+                            Visibility="{x:Bind Notes.IsExpanded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <InfoBar IsOpen="{x:Bind Notes.IsExternalChangeBarVisible, Mode=OneWay}"
+                             IsClosable="False"
+                             Severity="Warning"
+                             Title="File changed externally"
+                             Margin="16,0,16,8">
+                        <InfoBar.Content>
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,4">
+                                <HyperlinkButton Content="Reload"
+                                                 Command="{x:Bind Notes.ReloadCommand}"
+                                                 Padding="0"/>
+                                <TextBlock Text="/"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <HyperlinkButton Content="Keep my edits"
+                                                 Command="{x:Bind Notes.KeepEditsCommand}"
+                                                 Padding="0"/>
+                            </StackPanel>
+                        </InfoBar.Content>
+                    </InfoBar>
+                    <TextBox Text="{x:Bind Notes.NotesContent, Mode=TwoWay}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             FontFamily="Cascadia Mono"
+                             Height="200"
+                             Margin="16,0,16,16"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Grid>
 </Page>

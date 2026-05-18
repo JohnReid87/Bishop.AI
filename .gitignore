@@ -428,3 +428,6 @@ FodyWeavers.xsd
 *.msm
 *.msp
 /.claude/settings.local.json
+
+# Per-workspace notepad (created by Bishop.AI when this repo is a registered workspace)
+BISHOP_NOTES.md
