@@ -1,10 +1,16 @@
 using Bishop.App.Cards.MoveCard;
+using Bishop.App.Lanes.AddLane;
+using Bishop.App.Lanes.MoveLane;
+using Bishop.App.Lanes.RemoveLane;
+using Bishop.App.Lanes.RenameLane;
 using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using System.ComponentModel;
 using Windows.ApplicationModel.DataTransfer;
@@ -136,5 +142,72 @@ public sealed partial class WorkspaceDetailPage : Page
                 return i + 1;
         }
         return listView.Items.Count + 1;
+    }
+
+    private async void AddLane_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null) return;
+        var dialog = new AddLaneDialog { XamlRoot = XamlRoot };
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary) return;
+
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        await mediator.Send(new AddLaneCommand(_item.Id, dialog.ViewModel.Name));
+        await Board.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private void LaneHeader_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
+    }
+
+    private async void RenameLane_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
+
+        var nameBox = new TextBox { Text = lane.Name, SelectionStart = lane.Name.Length };
+        var renameDialog = new ContentDialog
+        {
+            Title = "Rename Lane",
+            Content = nameBox,
+            PrimaryButtonText = "Rename",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        if (await renameDialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            await mediator.Send(new RenameLaneCommand(lane.Id, nameBox.Text));
+            await Board.RefreshCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void DeleteLane_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
+
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        try
+        {
+            await mediator.Send(new RemoveLaneCommand(lane.Id));
+            await Board.RefreshCommand.ExecuteAsync(null);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LaneErrorBar.Title = "Cannot delete lane";
+            LaneErrorBar.Message = ex.Message;
+            LaneErrorBar.IsOpen = true;
+        }
+    }
+
+    private async void Lanes_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+    {
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        var ordered = LanesListView.Items.OfType<LaneViewModel>().ToList();
+        for (var i = 0; i < ordered.Count; i++)
+            await mediator.Send(new MoveLaneCommand(ordered[i].Id, i + 1));
+        await Board.RefreshCommand.ExecuteAsync(null);
     }
 }
