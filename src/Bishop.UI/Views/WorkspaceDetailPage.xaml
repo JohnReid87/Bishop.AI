@@ -118,7 +118,8 @@
                                             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                                     CornerRadius="4"
                                                     Padding="10,8"
-                                                    Margin="8,0,8,4">
+                                                    Margin="8,0,8,4"
+                                                    Tapped="Card_Tapped">
                                                 <TextBlock Text="{x:Bind Title}"
                                                            TextWrapping="Wrap"/>
                                             </Border>

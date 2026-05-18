@@ -1,0 +1,70 @@
+<ContentDialog
+    x:Class="Bishop.UI.Views.CardDetailDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    Title="{x:Bind ViewModel.Title}"
+    PrimaryButtonText="Close"
+    DefaultButton="Primary">
+    <StackPanel Spacing="12" MinWidth="400" MaxWidth="600">
+
+        <!-- Description -->
+        <controls:MarkdownTextBlock
+            Text="{x:Bind ViewModel.Description}"
+            Visibility="{x:Bind ViewModel.DescriptionVisibility}"/>
+        <TextBlock
+            Text="No description."
+            FontStyle="Italic"
+            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+            Visibility="{x:Bind ViewModel.NoDescriptionVisibility}"/>
+
+        <!-- Tags -->
+        <ItemsControl
+            ItemsSource="{x:Bind ViewModel.Tags}"
+            Visibility="{x:Bind ViewModel.TagsVisibility}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="4"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                    <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                            CornerRadius="4"
+                            Padding="8,2">
+                        <TextBlock Text="{x:Bind}" FontSize="11" Foreground="White"/>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Divider before delete zone -->
+        <Border BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                Margin="0,4"/>
+
+        <!-- Delete confirmation panel -->
+        <StackPanel
+            Visibility="{x:Bind ViewModel.DeleteConfirmVisibility, Mode=OneWay}"
+            Spacing="8">
+            <TextBlock
+                Text="Delete this card? This cannot be undone."
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button
+                    Content="Yes, delete"
+                    Command="{x:Bind ViewModel.ConfirmDeleteCommand}"/>
+                <Button
+                    Content="Cancel"
+                    Command="{x:Bind ViewModel.CancelDeleteCommand}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Delete button -->
+        <Button
+            Content="Delete card"
+            Visibility="{x:Bind ViewModel.DeleteButtonVisibility, Mode=OneWay}"
+            Command="{x:Bind ViewModel.RequestDeleteCommand}"/>
+
+    </StackPanel>
+</ContentDialog>

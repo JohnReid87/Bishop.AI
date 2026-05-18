@@ -2,7 +2,9 @@ using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using System.ComponentModel;
 
@@ -64,11 +66,22 @@ public sealed partial class WorkspaceDetailPage : Page
         ToolTipService.SetToolTip(LaunchButtonWrapper, missing ? "The workspace directory is missing." : null);
     }
 
-    private async void LaunchButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    private async void LaunchButton_Click(object sender, RoutedEventArgs e)
     {
         if (_item is null) return;
         var mediator = App.Services.GetRequiredService<IMediator>();
         var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path));
         FallbackWarningBar.IsOpen = !launchedWithTerminal;
+    }
+
+    private async void Card_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card)
+            return;
+
+        var dialog = new CardDetailDialog(card) { XamlRoot = XamlRoot };
+        await dialog.ShowAsync();
+        if (dialog.ViewModel.Deleted)
+            await Board.RefreshCommand.ExecuteAsync(null);
     }
 }
