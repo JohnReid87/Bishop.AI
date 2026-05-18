@@ -12,8 +12,11 @@ public sealed partial class WorkspaceDetailPage : Page
 {
     private WorkspaceItemViewModel? _item;
 
+    public WorkspaceBoardViewModel Board { get; }
+
     public WorkspaceDetailPage()
     {
+        Board = App.Services.GetRequiredService<WorkspaceBoardViewModel>();
         InitializeComponent();
     }
 
@@ -50,6 +53,7 @@ public sealed partial class WorkspaceDetailPage : Page
         WorkspaceNameText.Text = vm.Name;
         WorkspacePathText.Text = vm.Path;
         UpdatePathStatus();
+        _ = Board.LoadAsync(vm.Id);
     }
 
     private void UpdatePathStatus()

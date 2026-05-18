@@ -26,6 +26,7 @@ public partial class App : Application
             {
                 services.AddBishopApp(GetConnectionString());
                 services.AddTransient<MainWindowViewModel>();
+                services.AddTransient<WorkspaceBoardViewModel>();
             })
             .Build();
 
