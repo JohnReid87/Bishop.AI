@@ -2,6 +2,7 @@ using Bishop.UI.ViewModels;
 using Bishop.UI.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
@@ -78,6 +79,11 @@ public sealed partial class MainWindow : Window
             item.Name = nameBox.Text;
             await ViewModel.RenameWorkspaceAsync(item);
         }
+    }
+
+    private void WorkspaceItem_RightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
+    {
+        FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
     }
 
     private async void RepathWorkspace_Click(object sender, RoutedEventArgs e)

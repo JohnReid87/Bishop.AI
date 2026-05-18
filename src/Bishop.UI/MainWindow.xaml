@@ -58,7 +58,7 @@
                           DragItemsCompleted="WorkspacesListView_DragItemsCompleted">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="vm:WorkspaceItemViewModel">
-                            <Grid>
+                            <Grid RightTapped="WorkspaceItem_RightTapped">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
