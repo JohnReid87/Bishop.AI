@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package
+    Name="Bishop.AI"
+    Manufacturer="John Reid"
+    Version="$(var.BishopVersion)"
+    UpgradeCode="FE807C4C-5971-452B-BB81-BBAAB3E79BB8"
+    Scope="perUser"
+    Compressed="yes">
+
+    <SummaryInformation Description="Bishop.AI — per-workspace kanban and CLI for AI coding workflows" />
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+      Schedule="afterInstallInitialize" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="Main" Title="Bishop.AI" Level="1">
+      <ComponentGroupRef Id="CliFiles" />
+      <ComponentGroupRef Id="UIFiles" />
+      <ComponentRef Id="CliOnPath" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <!-- Per-user install: %LocalAppData%\Programs\Bishop.AI\{Cli,UI} -->
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Bishop.AI">
+          <Directory Id="CliDir" Name="Cli" />
+          <Directory Id="UIDir" Name="UI" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="BishopMenuFolder" Name="Bishop.AI" />
+    </StandardDirectory>
+
+    <!-- Bulk content from publish outputs -->
+    <ComponentGroup Id="CliFiles" Directory="CliDir">
+      <Files Include="$(var.PublishCliDir)\**" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="UIFiles" Directory="UIDir">
+      <Files Include="$(var.PublishUIDir)\**" />
+    </ComponentGroup>
+
+    <!-- Add CliDir to user PATH (HKCU\Environment) -->
+    <Component Id="CliOnPath" Directory="CliDir" Bitness="always64">
+      <RegistryValue
+        Root="HKCU"
+        Key="Software\BishopAI\Installer"
+        Name="PathInstalled"
+        Type="integer"
+        Value="1"
+        KeyPath="yes" />
+      <Environment
+        Id="PathEntry"
+        Name="PATH"
+        Value="[CliDir]"
+        Permanent="no"
+        Part="last"
+        Action="set"
+        System="no" />
+    </Component>
+
+    <!-- Start Menu shortcut for Bishop.UI -->
+    <Component Id="StartMenuShortcut" Directory="BishopMenuFolder" Bitness="always64">
+      <Shortcut
+        Id="BishopUIShortcut"
+        Name="Bishop.AI"
+        Description="Bishop.AI workspace and kanban dashboard"
+        Target="[UIDir]Bishop.UI.exe"
+        WorkingDirectory="UIDir" />
+      <RemoveFolder Id="RemoveBishopMenuFolder" On="uninstall" />
+      <RegistryValue
+        Root="HKCU"
+        Key="Software\BishopAI\Installer"
+        Name="StartMenuInstalled"
+        Type="integer"
+        Value="1"
+        KeyPath="yes" />
+    </Component>
+
+  </Package>
+
+</Wix>

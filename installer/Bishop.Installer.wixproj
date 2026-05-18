@@ -1,0 +1,25 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <OutputName>Bishop.AI</OutputName>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <!-- ICE38/ICE64 are per-user install gotchas: they assume each component should be
+         keyed on an HKCU registry value (ICE38) and that every per-user directory should be
+         listed in the RemoveFile table (ICE64). Wix's auto-generated <Files> components key
+         on files, not the registry. The MSI still installs and uninstalls file *contents*
+         correctly; only empty dirs may linger under %LocalAppData% and the install isn't
+         tracked per-roaming-profile. Acceptable for this single-user local-first tool. -->
+    <SuppressIces>ICE38;ICE61;ICE64;ICE91</SuppressIces>
+    <Pedantic>true</Pedantic>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants>
+      BishopVersion=$(BishopVersion);
+      PublishCliDir=$(MSBuildThisFileDirectory)publish-cli;
+      PublishUIDir=$(MSBuildThisFileDirectory)publish-ui
+    </DefineConstants>
+  </PropertyGroup>
+
+</Project>
