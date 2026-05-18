@@ -60,8 +60,29 @@ workspaceListCmd.SetHandler(async (bool json) =>
     }
 }, jsonOpt);
 
+// ── workspace current ───────────────────────────────────────────────────────
+
+var workspaceCurrentCmd = new Command("current", "Show the workspace whose path is an ancestor of cwd");
+workspaceCurrentCmd.AddOption(jsonOpt);
+workspaceCurrentCmd.SetHandler(async (bool json) =>
+{
+    try
+    {
+        var ws = await resolver.ResolveAsync(null);
+        if (json)
+            Console.WriteLine(JsonSerializer.Serialize(ws, jsonOpts));
+        else
+            Console.WriteLine($"{ws.Name,-30} {ws.Path}");
+    }
+    catch (InvalidOperationException)
+    {
+        Environment.ExitCode = 1;
+    }
+}, jsonOpt);
+
 var workspaceCmd = new Command("workspace", "Manage workspaces");
 workspaceCmd.AddCommand(workspaceListCmd);
+workspaceCmd.AddCommand(workspaceCurrentCmd);
 root.AddCommand(workspaceCmd);
 
 // ── card add ─────────────────────────────────────────────────────────────────
