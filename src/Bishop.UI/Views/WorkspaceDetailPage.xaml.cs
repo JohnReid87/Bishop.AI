@@ -57,12 +57,14 @@ public sealed partial class WorkspaceDetailPage : Page
         var missing = _item?.IsPathMissing ?? false;
         LaunchButton.IsEnabled = !missing;
         PathWarningBar.IsOpen = missing;
+        ToolTipService.SetToolTip(LaunchButtonWrapper, missing ? "The workspace directory is missing." : null);
     }
 
     private async void LaunchButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         if (_item is null) return;
         var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new LaunchWorkspaceCommand(_item.Path));
+        var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path));
+        FallbackWarningBar.IsOpen = !launchedWithTerminal;
     }
 }
