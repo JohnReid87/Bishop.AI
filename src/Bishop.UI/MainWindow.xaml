@@ -83,7 +83,7 @@
                                             <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8DA;"/></MenuFlyoutItem.Icon>
                                         </MenuFlyoutItem>
                                         <MenuFlyoutSeparator/>
-                                        <MenuFlyoutItem Text="Delete" Click="DeleteWorkspace_Click">
+                                        <MenuFlyoutItem Text="Remove" Click="DeleteWorkspace_Click">
                                             <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;"/></MenuFlyoutItem.Icon>
                                         </MenuFlyoutItem>
                                     </MenuFlyout>
