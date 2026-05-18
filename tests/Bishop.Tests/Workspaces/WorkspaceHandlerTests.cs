@@ -85,6 +85,21 @@ public sealed class WorkspaceHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task GetWorkspace_IncludesLanesOrderedByPosition()
+    {
+        var created = await new CreateWorkspaceCommandHandler(_db)
+            .Handle(new CreateWorkspaceCommand("WithLanes", @"C:\lanes"), default);
+
+        var handler = new GetWorkspaceQueryHandler(_db);
+        var result = await handler.Handle(new GetWorkspaceQuery(created.Id), default);
+
+        result.Should().NotBeNull();
+        result!.Lanes.Should().HaveCount(3);
+        result.Lanes.Select(l => l.Position).Should().BeInAscendingOrder();
+        result.Lanes.Select(l => l.Name).Should().Equal("To Do", "Doing", "Done");
+    }
+
+    [Fact]
     public async Task UpdateWorkspace_ChangesNameAndPath()
     {
         var created = await new CreateWorkspaceCommandHandler(_db)
