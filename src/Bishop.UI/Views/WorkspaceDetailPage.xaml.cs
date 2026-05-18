@@ -1,18 +1,21 @@
+using Bishop.App.Cards.MoveCard;
 using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using System.ComponentModel;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Bishop.UI.Views;
 
 public sealed partial class WorkspaceDetailPage : Page
 {
     private WorkspaceItemViewModel? _item;
+    private CardViewModel? _draggedCard;
+    private LaneViewModel? _dragSourceLane;
 
     public WorkspaceBoardViewModel Board { get; }
 
@@ -74,7 +77,7 @@ public sealed partial class WorkspaceDetailPage : Page
         FallbackWarningBar.IsOpen = !launchedWithTerminal;
     }
 
-    private async void Card_Tapped(object sender, TappedRoutedEventArgs e)
+    private async void ViewCard_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not CardViewModel card)
             return;
@@ -83,5 +86,55 @@ public sealed partial class WorkspaceDetailPage : Page
         await dialog.ShowAsync();
         if (dialog.ViewModel.Deleted)
             await Board.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private void Card_DragStarting(UIElement sender, DragStartingEventArgs e)
+    {
+        _draggedCard = (sender as FrameworkElement)?.DataContext as CardViewModel;
+        if (_draggedCard is null) return;
+        _dragSourceLane = Board.Lanes.FirstOrDefault(l => l.Id == _draggedCard.LaneId);
+        e.Data.RequestedOperation = DataPackageOperation.Move;
+        e.Data.SetText(_draggedCard.Id.ToString());
+    }
+
+    private void Cards_DragOver(object sender, DragEventArgs e)
+    {
+        if (_draggedCard is null) return;
+        e.AcceptedOperation = DataPackageOperation.Move;
+        e.DragUIOverride.IsGlyphVisible = false;
+        e.DragUIOverride.Caption = string.Empty;
+    }
+
+    private async void Cards_Drop(object sender, DragEventArgs e)
+    {
+        if (_draggedCard is null || _dragSourceLane is null) return;
+        var targetLane = (sender as FrameworkElement)?.DataContext as LaneViewModel;
+        if (targetLane is null) return;
+
+        var position = GetDropIndex(sender as ListView, e, targetLane);
+        var card = _draggedCard;
+        var targetLaneId = targetLane.Id;
+
+        _draggedCard = null;
+        _dragSourceLane = null;
+
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        await mediator.Send(new MoveCardCommand(card.Id, targetLaneId, position));
+        await Board.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private static int GetDropIndex(ListView? listView, DragEventArgs e, LaneViewModel targetLane)
+    {
+        if (listView is null) return targetLane.Cards.Count + 1;
+
+        var dropPoint = e.GetPosition(listView);
+        for (var i = 0; i < listView.Items.Count; i++)
+        {
+            if (listView.ContainerFromIndex(i) is not ListViewItem item) continue;
+            var itemTop = item.TransformToVisual(listView).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
+            if (dropPoint.Y < itemTop + item.ActualHeight / 2)
+                return i + 1;
+        }
+        return listView.Items.Count + 1;
     }
 }

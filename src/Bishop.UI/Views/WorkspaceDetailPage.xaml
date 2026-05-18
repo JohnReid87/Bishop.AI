@@ -112,20 +112,49 @@
                                            Style="{StaticResource BodyStrongTextBlockStyle}"
                                            Padding="12,10,12,8"/>
 
-                                <ItemsControl Grid.Row="1" ItemsSource="{x:Bind Cards}">
-                                    <ItemsControl.ItemTemplate>
+                                <ListView Grid.Row="1"
+                                          ItemsSource="{x:Bind Cards}"
+                                          SelectionMode="None"
+                                          AllowDrop="True"
+                                          MinHeight="40"
+                                          DragOver="Cards_DragOver"
+                                          Drop="Cards_Drop">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="Margin" Value="0"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+                                    <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="vm:CardViewModel">
                                             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                                     CornerRadius="4"
                                                     Padding="10,8"
                                                     Margin="8,0,8,4"
-                                                    Tapped="Card_Tapped">
-                                                <TextBlock Text="{x:Bind Title}"
-                                                           TextWrapping="Wrap"/>
+                                                    CanDrag="True"
+                                                    DragStarting="Card_DragStarting">
+                                                <Grid ColumnSpacing="4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{x:Bind Title}"
+                                                               TextWrapping="Wrap"
+                                                               VerticalAlignment="Center"/>
+                                                    <Button Grid.Column="1"
+                                                            Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                            ToolTipService.ToolTip="View card"
+                                                            Click="ViewCard_Click"
+                                                            VerticalAlignment="Center">
+                                                        <FontIcon Glyph="&#xE7B3;" FontSize="12"/>
+                                                    </Button>
+                                                </Grid>
                                             </Border>
                                         </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                    </ListView.ItemTemplate>
+                                </ListView>
 
                                 <TextBlock Grid.Row="2"
                                            Text="No cards"

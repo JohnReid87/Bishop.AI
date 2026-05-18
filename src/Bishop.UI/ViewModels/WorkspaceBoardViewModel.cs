@@ -32,11 +32,12 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         Lanes.Clear();
         foreach (var lane in lanes)
         {
-            var laneVm = new LaneViewModel { Name = lane.Name };
+            var laneVm = new LaneViewModel { Id = lane.Id, Name = lane.Name };
             foreach (var card in cardsByLane[lane.Id])
                 laneVm.Cards.Add(new CardViewModel
                 {
                     Id = card.Id,
+                    LaneId = card.LaneId,
                     Title = card.Title,
                     Description = card.Description,
                     Tags = card.CardTags.Select(ct => ct.Tag.Name).ToList(),
