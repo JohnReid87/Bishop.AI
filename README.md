@@ -6,6 +6,8 @@ State is mutated via the `bishop` CLI (used by skills like `work-on-card-bishop`
 
 ## Getting started
 
-Build the solution with `dotnet build Bishop.AI.slnx`. Run `dotnet publish src/Bishop.Cli` to produce `bishop.exe`, and `dotnet publish src/Bishop.UI` to produce the WinUI app.
+- Build: `dotnet build Bishop.AI.slnx`
+- Tests: `dotnet test`
+- Per-user MSI: `pwsh installer/build.ps1` (one-time prereq: `dotnet tool install --global wix --version 5.0.2`). Output at `installer/bin/Release/Bishop.AI.msi`. After installing the MSI, run `bishop install-skills` once to populate `~/.claude/skills/` with the bundled Claude Code skills.
 
-See [CONTEXT.md](CONTEXT.md) for tech stack, architecture, and conventions.
+See [CONTEXT.md](CONTEXT.md) for tech stack, architecture, and conventions, and [DIRECTION.md](DIRECTION.md) for scope decisions.

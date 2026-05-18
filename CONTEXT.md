@@ -15,6 +15,15 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 - **Target framework:** `net10.0` for Core / Data / App / Cli / Tests; `net10.0-windows10.0.19041.0` for Bishop.UI.
 
 ## Architecture
+
+### Repository layout
+- `src/` — .NET projects (Core, Data, App, Cli, UI).
+- `tests/Bishop.Tests/` — xUnit project.
+- `skills/` — vendored Claude Code skill files (`work-on-card-bishop`, `grill-me-bishop`) shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`.
+- `installer/` — Wix v5 project that produces the per-user MSI. See `installer/README.md`.
+- `notes/_archive/` — pre-grill design notes; preserved for decision rationale but superseded by DIRECTION.md.
+
+### Layers
 Layered, with strict one-way dependencies. Modify in this order when implementing a feature:
 
 1. **Bishop.Core** — entities (Workspace, Lane, Card, Tag, CardTag), domain primitives, enums. No external deps.
@@ -39,6 +48,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop card move <card-id> --to-lane <name> --to-position <int> [-w]`
 - `bishop card remove <card-id> [-w]`
 - `bishop tag list|add|remove [-w]`
+- `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
 
 Card identifiers accept the first 8 hex chars of the GUID as a short-ID prefix (ambiguous prefixes are rejected with a list of candidates on stderr).
 
