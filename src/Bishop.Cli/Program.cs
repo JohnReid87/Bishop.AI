@@ -306,6 +306,72 @@ cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, s
     Console.WriteLine($"Updated card {card.Id} — '{card.Title}'");
 }, cardEditIdArg, workspaceOpt, editTitleOpt, editDescOpt, editDescFileOpt, editTagOpt, editClearTagsOpt);
 
+// ── card claim ────────────────────────────────────────────────────────────────
+
+var claimSourceLaneOpt = new Option<string>("--lane", () => "To Do", "Source lane to claim from");
+
+var cardClaimCmd = new Command("claim", "Pick the top card from a lane and move it to Doing");
+cardClaimCmd.AddOption(workspaceOpt);
+cardClaimCmd.AddOption(claimSourceLaneOpt);
+cardClaimCmd.AddOption(jsonOpt);
+cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, bool json) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
+
+    var sourceLane = lanes.FirstOrDefault(l =>
+        string.Equals(l.Name, sourceLaneName, StringComparison.OrdinalIgnoreCase))
+        ?? throw new InvalidOperationException($"Lane '{sourceLaneName}' not found in workspace '{ws.Name}'.");
+
+    var doingLane = lanes.FirstOrDefault(l =>
+        string.Equals(l.Name, "Doing", StringComparison.OrdinalIgnoreCase))
+        ?? throw new InvalidOperationException($"Lane 'Doing' not found in workspace '{ws.Name}'.");
+
+    var allCards = await mediator.Send(new ListCardsByWorkspaceQuery(ws.Id));
+    var topCard = allCards
+        .Where(c => c.LaneId == sourceLane.Id)
+        .OrderBy(c => c.Position)
+        .FirstOrDefault();
+
+    if (topCard is null)
+    {
+        Console.Error.WriteLine($"Lane '{sourceLane.Name}' is empty — nothing to claim.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    await mediator.Send(new MoveCardCommand(topCard.Id, doingLane.Id, 1));
+    var card = (await mediator.Send(new GetCardQuery(topCard.Id)))!;
+
+    if (json)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            id = card.Id,
+            title = card.Title,
+            description = card.Description,
+            laneId = card.LaneId,
+            laneName = card.Lane.Name,
+            position = card.Position,
+            createdAt = card.CreatedAt,
+            updatedAt = card.UpdatedAt,
+            tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
+        }, jsonOpts));
+    }
+    else
+    {
+        var tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
+        Console.WriteLine($"Claimed {card.Id.ToString("N")[..8]} — '{card.Title}' [{sourceLane.Name}] → [{doingLane.Name}]");
+        if (tags.Count > 0)
+            Console.WriteLine($"Tags: {string.Join(", ", tags)}");
+        if (!string.IsNullOrEmpty(card.Description))
+        {
+            Console.WriteLine();
+            Console.WriteLine(card.Description);
+        }
+    }
+}, workspaceOpt, claimSourceLaneOpt, jsonOpt);
+
 // ── card list ─────────────────────────────────────────────────────────────────
 
 var cardListCmd = new Command("list", "List cards in a workspace");
@@ -414,6 +480,7 @@ cardCmd.AddCommand(cardViewCmd);
 cardCmd.AddCommand(cardMoveCmd);
 cardCmd.AddCommand(cardRemoveCmd);
 cardCmd.AddCommand(cardEditCmd);
+cardCmd.AddCommand(cardClaimCmd);
 cardCmd.AddCommand(cardListCmd);
 root.AddCommand(cardCmd);
 
