@@ -172,36 +172,44 @@
                                         <DataTemplate x:DataType="vm:CardViewModel">
                                             <Border Background="{StaticResource AppCardBackgroundBrush}"
                                                     CornerRadius="4"
-                                                    Padding="10,8"
                                                     Margin="8,0,8,4"
                                                     CanDrag="True"
                                                     DragStarting="Card_DragStarting">
-                                                <Grid ColumnSpacing="4">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="{x:Bind Title}"
+                                                <StackPanel>
+                                                    <!-- Card header: short ID (todo) + action buttons -->
+                                                    <Grid Padding="10,4,4,4"
+                                                          BorderBrush="{StaticResource AppDividerBrush}"
+                                                          BorderThickness="0,0,0,1">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0"
+                                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                                   Foreground="{StaticResource AppTextTertiaryBrush}"
+                                                                   VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="1"
+                                                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                                ToolTipService.ToolTip="Launch skill"
+                                                                Click="CardSkillsButton_Click"
+                                                                Visibility="{x:Bind SkillsButtonVisibility}"
+                                                                VerticalAlignment="Center">
+                                                            <FontIcon Glyph="&#xE756;" FontSize="12"/>
+                                                        </Button>
+                                                        <Button Grid.Column="2"
+                                                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                                ToolTipService.ToolTip="View card"
+                                                                Click="ViewCard_Click"
+                                                                VerticalAlignment="Center">
+                                                            <FontIcon Glyph="&#xE7B3;" FontSize="12"/>
+                                                        </Button>
+                                                    </Grid>
+                                                    <!-- Card title -->
+                                                    <TextBlock Text="{x:Bind Title}"
                                                                TextWrapping="Wrap"
-                                                               VerticalAlignment="Center"/>
-                                                    <Button Grid.Column="1"
-                                                            Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                            ToolTipService.ToolTip="Launch skill"
-                                                            Click="CardSkillsButton_Click"
-                                                            Visibility="{x:Bind SkillsButtonVisibility}"
-                                                            VerticalAlignment="Center">
-                                                        <FontIcon Glyph="&#xE756;" FontSize="12"/>
-                                                    </Button>
-                                                    <Button Grid.Column="2"
-                                                            Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                            ToolTipService.ToolTip="View card"
-                                                            Click="ViewCard_Click"
-                                                            VerticalAlignment="Center">
-                                                        <FontIcon Glyph="&#xE7B3;" FontSize="12"/>
-                                                    </Button>
-                                                </Grid>
+                                                               Padding="10,6,10,8"/>
+                                                </StackPanel>
                                             </Border>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
