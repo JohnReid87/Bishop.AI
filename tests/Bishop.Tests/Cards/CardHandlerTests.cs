@@ -163,6 +163,30 @@ public sealed class CardHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task AddCard_SucceedsWhenLaneIdCasingDiffersFromStoredRow()
+    {
+        // Regression: older write paths stored Guid TEXT in mixed case, causing
+        // Cards.LaneId -> Lanes.Id FK lookups to fail under SQLite's default
+        // BINARY collation. NOCASE collation on Guid columns prevents this.
+        var workspaceId = Guid.NewGuid();
+        var laneId = Guid.NewGuid();
+        await _db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO Workspaces (Id, Name, Path, Position, CreatedAt, UpdatedAt) VALUES ({0}, 'WS', 'C:\\ws', 1, {1}, {1})",
+            workspaceId.ToString().ToUpperInvariant(),
+            DateTimeOffset.UtcNow);
+        await _db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO Lanes (Id, WorkspaceId, Name, Position) VALUES ({0}, {1}, 'To Do', 1)",
+            laneId.ToString().ToLowerInvariant(),
+            workspaceId.ToString().ToUpperInvariant());
+
+        var handler = new AddCardCommandHandler(_db);
+        var act = async () => await handler.Handle(
+            new AddCardCommand(laneId, "Mixed-case lane FK"), default);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
     public async Task MoveCard_ToEndOfLane_PlacesLast()
     {
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
