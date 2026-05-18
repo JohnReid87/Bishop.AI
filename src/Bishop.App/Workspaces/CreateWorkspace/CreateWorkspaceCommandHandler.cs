@@ -37,6 +37,19 @@ public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorksp
             Position = position,
         };
         _db.Workspaces.Add(workspace);
+
+        string[] laneNames = ["To Do", "Doing", "Done"];
+        for (var i = 0; i < laneNames.Length; i++)
+        {
+            _db.Lanes.Add(new Lane
+            {
+                Id = Guid.NewGuid(),
+                WorkspaceId = workspace.Id,
+                Name = laneNames[i],
+                Position = i + 1,
+            });
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
         return workspace;
     }

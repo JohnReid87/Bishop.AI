@@ -8,4 +8,6 @@ public sealed class Workspace
     public int Position { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+
+    public ICollection<Lane> Lanes { get; set; } = [];
 }
