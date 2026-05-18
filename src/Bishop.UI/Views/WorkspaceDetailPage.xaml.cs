@@ -3,7 +3,10 @@ using Bishop.App.Lanes.AddLane;
 using Bishop.App.Lanes.MoveLane;
 using Bishop.App.Lanes.RemoveLane;
 using Bishop.App.Lanes.RenameLane;
+using Bishop.App.Skills.DiscoverSkills;
+using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Workspaces.LaunchWorkspace;
+using Bishop.Core.Skills;
 using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +28,8 @@ public sealed partial class WorkspaceDetailPage : Page
     private bool _isDraggingNotes;
     private double _dragStartPageY;
     private double _dragStartNoteHeight;
+    private IReadOnlyList<InstalledSkill> _cardSkills = [];
+    private IReadOnlyList<InstalledSkill> _workspaceSkills = [];
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
@@ -65,13 +70,24 @@ public sealed partial class WorkspaceDetailPage : Page
             UpdatePathStatus();
     }
 
-    private void UpdateView(WorkspaceItemViewModel vm)
+    private async void UpdateView(WorkspaceItemViewModel vm)
     {
         WorkspaceNameText.Text = vm.Name;
         WorkspacePathText.Text = vm.Path;
         UpdatePathStatus();
+        await LoadSkillsAsync();
         _ = Board.LoadAsync(vm.Id);
         _ = Notes.LoadAsync(vm.Id, vm.Path);
+    }
+
+    private async Task LoadSkillsAsync()
+    {
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        var skills = await mediator.Send(new DiscoverSkillsQuery());
+        _cardSkills = skills.Where(s => s.Scope == "card" && s.Command is not null).ToList();
+        _workspaceSkills = skills.Where(s => s.Scope == "workspace" && s.Command is not null).ToList();
+        CardViewModel.CardSkillsButtonVisibility = _cardSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        WorkspaceSkillsButton.Visibility = _workspaceSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdatePathStatus()
@@ -89,6 +105,50 @@ public sealed partial class WorkspaceDetailPage : Page
         var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path));
         FallbackWarningBar.IsOpen = !launchedWithTerminal;
     }
+
+    private void WorkspaceSkillsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null || _workspaceSkills.Count == 0) return;
+        var flyout = new MenuFlyout();
+        foreach (var skill in _workspaceSkills)
+        {
+            var rendered = RenderCommand(skill.Command!, null, _item.Path);
+            var workspacePath = _item.Path;
+            var item = new MenuFlyoutItem { Text = skill.Name };
+            item.Click += async (_, _) =>
+            {
+                var mediator = App.Services.GetRequiredService<IMediator>();
+                await mediator.Send(new LaunchSkillCommand(workspacePath, rendered));
+            };
+            flyout.Items.Add(item);
+        }
+        flyout.ShowAt((FrameworkElement)sender);
+    }
+
+    private void CardSkillsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null || _cardSkills.Count == 0) return;
+        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+        var flyout = new MenuFlyout();
+        foreach (var skill in _cardSkills)
+        {
+            var rendered = RenderCommand(skill.Command!, card, _item.Path);
+            var workspacePath = _item.Path;
+            var item = new MenuFlyoutItem { Text = skill.Name };
+            item.Click += async (_, _) =>
+            {
+                var mediator = App.Services.GetRequiredService<IMediator>();
+                await mediator.Send(new LaunchSkillCommand(workspacePath, rendered));
+            };
+            flyout.Items.Add(item);
+        }
+        flyout.ShowAt((FrameworkElement)sender);
+    }
+
+    private static string RenderCommand(string template, CardViewModel? card, string workspacePath) =>
+        template
+            .Replace("{{workspace_path}}", workspacePath)
+            .Replace("{{card_short_id}}", card?.Id.ToString("N")[..8] ?? string.Empty);
 
     private async void ViewCard_Click(object sender, RoutedEventArgs e)
     {
