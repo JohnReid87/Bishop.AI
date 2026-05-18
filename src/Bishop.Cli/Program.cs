@@ -4,7 +4,11 @@ using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
+using Bishop.App.Lanes.AddLane;
 using Bishop.App.Lanes.ListLanesByWorkspace;
+using Bishop.App.Lanes.MoveLane;
+using Bishop.App.Lanes.RemoveLane;
+using Bishop.App.Lanes.RenameLane;
 using Bishop.App.Tags.AddTag;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.App.Tags.RemoveTag;
@@ -343,6 +347,101 @@ cardCmd.AddCommand(cardMoveCmd);
 cardCmd.AddCommand(cardRemoveCmd);
 cardCmd.AddCommand(cardListCmd);
 root.AddCommand(cardCmd);
+
+// ── lane list ─────────────────────────────────────────────────────────────────
+
+var laneListCmd = new Command("list", "List lanes in a workspace");
+laneListCmd.AddOption(workspaceOpt);
+laneListCmd.AddOption(jsonOpt);
+laneListCmd.SetHandler(async (string? workspace, bool json) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
+    if (json)
+        Console.WriteLine(JsonSerializer.Serialize(lanes, jsonOpts));
+    else
+        foreach (var l in lanes)
+            Console.WriteLine($"  {l.Position}  {l.Name}");
+}, workspaceOpt, jsonOpt);
+
+// ── lane add ──────────────────────────────────────────────────────────────────
+
+var laneAddNameArg = new Argument<string>("name", "Lane name");
+
+var laneAddCmd = new Command("add", "Add a lane to a workspace");
+laneAddCmd.AddArgument(laneAddNameArg);
+laneAddCmd.AddOption(workspaceOpt);
+laneAddCmd.SetHandler(async (string name, string? workspace) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    var lane = await mediator.Send(new AddLaneCommand(ws.Id, name));
+    Console.WriteLine($"Added lane '{lane.Name}' at position {lane.Position} in workspace '{ws.Name}'");
+}, laneAddNameArg, workspaceOpt);
+
+// ── lane rename ───────────────────────────────────────────────────────────────
+
+var laneRenameNameArg = new Argument<string>("lane-name", "Current lane name");
+var laneNewNameOpt = new Option<string>("--new-name", "New lane name") { IsRequired = true };
+
+var laneRenameCmd = new Command("rename", "Rename a lane");
+laneRenameCmd.AddArgument(laneRenameNameArg);
+laneRenameCmd.AddOption(laneNewNameOpt);
+laneRenameCmd.AddOption(workspaceOpt);
+laneRenameCmd.SetHandler(async (string laneName, string newName, string? workspace) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
+    var target = lanes.FirstOrDefault(l => string.Equals(l.Name, laneName, StringComparison.OrdinalIgnoreCase))
+        ?? throw new InvalidOperationException($"Lane '{laneName}' not found in workspace '{ws.Name}'.");
+    var renamed = await mediator.Send(new RenameLaneCommand(target.Id, newName));
+    Console.WriteLine($"Renamed lane '{laneName}' → '{renamed.Name}' in workspace '{ws.Name}'");
+}, laneRenameNameArg, laneNewNameOpt, workspaceOpt);
+
+// ── lane move ─────────────────────────────────────────────────────────────────
+
+var laneMoveNameArg = new Argument<string>("lane-name", "Lane name");
+var laneToPositionOpt = new Option<int>("--to-position", "Target position (1-based)") { IsRequired = true };
+
+var laneMoveCmd = new Command("move", "Move a lane to a different position");
+laneMoveCmd.AddArgument(laneMoveNameArg);
+laneMoveCmd.AddOption(laneToPositionOpt);
+laneMoveCmd.AddOption(workspaceOpt);
+laneMoveCmd.SetHandler(async (string laneName, int toPosition, string? workspace) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
+    var target = lanes.FirstOrDefault(l => string.Equals(l.Name, laneName, StringComparison.OrdinalIgnoreCase))
+        ?? throw new InvalidOperationException($"Lane '{laneName}' not found in workspace '{ws.Name}'.");
+    var moved = await mediator.Send(new MoveLaneCommand(target.Id, toPosition));
+    Console.WriteLine($"Moved lane '{moved.Name}' to position {moved.Position} in workspace '{ws.Name}'");
+}, laneMoveNameArg, laneToPositionOpt, workspaceOpt);
+
+// ── lane remove ───────────────────────────────────────────────────────────────
+
+var laneRemoveNameArg = new Argument<string>("lane-name", "Lane name");
+
+var laneRemoveCmd = new Command("remove", "Remove an empty lane");
+laneRemoveCmd.AddArgument(laneRemoveNameArg);
+laneRemoveCmd.AddOption(workspaceOpt);
+laneRemoveCmd.SetHandler(async (string laneName, string? workspace) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
+    var target = lanes.FirstOrDefault(l => string.Equals(l.Name, laneName, StringComparison.OrdinalIgnoreCase))
+        ?? throw new InvalidOperationException($"Lane '{laneName}' not found in workspace '{ws.Name}'.");
+    await mediator.Send(new RemoveLaneCommand(target.Id));
+    Console.WriteLine($"Removed lane '{laneName}' from workspace '{ws.Name}'");
+}, laneRemoveNameArg, workspaceOpt);
+
+// ── wire lane command ─────────────────────────────────────────────────────────
+
+var laneCmd = new Command("lane", "Manage kanban lanes");
+laneCmd.AddCommand(laneListCmd);
+laneCmd.AddCommand(laneAddCmd);
+laneCmd.AddCommand(laneRenameCmd);
+laneCmd.AddCommand(laneMoveCmd);
+laneCmd.AddCommand(laneRemoveCmd);
+root.AddCommand(laneCmd);
 
 // ── install-skills ────────────────────────────────────────────────────────────
 
