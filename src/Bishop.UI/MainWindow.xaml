@@ -13,7 +13,7 @@
         <!-- Custom title bar drag region -->
         <Grid x:Name="AppTitleBar" Grid.Row="0"
               Background="{StaticResource AppSurfaceBrush}">
-            <TextBlock Text="Bishop.AI"
+            <TextBlock Text="BISHOP.AI"
                        VerticalAlignment="Center"
                        Margin="12,0,0,0"
                        FontSize="12"
