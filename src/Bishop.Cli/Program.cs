@@ -158,7 +158,7 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
         {
             Console.WriteLine($"\n[{lane?.Name ?? "?"}]");
             foreach (var c in laneCards)
-                Console.WriteLine($"  {c.Id}  {c.Title}");
+                Console.WriteLine($"  {c.Id.ToString("N")[..8]}  {c.Title}");
         }
     }
 }, workspaceOpt, jsonOpt);
