@@ -91,6 +91,7 @@ public sealed partial class MainWindow : Window
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot,
         };
+        renameDialog.Resources["ContentDialogBackground"] = Application.Current.Resources["AppSurfaceBrush"];
 
         if (await renameDialog.ShowAsync() == ContentDialogResult.Primary)
         {
@@ -132,6 +133,7 @@ public sealed partial class MainWindow : Window
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = Content.XamlRoot,
         };
+        confirmDialog.Resources["ContentDialogBackground"] = Application.Current.Resources["AppSurfaceBrush"];
 
         if (await confirmDialog.ShowAsync() == ContentDialogResult.Primary)
             await ViewModel.DeleteWorkspaceAsync(item);

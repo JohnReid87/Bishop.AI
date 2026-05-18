@@ -6,6 +6,9 @@
     PrimaryButtonText="Add"
     CloseButtonText="Cancel"
     DefaultButton="Primary">
+    <ContentDialog.Resources>
+        <SolidColorBrush x:Key="ContentDialogBackground" Color="#14141A"/>
+    </ContentDialog.Resources>
     <StackPanel Spacing="12" MinWidth="320">
         <StackPanel Spacing="4">
             <TextBlock Text="Mode" Style="{StaticResource CaptionTextBlockStyle}"/>

@@ -6,16 +6,20 @@
     Title="{x:Bind ViewModel.Title}"
     PrimaryButtonText="Close"
     DefaultButton="Primary">
+    <ContentDialog.Resources>
+        <SolidColorBrush x:Key="ContentDialogBackground" Color="#14141A"/>
+    </ContentDialog.Resources>
     <StackPanel Spacing="12" MinWidth="400" MaxWidth="600">
 
         <!-- Description -->
         <controls:MarkdownTextBlock
             Text="{x:Bind ViewModel.Description}"
+            Foreground="{StaticResource AppTextPrimaryBrush}"
             Visibility="{x:Bind ViewModel.DescriptionVisibility}"/>
         <TextBlock
             Text="No description."
             FontStyle="Italic"
-            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+            Foreground="{StaticResource AppTextTertiaryBrush}"
             Visibility="{x:Bind ViewModel.NoDescriptionVisibility}"/>
 
         <!-- Tags -->
@@ -29,7 +33,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
-                    <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                    <Border Background="{StaticResource AppAccentBrush}"
                             CornerRadius="4"
                             Padding="8,2">
                         <TextBlock Text="{x:Bind}" FontSize="11" Foreground="White"/>
@@ -40,7 +44,7 @@
 
         <!-- Divider before delete zone -->
         <Border BorderThickness="0,1,0,0"
-                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                BorderBrush="{StaticResource AppDividerBrush}"
                 Margin="0,4"/>
 
         <!-- Delete confirmation panel -->
@@ -49,7 +53,7 @@
             Spacing="8">
             <TextBlock
                 Text="Delete this card? This cannot be undone."
-                Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                Foreground="#FF5555"/>
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button
                     Content="Yes, delete"

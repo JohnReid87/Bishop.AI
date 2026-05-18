@@ -183,6 +183,7 @@ public sealed partial class WorkspaceDetailPage : Page
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
+        renameDialog.Resources["ContentDialogBackground"] = Application.Current.Resources["AppSurfaceBrush"];
 
         if (await renameDialog.ShowAsync() == ContentDialogResult.Primary)
         {
