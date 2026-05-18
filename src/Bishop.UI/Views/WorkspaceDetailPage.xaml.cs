@@ -71,7 +71,7 @@ public sealed partial class WorkspaceDetailPage : Page
         WorkspacePathText.Text = vm.Path;
         UpdatePathStatus();
         _ = Board.LoadAsync(vm.Id);
-        _ = Notes.LoadAsync(vm.Path);
+        _ = Notes.LoadAsync(vm.Id, vm.Path);
     }
 
     private void UpdatePathStatus()

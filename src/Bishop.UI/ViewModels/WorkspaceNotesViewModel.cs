@@ -1,17 +1,20 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
+using System.Text.Json;
 
 namespace Bishop.UI.ViewModels;
 
 public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposable
 {
     private readonly DispatcherQueue _dispatcherQueue;
+    private Guid _workspaceId;
     private string _workspacePath = string.Empty;
     private string _lastSavedContent = string.Empty;
     private FileSystemWatcher? _watcher;
     private CancellationTokenSource? _debounceCts;
     private bool _isLoadingFromFile;
+    private bool _isLoadingPrefs;
 
     [ObservableProperty]
     public partial string NotesContent { get; set; } = string.Empty;
@@ -25,14 +28,19 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     [ObservableProperty]
     public partial double PanelHeight { get; set; } = 200;
 
-    public string ChevronGlyph => IsExpanded ? "" : "";
+    public string ChevronGlyph => IsExpanded ? "" : "";
 
     public WorkspaceNotesViewModel()
     {
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
     }
 
-    partial void OnIsExpandedChanged(bool value) => OnPropertyChanged(nameof(ChevronGlyph));
+    partial void OnIsExpandedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ChevronGlyph));
+        if (!_isLoadingPrefs && _workspaceId != Guid.Empty)
+            _ = SavePrefsAsync();
+    }
 
     partial void OnNotesContentChanged(string value)
     {
@@ -52,7 +60,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         catch (OperationCanceledException) { }
     }
 
-    public async Task LoadAsync(string workspacePath)
+    public async Task LoadAsync(Guid workspaceId, string workspacePath)
     {
         _debounceCts?.Cancel();
         if (!string.IsNullOrEmpty(_workspacePath))
@@ -61,6 +69,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         _watcher?.Dispose();
         _watcher = null;
 
+        _workspaceId = workspaceId;
         _workspacePath = workspacePath;
         IsExternalChangeBarVisible = false;
 
@@ -69,6 +78,8 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         _isLoadingFromFile = true;
         NotesContent = content;
         _isLoadingFromFile = false;
+
+        await LoadPrefsAsync();
 
         if (!Directory.Exists(workspacePath)) return;
 
@@ -141,6 +152,42 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     {
         _debounceCts?.Cancel();
         await WriteNotesAsync(NotesContent);
+        await SavePrefsAsync();
+    }
+
+    private async Task LoadPrefsAsync()
+    {
+        if (!File.Exists(PrefsFilePath)) return;
+        try
+        {
+            var json = await File.ReadAllTextAsync(PrefsFilePath);
+            var all = JsonSerializer.Deserialize<Dictionary<string, WorkspaceNotesPrefs>>(json);
+            if (all is null || !all.TryGetValue(_workspaceId.ToString(), out var prefs)) return;
+
+            _isLoadingPrefs = true;
+            IsExpanded = prefs.IsExpanded;
+            PanelHeight = prefs.PanelHeight > 0 ? prefs.PanelHeight : 200;
+            _isLoadingPrefs = false;
+        }
+        catch { }
+    }
+
+    private async Task SavePrefsAsync()
+    {
+        if (_workspaceId == Guid.Empty) return;
+        try
+        {
+            Dictionary<string, WorkspaceNotesPrefs> all = [];
+            if (File.Exists(PrefsFilePath))
+            {
+                var existing = await File.ReadAllTextAsync(PrefsFilePath);
+                all = JsonSerializer.Deserialize<Dictionary<string, WorkspaceNotesPrefs>>(existing) ?? [];
+            }
+            all[_workspaceId.ToString()] = new WorkspaceNotesPrefs(IsExpanded, PanelHeight);
+            Directory.CreateDirectory(Path.GetDirectoryName(PrefsFilePath)!);
+            await File.WriteAllTextAsync(PrefsFilePath, JsonSerializer.Serialize(all));
+        }
+        catch { }
     }
 
     private async Task<string> ReadNotesAsync()
@@ -168,9 +215,15 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
 
     private string NotesFilePath => Path.Combine(_workspacePath, "BISHOP_NOTES.md");
 
+    private static string PrefsFilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Bishop.AI", "notes-prefs.json");
+
     public void Dispose()
     {
         _debounceCts?.Dispose();
         _watcher?.Dispose();
     }
+
+    private sealed record WorkspaceNotesPrefs(bool IsExpanded, double PanelHeight);
 }
