@@ -13,6 +13,7 @@ using Bishop.Cli;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Parsing;
@@ -26,6 +27,7 @@ var jsonOpts = new JsonSerializerOptions
 };
 
 using var host = Host.CreateDefaultBuilder()
+    .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning))
     .ConfigureServices(services => services.AddBishopApp(BishopDbConnectionString.Resolve()))
     .Build();
 
