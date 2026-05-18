@@ -109,15 +109,29 @@ Run `bishop workspace current --json`.
 
    If no, leave the card in "Doing".
 
-9. Offer to commit and push the changes. Propose a Conventional Commits message
-   matching the repo's existing style and referencing the card short-ID:
+9. Offer to commit and push the changes. Derive a pre-filled Conventional
+   Commits proposal from the card's first tag (captured in step 1) and title:
 
-   `feat: short description (card <short-id>)`
+   Tag → prefix mapping:
+   - `feature` or `enhancement` → `feat`
+   - `bug` → `fix`
+   - `chore` → `chore`
+   - `docs` → `docs`
+   - `refactor` → `refactor`
+   - `test` → `test`
+   - no tag or unrecognised tag → `chore`
+
+   Proposal format: `<prefix>: <title> (card <short-id>)`
+
+   Example — tags `["feature"]`, title "Add lane CRUD":
+   > Proposed: `feat: Add lane CRUD (card 1a2b3c4d)` — confirm, edit, or skip?
+
+   Present the proposal and ask the user to confirm, provide their own message,
+   or skip entirely. Do not stage, commit, or push without explicit confirmation.
+   If the user declines, leave the working tree as-is.
 
    Use the canonical 8-char short-ID from step 1, not whatever prefix the user
-   typed. Ask the user to confirm before staging, committing, and pushing. Do
-   not push without explicit confirmation. If the user declines, leave the
-   working tree as-is.
+   typed.
 
 </what-to-do>
 
