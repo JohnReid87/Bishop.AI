@@ -22,6 +22,9 @@ public sealed partial class WorkspaceDetailPage : Page
     private WorkspaceItemViewModel? _item;
     private CardViewModel? _draggedCard;
     private LaneViewModel? _dragSourceLane;
+    private bool _isDraggingNotes;
+    private double _dragStartPageY;
+    private double _dragStartNoteHeight;
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
@@ -222,5 +225,34 @@ public sealed partial class WorkspaceDetailPage : Page
         for (var i = 0; i < ordered.Count; i++)
             await mediator.Send(new MoveLaneCommand(ordered[i].Id, i + 1));
         await Board.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private void NotesSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingNotes = true;
+        _dragStartPageY = e.GetCurrentPoint(this).Position.Y;
+        _dragStartNoteHeight = Notes.PanelHeight;
+        ((UIElement)sender).CapturePointer(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void NotesSplitter_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isDraggingNotes) return;
+        var delta = _dragStartPageY - e.GetCurrentPoint(this).Position.Y;
+        Notes.PanelHeight = Math.Max(80, Math.Min(600, _dragStartNoteHeight + delta));
+        e.Handled = true;
+    }
+
+    private void NotesSplitter_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingNotes = false;
+        ((UIElement)sender).ReleasePointerCapture(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void NotesSplitter_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingNotes = false;
     }
 }

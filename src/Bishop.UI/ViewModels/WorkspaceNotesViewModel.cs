@@ -22,6 +22,9 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     [ObservableProperty]
     public partial bool IsExternalChangeBarVisible { get; set; }
 
+    [ObservableProperty]
+    public partial double PanelHeight { get; set; } = 200;
+
     public string ChevronGlyph => IsExpanded ? "" : "";
 
     public WorkspaceNotesViewModel()
