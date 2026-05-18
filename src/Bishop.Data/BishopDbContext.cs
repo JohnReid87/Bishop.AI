@@ -16,6 +16,18 @@ public sealed class BishopDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(BishopDbContext).Assembly);
+
+        // Guids are stored as TEXT in SQLite. Different write paths (EF, manual SQL,
+        // older provider versions) have produced rows with inconsistent casing, which
+        // breaks FK matching under SQLite's default BINARY collation.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(Guid))
+                    property.SetCollation("NOCASE");
+            }
+        }
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
