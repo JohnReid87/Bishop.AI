@@ -1,5 +1,6 @@
 using Bishop.App;
 using Bishop.App.Cards.AddCard;
+using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
@@ -121,9 +122,79 @@ cardAddCmd.SetHandler(async (string? workspace, string lane, string title, strin
     Console.WriteLine($"Added card {card.Id} — '{card.Title}' → [{targetLane.Name}]{tagSuffix}");
 }, workspaceOpt, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt);
 
+// ── card short-ID prefix resolver ─────────────────────────────────────────────
+// Returns null (exit code already set) for ambiguous prefix; throws for no match.
+
+async Task<(Guid cardId, Bishop.Core.Workspace ws)?> resolveCardByPrefixAsync(string? workspaceOption, string prefix)
+{
+    var ws = await resolver.ResolveAsync(workspaceOption);
+    var cards = await mediator.Send(new ListCardsByWorkspaceQuery(ws.Id));
+    var matches = cards
+        .Where(c => c.Id.ToString("N").StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+    if (matches.Count == 0)
+        throw new InvalidOperationException($"No card found matching '{prefix}'.");
+    if (matches.Count > 1)
+    {
+        Console.Error.WriteLine($"Ambiguous prefix '{prefix}' — {matches.Count} matches:");
+        foreach (var c in matches)
+            Console.Error.WriteLine($"  {c.Id.ToString("N")[..8]}  {c.Title}");
+        Environment.ExitCode = 1;
+        return null;
+    }
+    return (matches[0].Id, ws);
+}
+
+// ── card view ─────────────────────────────────────────────────────────────────
+
+var cardViewIdArg = new Argument<string>("card-id", "Card short ID or prefix");
+
+var cardViewCmd = new Command("view", "Show details of a card");
+cardViewCmd.AddArgument(cardViewIdArg);
+cardViewCmd.AddOption(workspaceOpt);
+cardViewCmd.AddOption(jsonOpt);
+cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
+{
+    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    if (resolved is null) return;
+    var (cardId, _) = resolved.Value;
+
+    var card = await mediator.Send(new GetCardQuery(cardId))
+        ?? throw new InvalidOperationException($"Card {cardId} not found.");
+
+    if (json)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            id = card.Id,
+            title = card.Title,
+            description = card.Description,
+            laneId = card.LaneId,
+            laneName = card.Lane.Name,
+            position = card.Position,
+            createdAt = card.CreatedAt,
+            updatedAt = card.UpdatedAt,
+            tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
+        }, jsonOpts));
+    }
+    else
+    {
+        var tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
+        Console.WriteLine(card.Title);
+        Console.WriteLine($"Lane: {card.Lane.Name}");
+        if (tags.Count > 0)
+            Console.WriteLine($"Tags: {string.Join(", ", tags)}");
+        if (!string.IsNullOrEmpty(card.Description))
+        {
+            Console.WriteLine();
+            Console.WriteLine(card.Description);
+        }
+    }
+}, cardViewIdArg, workspaceOpt, jsonOpt);
+
 // ── card move ─────────────────────────────────────────────────────────────────
 
-var cardIdArg = new Argument<Guid>("card-id", "Card GUID");
+var cardIdArg = new Argument<string>("card-id", "Card short ID or prefix");
 var toLaneOpt = new Option<string>("--to-lane", "Target lane name") { IsRequired = true };
 var toPositionOpt = new Option<int>("--to-position", "Target zero-based position") { IsRequired = true };
 
@@ -132,9 +203,11 @@ cardMoveCmd.AddArgument(cardIdArg);
 cardMoveCmd.AddOption(workspaceOpt);
 cardMoveCmd.AddOption(toLaneOpt);
 cardMoveCmd.AddOption(toPositionOpt);
-cardMoveCmd.SetHandler(async (Guid cardId, string? workspace, string toLane, int toPosition) =>
+cardMoveCmd.SetHandler(async (string prefix, string? workspace, string toLane, int toPosition) =>
 {
-    var ws = await resolver.ResolveAsync(workspace);
+    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    if (resolved is null) return;
+    var (cardId, ws) = resolved.Value;
     var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
     var targetLane = lanes.FirstOrDefault(l =>
         string.Equals(l.Name, toLane, StringComparison.OrdinalIgnoreCase))
@@ -145,15 +218,19 @@ cardMoveCmd.SetHandler(async (Guid cardId, string? workspace, string toLane, int
 
 // ── card remove ───────────────────────────────────────────────────────────────
 
-var cardRemoveIdArg = new Argument<Guid>("card-id", "Card GUID");
+var cardRemoveIdArg = new Argument<string>("card-id", "Card short ID or prefix");
 
 var cardRemoveCmd = new Command("remove", "Remove a card");
 cardRemoveCmd.AddArgument(cardRemoveIdArg);
-cardRemoveCmd.SetHandler(async (Guid cardId) =>
+cardRemoveCmd.AddOption(workspaceOpt);
+cardRemoveCmd.SetHandler(async (string prefix, string? workspace) =>
 {
+    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    if (resolved is null) return;
+    var (cardId, _) = resolved.Value;
     await mediator.Send(new RemoveCardCommand(cardId));
     Console.WriteLine($"Removed card {cardId}");
-}, cardRemoveIdArg);
+}, cardRemoveIdArg, workspaceOpt);
 
 // ── card list ─────────────────────────────────────────────────────────────────
 
@@ -259,6 +336,7 @@ root.AddCommand(tagCmd);
 
 var cardCmd = new Command("card", "Manage kanban cards");
 cardCmd.AddCommand(cardAddCmd);
+cardCmd.AddCommand(cardViewCmd);
 cardCmd.AddCommand(cardMoveCmd);
 cardCmd.AddCommand(cardRemoveCmd);
 cardCmd.AddCommand(cardListCmd);
