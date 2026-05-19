@@ -171,7 +171,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private static string RenderCommand(string template, CardViewModel? card, string workspacePath) =>
         template
             .Replace("{{workspace_path}}", workspacePath)
-            .Replace("{{card_short_id}}", card?.Id.ToString("N")[..8] ?? string.Empty);
+            .Replace("{{card_number}}", card?.Number.ToString() ?? string.Empty);
 
     private async void ViewCard_Click(object sender, RoutedEventArgs e)
     {

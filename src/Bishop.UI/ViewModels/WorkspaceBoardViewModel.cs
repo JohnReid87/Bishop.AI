@@ -40,6 +40,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
                 {
                     Id = card.Id,
                     LaneId = card.LaneId,
+                    Number = card.Number,
                     Title = card.Title,
                     Description = card.Description,
                     Tags = card.CardTags.Select(ct => ct.Tag.Name).ToList(),

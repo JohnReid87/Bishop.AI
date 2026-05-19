@@ -189,7 +189,7 @@
                                                                     Orientation="Horizontal"
                                                                     Spacing="6"
                                                                     VerticalAlignment="Center">
-                                                            <TextBlock Text="{x:Bind ShortId}"
+                                                            <TextBlock Text="{x:Bind NumberDisplay}"
                                                                        Style="{StaticResource CaptionTextBlockStyle}"
                                                                        Foreground="{StaticResource AppTextTertiaryBrush}"
                                                                        FontFamily="Cascadia Mono"

@@ -73,7 +73,7 @@ Bundled Claude Code skills (`skills/work-on-card-bishop`, `skills/grill-me-bisho
 - `description` — user-facing summary.
 - `allowed-tools` — comma-separated Claude Code tool allowlist.
 - `bishop.scope` — `card` (button on each card) or `workspace` (button on workspace header); null/missing → not surfaced in the UI.
-- `bishop.command` — slash-command template launched on click. Placeholders: `{{card_short_id}}` (card scope) and `{{workspace_path}}` (workspace scope).
+- `bishop.command` — slash-command template launched on click. Placeholders: `{{card_number}}` (card scope) and `{{workspace_path}}` (workspace scope).
 
 `DiscoverSkillsQueryHandler` (Bishop.App) scans `~/.claude/skills/` at workspace load and feeds two button groups in `WorkspaceDetailPage`. Clicking a skill renders the template, opens Windows Terminal at the workspace path, and runs `claude "<rendered command>"` (`LaunchSkillCommandHandler`; falls back to PowerShell if `wt.exe` is unavailable). Adding a new skill: drop a directory under `skills/`, set scope + command, rebuild, run `bishop install-skills`.
 

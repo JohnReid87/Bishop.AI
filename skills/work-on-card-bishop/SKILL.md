@@ -3,7 +3,7 @@ name: work-on-card-bishop
 description: Fetches a Bishop card by short-ID prefix from the current workspace, auto-moves it to "Doing", explores the codebase, implements the changes, then prompts before moving to "Done" and committing with a "(card <short-id>)" reference. Use when the user wants to work on a specific Bishop card.
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.scope: card
-bishop.command: /work-on-card-bishop {{card_short_id}}
+bishop.command: /work-on-card-bishop {{card_number}}
 bishop.stage: true
 ---
 
