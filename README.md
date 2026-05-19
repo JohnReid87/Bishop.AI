@@ -1,6 +1,6 @@
 # Bishop.AI
 
-A Windows desktop app for managing AI-assisted coding workflows. A left-hand workspace nav (each workspace bound to a local directory) and a right-hand pane housing a per-workspace kanban board plus a launch-terminal button that opens Windows Terminal with `claude` at the workspace path. Single-user, local-first, Windows-only.
+A Windows desktop app for managing AI-assisted coding workflows. A left-hand workspace nav (each workspace bound to a local directory) and a right-hand pane housing a per-workspace kanban board, a "Claude" button that opens Windows Terminal with `claude` at the workspace path, and a plain "Terminal" button that opens Windows Terminal at the workspace path without launching Claude. Single-user, local-first, Windows-only.
 
 The UI is the primary surface for kanban work (cards, lanes, tags); the `bishop` CLI is the automation surface for skills like `bish-work-on-card`.
 

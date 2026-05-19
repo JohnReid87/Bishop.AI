@@ -64,7 +64,7 @@ Card identifiers accept either a workspace-scoped Number (`42`, `#42`) or the fi
 ### Current UI scope
 Bishop.UI is the interactive surface; the CLI remains the automation surface for skills. UI affordances by entity:
 
-- **Workspaces:** left-hand list with drag-to-reorder; add-workspace dialog (create new folder or attach existing); per-workspace launch-terminal button (Windows Terminal + `claude` at the workspace path); per-workspace notes panel below the kanban (persisted text + drag-to-resize; expanded state stored per workspace).
+- **Workspaces:** left-hand list with drag-to-reorder; add-workspace dialog (create new folder or attach existing); per-workspace "Claude" button (Windows Terminal + `claude` at the workspace path) and a plain "Terminal" button (Windows Terminal at the workspace path, no Claude); per-workspace notes panel below the kanban (persisted text + drag-to-resize; expanded state stored per workspace).
 - **Lanes:** add / rename / delete / reorder via inline board UI. `remove` refuses non-empty lanes, matching the CLI.
 - **Cards:** view detail dialog; edit title/description/tags; delete; drag-and-drop between lanes and within a lane (writes position immediately).
 - **Tags:** create / remove / recolour via the card edit dialog.
