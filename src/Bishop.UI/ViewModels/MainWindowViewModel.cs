@@ -42,11 +42,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public async Task LoadAsync()
     {
-        await LoadNavPrefsAsync();
+        var prefs = await LoadNavPrefsAsync();
         var workspaces = await _mediator.Send(new ListWorkspacesQuery());
         Workspaces.Clear();
         foreach (var w in workspaces)
             Workspaces.Add(ToViewModel(w));
+        if (prefs?.LastSelectedWorkspaceId is { } id)
+            SelectedWorkspace = Workspaces.FirstOrDefault(w => w.Id == id);
     }
 
     partial void OnSelectedWorkspaceChanged(WorkspaceItemViewModel? value)
@@ -55,6 +57,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             w.IsSelected = w == value;
         if (value is not null)
             value.IsPathMissing = !Directory.Exists(value.Path);
+        _ = SaveNavPrefsAsync();
     }
 
     partial void OnIsPaneOpenChanged(bool value) => _ = SaveNavPrefsAsync();
@@ -102,17 +105,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private static WorkspaceItemViewModel ToViewModel(Bishop.Core.Workspace w) =>
         new() { Id = w.Id, Name = w.Name, Path = w.Path, Position = w.Position };
 
-    private async Task LoadNavPrefsAsync()
+    private async Task<NavPrefs?> LoadNavPrefsAsync()
     {
-        if (!File.Exists(NavPrefsFilePath)) return;
+        if (!File.Exists(NavPrefsFilePath)) return null;
         try
         {
             var json = await File.ReadAllTextAsync(NavPrefsFilePath);
             var prefs = JsonSerializer.Deserialize<NavPrefs>(json);
             if (prefs is not null)
                 IsPaneOpen = prefs.IsPaneOpen;
+            return prefs;
         }
-        catch { }
+        catch { return null; }
     }
 
     private async Task SaveNavPrefsAsync()
@@ -120,7 +124,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(NavPrefsFilePath)!);
-            await File.WriteAllTextAsync(NavPrefsFilePath, JsonSerializer.Serialize(new NavPrefs(IsPaneOpen)));
+            await File.WriteAllTextAsync(NavPrefsFilePath, JsonSerializer.Serialize(new NavPrefs(IsPaneOpen, SelectedWorkspace?.Id)));
         }
         catch { }
     }
@@ -129,5 +133,5 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Bishop.AI", "nav-prefs.json");
 
-    private sealed record NavPrefs(bool IsPaneOpen);
+    private sealed record NavPrefs(bool IsPaneOpen, Guid? LastSelectedWorkspaceId = null);
 }
