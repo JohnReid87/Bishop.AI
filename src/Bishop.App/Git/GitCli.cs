@@ -18,7 +18,7 @@ public sealed class GitCli : IGitCli
         };
         psi.ArgumentList.Add("log");
         psi.ArgumentList.Add("--max-count=5");
-        psi.ArgumentList.Add("--format=%h\x1f%s\x1f%aI");
+        psi.ArgumentList.Add("--format=%h\x1f%H\x1f%s\x1f%aI");
 
         Process? proc;
         try
@@ -59,9 +59,9 @@ public sealed class GitCli : IGitCli
             foreach (var line in lines)
             {
                 var parts = line.Split('\x1f');
-                if (parts.Length != 3) continue;
-                if (!DateTimeOffset.TryParse(parts[2].Trim(), out var ts)) continue;
-                commits.Add(new CommitInfo(parts[0].Trim(), parts[1].Trim(), ts));
+                if (parts.Length != 4) continue;
+                if (!DateTimeOffset.TryParse(parts[3].Trim(), out var ts)) continue;
+                commits.Add(new CommitInfo(parts[0].Trim(), parts[1].Trim(), parts[2].Trim(), ts));
             }
 
             return commits.Count == 0

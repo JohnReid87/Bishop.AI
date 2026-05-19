@@ -56,6 +56,7 @@ public sealed class GetRecentCommitsTests : IDisposable
         success.Commits.Should().HaveCount(1);
         success.Commits[0].Subject.Should().Be("Fix the thing");
         success.Commits[0].ShortHash.Should().NotBeNullOrEmpty();
+        success.Commits[0].FullHash.Should().HaveLength(40);
         success.Commits[0].Timestamp.Should().NotBe(default);
     }
 

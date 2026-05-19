@@ -1,4 +1,5 @@
 using Bishop.App.Cards.MoveCard;
+using Bishop.App.Git;
 using Bishop.App.Lanes.AddLane;
 using Bishop.UI.Services;
 using Bishop.App.Settings;
@@ -121,6 +122,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private void UpdatePathStatus()
     {
         var missing = _item?.IsPathMissing ?? false;
+        CommitsButton.IsEnabled = !missing;
         TerminalButton.IsEnabled = !missing;
         ClaudeButton.IsEnabled = !missing;
         PathWarningBar.IsOpen = missing;
@@ -170,6 +172,121 @@ public sealed partial class WorkspaceDetailPage : Page
 
         flyout.Content = panel;
         flyout.ShowAt((FrameworkElement)sender);
+    }
+
+    private async void CommitsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null) return;
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        var result = await mediator.Send(new GetRecentCommitsQuery(_item.Path));
+
+        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
+        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4), MinWidth = 360 };
+
+        switch (result)
+        {
+            case GetRecentCommitsResult.Success { Commits: var commits }:
+                var gitHubRepo = _item.GitHubRepo;
+                foreach (var (commit, i) in commits.Select((c, idx) => (c, idx)))
+                {
+                    var capturedCommit = commit;
+                    panel.Children.Add(MakeCommitRow(commit, async () =>
+                    {
+                        flyout.Hide();
+                        if (gitHubRepo is not null)
+                        {
+                            await Launcher.LaunchUriAsync(new Uri($"https://github.com/{gitHubRepo}/commit/{capturedCommit.FullHash}"));
+                        }
+                        else
+                        {
+                            var pkg = new DataPackage();
+                            pkg.SetText(capturedCommit.FullHash);
+                            Clipboard.SetContent(pkg);
+                            await ShowCopiedToastAsync();
+                        }
+                    }));
+                    if (i < commits.Count - 1)
+                        panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
+                }
+                break;
+            case GetRecentCommitsResult.NotAGitRepo:
+                panel.Children.Add(new TextBlock { Text = "Not a git repository", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
+                break;
+            case GetRecentCommitsResult.GitNotFound:
+                panel.Children.Add(new TextBlock { Text = "Git not installed or not on PATH", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
+                break;
+            case GetRecentCommitsResult.NoCommits:
+                panel.Children.Add(new TextBlock { Text = "No commits yet", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
+                break;
+        }
+
+        flyout.Content = panel;
+        flyout.ShowAt((FrameworkElement)sender);
+    }
+
+    private async Task ShowCopiedToastAsync()
+    {
+        CopiedBar.IsOpen = true;
+        await Task.Delay(2000);
+        CopiedBar.IsOpen = false;
+    }
+
+    private static FrameworkElement MakeCommitRow(CommitInfo commit, Func<Task> onClick)
+    {
+        var secondaryBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppTextSecondaryBrush"];
+
+        var hashBlock = new TextBlock
+        {
+            Text = commit.ShortHash,
+            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Consolas, Courier New"),
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center,
+            Width = 56,
+            Foreground = secondaryBrush,
+        };
+
+        var subjectBlock = new TextBlock
+        {
+            Text = commit.Subject,
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = 200,
+        };
+
+        var timeBlock = new TextBlock
+        {
+            Text = GetRelativeTime(commit.Timestamp),
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0),
+            Foreground = secondaryBrush,
+        };
+
+        var inner = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        inner.Children.Add(hashBlock);
+        inner.Children.Add(subjectBlock);
+        inner.Children.Add(timeBlock);
+
+        var btn = new Button
+        {
+            Content = inner,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(4, 4, 4, 4),
+        };
+        btn.Click += async (_, _) => await onClick();
+        return btn;
+    }
+
+    private static string GetRelativeTime(DateTimeOffset timestamp)
+    {
+        var elapsed = DateTimeOffset.UtcNow - timestamp.ToUniversalTime();
+        if (elapsed.TotalSeconds < 60) return "just now";
+        if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes}m ago";
+        if (elapsed.TotalHours < 24) return $"{(int)elapsed.TotalHours}h ago";
+        if (elapsed.TotalDays < 30) return $"{(int)elapsed.TotalDays}d ago";
+        return $"{(int)(elapsed.TotalDays / 30)}mo ago";
     }
 
     private async void CardSkillsButton_Click(object sender, RoutedEventArgs e)

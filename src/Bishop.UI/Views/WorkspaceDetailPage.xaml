@@ -37,6 +37,9 @@
                         Content="Skills"
                         Visibility="Collapsed"
                         Click="WorkspaceSkillsButton_Click"/>
+                <Button x:Name="CommitsButton"
+                        Content="Commits"
+                        Click="CommitsButton_Click"/>
                 <Button x:Name="TerminalButton"
                         Content="Terminal"
                         Click="TerminalButton_Click"/>
@@ -85,6 +88,11 @@
                          IsOpen="False"
                          IsClosable="True"
                          Severity="Error"/>
+                <InfoBar x:Name="CopiedBar"
+                         IsOpen="False"
+                         IsClosable="False"
+                         Severity="Success"
+                         Title="Copied to clipboard"/>
             </StackPanel>
 
             <!-- Board subheader -->
