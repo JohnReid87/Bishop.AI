@@ -37,6 +37,8 @@ public sealed partial class CardDetailDialog : ContentDialog
         };
     }
 
+    private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
+
     private void OnSecondaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
         args.Cancel = true;

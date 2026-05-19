@@ -4,10 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:Bishop.UI.ViewModels"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
-    PrimaryButtonText="Close"
     SecondaryButtonText="Delete…"
-    SecondaryButtonClick="OnSecondaryButtonClick"
-    DefaultButton="Primary">
+    SecondaryButtonClick="OnSecondaryButtonClick">
     <ContentDialog.Resources>
         <SolidColorBrush x:Key="ContentDialogBackground" Color="#14141A"/>
     </ContentDialog.Resources>
@@ -18,10 +16,11 @@
     </ContentDialog.SecondaryButtonStyle>
     <StackPanel Spacing="12" MinWidth="400" MaxWidth="600">
 
-        <!-- Header: #N · lane chip · skill button -->
+        <!-- Header: #N · lane chip  |  skills  |  X close -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0"
@@ -49,6 +48,13 @@
                     Visibility="{x:Bind ViewModel.SkillsButtonVisibility}"
                     VerticalAlignment="Center">
                 <FontIcon Glyph="&#xE756;" FontSize="12"/>
+            </Button>
+            <Button Grid.Column="2"
+                    Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                    ToolTipService.ToolTip="Close"
+                    Click="CloseDialog_Click"
+                    VerticalAlignment="Center">
+                <FontIcon Glyph="&#xE8BB;" FontSize="12"/>
             </Button>
         </Grid>
 
