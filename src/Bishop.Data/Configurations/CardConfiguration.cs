@@ -11,6 +11,7 @@ internal sealed class CardConfiguration : IEntityTypeConfiguration<Card>
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Title).HasMaxLength(500).IsRequired();
         builder.Property(c => c.Description).IsRequired();
+        builder.Property(c => c.IsClosed).HasDefaultValue(false);
         builder.HasOne(c => c.Lane)
                .WithMany(l => l.Cards)
                .HasForeignKey(c => c.LaneId)

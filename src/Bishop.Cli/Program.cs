@@ -1,10 +1,12 @@
 using Bishop.App;
 using Bishop.App.Cards.AddCard;
+using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
+using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Lanes.AddLane;
 using Bishop.App.Lanes.ListLanesByWorkspace;
@@ -222,6 +224,7 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             laneId = card.LaneId,
             laneName = card.Lane.Name,
             position = card.Position,
+            isClosed = card.IsClosed,
             createdAt = card.CreatedAt,
             updatedAt = card.UpdatedAt,
             tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
@@ -232,6 +235,8 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
         var tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
         Console.WriteLine(card.Title);
         Console.WriteLine($"Lane: {card.Lane.Name}");
+        if (card.IsClosed)
+            Console.WriteLine("Status: closed");
         if (tags.Count > 0)
             Console.WriteLine($"Tags: {string.Join(", ", tags)}");
         if (!string.IsNullOrEmpty(card.Description))
@@ -409,6 +414,7 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
             laneId = c.LaneId,
             laneName = laneById.TryGetValue(c.LaneId, out var l) ? l.Name : "",
             position = c.Position,
+            isClosed = c.IsClosed,
             tags = c.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
         });
         Console.WriteLine(JsonSerializer.Serialize(output, jsonOpts));
@@ -429,7 +435,8 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
             {
                 var tags = c.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
                 var tagSuffix = tags.Count > 0 ? $"  [{string.Join(", ", tags)}]" : "";
-                Console.WriteLine($"  #{c.Number,-4}  {c.Title}{tagSuffix}");
+                var closedMarker = c.IsClosed ? " [closed]" : "";
+                Console.WriteLine($"  #{c.Number,-4}  {c.Title}{closedMarker}{tagSuffix}");
             }
         }
     }
@@ -502,6 +509,38 @@ tagCmd.AddCommand(tagAddCmd);
 tagCmd.AddCommand(tagRemoveCmd);
 root.AddCommand(tagCmd);
 
+// ── card close ────────────────────────────────────────────────────────────────
+
+var cardCloseIdArg = new Argument<string>("card-id", "Card short ID or prefix");
+
+var cardCloseCmd = new Command("close", "Mark a card as closed");
+cardCloseCmd.AddArgument(cardCloseIdArg);
+cardCloseCmd.AddOption(workspaceOpt);
+cardCloseCmd.SetHandler(async (string prefix, string? workspace) =>
+{
+    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    if (resolved is null) return;
+    var (cardId, cardNumber, _) = resolved.Value;
+    await mediator.Send(new CloseCardCommand(cardId));
+    Console.WriteLine($"Closed card #{cardNumber}");
+}, cardCloseIdArg, workspaceOpt);
+
+// ── card reopen ───────────────────────────────────────────────────────────────
+
+var cardReopenIdArg = new Argument<string>("card-id", "Card short ID or prefix");
+
+var cardReopenCmd = new Command("reopen", "Reopen a closed card");
+cardReopenCmd.AddArgument(cardReopenIdArg);
+cardReopenCmd.AddOption(workspaceOpt);
+cardReopenCmd.SetHandler(async (string prefix, string? workspace) =>
+{
+    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    if (resolved is null) return;
+    var (cardId, cardNumber, _) = resolved.Value;
+    await mediator.Send(new ReopenCardCommand(cardId));
+    Console.WriteLine($"Reopened card #{cardNumber}");
+}, cardReopenIdArg, workspaceOpt);
+
 // ── wire card command ─────────────────────────────────────────────────────────
 
 var cardCmd = new Command("card", "Manage kanban cards");
@@ -512,6 +551,8 @@ cardCmd.AddCommand(cardRemoveCmd);
 cardCmd.AddCommand(cardEditCmd);
 cardCmd.AddCommand(cardClaimCmd);
 cardCmd.AddCommand(cardListCmd);
+cardCmd.AddCommand(cardCloseCmd);
+cardCmd.AddCommand(cardReopenCmd);
 root.AddCommand(cardCmd);
 
 // ── lane list ─────────────────────────────────────────────────────────────────

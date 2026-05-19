@@ -8,6 +8,7 @@ public sealed class Card
     public string Description { get; set; } = string.Empty;
     public int Number { get; set; }
     public int Position { get; set; }
+    public bool IsClosed { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
