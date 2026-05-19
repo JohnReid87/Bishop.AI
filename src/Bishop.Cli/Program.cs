@@ -2,6 +2,7 @@ using Bishop.App;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.GetCard;
+using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
@@ -18,6 +19,8 @@ using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.App.Tags.RemoveTag;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
+using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
+using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
 using Bishop.Cli;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -124,10 +127,43 @@ workspaceInitCmd.SetHandler(async (string? path, string? name) =>
     }
 }, initPathOpt, initNameOpt);
 
+// ── workspace set-github ────────────────────────────────────────────────────
+
+var setGithubRepoArg = new Argument<string>("repo", "GitHub repo in owner/repo format");
+
+var workspaceSetGithubCmd = new Command("set-github", "Associate workspace with a GitHub repo");
+workspaceSetGithubCmd.AddArgument(setGithubRepoArg);
+workspaceSetGithubCmd.AddOption(workspaceOpt);
+workspaceSetGithubCmd.SetHandler(async (string repo, string? workspace) =>
+{
+    if (!repo.Contains('/') || repo.StartsWith('/') || repo.EndsWith('/'))
+    {
+        Console.Error.WriteLine($"Invalid repo '{repo}': expected owner/repo format (e.g. JohnReid87/MyProject).");
+        Environment.ExitCode = 1;
+        return;
+    }
+    var ws = await resolver.ResolveAsync(workspace);
+    await mediator.Send(new SetWorkspaceGitHubRepoCommand(ws.Id, repo));
+    Console.WriteLine($"Workspace '{ws.Name}' linked to GitHub repo '{repo}'");
+}, setGithubRepoArg, workspaceOpt);
+
+// ── workspace unset-github ──────────────────────────────────────────────────
+
+var workspaceUnsetGithubCmd = new Command("unset-github", "Remove the GitHub repo association from a workspace");
+workspaceUnsetGithubCmd.AddOption(workspaceOpt);
+workspaceUnsetGithubCmd.SetHandler(async (string? workspace) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    await mediator.Send(new UnsetWorkspaceGitHubRepoCommand(ws.Id));
+    Console.WriteLine($"Removed GitHub repo association from workspace '{ws.Name}'");
+}, workspaceOpt);
+
 var workspaceCmd = new Command("workspace", "Manage workspaces");
 workspaceCmd.AddCommand(workspaceListCmd);
 workspaceCmd.AddCommand(workspaceCurrentCmd);
 workspaceCmd.AddCommand(workspaceInitCmd);
+workspaceCmd.AddCommand(workspaceSetGithubCmd);
+workspaceCmd.AddCommand(workspaceUnsetGithubCmd);
 root.AddCommand(workspaceCmd);
 
 // ── card add ─────────────────────────────────────────────────────────────────
@@ -225,6 +261,8 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             laneName = card.Lane.Name,
             position = card.Position,
             isClosed = card.IsClosed,
+            gitHubIssueNumber = card.GitHubIssueNumber,
+            gitHubPushedAt = card.GitHubPushedAt,
             createdAt = card.CreatedAt,
             updatedAt = card.UpdatedAt,
             tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
@@ -415,6 +453,8 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
             laneName = laneById.TryGetValue(c.LaneId, out var l) ? l.Name : "",
             position = c.Position,
             isClosed = c.IsClosed,
+            gitHubIssueNumber = c.GitHubIssueNumber,
+            gitHubPushedAt = c.GitHubPushedAt,
             tags = c.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
         });
         Console.WriteLine(JsonSerializer.Serialize(output, jsonOpts));
@@ -509,6 +549,23 @@ tagCmd.AddCommand(tagAddCmd);
 tagCmd.AddCommand(tagRemoveCmd);
 root.AddCommand(tagCmd);
 
+// ── card push ─────────────────────────────────────────────────────────────────
+
+var cardPushIdArg = new Argument<string>("card-id", "Card short ID or prefix");
+
+var cardPushCmd = new Command("push", "Push a card to GitHub Issues");
+cardPushCmd.AddArgument(cardPushIdArg);
+cardPushCmd.AddOption(workspaceOpt);
+cardPushCmd.SetHandler(async (string prefix, string? workspace) =>
+{
+    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    if (resolved is null) return;
+    var (cardId, _, ws) = resolved.Value;
+    var card = await mediator.Send(new PushCardCommand(cardId));
+    var issueUrl = $"https://github.com/{ws.GitHubRepo}/issues/{card.GitHubIssueNumber}";
+    Console.WriteLine($"Pushed card #{card.Number} → {issueUrl}");
+}, cardPushIdArg, workspaceOpt);
+
 // ── card close ────────────────────────────────────────────────────────────────
 
 var cardCloseIdArg = new Argument<string>("card-id", "Card short ID or prefix");
@@ -551,6 +608,7 @@ cardCmd.AddCommand(cardRemoveCmd);
 cardCmd.AddCommand(cardEditCmd);
 cardCmd.AddCommand(cardClaimCmd);
 cardCmd.AddCommand(cardListCmd);
+cardCmd.AddCommand(cardPushCmd);
 cardCmd.AddCommand(cardCloseCmd);
 cardCmd.AddCommand(cardReopenCmd);
 root.AddCommand(cardCmd);
