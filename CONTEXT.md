@@ -19,7 +19,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 ### Repository layout
 - `src/` — .NET projects (Core, Data, App, Cli, UI).
 - `tests/Bishop.Tests/` — xUnit project.
-- `skills/` — vendored Claude Code skill files (`work-on-card-bishop`, `grill-me-bishop`) shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`.
+- `skills/` — vendored Claude Code skill files (`work-on-card-bishop`, `grill-me-bishop`, `audit-docs-bishop`) shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`.
 - `installer/` — Wix v5 project that produces the per-user MSI. See `installer/README.md`.
 - `notes/_archive/` — pre-grill design notes; preserved for decision rationale but superseded by DIRECTION.md.
 
@@ -67,7 +67,7 @@ Bishop.UI is the interactive surface; the CLI remains the automation surface for
 - **Theming:** dark theme applied across shell, nav, board chrome, and dialogs.
 
 ### Skill integration
-Bundled Claude Code skills (`skills/work-on-card-bishop`, `skills/grill-me-bishop`) ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
+Bundled Claude Code skills (`skills/work-on-card-bishop`, `skills/grill-me-bishop`, `skills/audit-docs-bishop`) ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
 
 - `name` — skill identifier (required).
 - `description` — user-facing summary.
