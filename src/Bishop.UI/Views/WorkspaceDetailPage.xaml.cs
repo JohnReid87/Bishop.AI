@@ -8,6 +8,7 @@ using Bishop.App.Lanes.RenameLane;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
+using Bishop.App.Workspaces.LaunchPlainTerminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
@@ -120,17 +121,25 @@ public sealed partial class WorkspaceDetailPage : Page
     private void UpdatePathStatus()
     {
         var missing = _item?.IsPathMissing ?? false;
-        LaunchButton.IsEnabled = !missing;
+        TerminalButton.IsEnabled = !missing;
+        ClaudeButton.IsEnabled = !missing;
         PathWarningBar.IsOpen = missing;
         ToolTipService.SetToolTip(LaunchButtonWrapper, missing ? "The workspace directory is missing." : null);
     }
 
-    private async void LaunchButton_Click(object sender, RoutedEventArgs e)
+    private async void ClaudeButton_Click(object sender, RoutedEventArgs e)
     {
         if (_item is null) return;
         var mediator = App.Services.GetRequiredService<IMediator>();
         var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path, ComputeSnap()));
         FallbackWarningBar.IsOpen = !launchedWithTerminal;
+    }
+
+    private async void TerminalButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null) return;
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        await mediator.Send(new LaunchPlainTerminalCommand(_item.Path, ComputeSnap()));
     }
 
     private async void WorkspaceSkillsButton_Click(object sender, RoutedEventArgs e)

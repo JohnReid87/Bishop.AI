@@ -52,6 +52,55 @@ public sealed class TerminalLauncher : ITerminalLauncher
         return false;
     }
 
+    public bool LaunchPlain(string workingDirectory, TerminalSnap? snap)
+    {
+        var fullPath = BuildFullPath();
+        var wt = FindWindowsTerminal();
+        var shell = HasPwsh(fullPath) ? "pwsh.exe" : "powershell.exe";
+
+        if (wt is not null)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = wt,
+                Arguments = $"-d \"{workingDirectory}\" {shell}",
+                UseShellExecute = false,
+            };
+            psi.Environment["PATH"] = fullPath;
+            var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
+            Process.Start(psi);
+            if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
+            return true;
+        }
+
+        var psFallback = new ProcessStartInfo
+        {
+            FileName = shell,
+            Arguments = "-NoExit",
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+        };
+        psFallback.Environment["PATH"] = fullPath;
+        var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
+        Process.Start(psFallback);
+        if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
+        return false;
+    }
+
+    private static bool HasPwsh(string fullPath)
+    {
+        foreach (var segment in fullPath.Split(';'))
+        {
+            try
+            {
+                var candidate = Path.Combine(segment.Trim(), "pwsh.exe");
+                if (File.Exists(candidate)) return true;
+            }
+            catch (ArgumentException) { }
+        }
+        return false;
+    }
+
     private static void SnapLater(string windowClass, TerminalSnap snap, HashSet<nint> before)
     {
         _ = Task.Run(async () =>

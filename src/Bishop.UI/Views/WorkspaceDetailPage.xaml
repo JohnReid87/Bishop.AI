@@ -37,9 +37,12 @@
                         Content="Skills"
                         Visibility="Collapsed"
                         Click="WorkspaceSkillsButton_Click"/>
-                <Button x:Name="LaunchButton"
+                <Button x:Name="TerminalButton"
                         Content="Terminal"
-                        Click="LaunchButton_Click"/>
+                        Click="TerminalButton_Click"/>
+                <Button x:Name="ClaudeButton"
+                        Content="Claude"
+                        Click="ClaudeButton_Click"/>
                 <Button x:Name="WorkspaceSettingsButton"
                         ToolTipService.ToolTip="Workspace settings"
                         Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
