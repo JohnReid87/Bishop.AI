@@ -27,7 +27,7 @@
             IsSettingsVisible="False"
             IsBackButtonVisible="Collapsed"
             IsTitleBarAutoPaddingEnabled="False"
-            OpenPaneLength="180"
+            OpenPaneLength="130"
             CompactPaneLength="40"
             IsPaneOpen="{x:Bind ViewModel.IsPaneOpen, Mode=TwoWay}">
 
@@ -42,7 +42,7 @@
                         </Grid.RowDefinitions>
 
                         <!-- Header row: label + add button -->
-                        <Grid Grid.Row="0" Margin="16,0,8,0">
+                        <Grid Grid.Row="0" Margin="16,0,4,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -123,6 +123,7 @@
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Padding" Value="12,0,4,0"/>
                                 </Style>
                             </ListView.ItemContainerStyle>
                         </ListView>
@@ -138,12 +139,12 @@
 
                         <!-- + Add button -->
                         <Button Grid.Row="0"
-                                Width="32" Height="32"
+                                Width="200" Height="32"
                                 HorizontalAlignment="Center"
                                 Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                 Click="AddWorkspaceButton_Click"
                                 ToolTipService.ToolTip="Add workspace">
-                            <FontIcon Glyph="&#xE710;" FontSize="12"/>
+                            <FontIcon Glyph="&#xE710;" FontSize="13"/>
                         </Button>
 
                         <!-- Workspace avatar buttons -->
