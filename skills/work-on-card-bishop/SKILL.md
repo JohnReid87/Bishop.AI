@@ -1,13 +1,13 @@
 ---
 name: work-on-card-bishop
-description: Fetches a Bishop card by short-ID prefix from the current workspace, auto-moves it to "Doing", explores the codebase, implements the changes, then prompts before moving to "Done" and committing with a "(card <short-id>)" reference. Use when the user wants to work on a specific Bishop card.
+description: Fetches a Bishop card by Number (#N) from the current workspace, auto-moves it to "Doing", explores the codebase, implements the changes, then prompts before moving to "Done" and committing with a "(card #N)" reference. Use when the user wants to work on a specific Bishop card.
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.scope: card
 bishop.command: /work-on-card-bishop {{card_number}}
 bishop.stage: true
 ---
 
-Accepts an **optional** card short-ID prefix (`work-on-card-bishop 1a2b3c4d`).
+Accepts an **optional** card Number (`work-on-card-bishop 42` or `work-on-card-bishop #42`).
 If omitted, claims the top card from "To Do" and asks the user to confirm
 before proceeding.
 
@@ -38,16 +38,14 @@ Run `bishop workspace current --json`.
 
 1. **Fetch the card.** Two paths depending on what the user supplied.
 
-   **Path A — user supplied a short-ID prefix:**
+   **Path A — user supplied a Number:**
    ```
-   bishop card view <short-id> --json
+   bishop card view <number> --json
    ```
-   If the command exits non-zero (no match, or ambiguous prefix), STOP and
-   surface the stderr message as-is. Do NOT guess which card the user meant —
-   the resolver lists all candidates on stderr; relay them and ask the user
-   to disambiguate with a longer prefix.
+   If the command exits non-zero (no match), STOP and surface the stderr
+   message as-is. Do NOT guess which card the user meant.
 
-   **Path B — no short-ID supplied:** claim the top of "To Do":
+   **Path B — no Number supplied:** claim the top of "To Do":
    ```
    bishop card claim --json
    ```
@@ -56,34 +54,34 @@ Run `bishop workspace current --json`.
 
    Parse the JSON and ask the user to confirm:
 
-   > Claimed `<short-id>` — '<title>' from [To Do]. Work on this card?
-   > (`y` to proceed / paste a different short-ID / `n` to skip)
+   > Claimed `#N` — '<title>' from [To Do]. Work on this card?
+   > (`y` to proceed / paste a different Number / `n` to skip)
 
    - On `y` → proceed. The card is already in "Doing", so step 2 is a no-op.
-   - On a different short-ID → revert the claim, then restart this step
-     using their ID (Path A):
+   - On a different Number → revert the claim, then restart this step
+     using their Number (Path A):
      ```
-     bishop card move <claimed-id> --to-lane "To Do" --to-position 1
+     bishop card move <claimed-number> --to-lane "To Do" --to-position 1
      ```
    - On `n` → revert the claim and STOP:
      ```
-     bishop card move <claimed-id> --to-lane "To Do" --to-position 1
+     bishop card move <claimed-number> --to-lane "To Do" --to-position 1
      ```
 
    Parse the JSON of the final chosen card and capture:
-   - `id` — extract the first 8 hex chars for the canonical short-ID (used in
-     the commit message and headings, regardless of what prefix the user typed)
+   - `number` — the canonical `#N` reference (used in commit messages and
+     headings, regardless of what the user typed)
    - `title`, `description`, `laneName`, `tags`
 
    Echo the card title back on its own line so the user can confirm the right
    card was loaded before any move or implementation:
 
-   > **Card <short-id>:** <title>
+   > **Card #N:** <title>
 
 2. **Auto-move the card to "Doing"** (no prompt — mirrors the work-on-issue
    contract of "start work without asking"):
    ```
-   bishop card move <short-id> --to-lane "Doing" --to-position 0
+   bishop card move <number> --to-lane "Doing" --to-position 0
    ```
 
    If the move fails (e.g. the workspace has no "Doing" lane), STOP and surface
@@ -118,7 +116,7 @@ Run `bishop workspace current --json`.
 
 7. Output a concise completion summary:
 
-   ## Done — Card <short-id>: <title>
+   ## Done — Card #N: <title>
    **Files changed:**
    - `path/to/file` — what changed and why
 
@@ -130,11 +128,11 @@ Run `bishop workspace current --json`.
 
 8. Ask the user whether to **move the card to "Done"**:
 
-   > Move card <short-id> to "Done"? (y/n)
+   > Move card #N to "Done"? (y/n)
 
    If yes, run:
    ```
-   bishop card move <short-id> --to-lane "Done" --to-position 0
+   bishop card move <number> --to-lane "Done" --to-position 0
    ```
 
    If no, leave the card in "Doing".
@@ -151,17 +149,14 @@ Run `bishop workspace current --json`.
    - `test` → `test`
    - no tag or unrecognised tag → `chore`
 
-   Proposal format: `<prefix>: <title> (card <short-id>)`
+   Proposal format: `<prefix>: <title> (card #N)`
 
-   Example — tags `["feature"]`, title "Add lane CRUD":
-   > Proposed: `feat: Add lane CRUD (card 1a2b3c4d)` — confirm, edit, or skip?
+   Example — tags `["feature"]`, title "Add lane CRUD", number 42:
+   > Proposed: `feat: Add lane CRUD (card #42)` — confirm, edit, or skip?
 
    Present the proposal and ask the user to confirm, provide their own message,
    or skip entirely. Do not stage, commit, or push without explicit confirmation.
    If the user declines, leave the working tree as-is.
-
-   Use the canonical 8-char short-ID from step 1, not whatever prefix the user
-   typed.
 
 </what-to-do>
 
