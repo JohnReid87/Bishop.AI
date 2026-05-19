@@ -24,6 +24,12 @@ public sealed partial class LaneViewModel : ObservableObject
     [ObservableProperty]
     public partial string NewCardTitle { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAddCardError))]
+    public partial string? AddCardErrorMessage { get; set; }
+
+    public bool HasAddCardError => AddCardErrorMessage is not null;
+
     public LaneViewModel(IMediator mediator, Func<Task> refreshBoard)
     {
         _mediator = mediator;
@@ -31,14 +37,27 @@ public sealed partial class LaneViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void BeginAddCard() => IsAddingCard = true;
+    private void BeginAddCard()
+    {
+        AddCardErrorMessage = null;
+        IsAddingCard = true;
+    }
 
     [RelayCommand]
     private async Task ConfirmAddCardAsync(CancellationToken cancellationToken)
     {
         var title = NewCardTitle.Trim();
         if (string.IsNullOrEmpty(title)) return;
-        await _mediator.Send(new AddCardCommand(Id, title), cancellationToken);
+        AddCardErrorMessage = null;
+        try
+        {
+            await _mediator.Send(new AddCardCommand(Id, title), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            AddCardErrorMessage = ex.Message;
+            return;
+        }
         NewCardTitle = string.Empty;
         IsAddingCard = false;
         await _refreshBoard();
@@ -49,5 +68,6 @@ public sealed partial class LaneViewModel : ObservableObject
     {
         IsAddingCard = false;
         NewCardTitle = string.Empty;
+        AddCardErrorMessage = null;
     }
 }

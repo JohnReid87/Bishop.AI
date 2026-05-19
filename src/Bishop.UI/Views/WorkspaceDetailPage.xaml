@@ -260,6 +260,11 @@
                                                     Command="{x:Bind CancelAddCardCommand}"
                                                     ToolTipService.ToolTip="Cancel (Escape)"/>
                                         </StackPanel>
+                                        <TextBlock Text="{x:Bind AddCardErrorMessage, Mode=OneWay}"
+                                                   Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                                   TextWrapping="Wrap"
+                                                   FontSize="12"
+                                                   Visibility="{x:Bind HasAddCardError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                     </StackPanel>
                                 </Grid>
 
