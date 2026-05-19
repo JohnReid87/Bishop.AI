@@ -14,6 +14,7 @@ public sealed class ListCardsByWorkspaceQueryHandler : IRequestHandler<ListCards
     public async Task<IReadOnlyList<Card>> Handle(ListCardsByWorkspaceQuery request, CancellationToken cancellationToken)
     {
         return await _db.Cards
+            .AsNoTracking()
             .Include(c => c.CardTags)
             .ThenInclude(ct => ct.Tag)
             .Where(c => c.Lane.WorkspaceId == request.WorkspaceId)

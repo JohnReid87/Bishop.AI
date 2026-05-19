@@ -14,6 +14,7 @@ public sealed class ListLanesByWorkspaceQueryHandler : IRequestHandler<ListLanes
     public async Task<IReadOnlyList<Lane>> Handle(ListLanesByWorkspaceQuery request, CancellationToken cancellationToken)
     {
         return await _db.Lanes
+            .AsNoTracking()
             .Where(l => l.WorkspaceId == request.WorkspaceId)
             .OrderBy(l => l.Position)
             .ToListAsync(cancellationToken);

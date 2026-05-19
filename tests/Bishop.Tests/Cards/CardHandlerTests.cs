@@ -344,4 +344,34 @@ public sealed class CardHandlerTests : IDisposable
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*At least one field*");
     }
+
+    [Fact]
+    public async Task ListCardsByWorkspace_ReflectsOutOfBandLaneMove()
+    {
+        // Regression for card #5: the UI's long-lived DbContext was caching tracked
+        // entities, so a card moved via the CLI (separate process) stayed in its old
+        // lane on refresh. A second DbContext bound to the same SQLite connection
+        // simulates the CLI; the first DbContext models the UI.
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Move me"), default);
+
+        var handler = new ListCardsByWorkspaceQueryHandler(_db);
+        var initial = await handler.Handle(new ListCardsByWorkspaceQuery(workspace.Id), default);
+        initial.Single().LaneId.Should().Be(lanes[0].Id);
+
+        var cliOptions = new DbContextOptionsBuilder<BishopDbContext>()
+            .UseSqlite(_connection)
+            .Options;
+        await using (var cliDb = new BishopDbContext(cliOptions))
+        {
+            var cliCard = await cliDb.Cards.SingleAsync(c => c.Id == card.Id);
+            cliCard.LaneId = lanes[1].Id;
+            await cliDb.SaveChangesAsync();
+        }
+
+        var refreshed = await handler.Handle(new ListCardsByWorkspaceQuery(workspace.Id), default);
+
+        refreshed.Single().LaneId.Should().Be(lanes[1].Id);
+    }
 }

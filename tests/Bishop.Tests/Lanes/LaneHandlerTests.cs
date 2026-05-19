@@ -187,4 +187,30 @@ public sealed class LaneHandlerTests : IDisposable
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*not empty*");
     }
+
+    [Fact]
+    public async Task ListLanesByWorkspace_ReflectsOutOfBandRename()
+    {
+        // Regression for card #5: same caching bug for lanes. A lane renamed via the
+        // CLI must surface on refresh in the UI.
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+
+        var handler = new ListLanesByWorkspaceQueryHandler(_db);
+        var initial = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
+        initial[0].Name.Should().Be("To Do");
+
+        var cliOptions = new DbContextOptionsBuilder<BishopDbContext>()
+            .UseSqlite(_connection)
+            .Options;
+        await using (var cliDb = new BishopDbContext(cliOptions))
+        {
+            var cliLane = await cliDb.Lanes.SingleAsync(l => l.Id == lanes[0].Id);
+            cliLane.Name = "Renamed";
+            await cliDb.SaveChangesAsync();
+        }
+
+        var refreshed = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
+
+        refreshed[0].Name.Should().Be("Renamed");
+    }
 }
