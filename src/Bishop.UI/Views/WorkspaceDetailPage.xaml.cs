@@ -178,7 +178,7 @@ public sealed partial class WorkspaceDetailPage : Page
         if ((sender as FrameworkElement)?.DataContext is not CardViewModel card)
             return;
 
-        var dialog = new CardDetailDialog(card) { XamlRoot = XamlRoot };
+        var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty) { XamlRoot = XamlRoot };
         await dialog.ShowAsync();
         if (dialog.ViewModel.Deleted)
             await Board.RefreshCommand.ExecuteAsync(null);

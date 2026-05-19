@@ -1,4 +1,5 @@
 using Bishop.App.Cards.RemoveCard;
+using Bishop.Core.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
@@ -11,9 +12,14 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     private readonly IMediator _mediator;
 
     public Guid CardId { get; }
+    public int Number { get; }
     public string Title { get; }
     public string Description { get; }
-    public IReadOnlyList<string> Tags { get; }
+    public string LaneName { get; }
+    public IReadOnlyList<CardTagViewModel> Tags { get; }
+    public Visibility SkillsButtonVisibility { get; }
+
+    public string NumberDisplay => $"#{Number}";
 
     public Visibility DescriptionVisibility =>
         string.IsNullOrWhiteSpace(Description) ? Visibility.Collapsed : Visibility.Visible;
@@ -25,7 +31,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         Tags.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DeleteConfirmVisibility), nameof(DeleteButtonVisibility))]
+    [NotifyPropertyChangedFor(nameof(DeleteConfirmVisibility))]
     public partial bool ShowDeleteConfirm { get; set; }
 
     [ObservableProperty]
@@ -34,16 +40,16 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public Visibility DeleteConfirmVisibility =>
         ShowDeleteConfirm ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility DeleteButtonVisibility =>
-        ShowDeleteConfirm ? Visibility.Collapsed : Visibility.Visible;
-
-    public CardDetailDialogViewModel(CardViewModel card, IMediator mediator)
+    public CardDetailDialogViewModel(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, IMediator mediator)
     {
         _mediator = mediator;
         CardId = card.Id;
+        Number = card.Number;
         Title = card.Title;
         Description = card.Description;
+        LaneName = card.LaneName;
         Tags = card.Tags;
+        SkillsButtonVisibility = cardSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     [RelayCommand]

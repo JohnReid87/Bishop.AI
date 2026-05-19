@@ -9,7 +9,8 @@ public sealed class CardViewModel
     public int Number { get; init; }
     public string Title { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
-    public IReadOnlyList<string> Tags { get; init; } = [];
+    public string LaneName { get; init; } = string.Empty;
+    public IReadOnlyList<CardTagViewModel> Tags { get; init; } = [];
     public string? FirstTagName { get; init; }
     public string? FirstTagColour { get; init; }
 

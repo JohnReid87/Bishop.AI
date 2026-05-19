@@ -43,7 +43,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
                     Number = card.Number,
                     Title = card.Title,
                     Description = card.Description,
-                    Tags = card.CardTags.Select(ct => ct.Tag.Name).ToList(),
+                    LaneName = lane.Name,
+                    Tags = card.CardTags.Select(ct => new CardTagViewModel { Name = ct.Tag.Name, Colour = ct.Tag.Colour }).ToList(),
                     FirstTagName = firstTag?.Name,
                     FirstTagColour = firstTag?.Colour,
                 });
