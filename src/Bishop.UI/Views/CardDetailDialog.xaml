@@ -52,21 +52,46 @@
             </Button>
         </Grid>
 
-        <!-- Title -->
-        <TextBlock Text="{x:Bind ViewModel.Title}"
+        <!-- Title - view mode -->
+        <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}"
                    Style="{StaticResource SubtitleTextBlockStyle}"
-                   TextWrapping="Wrap"/>
+                   TextWrapping="Wrap"
+                   Visibility="{x:Bind ViewModel.TitleViewVisibility, Mode=OneWay}"
+                   Tapped="TitleView_Tapped"/>
 
-        <!-- Description -->
-        <controls:MarkdownTextBlock
-            Text="{x:Bind ViewModel.Description}"
-            Foreground="{StaticResource AppTextPrimaryBrush}"
-            Visibility="{x:Bind ViewModel.DescriptionVisibility}"/>
-        <TextBlock
-            Text="No description."
-            FontStyle="Italic"
-            Foreground="{StaticResource AppTextTertiaryBrush}"
-            Visibility="{x:Bind ViewModel.NoDescriptionVisibility}"/>
+        <!-- Title - edit mode -->
+        <TextBox x:Name="TitleTextBox"
+                 TextWrapping="Wrap"
+                 Visibility="{x:Bind ViewModel.TitleEditVisibility, Mode=OneWay}"
+                 LostFocus="TitleTextBox_LostFocus"
+                 KeyDown="TitleTextBox_KeyDown"/>
+
+        <!-- Description - view mode -->
+        <Grid Background="Transparent"
+              Visibility="{x:Bind ViewModel.DescriptionViewVisibility, Mode=OneWay}"
+              Tapped="DescriptionView_Tapped">
+            <controls:MarkdownTextBlock
+                Text="{x:Bind ViewModel.Description, Mode=OneWay}"
+                Foreground="{StaticResource AppTextPrimaryBrush}"
+                Visibility="{x:Bind ViewModel.DescriptionVisibility, Mode=OneWay}"
+                IsHitTestVisible="False"/>
+            <TextBlock
+                Text="No description."
+                FontStyle="Italic"
+                Foreground="{StaticResource AppTextTertiaryBrush}"
+                Visibility="{x:Bind ViewModel.NoDescriptionVisibility, Mode=OneWay}"
+                IsHitTestVisible="False"/>
+        </Grid>
+
+        <!-- Description - edit mode -->
+        <TextBox x:Name="DescriptionTextBox"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="80"
+                 PlaceholderText="Ctrl+Enter to save, Esc to cancel"
+                 Visibility="{x:Bind ViewModel.DescriptionEditVisibility, Mode=OneWay}"
+                 LostFocus="DescriptionTextBox_LostFocus"
+                 KeyDown="DescriptionTextBox_KeyDown"/>
 
         <!-- Tags -->
         <ItemsControl
@@ -90,6 +115,13 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <!-- Inline save error -->
+        <TextBlock
+            Text="{x:Bind ViewModel.EditError, Mode=OneWay}"
+            Foreground="#FF5555"
+            TextWrapping="Wrap"
+            Visibility="{x:Bind ViewModel.EditErrorVisibility, Mode=OneWay}"/>
 
         <!-- Delete confirmation panel -->
         <StackPanel

@@ -4,9 +4,13 @@ using Bishop.Core.Skills;
 using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace Bishop.UI.Views;
 
@@ -36,6 +40,69 @@ public sealed partial class CardDetailDialog : ContentDialog
         args.Cancel = true;
         ViewModel.RequestDeleteCommand.Execute(null);
     }
+
+    // ── Title editing ─────────────────────────────────────────────────────────
+
+    private void TitleView_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        TitleTextBox.Text = ViewModel.Title;
+        ViewModel.StartTitleEdit();
+        TitleTextBox.Focus(FocusState.Programmatic);
+        TitleTextBox.SelectAll();
+    }
+
+    private async void TitleTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.CommitTitleAsync(TitleTextBox.Text);
+    }
+
+    private async void TitleTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            e.Handled = true;
+            await ViewModel.CommitTitleAsync(TitleTextBox.Text);
+        }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            e.Handled = true;
+            ViewModel.CancelTitleEdit();
+        }
+    }
+
+    // ── Description editing ───────────────────────────────────────────────────
+
+    private void DescriptionView_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        DescriptionTextBox.Text = ViewModel.Description;
+        ViewModel.StartDescriptionEdit();
+        DescriptionTextBox.Focus(FocusState.Programmatic);
+    }
+
+    private async void DescriptionTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.CommitDescriptionAsync(DescriptionTextBox.Text);
+    }
+
+    private async void DescriptionTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Escape)
+        {
+            e.Handled = true;
+            ViewModel.CancelDescriptionEdit();
+        }
+        else if (e.Key == VirtualKey.Enter)
+        {
+            var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
+            if ((ctrl & CoreVirtualKeyStates.Down) != 0)
+            {
+                e.Handled = true;
+                await ViewModel.CommitDescriptionAsync(DescriptionTextBox.Text);
+            }
+        }
+    }
+
+    // ── Skills ────────────────────────────────────────────────────────────────
 
     private void SkillButton_Click(object sender, RoutedEventArgs e)
     {

@@ -180,7 +180,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
         var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty) { XamlRoot = XamlRoot };
         await dialog.ShowAsync();
-        if (dialog.ViewModel.Deleted)
+        if (dialog.ViewModel.Deleted || dialog.ViewModel.Updated)
             await Board.RefreshCommand.ExecuteAsync(null);
     }
 
