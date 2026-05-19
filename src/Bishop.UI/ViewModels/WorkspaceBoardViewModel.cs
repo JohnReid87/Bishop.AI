@@ -47,6 +47,9 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
                     Tags = card.CardTags.Select(ct => new CardTagViewModel { Name = ct.Tag.Name, Colour = ct.Tag.Colour }).ToList(),
                     FirstTagName = firstTag?.Name,
                     FirstTagColour = firstTag?.Colour,
+                    IsClosed = card.IsClosed,
+                    GitHubIssueNumber = card.GitHubIssueNumber,
+                    GitHubPushedAt = card.GitHubPushedAt,
                 });
             }
             Lanes.Add(laneVm);

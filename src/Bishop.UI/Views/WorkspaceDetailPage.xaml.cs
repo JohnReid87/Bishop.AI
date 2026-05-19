@@ -7,6 +7,8 @@ using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
+using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
+using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
 using Bishop.Core.Skills;
 using Bishop.UI.ViewModels;
 using MediatR;
@@ -178,10 +180,55 @@ public sealed partial class WorkspaceDetailPage : Page
         if ((sender as FrameworkElement)?.DataContext is not CardViewModel card)
             return;
 
-        var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty) { XamlRoot = XamlRoot };
+        var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty, _item?.GitHubRepo) { XamlRoot = XamlRoot };
         await dialog.ShowAsync();
         if (dialog.ViewModel.Deleted || dialog.ViewModel.Updated)
             await Board.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null) return;
+
+        var repoBox = new TextBox
+        {
+            PlaceholderText = "owner/repo  (clear to unlink)",
+            Text = _item.GitHubRepo ?? string.Empty,
+            Width = 300,
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Workspace Settings",
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock { Text = "GitHub repository" },
+                    repoBox,
+                }
+            },
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        var repo = repoBox.Text.Trim();
+        if (string.IsNullOrEmpty(repo))
+        {
+            await mediator.Send(new UnsetWorkspaceGitHubRepoCommand(_item.Id));
+            _item.GitHubRepo = null;
+        }
+        else
+        {
+            await mediator.Send(new SetWorkspaceGitHubRepoCommand(_item.Id, repo));
+            _item.GitHubRepo = repo;
+        }
     }
 
     private void Card_DragStarting(UIElement sender, DragStartingEventArgs e)

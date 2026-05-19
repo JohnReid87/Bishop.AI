@@ -151,6 +151,30 @@
             TextWrapping="Wrap"
             Visibility="{x:Bind ViewModel.EditErrorVisibility, Mode=OneWay}"/>
 
+        <!-- Close / Reopen toggle -->
+        <Button Content="{x:Bind ViewModel.CloseReopenText, Mode=OneWay}"
+                Command="{x:Bind ViewModel.ToggleClosedCommand}"/>
+
+        <!-- GitHub push section (hidden when workspace has no GH repo) -->
+        <StackPanel Spacing="6"
+                    Visibility="{x:Bind ViewModel.PushSectionVisibility}">
+            <!-- Push button (hidden once pushed) -->
+            <Button Content="Push to GitHub"
+                    Command="{x:Bind ViewModel.PushToGitHubCommand}"
+                    IsEnabled="{x:Bind ViewModel.CanPushToGitHub, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.PushButtonVisibility, Mode=OneWay}"/>
+            <!-- Push error -->
+            <TextBlock Text="{x:Bind ViewModel.PushError, Mode=OneWay}"
+                       Foreground="#FF5555"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.PushErrorVisibility, Mode=OneWay}"/>
+            <!-- GitHub issue link (shown once pushed) -->
+            <HyperlinkButton Content="{x:Bind ViewModel.GitHubIssueUrl, Mode=OneWay}"
+                             Click="GitHubIssueButton_Click"
+                             Visibility="{x:Bind ViewModel.GitHubLinkVisibility, Mode=OneWay}"
+                             Padding="0"/>
+        </StackPanel>
+
         <!-- Delete confirmation panel -->
         <StackPanel
             Visibility="{x:Bind ViewModel.DeleteConfirmVisibility, Mode=OneWay}"

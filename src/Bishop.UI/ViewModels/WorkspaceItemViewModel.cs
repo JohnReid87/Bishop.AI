@@ -26,6 +26,9 @@ public sealed partial class WorkspaceItemViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsSelectedVisibility))]
     public partial bool IsSelected { get; set; }
 
+    [ObservableProperty]
+    public partial string? GitHubRepo { get; set; }
+
     public string FirstLetter => Name.Length > 0 ? Name[0..1].ToUpperInvariant() : "?";
 
     public Visibility IsSelectedVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;

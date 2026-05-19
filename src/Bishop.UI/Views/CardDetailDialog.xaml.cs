@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Windows.System;
 using Windows.UI.Core;
+using Launcher = Windows.System.Launcher;
 
 namespace Bishop.UI.Views;
 
@@ -23,12 +24,12 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     public CardDetailDialogViewModel ViewModel { get; }
 
-    public CardDetailDialog(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, string workspacePath, Guid workspaceId)
+    public CardDetailDialog(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, string workspacePath, Guid workspaceId, string? gitHubRepo)
     {
         var mediator = App.Services.GetRequiredService<IMediator>();
         _cardSkills = cardSkills;
         _workspacePath = workspacePath;
-        ViewModel = new CardDetailDialogViewModel(card, cardSkills, workspaceId, mediator);
+        ViewModel = new CardDetailDialogViewModel(card, cardSkills, workspaceId, gitHubRepo, mediator);
         InitializeComponent();
         ViewModel.PropertyChanged += (_, e) =>
         {
@@ -38,6 +39,12 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
+
+    private async void GitHubIssueButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.GitHubIssueUrl is { } url)
+            await Launcher.LaunchUriAsync(new Uri(url));
+    }
 
     private void OnSecondaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {

@@ -103,7 +103,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     private static WorkspaceItemViewModel ToViewModel(Bishop.Core.Workspace w) =>
-        new() { Id = w.Id, Name = w.Name, Path = w.Path, Position = w.Position };
+        new() { Id = w.Id, Name = w.Name, Path = w.Path, Position = w.Position, GitHubRepo = w.GitHubRepo };
 
     private async Task<NavPrefs?> LoadNavPrefsAsync()
     {

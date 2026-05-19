@@ -1,4 +1,7 @@
+using Bishop.App.Cards.CloseCard;
+using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.RemoveCard;
+using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.Core;
@@ -15,6 +18,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
 {
     private readonly IMediator _mediator;
     private readonly Guid _workspaceId;
+    private readonly string? _workspaceGitHubRepo;
 
     public Guid CardId { get; }
     public int Number { get; }
@@ -42,7 +46,32 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(EditErrorVisibility))]
     public partial string? EditError { get; set; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CloseReopenText))]
+    public partial bool IsClosed { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanPushToGitHub), nameof(PushButtonVisibility), nameof(GitHubLinkVisibility), nameof(GitHubIssueUrl))]
+    public partial int? GitHubIssueNumber { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PushErrorVisibility))]
+    public partial string? PushError { get; set; }
+
     public string NumberDisplay => $"#{Number}";
+
+    public string CloseReopenText => IsClosed ? "Reopen" : "Close";
+
+    public bool CanPushToGitHub => GitHubIssueNumber is null && _workspaceGitHubRepo is not null;
+
+    public string? GitHubIssueUrl => GitHubIssueNumber is not null && _workspaceGitHubRepo is not null
+        ? $"https://github.com/{_workspaceGitHubRepo}/issues/{GitHubIssueNumber}"
+        : null;
+
+    public Visibility PushButtonVisibility => GitHubIssueNumber is null ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility GitHubLinkVisibility => GitHubIssueNumber is not null ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility PushErrorVisibility => string.IsNullOrEmpty(PushError) ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility PushSectionVisibility => _workspaceGitHubRepo is not null ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility TitleViewVisibility => IsTitleEditing ? Visibility.Collapsed : Visibility.Visible;
     public Visibility TitleEditVisibility => IsTitleEditing ? Visibility.Visible : Visibility.Collapsed;
@@ -68,15 +97,18 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public Visibility DeleteConfirmVisibility =>
         ShowDeleteConfirm ? Visibility.Visible : Visibility.Collapsed;
 
-    public CardDetailDialogViewModel(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, Guid workspaceId, IMediator mediator)
+    public CardDetailDialogViewModel(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, Guid workspaceId, string? gitHubRepo, IMediator mediator)
     {
         _mediator = mediator;
         _workspaceId = workspaceId;
+        _workspaceGitHubRepo = gitHubRepo;
         CardId = card.Id;
         Number = card.Number;
         Title = card.Title;
         Description = card.Description;
         LaneName = card.LaneName;
+        IsClosed = card.IsClosed;
+        GitHubIssueNumber = card.GitHubIssueNumber;
         foreach (var t in card.Tags)
             Tags.Add(t);
         SkillsButtonVisibility = cardSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -183,6 +215,45 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         {
             Description = prior;
             EditError = "Failed to save description.";
+        }
+    }
+
+    // ── Close / Reopen ────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private async Task ToggleClosedAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (IsClosed)
+                await _mediator.Send(new ReopenCardCommand(CardId), cancellationToken);
+            else
+                await _mediator.Send(new CloseCardCommand(CardId), cancellationToken);
+
+            IsClosed = !IsClosed;
+            Updated = true;
+        }
+        catch
+        {
+            EditError = "Failed to update closed state.";
+        }
+    }
+
+    // ── Push to GitHub ────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private async Task PushToGitHubAsync(CancellationToken cancellationToken)
+    {
+        PushError = null;
+        try
+        {
+            var card = await _mediator.Send(new PushCardCommand(CardId), cancellationToken);
+            GitHubIssueNumber = card.GitHubIssueNumber;
+            Updated = true;
+        }
+        catch (Exception ex)
+        {
+            PushError = ex.Message;
         }
     }
 

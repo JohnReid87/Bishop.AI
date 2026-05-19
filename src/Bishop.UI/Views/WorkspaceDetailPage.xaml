@@ -40,6 +40,12 @@
                 <Button x:Name="LaunchButton"
                         Content="Terminal"
                         Click="LaunchButton_Click"/>
+                <Button x:Name="WorkspaceSettingsButton"
+                        ToolTipService.ToolTip="Workspace settings"
+                        Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                        Click="WorkspaceSettingsButton_Click">
+                    <FontIcon Glyph="&#xE713;" FontSize="14"/>
+                </Button>
             </StackPanel>
         </Grid>
 
@@ -172,6 +178,7 @@
                                             <Border Background="{StaticResource AppCardBackgroundBrush}"
                                                     CornerRadius="4"
                                                     Margin="8,0,8,4"
+                                                    Opacity="{x:Bind CardOpacity}"
                                                     CanDrag="True"
                                                     DragStarting="Card_DragStarting"
                                                     DropCompleted="Card_DropCompleted">
