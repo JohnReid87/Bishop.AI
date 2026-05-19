@@ -80,10 +80,12 @@
                                   SelectionMode="Single"
                                   DragItemsCompleted="WorkspacesListView_DragItemsCompleted">
                             <ListView.Resources>
-                                <Color x:Key="SystemAccentColor">#FF00B894</Color>
-                                <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#2000B894"/>
-                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#3000B894"/>
-                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#4000B894"/>
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#20FFFFFF"/>
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#30FFFFFF"/>
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#40FFFFFF"/>
+                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="#00B894"/>
+                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPointerOverBrush" Color="#00B894"/>
+                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPressedBrush" Color="#00B894"/>
                             </ListView.Resources>
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="vm:WorkspaceItemViewModel">
@@ -151,30 +153,39 @@
                         <ScrollViewer Grid.Row="1"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{x:Bind ViewModel.Workspaces}"
-                                          HorizontalAlignment="Stretch">
-                                <ItemsControl.ItemTemplate>
+                            <ListView x:Name="WorkspacesCollapsedListView"
+                                      ItemsSource="{x:Bind ViewModel.Workspaces}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedWorkspace, Mode=TwoWay}"
+                                      CanReorderItems="True"
+                                      AllowDrop="True"
+                                      SelectionMode="Single"
+                                      DragItemsCompleted="WorkspacesCollapsedListView_DragItemsCompleted">
+                                <ListView.Resources>
+                                    <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="Transparent"/>
+                                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="Transparent"/>
+                                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="Transparent"/>
+                                    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="#00B894"/>
+                                    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPointerOverBrush" Color="#00B894"/>
+                                    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPressedBrush" Color="#00B894"/>
+                                </ListView.Resources>
+                                <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="vm:WorkspaceItemViewModel">
-                                        <Grid Height="40" HorizontalAlignment="Stretch"
+                                        <Grid Height="40" Width="40" HorizontalAlignment="Left"
                                               Margin="0,0,0,4"
+                                              ToolTipService.ToolTip="{x:Bind Name, Mode=OneWay}"
                                               RightTapped="WorkspaceItem_RightTapped">
                                             <Button Width="200"
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Stretch"
                                                     Padding="0"
-                                                    Click="WorkspaceCollapsedButton_Click"
-                                                    ToolTipService.ToolTip="{x:Bind Name, Mode=OneWay}">
+                                                    IsHitTestVisible="False">
                                                 <TextBlock Text="{x:Bind FirstLetter, Mode=OneWay}"
                                                            FontSize="13"
                                                            FontWeight="SemiBold"
+                                                           Foreground="{StaticResource AppTextPrimaryBrush}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"/>
                                             </Button>
-                                            <!-- Rendered after Button so z-order puts it on top -->
-                                            <Rectangle Width="2" HorizontalAlignment="Left"
-                                                       VerticalAlignment="Stretch"
-                                                       Fill="{StaticResource AppAccentBrush}"
-                                                       Visibility="{x:Bind IsSelectedVisibility, Mode=OneWay}"/>
                                             <FlyoutBase.AttachedFlyout>
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="Rename" Click="RenameWorkspace_Click">
@@ -191,8 +202,14 @@
                                             </FlyoutBase.AttachedFlyout>
                                         </Grid>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                </ListView.ItemTemplate>
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                            </ListView>
                         </ScrollViewer>
                     </Grid>
                 </Grid>

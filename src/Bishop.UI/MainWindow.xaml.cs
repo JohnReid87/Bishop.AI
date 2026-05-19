@@ -74,6 +74,16 @@ public sealed partial class MainWindow : Window
         await ViewModel.PersistReorderAsync(ordered);
     }
 
+    private async void WorkspacesCollapsedListView_DragItemsCompleted(
+        ListViewBase sender,
+        DragItemsCompletedEventArgs args)
+    {
+        var ordered = WorkspacesCollapsedListView.Items
+            .OfType<WorkspaceItemViewModel>()
+            .ToList();
+        await ViewModel.PersistReorderAsync(ordered);
+    }
+
     private async void AddWorkspaceButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new AddWorkspaceDialog { XamlRoot = Content.XamlRoot };
@@ -111,11 +121,7 @@ public sealed partial class MainWindow : Window
         FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
     }
 
-    private void WorkspaceCollapsedButton_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is WorkspaceItemViewModel item)
-            ViewModel.SelectedWorkspace = item;
-    }
+
 
     private async void RepathWorkspace_Click(object sender, RoutedEventArgs e)
     {
