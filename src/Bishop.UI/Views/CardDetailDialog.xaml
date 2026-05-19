@@ -4,20 +4,18 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:Bishop.UI.ViewModels"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
-    SecondaryButtonText="Delete…"
-    SecondaryButtonClick="OnSecondaryButtonClick">
+>
     <ContentDialog.Resources>
         <SolidColorBrush x:Key="ContentDialogBackground" Color="#14141A"/>
+        <x:Double x:Key="ContentDialogMinWidth">520</x:Double>
+        <x:Double x:Key="ContentDialogMaxWidth">780</x:Double>
+        <x:Double x:Key="ContentDialogMaxHeight">900</x:Double>
     </ContentDialog.Resources>
-    <ContentDialog.SecondaryButtonStyle>
-        <Style TargetType="Button">
-            <Setter Property="Foreground" Value="#FF5555"/>
-        </Style>
-    </ContentDialog.SecondaryButtonStyle>
-    <StackPanel Spacing="12" MinWidth="400" MaxWidth="600">
 
-        <!-- Header: #N · lane chip  |  skills  |  X close -->
-        <Grid>
+    <StackPanel Spacing="0" MinWidth="520" MaxWidth="780">
+
+        <!-- Header: #N · lane chip · tags · + | skills | X -->
+        <Grid Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -40,6 +38,49 @@
                                Foreground="{StaticResource AppTextSecondaryBrush}"
                                VerticalAlignment="Center"/>
                 </Border>
+                <!-- Tags inline in header -->
+                <ItemsControl ItemsSource="{x:Bind ViewModel.Tags}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CardTagViewModel">
+                            <Border Background="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"
+                                    CornerRadius="3"
+                                    Padding="4,1">
+                                <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Name}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{x:Bind Colour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
+                                               VerticalAlignment="Center"/>
+                                    <Button Content="×"
+                                            Click="RemoveTag_Click"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="1,0"
+                                            MinWidth="0"
+                                            MinHeight="0"
+                                            FontSize="10"
+                                            Foreground="{x:Bind Colour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
+                                            VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button x:Name="AddTagButton"
+                        Click="AddTag_Click"
+                        Padding="5,1"
+                        BorderThickness="0"
+                        CornerRadius="3"
+                        VerticalAlignment="Center"
+                        Background="{StaticResource AppDividerBrush}">
+                    <TextBlock Text="+"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                </Button>
             </StackPanel>
             <Button Grid.Column="1"
                     Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
@@ -58,6 +99,9 @@
             </Button>
         </Grid>
 
+        <!-- Divider: header / body -->
+        <Border Height="1" Background="{StaticResource AppDividerBrush}" Margin="0,0,0,12"/>
+
         <!-- Title - view mode -->
         <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}"
                    Style="{StaticResource SubtitleTextBlockStyle}"
@@ -72,124 +116,98 @@
                  LostFocus="TitleTextBox_LostFocus"
                  KeyDown="TitleTextBox_KeyDown"/>
 
-        <!-- Description - view mode -->
-        <Grid Background="Transparent"
-              Visibility="{x:Bind ViewModel.DescriptionViewVisibility, Mode=OneWay}"
-              Tapped="DescriptionView_Tapped">
-            <controls:MarkdownTextBlock
-                Text="{x:Bind ViewModel.Description, Mode=OneWay}"
-                Foreground="{StaticResource AppTextPrimaryBrush}"
-                Visibility="{x:Bind ViewModel.DescriptionVisibility, Mode=OneWay}"
-                IsHitTestVisible="False"/>
-            <TextBlock
-                Text="No description."
-                FontStyle="Italic"
-                Foreground="{StaticResource AppTextTertiaryBrush}"
-                Visibility="{x:Bind ViewModel.NoDescriptionVisibility, Mode=OneWay}"
-                IsHitTestVisible="False"/>
-        </Grid>
+        <!-- Description - view mode (scrollable) -->
+        <ScrollViewer MaxHeight="480"
+                      Margin="0,8,0,0"
+                      Background="Transparent"
+                      VerticalScrollBarVisibility="Auto"
+                      Visibility="{x:Bind ViewModel.DescriptionViewVisibility, Mode=OneWay}"
+                      Tapped="DescriptionView_Tapped">
+            <Grid Padding="0,0,12,0">
+                <controls:MarkdownTextBlock
+                    Text="{x:Bind ViewModel.Description, Mode=OneWay}"
+                    Foreground="{StaticResource AppTextPrimaryBrush}"
+                    Visibility="{x:Bind ViewModel.DescriptionVisibility, Mode=OneWay}"
+                    IsHitTestVisible="False"/>
+                <TextBlock
+                    Text="No description."
+                    FontStyle="Italic"
+                    Foreground="{StaticResource AppTextTertiaryBrush}"
+                    Visibility="{x:Bind ViewModel.NoDescriptionVisibility, Mode=OneWay}"
+                    IsHitTestVisible="False"/>
+            </Grid>
+        </ScrollViewer>
 
-        <!-- Description - edit mode -->
+        <!-- Description - edit mode (TextBox scrolls internally when MaxHeight is set) -->
         <TextBox x:Name="DescriptionTextBox"
                  AcceptsReturn="True"
                  TextWrapping="Wrap"
                  MinHeight="80"
+                 MaxHeight="480"
+                 Margin="0,8,0,0"
                  PlaceholderText="Ctrl+Enter to save, Esc to cancel"
                  Visibility="{x:Bind ViewModel.DescriptionEditVisibility, Mode=OneWay}"
                  LostFocus="DescriptionTextBox_LostFocus"
                  KeyDown="DescriptionTextBox_KeyDown"/>
 
-        <!-- Tags: existing chips with ×, then + to add -->
-        <StackPanel Orientation="Horizontal" Spacing="4">
-            <ItemsControl ItemsSource="{x:Bind ViewModel.Tags}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="4"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:CardTagViewModel">
-                        <Border Background="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"
-                                CornerRadius="3"
-                                Padding="4,1">
-                            <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Name}"
-                                           Style="{StaticResource CaptionTextBlockStyle}"
-                                           Foreground="{x:Bind Colour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
-                                           VerticalAlignment="Center"/>
-                                <Button Content="×"
-                                        Click="RemoveTag_Click"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Padding="1,0"
-                                        MinWidth="0"
-                                        MinHeight="0"
-                                        FontSize="10"
-                                        Foreground="{x:Bind Colour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
-                                        VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Button x:Name="AddTagButton"
-                    Click="AddTag_Click"
-                    Padding="5,1"
-                    BorderThickness="0"
-                    CornerRadius="3"
-                    Background="{StaticResource AppDividerBrush}">
-                <TextBlock Text="+"
-                           Style="{StaticResource CaptionTextBlockStyle}"
-                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
-            </Button>
-        </StackPanel>
+        <!-- Divider: body / footer -->
+        <Border Height="1" Background="{StaticResource AppDividerBrush}" Margin="0,12,0,10"/>
 
-        <!-- Inline save error -->
-        <TextBlock
-            Text="{x:Bind ViewModel.EditError, Mode=OneWay}"
-            Foreground="#FF5555"
-            TextWrapping="Wrap"
-            Visibility="{x:Bind ViewModel.EditErrorVisibility, Mode=OneWay}"/>
-
-        <!-- Close / Reopen toggle -->
-        <Button Content="{x:Bind ViewModel.CloseReopenText, Mode=OneWay}"
-                Command="{x:Bind ViewModel.ToggleClosedCommand}"/>
-
-        <!-- GitHub push section (hidden when workspace has no GH repo) -->
-        <StackPanel Spacing="6"
-                    Visibility="{x:Bind ViewModel.PushSectionVisibility}">
-            <!-- Push button (hidden once pushed) -->
-            <Button Content="Push to GitHub"
-                    Command="{x:Bind ViewModel.PushToGitHubCommand}"
-                    IsEnabled="{x:Bind ViewModel.CanPushToGitHub, Mode=OneWay}"
-                    Visibility="{x:Bind ViewModel.PushButtonVisibility, Mode=OneWay}"/>
-            <!-- Push error -->
-            <TextBlock Text="{x:Bind ViewModel.PushError, Mode=OneWay}"
-                       Foreground="#FF5555"
-                       TextWrapping="Wrap"
-                       Visibility="{x:Bind ViewModel.PushErrorVisibility, Mode=OneWay}"/>
-            <!-- GitHub issue link (shown once pushed) -->
-            <HyperlinkButton Content="{x:Bind ViewModel.GitHubIssueUrl, Mode=OneWay}"
-                             Click="GitHubIssueButton_Click"
-                             Visibility="{x:Bind ViewModel.GitHubLinkVisibility, Mode=OneWay}"
-                             Padding="0"/>
-        </StackPanel>
-
-        <!-- Delete confirmation panel -->
-        <StackPanel
-            Visibility="{x:Bind ViewModel.DeleteConfirmVisibility, Mode=OneWay}"
-            Spacing="8">
+        <!-- Footer: compact action row -->
+        <StackPanel Spacing="4">
+            <!-- Inline save error -->
             <TextBlock
-                Text="Delete this card? This cannot be undone."
-                Foreground="#FF5555"/>
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button
-                    Content="Yes, delete"
-                    Command="{x:Bind ViewModel.ConfirmDeleteCommand}"/>
-                <Button
-                    Content="Cancel"
-                    Command="{x:Bind ViewModel.CancelDeleteCommand}"/>
-            </StackPanel>
+                Text="{x:Bind ViewModel.EditError, Mode=OneWay}"
+                Foreground="#FF5555"
+                TextWrapping="Wrap"
+                Visibility="{x:Bind ViewModel.EditErrorVisibility, Mode=OneWay}"/>
+
+            <Grid>
+                <!-- Left: Close/Reopen + GitHub + delete confirmation -->
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
+                    <Button Content="{x:Bind ViewModel.CloseReopenText, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.ToggleClosedCommand}"
+                            Padding="8,4" FontSize="12"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                Visibility="{x:Bind ViewModel.PushSectionVisibility}">
+                        <Button Content="Push to GitHub"
+                                Command="{x:Bind ViewModel.PushToGitHubCommand}"
+                                IsEnabled="{x:Bind ViewModel.CanPushToGitHub, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.PushButtonVisibility, Mode=OneWay}"
+                                Padding="8,4" FontSize="12"/>
+                        <TextBlock Text="{x:Bind ViewModel.PushError, Mode=OneWay}"
+                                   Foreground="#FF5555"
+                                   VerticalAlignment="Center"
+                                   Visibility="{x:Bind ViewModel.PushErrorVisibility, Mode=OneWay}"/>
+                        <HyperlinkButton Content="{x:Bind ViewModel.GitHubIssueUrl, Mode=OneWay}"
+                                         Click="GitHubIssueButton_Click"
+                                         Visibility="{x:Bind ViewModel.GitHubLinkVisibility, Mode=OneWay}"
+                                         Padding="0" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                Visibility="{x:Bind ViewModel.DeleteConfirmVisibility, Mode=OneWay}">
+                        <TextBlock Text="Delete this card?"
+                                   Foreground="#FF5555"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"/>
+                        <Button Content="Yes, delete"
+                                Command="{x:Bind ViewModel.ConfirmDeleteCommand}"
+                                Padding="8,4" FontSize="12"/>
+                        <Button Content="Cancel"
+                                Command="{x:Bind ViewModel.CancelDeleteCommand}"
+                                Padding="8,4" FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right: Delete trigger (danger zone) -->
+                <Button Content="Delete…"
+                        Command="{x:Bind ViewModel.RequestDeleteCommand}"
+                        HorizontalAlignment="Right"
+                        Foreground="#FF5555"
+                        Padding="8,4" FontSize="12"/>
+            </Grid>
         </StackPanel>
 
     </StackPanel>

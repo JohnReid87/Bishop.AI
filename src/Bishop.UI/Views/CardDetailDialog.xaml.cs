@@ -55,12 +55,6 @@ public sealed partial class CardDetailDialog : ContentDialog
             await Launcher.LaunchUriAsync(new Uri(url));
     }
 
-    private void OnSecondaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        args.Cancel = true;
-        ViewModel.RequestDeleteCommand.Execute(null);
-    }
-
     // ── Title editing ─────────────────────────────────────────────────────────
 
     private void TitleView_Tapped(object sender, TappedRoutedEventArgs e)
