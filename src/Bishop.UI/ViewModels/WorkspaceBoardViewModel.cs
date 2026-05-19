@@ -34,6 +34,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         {
             var laneVm = new LaneViewModel { Id = lane.Id, Name = lane.Name };
             foreach (var card in cardsByLane[lane.Id])
+            {
+                var firstTag = card.CardTags.FirstOrDefault()?.Tag;
                 laneVm.Cards.Add(new CardViewModel
                 {
                     Id = card.Id,
@@ -41,7 +43,10 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
                     Title = card.Title,
                     Description = card.Description,
                     Tags = card.CardTags.Select(ct => ct.Tag.Name).ToList(),
+                    FirstTagName = firstTag?.Name,
+                    FirstTagColour = firstTag?.Colour,
                 });
+            }
             Lanes.Add(laneVm);
         }
     }

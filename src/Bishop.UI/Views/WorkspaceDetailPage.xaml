@@ -176,7 +176,7 @@
                                                     DragStarting="Card_DragStarting"
                                                     DropCompleted="Card_DropCompleted">
                                                 <StackPanel>
-                                                    <!-- Card header: short ID (todo) + action buttons -->
+                                                    <!-- Card header: short ID + optional tag chip + action buttons -->
                                                     <Grid Padding="10,4,4,4"
                                                           BorderBrush="{StaticResource AppDividerBrush}"
                                                           BorderThickness="0,0,0,1">
@@ -185,10 +185,25 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0"
-                                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                                   Foreground="{StaticResource AppTextTertiaryBrush}"
-                                                                   VerticalAlignment="Center"/>
+                                                        <StackPanel Grid.Column="0"
+                                                                    Orientation="Horizontal"
+                                                                    Spacing="6"
+                                                                    VerticalAlignment="Center">
+                                                            <TextBlock Text="{x:Bind ShortId}"
+                                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                                       Foreground="{StaticResource AppTextTertiaryBrush}"
+                                                                       FontFamily="Cascadia Mono"
+                                                                       VerticalAlignment="Center"/>
+                                                            <Border Background="{x:Bind FirstTagColour, Converter={StaticResource HexColorToBrushConverter}}"
+                                                                    CornerRadius="3"
+                                                                    Padding="5,1"
+                                                                    Visibility="{x:Bind TagChipVisibility}">
+                                                                <TextBlock Text="{x:Bind FirstTagName}"
+                                                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                                                           Foreground="{x:Bind FirstTagColour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
+                                                                           VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </StackPanel>
                                                         <Button Grid.Column="1"
                                                                 Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                                 ToolTipService.ToolTip="Launch skill"
