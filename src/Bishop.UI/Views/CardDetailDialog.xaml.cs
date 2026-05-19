@@ -1,3 +1,4 @@
+using Bishop.App.Settings;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
 using Bishop.Core.Skills;
@@ -21,6 +22,14 @@ public sealed partial class CardDetailDialog : ContentDialog
 {
     private readonly IReadOnlyList<InstalledSkill> _cardSkills;
     private readonly string _workspacePath;
+
+    private static readonly (string Id, string Label)[] Models =
+    [
+        ("claude-opus-4-7",           "Opus 4.7"),
+        ("claude-sonnet-4-6",         "Sonnet 4.6"),
+        ("claude-haiku-4-5-20251001", "Haiku 4.5"),
+    ];
+    private const string DefaultModel = "claude-sonnet-4-6";
 
     public CardDetailDialogViewModel ViewModel { get; }
 
@@ -228,22 +237,36 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     // ── Skills ────────────────────────────────────────────────────────────────
 
-    private void SkillButton_Click(object sender, RoutedEventArgs e)
+    private async void SkillButton_Click(object sender, RoutedEventArgs e)
     {
         if (_cardSkills.Count == 0) return;
-        var flyout = new MenuFlyout();
-        foreach (var skill in _cardSkills)
+        var appSettings = App.Services.GetRequiredService<IAppSettings>();
+
+        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
+        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
+
+        foreach (var (skill, i) in _cardSkills.Select((s, i) => (s, i)))
         {
             var rendered = RenderCommand(skill.Command!, ViewModel.Number, _workspacePath);
             var capturedSkill = skill;
-            var item = new MenuFlyoutItem { Text = skill.Name };
-            item.Click += async (_, _) => await LaunchSkillAsync(capturedSkill, rendered);
-            flyout.Items.Add(item);
+            var settingKey = $"skill.{skill.Name}.last_model";
+            var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
+
+            panel.Children.Add(MakeSkillRow(skill.Name, savedModel, async chosenModel =>
+            {
+                await appSettings.SetAsync(settingKey, chosenModel);
+                flyout.Hide();
+                await LaunchSkillAsync(capturedSkill, rendered, chosenModel);
+            }));
+            if (i < _cardSkills.Count - 1)
+                panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
         }
+
+        flyout.Content = panel;
         flyout.ShowAt((FrameworkElement)sender);
     }
 
-    private async Task LaunchSkillAsync(InstalledSkill skill, string rendered)
+    private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string? modelId = null)
     {
         if (skill.Stage)
         {
@@ -257,7 +280,62 @@ public sealed partial class CardDetailDialog : ContentDialog
         }
 
         var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new LaunchSkillCommand(_workspacePath, rendered, ComputeSnap()));
+        await mediator.Send(new LaunchSkillCommand(_workspacePath, rendered, ComputeSnap(), modelId));
+    }
+
+    private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch)
+    {
+        var currentModelId = selectedModelId;
+        var currentLabel = Models.FirstOrDefault(m => m.Id == selectedModelId).Label ?? "Sonnet 4.6";
+
+        var nameText = new TextBlock
+        {
+            Text = skillName,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = 120,
+            MinWidth = 60,
+            FontSize = 12,
+        };
+
+        var modelBtn = new Button
+        {
+            Content = $"{currentLabel} ▾",
+            Padding = new Thickness(4, 2, 4, 2),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(6, 0, 6, 0),
+            FontSize = 12,
+        };
+
+        var modelFlyout = new MenuFlyout();
+        foreach (var (id, label) in Models)
+        {
+            var capturedId = id;
+            var capturedLabel = label;
+            var mi = new MenuFlyoutItem { Text = label };
+            mi.Click += (_, _) =>
+            {
+                currentModelId = capturedId;
+                modelBtn.Content = $"{capturedLabel} ▾";
+            };
+            modelFlyout.Items.Add(mi);
+        }
+        modelBtn.Flyout = modelFlyout;
+
+        var launchBtn = new Button
+        {
+            Content = "▶",
+            Padding = new Thickness(4, 2, 4, 2),
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 12,
+        };
+        launchBtn.Click += async (_, _) => await onLaunch(currentModelId);
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        row.Children.Add(nameText);
+        row.Children.Add(modelBtn);
+        row.Children.Add(launchBtn);
+        return row;
     }
 
     private static string RenderCommand(string template, int cardNumber, string workspacePath) =>

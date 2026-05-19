@@ -1,5 +1,6 @@
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Lanes.AddLane;
+using Bishop.App.Settings;
 using Bishop.App.Lanes.MoveLane;
 using Bishop.App.Lanes.RemoveLane;
 using Bishop.App.Lanes.RenameLane;
@@ -37,6 +38,14 @@ public sealed partial class WorkspaceDetailPage : Page
     private double _dragStartNoteHeight;
     private IReadOnlyList<InstalledSkill> _cardSkills = [];
     private IReadOnlyList<InstalledSkill> _workspaceSkills = [];
+
+    private static readonly (string Id, string Label)[] Models =
+    [
+        ("claude-opus-4-7",           "Opus 4.7"),
+        ("claude-sonnet-4-6",         "Sonnet 4.6"),
+        ("claude-haiku-4-5-20251001", "Haiku 4.5"),
+    ];
+    private const string DefaultModel = "claude-sonnet-4-6";
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
@@ -113,40 +122,68 @@ public sealed partial class WorkspaceDetailPage : Page
         FallbackWarningBar.IsOpen = !launchedWithTerminal;
     }
 
-    private void WorkspaceSkillsButton_Click(object sender, RoutedEventArgs e)
+    private async void WorkspaceSkillsButton_Click(object sender, RoutedEventArgs e)
     {
         if (_item is null || _workspaceSkills.Count == 0) return;
-        var flyout = new MenuFlyout();
-        foreach (var skill in _workspaceSkills)
+        var appSettings = App.Services.GetRequiredService<IAppSettings>();
+
+        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
+        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
+
+        foreach (var (skill, i) in _workspaceSkills.Select((s, i) => (s, i)))
         {
             var rendered = RenderCommand(skill.Command!, null, _item.Path);
             var workspacePath = _item.Path;
             var capturedSkill = skill;
-            var item = new MenuFlyoutItem { Text = skill.Name };
-            item.Click += async (_, _) => await LaunchSkillAsync(capturedSkill, rendered, workspacePath);
-            flyout.Items.Add(item);
+            var settingKey = $"skill.{skill.Name}.last_model";
+            var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
+
+            panel.Children.Add(MakeSkillRow(skill.Name, savedModel, async chosenModel =>
+            {
+                await appSettings.SetAsync(settingKey, chosenModel);
+                flyout.Hide();
+                await LaunchSkillAsync(capturedSkill, rendered, workspacePath, chosenModel);
+            }));
+            if (i < _workspaceSkills.Count - 1)
+                panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
         }
+
+        flyout.Content = panel;
         flyout.ShowAt((FrameworkElement)sender);
     }
 
-    private void CardSkillsButton_Click(object sender, RoutedEventArgs e)
+    private async void CardSkillsButton_Click(object sender, RoutedEventArgs e)
     {
         if (_item is null || _cardSkills.Count == 0) return;
         if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
-        var flyout = new MenuFlyout();
-        foreach (var skill in _cardSkills)
+        var appSettings = App.Services.GetRequiredService<IAppSettings>();
+
+        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
+        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
+
+        foreach (var (skill, i) in _cardSkills.Select((s, i) => (s, i)))
         {
             var rendered = RenderCommand(skill.Command!, card, _item.Path);
             var workspacePath = _item.Path;
             var capturedSkill = skill;
-            var item = new MenuFlyoutItem { Text = skill.Name };
-            item.Click += async (_, _) => await LaunchSkillAsync(capturedSkill, rendered, workspacePath);
-            flyout.Items.Add(item);
+            var settingKey = $"skill.{skill.Name}.last_model";
+            var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
+
+            panel.Children.Add(MakeSkillRow(skill.Name, savedModel, async chosenModel =>
+            {
+                await appSettings.SetAsync(settingKey, chosenModel);
+                flyout.Hide();
+                await LaunchSkillAsync(capturedSkill, rendered, workspacePath, chosenModel);
+            }));
+            if (i < _cardSkills.Count - 1)
+                panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
         }
+
+        flyout.Content = panel;
         flyout.ShowAt((FrameworkElement)sender);
     }
 
-    private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath)
+    private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath, string? modelId = null)
     {
         if (skill.Stage)
         {
@@ -160,7 +197,62 @@ public sealed partial class WorkspaceDetailPage : Page
         }
 
         var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new LaunchSkillCommand(workspacePath, rendered, ComputeSnap()));
+        await mediator.Send(new LaunchSkillCommand(workspacePath, rendered, ComputeSnap(), modelId));
+    }
+
+    private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch)
+    {
+        var currentModelId = selectedModelId;
+        var currentLabel = Models.FirstOrDefault(m => m.Id == selectedModelId).Label ?? "Sonnet 4.6";
+
+        var nameText = new TextBlock
+        {
+            Text = skillName,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = 120,
+            MinWidth = 60,
+            FontSize = 12,
+        };
+
+        var modelBtn = new Button
+        {
+            Content = $"{currentLabel} ▾",
+            Padding = new Thickness(4, 2, 4, 2),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(6, 0, 6, 0),
+            FontSize = 12,
+        };
+
+        var modelFlyout = new MenuFlyout();
+        foreach (var (id, label) in Models)
+        {
+            var capturedId = id;
+            var capturedLabel = label;
+            var mi = new MenuFlyoutItem { Text = label };
+            mi.Click += (_, _) =>
+            {
+                currentModelId = capturedId;
+                modelBtn.Content = $"{capturedLabel} ▾";
+            };
+            modelFlyout.Items.Add(mi);
+        }
+        modelBtn.Flyout = modelFlyout;
+
+        var launchBtn = new Button
+        {
+            Content = "▶",
+            Padding = new Thickness(4, 2, 4, 2),
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 12,
+        };
+        launchBtn.Click += async (_, _) => await onLaunch(currentModelId);
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        row.Children.Add(nameText);
+        row.Children.Add(modelBtn);
+        row.Children.Add(launchBtn);
+        return row;
     }
 
     private static TerminalSnap ComputeSnap()
