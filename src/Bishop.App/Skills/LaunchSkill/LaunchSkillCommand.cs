@@ -1,5 +1,6 @@
+using Bishop.App.Terminal;
 using MediatR;
 
 namespace Bishop.App.Skills.LaunchSkill;
 
-public sealed record LaunchSkillCommand(string WorkspacePath, string RenderedCommand) : IRequest<bool>;
+public sealed record LaunchSkillCommand(string WorkspacePath, string RenderedCommand, TerminalSnap? Snap = null) : IRequest<bool>;

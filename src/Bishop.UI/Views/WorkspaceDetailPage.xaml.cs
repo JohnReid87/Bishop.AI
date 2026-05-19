@@ -5,12 +5,14 @@ using Bishop.App.Lanes.RemoveLane;
 using Bishop.App.Lanes.RenameLane;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
+using Bishop.App.Terminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.Core.Skills;
 using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Input;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -105,7 +107,7 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         if (_item is null) return;
         var mediator = App.Services.GetRequiredService<IMediator>();
-        var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path));
+        var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path, ComputeSnap()));
         FallbackWarningBar.IsOpen = !launchedWithTerminal;
     }
 
@@ -156,7 +158,14 @@ public sealed partial class WorkspaceDetailPage : Page
         }
 
         var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new LaunchSkillCommand(workspacePath, rendered));
+        await mediator.Send(new LaunchSkillCommand(workspacePath, rendered, ComputeSnap()));
+    }
+
+    private static TerminalSnap ComputeSnap()
+    {
+        var display = DisplayArea.GetFromWindowId(App.MainWindow!.AppWindow.Id, DisplayAreaFallback.Primary);
+        var wa = display.WorkArea;
+        return TerminalSnap.RightHalf(wa.X, wa.Y, wa.Width, wa.Height);
     }
 
     private static string RenderCommand(string template, CardViewModel? card, string workspacePath) =>
