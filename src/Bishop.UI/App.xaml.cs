@@ -1,4 +1,5 @@
 using Bishop.App;
+using Bishop.UI.Services;
 using Bishop.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -21,10 +22,14 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var connStr = GetConnectionString();
+        var dbPath = connStr["Data Source=".Length..];
+
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
-                services.AddBishopApp(GetConnectionString());
+                services.AddBishopApp(connStr);
+                services.AddSingleton(_ => new DbChangeWatcher(dbPath));
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<WorkspaceBoardViewModel>();
                 services.AddTransient<WorkspaceNotesViewModel>();

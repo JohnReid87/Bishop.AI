@@ -1,5 +1,6 @@
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Lanes.AddLane;
+using Bishop.UI.Services;
 using Bishop.App.Settings;
 using Bishop.App.Lanes.MoveLane;
 using Bishop.App.Lanes.RemoveLane;
@@ -30,6 +31,7 @@ namespace Bishop.UI.Views;
 
 public sealed partial class WorkspaceDetailPage : Page
 {
+    private readonly DbChangeWatcher _dbWatcher;
     private WorkspaceItemViewModel? _item;
     private CardViewModel? _draggedCard;
     private LaneViewModel? _dragSourceLane;
@@ -54,12 +56,14 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         Board = App.Services.GetRequiredService<WorkspaceBoardViewModel>();
         Notes = App.Services.GetRequiredService<WorkspaceNotesViewModel>();
+        _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         InitializeComponent();
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
+        _dbWatcher.DatabaseChanged += OnDatabaseChanged;
 
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
@@ -75,9 +79,16 @@ public sealed partial class WorkspaceDetailPage : Page
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
+        _dbWatcher.DatabaseChanged -= OnDatabaseChanged;
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
         _ = Notes.FlushAsync();
+    }
+
+    private void OnDatabaseChanged(object? sender, EventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(async () =>
+            await Board.RefreshCommand.ExecuteAsync(null));
     }
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
