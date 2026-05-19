@@ -1,3 +1,4 @@
+using Bishop.App.Git;
 using Bishop.App.Ping;
 using Bishop.App.Settings;
 using Bishop.App.Terminal;
@@ -17,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<BishopDbContext>(options =>
             options.UseSqlite(dbConnectionString));
         services.AddHostedService<DatabaseInitializer>();
+        services.AddSingleton<IGitCli, GitCli>();
         services.AddScoped<IAppSettings, AppSettingsService>();
 #pragma warning disable CA1416 // Bishop.AI is Windows-only; TerminalLauncher requires Windows APIs
         services.AddSingleton<ITerminalLauncher, TerminalLauncher>();
