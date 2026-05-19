@@ -1,9 +1,13 @@
 using Bishop.UI.ViewModels;
 using Bishop.UI.Views;
 using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using System.IO;
+using System.Text.Json;
+using Windows.Graphics;
 using Windows.Storage.Pickers;
 using Windows.UI;
 using WinRT.Interop;
@@ -20,6 +24,8 @@ public sealed partial class MainWindow : Window
         ViewModel = viewModel;
 
         SetupTitleBar();
+        ApplyWindowGeometry();
+        Closed += (_, _) => SaveWindowGeometry();
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         WorkspacesListView.DragItemsCompleted += WorkspacesListView_DragItemsCompleted;
@@ -144,4 +150,61 @@ public sealed partial class MainWindow : Window
         if (await confirmDialog.ShowAsync() == ContentDialogResult.Primary)
             await ViewModel.DeleteWorkspaceAsync(item);
     }
+
+    private void ApplyWindowGeometry()
+    {
+        var saved = LoadWindowGeometry();
+        if (saved is not null && IsGeometryOnScreen(saved))
+            AppWindow.MoveAndResize(new RectInt32(saved.X, saved.Y, saved.Width, saved.Height));
+        else
+            ApplyDefaultGeometry();
+    }
+
+    private void ApplyDefaultGeometry()
+    {
+        var wa = DisplayArea.Primary.WorkArea;
+        AppWindow.MoveAndResize(new RectInt32(wa.X, wa.Y, wa.Width / 2, wa.Height));
+    }
+
+    private static bool IsGeometryOnScreen(WindowGeometry g)
+    {
+        var displays = DisplayArea.FindAll();
+        for (var i = 0; i < displays.Count; i++)
+        {
+            var wa = displays[i].WorkArea;
+            if (g.X < wa.X + wa.Width && g.X + g.Width > wa.X &&
+                g.Y < wa.Y + wa.Height && g.Y + g.Height > wa.Y)
+                return true;
+        }
+        return false;
+    }
+
+    private void SaveWindowGeometry()
+    {
+        try
+        {
+            var pos = AppWindow.Position;
+            var size = AppWindow.Size;
+            Directory.CreateDirectory(Path.GetDirectoryName(WindowGeometryFilePath)!);
+            File.WriteAllText(WindowGeometryFilePath, JsonSerializer.Serialize(
+                new WindowGeometry(pos.X, pos.Y, size.Width, size.Height)));
+        }
+        catch { }
+    }
+
+    private static WindowGeometry? LoadWindowGeometry()
+    {
+        if (!File.Exists(WindowGeometryFilePath)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<WindowGeometry>(File.ReadAllText(WindowGeometryFilePath));
+        }
+        catch { return null; }
+    }
+
+    private static string WindowGeometryFilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Bishop.AI", "window-geometry.json");
+
+    private sealed record WindowGeometry(int X, int Y, int Width, int Height);
 }
