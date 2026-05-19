@@ -51,7 +51,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop card claim [--lane <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; exits non-zero if the source lane is empty
 - `bishop card remove <card-id> [-w]`
 - `bishop lane list|add|rename|move|remove [-w]` — lane CRUD; `remove` refuses non-empty lanes
-- `bishop tag list|add|remove [-w]`
+- `bishop tag list|add [--colour <hex>]|remove [-w]` — `add` accepts an optional `--colour` flag (6-char hex with or without `#`; defaults to `#888888`)
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
 
 Card identifiers accept the first 8 hex chars of the GUID as a short-ID prefix (ambiguous prefixes are rejected with a list of candidates on stderr).

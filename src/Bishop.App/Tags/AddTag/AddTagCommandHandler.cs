@@ -20,7 +20,7 @@ public sealed class AddTagCommandHandler : IRequestHandler<AddTagCommand, Tag>
         if (existing is not null)
             throw new InvalidOperationException($"Tag '{request.Name}' already exists in this workspace.");
 
-        var tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = request.WorkspaceId, Name = request.Name };
+        var tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = request.WorkspaceId, Name = request.Name, Colour = request.Colour ?? "#888888" };
         _db.Tags.Add(tag);
         await _db.SaveChangesAsync(cancellationToken);
         return tag;

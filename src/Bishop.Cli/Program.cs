@@ -440,16 +440,31 @@ tagListCmd.SetHandler(async (string? workspace, bool json) =>
 // ── tag add ───────────────────────────────────────────────────────────────────
 
 var tagAddNameArg = new Argument<string>("name", "Tag name");
+var tagColourOpt = new Option<string?>("--colour", "Tag colour as 6-char hex (e.g. #4A90D9 or 4A90D9); defaults to #888888");
 
 var tagAddCmd = new Command("add", "Add a tag to a workspace");
 tagAddCmd.AddArgument(tagAddNameArg);
 tagAddCmd.AddOption(workspaceOpt);
-tagAddCmd.SetHandler(async (string name, string? workspace) =>
+tagAddCmd.AddOption(tagColourOpt);
+tagAddCmd.SetHandler(async (string name, string? workspace, string? colour) =>
 {
+    string? normalisedColour = null;
+    if (colour is not null)
+    {
+        var hex = colour.TrimStart('#');
+        if (hex.Length != 6 || !hex.All(c => Uri.IsHexDigit(c)))
+        {
+            Console.Error.WriteLine($"Invalid colour '{colour}': must be a 6-char hex string (e.g. #4A90D9 or 4A90D9).");
+            Environment.Exit(1);
+            return;
+        }
+        normalisedColour = $"#{hex.ToUpperInvariant()}";
+    }
+
     var ws = await resolver.ResolveAsync(workspace);
-    var tag = await mediator.Send(new AddTagCommand(ws.Id, name));
+    var tag = await mediator.Send(new AddTagCommand(ws.Id, name, normalisedColour));
     Console.WriteLine($"Added tag '{tag.Name}' to workspace '{ws.Name}'");
-}, tagAddNameArg, workspaceOpt);
+}, tagAddNameArg, workspaceOpt, tagColourOpt);
 
 // ── tag remove ────────────────────────────────────────────────────────────────
 
