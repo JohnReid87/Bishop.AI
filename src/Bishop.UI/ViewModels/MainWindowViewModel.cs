@@ -9,6 +9,7 @@ using MediatR;
 using Microsoft.UI.Xaml;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 
 namespace Bishop.UI.ViewModels;
 
@@ -22,8 +23,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(EmptyStateVisibility))]
     public partial WorkspaceItemViewModel? SelectedWorkspace { get; set; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ExpandedPanelVisibility))]
+    [NotifyPropertyChangedFor(nameof(CollapsedPanelVisibility))]
+    public partial bool IsPaneOpen { get; set; } = true;
+
     public Visibility EmptyStateVisibility =>
         Workspaces.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility ExpandedPanelVisibility => IsPaneOpen ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility CollapsedPanelVisibility => IsPaneOpen ? Visibility.Collapsed : Visibility.Visible;
 
     public MainWindowViewModel(IMediator mediator)
     {
@@ -33,6 +42,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public async Task LoadAsync()
     {
+        await LoadNavPrefsAsync();
         var workspaces = await _mediator.Send(new ListWorkspacesQuery());
         Workspaces.Clear();
         foreach (var w in workspaces)
@@ -41,9 +51,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnSelectedWorkspaceChanged(WorkspaceItemViewModel? value)
     {
+        foreach (var w in Workspaces)
+            w.IsSelected = w == value;
         if (value is not null)
             value.IsPathMissing = !Directory.Exists(value.Path);
     }
+
+    partial void OnIsPaneOpenChanged(bool value) => _ = SaveNavPrefsAsync();
 
     [RelayCommand]
     public async Task AddWorkspaceAsync(AddWorkspaceDialogViewModel dialogVm)
@@ -87,4 +101,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private static WorkspaceItemViewModel ToViewModel(Bishop.Core.Workspace w) =>
         new() { Id = w.Id, Name = w.Name, Path = w.Path, Position = w.Position };
+
+    private async Task LoadNavPrefsAsync()
+    {
+        if (!File.Exists(NavPrefsFilePath)) return;
+        try
+        {
+            var json = await File.ReadAllTextAsync(NavPrefsFilePath);
+            var prefs = JsonSerializer.Deserialize<NavPrefs>(json);
+            if (prefs is not null)
+                IsPaneOpen = prefs.IsPaneOpen;
+        }
+        catch { }
+    }
+
+    private async Task SaveNavPrefsAsync()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(NavPrefsFilePath)!);
+            await File.WriteAllTextAsync(NavPrefsFilePath, JsonSerializer.Serialize(new NavPrefs(IsPaneOpen)));
+        }
+        catch { }
+    }
+
+    private static string NavPrefsFilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Bishop.AI", "nav-prefs.json");
+
+    private sealed record NavPrefs(bool IsPaneOpen);
 }

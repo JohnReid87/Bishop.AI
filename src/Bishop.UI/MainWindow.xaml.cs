@@ -105,6 +105,12 @@ public sealed partial class MainWindow : Window
         FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
     }
 
+    private void WorkspaceCollapsedButton_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is WorkspaceItemViewModel item)
+            ViewModel.SelectedWorkspace = item;
+    }
+
     private async void RepathWorkspace_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)

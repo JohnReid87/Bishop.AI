@@ -9,6 +9,7 @@ public sealed partial class WorkspaceItemViewModel : ObservableObject
     public Guid Id { get; init; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FirstLetter))]
     public partial string Name { get; set; } = string.Empty;
 
     [ObservableProperty]
@@ -20,6 +21,14 @@ public sealed partial class WorkspaceItemViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PathMissingVisibility))]
     public partial bool IsPathMissing { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSelectedVisibility))]
+    public partial bool IsSelected { get; set; }
+
+    public string FirstLetter => Name.Length > 0 ? Name[0..1].ToUpperInvariant() : "?";
+
+    public Visibility IsSelectedVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility PathMissingVisibility =>
         IsPathMissing ? Visibility.Visible : Visibility.Collapsed;
