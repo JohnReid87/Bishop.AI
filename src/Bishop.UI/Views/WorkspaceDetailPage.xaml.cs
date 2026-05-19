@@ -10,6 +10,7 @@ using Bishop.Core.Skills;
 using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -17,6 +18,8 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using System.ComponentModel;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace Bishop.UI.Views;
 
@@ -331,5 +334,14 @@ public sealed partial class WorkspaceDetailPage : Page
     private void NotesSplitter_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
     {
         _isDraggingNotes = false;
+    }
+
+    private async void NotesTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.S) return;
+        var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
+        if (!ctrl.HasFlag(CoreVirtualKeyStates.Down)) return;
+        e.Handled = true;
+        await Notes.QuickSaveAsync();
     }
 }

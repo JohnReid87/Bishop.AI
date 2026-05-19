@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
 using System.Text.Json;
+using Windows.UI.Text;
 
 namespace Bishop.UI.ViewModels;
 
@@ -28,6 +29,22 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     [ObservableProperty]
     public partial double PanelHeight { get; set; } = 200;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SaveStatusFontStyle))]
+    [NotifyPropertyChangedFor(nameof(SaveStatusOpacity))]
+    public partial bool SaveStatusIsEditing { get; set; }
+
+    [ObservableProperty]
+    public partial bool SaveStatusIsError { get; set; }
+
+    [ObservableProperty]
+    public partial string SaveStatusText { get; set; } = string.Empty;
+
+    public FontStyle SaveStatusFontStyle =>
+        SaveStatusIsEditing ? FontStyle.Italic : FontStyle.Normal;
+
+    public double SaveStatusOpacity => SaveStatusIsEditing ? 0.5 : 1.0;
+
     public string ChevronGlyph => IsExpanded ? "" : "";
 
     public WorkspaceNotesViewModel()
@@ -45,6 +62,9 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     partial void OnNotesContentChanged(string value)
     {
         if (_isLoadingFromFile) return;
+        SaveStatusIsEditing = true;
+        SaveStatusIsError = false;
+        SaveStatusText = "Editing…";
         _debounceCts?.Cancel();
         _debounceCts = new CancellationTokenSource();
         _ = DebounceAndSaveAsync(_debounceCts.Token);
@@ -74,7 +94,14 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         IsExternalChangeBarVisible = false;
 
         var content = await ReadNotesAsync();
+        if (!File.Exists(NotesFilePath) && Directory.Exists(workspacePath))
+            await File.WriteAllTextAsync(NotesFilePath, string.Empty);
         _lastSavedContent = content;
+        SaveStatusIsEditing = false;
+        SaveStatusIsError = false;
+        SaveStatusText = File.Exists(NotesFilePath)
+            ? $"Saved {File.GetLastWriteTime(NotesFilePath):HH:mm:ss}"
+            : string.Empty;
         _isLoadingFromFile = true;
         NotesContent = content;
         _isLoadingFromFile = false;
@@ -155,6 +182,14 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         await SavePrefsAsync();
     }
 
+    public async Task QuickSaveAsync()
+    {
+        _debounceCts?.Cancel();
+        await WriteNotesAsync(NotesContent);
+        if (!SaveStatusIsError)
+            IsExternalChangeBarVisible = false;
+    }
+
     private async Task LoadPrefsAsync()
     {
         if (!File.Exists(PrefsFilePath)) return;
@@ -201,11 +236,25 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     private async Task WriteNotesAsync(string content)
     {
         if (string.IsNullOrEmpty(_workspacePath)) return;
+        if (content == _lastSavedContent)
+        {
+            if (!SaveStatusIsError)
+                SaveStatusText = $"Saved {DateTime.Now:HH:mm:ss}";
+            return;
+        }
         if (_watcher is not null) _watcher.EnableRaisingEvents = false;
         try
         {
             await File.WriteAllTextAsync(NotesFilePath, content);
             _lastSavedContent = content;
+            SaveStatusText = $"Saved {DateTime.Now:HH:mm:ss}";
+            SaveStatusIsEditing = false;
+            SaveStatusIsError = false;
+        }
+        catch (Exception ex)
+        {
+            SaveStatusText = $"Save failed — {ex.Message}";
+            SaveStatusIsError = true;
         }
         finally
         {

@@ -267,19 +267,36 @@
                 <Button Grid.Row="0"
                         Command="{x:Bind Notes.ToggleCommand}"
                         HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
+                        HorizontalContentAlignment="Stretch"
                         Background="Transparent"
                         BorderThickness="0"
                         Padding="16,8"
-                        CornerRadius="0">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="{x:Bind Notes.ChevronGlyph, Mode=OneWay}"
-                                  FontSize="12"
-                                  VerticalAlignment="Center"/>
-                        <TextBlock Text="Notes"
-                                   Style="{StaticResource BodyStrongTextBlockStyle}"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
+                        CornerRadius="0"
+                        ToolTipService.ToolTip="Ctrl+S to save">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <FontIcon Glyph="{x:Bind Notes.ChevronGlyph, Mode=OneWay}"
+                                      FontSize="12"
+                                      VerticalAlignment="Center"/>
+                            <TextBlock Text="Notes"
+                                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="{x:Bind Notes.SaveStatusText, Mode=OneWay}"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center"
+                                   FontSize="11"
+                                   Foreground="{StaticResource AppTextSecondaryBrush}"
+                                   FontStyle="{x:Bind Notes.SaveStatusFontStyle, Mode=OneWay}"
+                                   Opacity="{x:Bind Notes.SaveStatusOpacity, Mode=OneWay}"
+                                   Visibility="{x:Bind Notes.SaveStatusIsError, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                        <TextBlock Text="{x:Bind Notes.SaveStatusText, Mode=OneWay}"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center"
+                                   FontSize="11"
+                                   Foreground="Red"
+                                   Visibility="{x:Bind Notes.SaveStatusIsError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    </Grid>
                 </Button>
 
                 <StackPanel Grid.Row="1"
@@ -303,13 +320,15 @@
                             </StackPanel>
                         </InfoBar.Content>
                     </InfoBar>
-                    <TextBox Text="{x:Bind Notes.NotesContent, Mode=TwoWay}"
+                    <TextBox x:Name="NotesTextBox"
+                             Text="{x:Bind Notes.NotesContent, Mode=TwoWay}"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
                              FontFamily="Cascadia Mono"
                              Height="{x:Bind Notes.PanelHeight, Mode=OneWay}"
                              Margin="16,0,16,16"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             PreviewKeyDown="NotesTextBox_PreviewKeyDown"/>
                 </StackPanel>
             </Grid>
         </Grid>
