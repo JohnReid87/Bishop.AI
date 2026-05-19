@@ -38,7 +38,7 @@
                         Visibility="Collapsed"
                         Click="WorkspaceSkillsButton_Click"/>
                 <Button x:Name="LaunchButton"
-                        Content="Launch Terminal"
+                        Content="Terminal"
                         Click="LaunchButton_Click"/>
             </StackPanel>
         </Grid>
