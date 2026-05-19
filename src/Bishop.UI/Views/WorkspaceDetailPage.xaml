@@ -133,7 +133,6 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <Grid Grid.Row="0" RightTapped="LaneHeader_RightTapped">
@@ -157,7 +156,7 @@
                                           ItemsSource="{x:Bind Cards}"
                                           SelectionMode="None"
                                           AllowDrop="True"
-                                          MinHeight="40"
+                                          MinHeight="200"
                                           DragOver="Cards_DragOver"
                                           DragLeave="Cards_DragLeave"
                                           Drop="Cards_Drop">
@@ -174,7 +173,8 @@
                                                     CornerRadius="4"
                                                     Margin="8,0,8,4"
                                                     CanDrag="True"
-                                                    DragStarting="Card_DragStarting">
+                                                    DragStarting="Card_DragStarting"
+                                                    DropCompleted="Card_DropCompleted">
                                                 <StackPanel>
                                                     <!-- Card header: short ID (todo) + action buttons -->
                                                     <Grid Padding="10,4,4,4"
@@ -215,15 +215,9 @@
                                     </ListView.ItemTemplate>
                                 </ListView>
 
-                                <TextBlock Grid.Row="2"
-                                           Text="No cards"
-                                           Visibility="{x:Bind EmptyPlaceholderVisibility, Mode=OneWay}"
-                                           Foreground="{StaticResource AppTextTertiaryBrush}"
-                                           FontStyle="Italic"
-                                           Padding="12,4"/>
 
-                                <!-- Drag-target highlight overlay -->
-                                <Border Grid.RowSpan="3"
+<!-- Drag-target highlight overlay -->
+                                <Border Grid.RowSpan="2"
                                         IsHitTestVisible="False"
                                         CornerRadius="8"
                                         BorderBrush="{StaticResource AppDragTargetBorderBrush}"

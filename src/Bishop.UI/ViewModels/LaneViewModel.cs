@@ -1,5 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml;
 using System.Collections.ObjectModel;
 
 namespace Bishop.UI.ViewModels;
@@ -12,12 +11,4 @@ public sealed partial class LaneViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool IsDropTarget { get; set; }
-
-    public Visibility EmptyPlaceholderVisibility =>
-        Cards.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-
-    public LaneViewModel()
-    {
-        Cards.CollectionChanged += (_, _) => OnPropertyChanged(nameof(EmptyPlaceholderVisibility));
-    }
 }

@@ -168,6 +168,12 @@ public sealed partial class WorkspaceDetailPage : Page
         _dragSourceLane = Board.Lanes.FirstOrDefault(l => l.Id == _draggedCard.LaneId);
         e.Data.RequestedOperation = DataPackageOperation.Move;
         e.Data.SetText(_draggedCard.Id.ToString());
+        LanesListView.CanReorderItems = false;
+    }
+
+    private void Card_DropCompleted(UIElement sender, DropCompletedEventArgs e)
+    {
+        LanesListView.CanReorderItems = true;
     }
 
     private void Cards_DragOver(object sender, DragEventArgs e)
