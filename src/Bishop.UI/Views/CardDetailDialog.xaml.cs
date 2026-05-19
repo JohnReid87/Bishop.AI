@@ -9,6 +9,8 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -21,12 +23,12 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     public CardDetailDialogViewModel ViewModel { get; }
 
-    public CardDetailDialog(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, string workspacePath)
+    public CardDetailDialog(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, string workspacePath, Guid workspaceId)
     {
         var mediator = App.Services.GetRequiredService<IMediator>();
         _cardSkills = cardSkills;
         _workspacePath = workspacePath;
-        ViewModel = new CardDetailDialogViewModel(card, cardSkills, mediator);
+        ViewModel = new CardDetailDialogViewModel(card, cardSkills, workspaceId, mediator);
         InitializeComponent();
         ViewModel.PropertyChanged += (_, e) =>
         {
@@ -100,6 +102,119 @@ public sealed partial class CardDetailDialog : ContentDialog
                 await ViewModel.CommitDescriptionAsync(DescriptionTextBox.Text);
             }
         }
+    }
+
+    // ── Tag editing ───────────────────────────────────────────────────────────
+
+    private async void RemoveTag_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is CardTagViewModel tag)
+            await ViewModel.RemoveTagAsync(tag);
+    }
+
+    private async void AddTag_Click(object sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<Bishop.Core.Tag> allTags;
+        try
+        {
+            allTags = await ViewModel.GetWorkspaceTagsAsync();
+        }
+        catch
+        {
+            ViewModel.EditError = "Failed to load tags.";
+            return;
+        }
+
+        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
+        var panel = new StackPanel { Spacing = 4, Width = 220, Padding = new Thickness(6) };
+        var searchBox = new TextBox { PlaceholderText = "Search tags…" };
+        var tagListPanel = new StackPanel { Spacing = 2 };
+
+        panel.Children.Add(searchBox);
+        panel.Children.Add(tagListPanel);
+        flyout.Content = panel;
+
+        void RefreshList(string filter)
+        {
+            tagListPanel.Children.Clear();
+            var already = ViewModel.Tags.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var matches = allTags
+                .Where(t => !already.Contains(t.Name) &&
+                            (filter.Length == 0 || t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            foreach (var tag in matches)
+            {
+                var capturedTag = tag;
+                tagListPanel.Children.Add(MakeTagRow(tag.Name, tag.Colour, async () =>
+                {
+                    flyout.Hide();
+                    await ViewModel.AddTagAsync(capturedTag.Name, capturedTag.Colour);
+                }));
+            }
+
+            var trimmed = filter.Trim();
+            if (trimmed.Length > 0 &&
+                !matches.Any(t => t.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase)) &&
+                !already.Contains(trimmed))
+            {
+                tagListPanel.Children.Add(MakeTagRow($"Create \"{trimmed}\"", "#888888", async () =>
+                {
+                    flyout.Hide();
+                    await ViewModel.AddTagAsync(trimmed, "#888888");
+                }));
+            }
+        }
+
+        searchBox.TextChanged += (_, _) => RefreshList(searchBox.Text);
+        RefreshList(string.Empty);
+
+        flyout.ShowAt((FrameworkElement)sender);
+        searchBox.Focus(FocusState.Programmatic);
+    }
+
+    private static Button MakeTagRow(string label, string colour, Func<Task> onSelect)
+    {
+        var dot = new Border
+        {
+            Width = 10,
+            Height = 10,
+            CornerRadius = new CornerRadius(2),
+            Background = BrushFromHex(colour),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 6, 0),
+        };
+        var text = new TextBlock
+        {
+            Text = label,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(dot);
+        row.Children.Add(text);
+
+        var btn = new Button
+        {
+            Content = row,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(6, 3, 6, 3),
+            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            BorderThickness = new Thickness(0),
+        };
+        btn.Click += async (_, _) => await onSelect();
+        return btn;
+    }
+
+    private static SolidColorBrush BrushFromHex(string hex)
+    {
+        hex = hex.TrimStart('#').PadRight(6, '0');
+        if (hex.Length == 6) hex = "FF" + hex;
+        return new SolidColorBrush(Windows.UI.Color.FromArgb(
+            Convert.ToByte(hex[..2], 16),
+            Convert.ToByte(hex[2..4], 16),
+            Convert.ToByte(hex[4..6], 16),
+            Convert.ToByte(hex[6..8], 16)));
     }
 
     // ── Skills ────────────────────────────────────────────────────────────────

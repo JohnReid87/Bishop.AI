@@ -93,28 +93,50 @@
                  LostFocus="DescriptionTextBox_LostFocus"
                  KeyDown="DescriptionTextBox_KeyDown"/>
 
-        <!-- Tags -->
-        <ItemsControl
-            ItemsSource="{x:Bind ViewModel.Tags}"
-            Visibility="{x:Bind ViewModel.TagsVisibility}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="4"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:CardTagViewModel">
-                    <Border Background="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"
-                            CornerRadius="3"
-                            Padding="5,1">
-                        <TextBlock Text="{x:Bind Name}"
-                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                   Foreground="{x:Bind Colour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
-                                   VerticalAlignment="Center"/>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <!-- Tags: existing chips with ×, then + to add -->
+        <StackPanel Orientation="Horizontal" Spacing="4">
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Tags}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="4"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CardTagViewModel">
+                        <Border Background="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"
+                                CornerRadius="3"
+                                Padding="4,1">
+                            <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Name}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{x:Bind Colour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
+                                           VerticalAlignment="Center"/>
+                                <Button Content="×"
+                                        Click="RemoveTag_Click"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="1,0"
+                                        MinWidth="0"
+                                        MinHeight="0"
+                                        FontSize="10"
+                                        Foreground="{x:Bind Colour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
+                                        VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button x:Name="AddTagButton"
+                    Click="AddTag_Click"
+                    Padding="5,1"
+                    BorderThickness="0"
+                    CornerRadius="3"
+                    Background="{StaticResource AppDividerBrush}">
+                <TextBlock Text="+"
+                           Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+            </Button>
+        </StackPanel>
 
         <!-- Inline save error -->
         <TextBlock

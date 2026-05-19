@@ -1,21 +1,25 @@
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.UpdateCard;
+using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.Core;
 using Bishop.Core.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
 using Microsoft.UI.Xaml;
+using System.Collections.ObjectModel;
 
 namespace Bishop.UI.ViewModels;
 
 public sealed partial class CardDetailDialogViewModel : ObservableObject
 {
     private readonly IMediator _mediator;
+    private readonly Guid _workspaceId;
 
     public Guid CardId { get; }
     public int Number { get; }
     public string LaneName { get; }
-    public IReadOnlyList<CardTagViewModel> Tags { get; }
+    public ObservableCollection<CardTagViewModel> Tags { get; } = [];
     public Visibility SkillsButtonVisibility { get; }
     public bool Updated { get; private set; }
 
@@ -51,9 +55,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public Visibility NoDescriptionVisibility =>
         string.IsNullOrWhiteSpace(Description) ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility TagsVisibility =>
-        Tags.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-
     public Visibility EditErrorVisibility =>
         string.IsNullOrEmpty(EditError) ? Visibility.Collapsed : Visibility.Visible;
 
@@ -67,17 +68,61 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public Visibility DeleteConfirmVisibility =>
         ShowDeleteConfirm ? Visibility.Visible : Visibility.Collapsed;
 
-    public CardDetailDialogViewModel(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, IMediator mediator)
+    public CardDetailDialogViewModel(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, Guid workspaceId, IMediator mediator)
     {
         _mediator = mediator;
+        _workspaceId = workspaceId;
         CardId = card.Id;
         Number = card.Number;
         Title = card.Title;
         Description = card.Description;
         LaneName = card.LaneName;
-        Tags = card.Tags;
+        foreach (var t in card.Tags)
+            Tags.Add(t);
         SkillsButtonVisibility = cardSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    public Task<IReadOnlyList<Tag>> GetWorkspaceTagsAsync() =>
+        _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
+
+    public async Task RemoveTagAsync(CardTagViewModel tag)
+    {
+        Tags.Remove(tag);
+        var names = Tags.Select(t => t.Name).ToList();
+        try
+        {
+            await _mediator.Send(new UpdateCardCommand(CardId, null, null, true, names));
+            EditError = null;
+            Updated = true;
+        }
+        catch
+        {
+            Tags.Add(tag);
+            EditError = "Failed to remove tag.";
+        }
+    }
+
+    public async Task AddTagAsync(string name, string colour)
+    {
+        if (Tags.Any(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            return;
+        var tagVm = new CardTagViewModel { Name = name, Colour = colour };
+        Tags.Add(tagVm);
+        var names = Tags.Select(t => t.Name).ToList();
+        try
+        {
+            await _mediator.Send(new UpdateCardCommand(CardId, null, null, true, names));
+            EditError = null;
+            Updated = true;
+        }
+        catch
+        {
+            Tags.Remove(tagVm);
+            EditError = "Failed to add tag.";
+        }
+    }
+
+    // ── Title editing ─────────────────────────────────────────────────────────
 
     public void StartTitleEdit() => IsTitleEditing = true;
 
@@ -109,6 +154,8 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         }
     }
 
+    // ── Description editing ───────────────────────────────────────────────────
+
     public void StartDescriptionEdit() => IsDescriptionEditing = true;
 
     public void CancelDescriptionEdit() => IsDescriptionEditing = false;
@@ -138,6 +185,8 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
             EditError = "Failed to save description.";
         }
     }
+
+    // ── Delete ────────────────────────────────────────────────────────────────
 
     [RelayCommand]
     private void RequestDelete() => ShowDeleteConfirm = true;
