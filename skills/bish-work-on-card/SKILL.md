@@ -1,13 +1,13 @@
 ---
-name: work-on-card-bishop
+name: bish-work-on-card
 description: Fetches a Bishop card by Number (#N) from the current workspace, auto-moves it to "Doing", explores the codebase, implements the changes, then prompts before moving to "Done" and committing with a "(card #N)" reference. Use when the user wants to work on a specific Bishop card.
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.scope: card
-bishop.command: /work-on-card-bishop {{card_number}}
+bishop.command: /bish-work-on-card {{card_number}}
 bishop.stage: true
 ---
 
-Accepts an **optional** card Number (`work-on-card-bishop 42` or `work-on-card-bishop #42`).
+Accepts an **optional** card Number (`bish-work-on-card 42` or `bish-work-on-card #42`).
 If omitted, claims the top card from "To Do" and asks the user to confirm
 before proceeding.
 

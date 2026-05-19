@@ -8,7 +8,7 @@ Single source of truth for "is this in scope or not". When the answer changes, u
 
 Deep Claude Code integration on top of the kanban + `bishop` CLI scaffolding that already exists.
 
-The kanban tracks work state per workspace. Skills (`work-on-card-bishop`, `grill-me-bishop`, future siblings) shell out to the `bishop` CLI to read and mutate that state. The user reviews everything material in the conversational loop. Bishop.UI is the interactive surface over the same state — a kanban view with a narrow set of direct mutations (see [Resolved scope decisions](#resolved-scope-decisions)). No agent observability dashboard, no embedded terminals, no plugin system.
+The kanban tracks work state per workspace. Skills (`bish-work-on-card`, `bish-grill-me`, future siblings) shell out to the `bishop` CLI to read and mutate that state. The user reviews everything material in the conversational loop. Bishop.UI is the interactive surface over the same state — a kanban view with a narrow set of direct mutations (see [Resolved scope decisions](#resolved-scope-decisions)). No agent observability dashboard, no embedded terminals, no plugin system.
 
 The differentiator is the **layer above the editor** — cross-workspace orchestration + kanban as work-state source of truth + skill integration. The editor layer (VS Code + Claude extension) already exists; Bishop doesn't compete inside its box.
 
@@ -28,7 +28,7 @@ The `bishop` CLI is the primary mutation surface for skills and automated workfl
 **Decision updated:** the WinUI app now supports a narrow set of direct mutations — card detail dialog (with delete), drag-and-drop card move, and lane CRUD. The previous stance was: *"The WinUI app is a read-only viewer of the same state. UI editability is possible later but not required for any committed milestone."* This held while the board was scaffolding; it no longer reflects what is actually being built. The CLI remains the automation surface; the UI is the interactive surface for the human user and handles these mutations directly rather than routing through the CLI.
 
 ### No pending-move review queue
-Card moves apply immediately when the CLI is called. Human-in-the-loop gating happens at the **skill** level — `work-on-card-bishop` prompts the user in the conversation before invoking `bishop card move ... --to-lane Done`. By the time the CLI runs, the move is already approved.
+Card moves apply immediately when the CLI is called. Human-in-the-loop gating happens at the **skill** level — `bish-work-on-card` prompts the user in the conversation before invoking `bishop card move ... --to-lane Done`. By the time the CLI runs, the move is already approved.
 
 Cut because the original "Bishop surfaces pending move requests for review" design (notes/_archive/claude-code-integration.md §3) was overengineering for the workflow that actually emerged. Revisit only if non-interactive agent runs become a real use case.
 
@@ -38,7 +38,7 @@ Bishop does not inject anything into workspace `CLAUDE.md` files. Skills are com
 Cut because (a) workspaces attached from existing repos (FotM.IO-style) already have authored `CLAUDE.md` files and auto-seeding risks collisions, (b) keeping ownership clean is cheap, (c) the skill is already loaded globally for the only consumer that matters.
 
 ### Skills live in this repo
-The `work-on-card-bishop` and `grill-me-bishop` skills are vendored under `skills/` in the Bishop.AI repo, and `bishop install-skills` copies them to `%USERPROFILE%/.claude/skills/`. Skills version with Bishop; CLI evolution and skill text update in the same commit.
+The `bish-work-on-card` and `bish-grill-me` skills are vendored under `skills/` in the Bishop.AI repo, and `bishop install-skills` copies them to `%USERPROFILE%/.claude/skills/`. Skills version with Bishop; CLI evolution and skill text update in the same commit.
 
 ### CLI surface is unversioned and additive-only
 No `bishop v1 ...` prefix. Commands and flags are not renamed or removed once shipped — additive changes only, in the style of `gh`. Stated here explicitly so a future quietly-renamed flag doesn't silently break the skills.

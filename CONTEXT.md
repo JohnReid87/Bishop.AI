@@ -19,7 +19,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 ### Repository layout
 - `src/` — .NET projects (Core, Data, App, Cli, UI).
 - `tests/Bishop.Tests/` — xUnit project.
-- `skills/` — vendored Claude Code skill files (`work-on-card-bishop`, `grill-me-bishop`, `audit-docs-bishop`) shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`.
+- `skills/` — vendored Claude Code skill files (`bish-work-on-card`, `bish-grill-me`, `bish-audit-docs`) shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`.
 - `installer/` — Wix v5 project that produces the per-user MSI. See `installer/README.md`.
 - `notes/_archive/` — pre-grill design notes; preserved for decision rationale but superseded by DIRECTION.md.
 
@@ -38,7 +38,7 @@ Dependency direction: **Core → Data → App → { UI, Cli }**. UI and Cli go t
 A workspace owns an ordered list of lanes; the three default lanes ("To Do", "Doing", "Done") are seeded on workspace creation. Cards belong to a single lane and carry an ordered position. Tags are workspace-scoped (with optional colour) and attach to cards via the `CardTag` join entity.
 
 ### CLI surface (`bishop`)
-The `bishop` console executable is the primary integration surface for skills (e.g. `work-on-card-bishop`). Unversioned and additive-only — commands and flags are not renamed or removed once shipped.
+The `bishop` console executable is the primary integration surface for skills (e.g. `bish-work-on-card`). Unversioned and additive-only — commands and flags are not renamed or removed once shipped.
 
 - `bishop workspace list [--json]`
 - `bishop workspace current [--json]` — resolves the workspace from the current working directory by ancestor match
@@ -67,7 +67,7 @@ Bishop.UI is the interactive surface; the CLI remains the automation surface for
 - **Theming:** dark theme applied across shell, nav, board chrome, and dialogs.
 
 ### Skill integration
-Bundled Claude Code skills (`skills/work-on-card-bishop`, `skills/grill-me-bishop`, `skills/audit-docs-bishop`) ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
+Bundled Claude Code skills (`skills/bish-work-on-card`, `skills/bish-grill-me`, `skills/bish-audit-docs`) ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
 
 - `name` — skill identifier (required).
 - `description` — user-facing summary.

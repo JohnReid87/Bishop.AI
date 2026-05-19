@@ -630,6 +630,17 @@ installSkillsCmd.SetHandler(() =>
         "skills");
     Directory.CreateDirectory(destRoot);
 
+    string[] deprecatedSkillNames = ["audit-docs-bishop", "grill-me-bishop", "work-on-card-bishop"];
+    foreach (var deprecated in deprecatedSkillNames)
+    {
+        var deprecatedDir = Path.Combine(destRoot, deprecated);
+        if (Directory.Exists(deprecatedDir))
+        {
+            Directory.Delete(deprecatedDir, recursive: true);
+            Console.WriteLine($"Removed deprecated skill '{deprecated}' from {deprecatedDir}");
+        }
+    }
+
     var installed = 0;
     foreach (var skillSourceDir in Directory.GetDirectories(sourceDir))
     {

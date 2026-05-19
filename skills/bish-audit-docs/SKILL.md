@@ -1,9 +1,9 @@
 ---
-name: audit-docs-bishop
+name: bish-audit-docs
 description: Audit Markdown docs in the current repo for drift against the code, then walk the user through per-finding confirmations and edit the docs in place. Use when the user wants to check that README/CONTEXT/etc. still match what is actually shipped.
 allowed-tools: Read, Glob, Grep, Edit, Write, Agent, AskUserQuestion, Bash(bishop:*), Bash(git:*)
 bishop.scope: workspace
-bishop.command: /audit-docs-bishop
+bishop.command: /bish-audit-docs
 bishop.stage: false
 ---
 
@@ -149,7 +149,7 @@ If no edits were applied, skip this step.
 - Do NOT push or open a PR. Commit only on explicit confirmation; pushing is
   the user's call.
 - Do NOT create Bishop cards from findings. This skill edits docs in place;
-  card creation is `grill-me-bishop`'s job.
+  card creation is `bish-grill-me`'s job.
 - If the Explore subagent returns no findings, say so plainly and stop —
   do not invent drift to justify the run.
 
