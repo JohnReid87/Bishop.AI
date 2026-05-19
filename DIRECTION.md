@@ -60,7 +60,7 @@ Decided against, not deferred. Don't drift back into these without explicitly re
 - **Full kanban admin UI in Bishop.UI.** Light mutations are now in scope (card delete, drag-and-drop move, lane CRUD — see [CLI as primary mutation surface for skills and automation](#cli-as-primary-mutation-surface-for-skills-and-automation)); a fully featured editing UI that replaces the CLI as the mutation surface is not.
 - **General-purpose file viewer / browser inside Bishop.** Editor territory; VS Code + Claude extension already owns it.
 - **Plugin system / extensibility points.** Future tabs and tools ship as in-tree code if they ship at all.
-- **GitHub Issues / Projects sync.** The kanban is standalone; the `grill-me` → `push-tasks` flow already covers the GitHub side.
+- **Full GitHub Issues / Projects sync.** Basic GitHub integration is shipped (`bishop workspace set-github`, `bishop card push`); bidirectional sync and automatic issue tracking are not in scope.
 - **Cross-platform** (Mac / Linux). Windows-only by design.
 - **Multi-user / cloud sync.**
 

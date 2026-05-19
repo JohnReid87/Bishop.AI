@@ -43,6 +43,8 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop workspace list [--json]`
 - `bishop workspace current [--json]` — resolves the workspace from the current working directory by ancestor match
 - `bishop workspace init [--path <dir>] [--name <name>]` — register a directory (defaults to cwd) as a workspace and seed the default lanes; idempotent (no-op when fully seeded, fills gaps when partial)
+- `bishop workspace set-github <owner/repo> [-w]` — link this workspace to a GitHub repo (used by `bishop card push`)
+- `bishop workspace unset-github [-w]` — remove the GitHub repo link
 - `bishop card add --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>...] [-w <workspace>]`
 - `bishop card list [-w] [--json]`
 - `bishop card view <card-id> [-w] [--json]`
@@ -50,6 +52,9 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path>] [--tag <name>...] [--clear-tags] [-w]` — updates only the supplied fields; `--clear-tags` empties tags; `--tag` replaces all tags
 - `bishop card claim [--lane <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; exits non-zero if the source lane is empty
 - `bishop card remove <card-id> [-w]`
+- `bishop card push <card-id> [-w]` — create a GitHub issue for the card in the workspace's linked repo and store the issue number on the card
+- `bishop card close <card-id> [-w]` — mark a card as closed
+- `bishop card reopen <card-id> [-w]` — reopen a closed card
 - `bishop lane list|add|rename|move|remove [-w]` — lane CRUD; `remove` refuses non-empty lanes
 - `bishop tag list|add [--colour <hex>]|remove [-w]` — `add` accepts an optional `--colour` flag (6-char hex with or without `#`; defaults to `#888888`)
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
@@ -94,5 +99,5 @@ Bundled Claude Code skills (`skills/bish-work-on-card`, `skills/bish-grill-me`, 
 Recorded so future-me doesn't drift into them:
 - **Cross-platform** (Mac / Linux). Windows-only by design.
 - **Multi-user / cloud sync.** Single-user local app. No accounts, no servers.
-- **GitHub Issues / Projects sync.** The kanban is standalone; the existing `grill-me` → `push-tasks` flow handles GitHub.
+- **Full GitHub Issues / Projects sync.** Basic integration is shipped (`bishop workspace set-github`, `bishop card push`); bidirectional sync and the broader `grill-me` → `push-tasks` flow remain the boundary.
 - **Plugin system.** Future tabs ship as in-tree code, not external plugins.
