@@ -4,6 +4,7 @@ description: Fetches a Bishop card by short-ID prefix from the current workspace
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.scope: card
 bishop.command: /work-on-card-bishop {{card_short_id}}
+bishop.stage: true
 ---
 
 Accepts an **optional** card short-ID prefix (`work-on-card-bishop 1a2b3c4d`).

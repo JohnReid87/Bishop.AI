@@ -114,12 +114,9 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             var rendered = RenderCommand(skill.Command!, null, _item.Path);
             var workspacePath = _item.Path;
+            var capturedSkill = skill;
             var item = new MenuFlyoutItem { Text = skill.Name };
-            item.Click += async (_, _) =>
-            {
-                var mediator = App.Services.GetRequiredService<IMediator>();
-                await mediator.Send(new LaunchSkillCommand(workspacePath, rendered));
-            };
+            item.Click += async (_, _) => await LaunchSkillAsync(capturedSkill, rendered, workspacePath);
             flyout.Items.Add(item);
         }
         flyout.ShowAt((FrameworkElement)sender);
@@ -134,15 +131,29 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             var rendered = RenderCommand(skill.Command!, card, _item.Path);
             var workspacePath = _item.Path;
+            var capturedSkill = skill;
             var item = new MenuFlyoutItem { Text = skill.Name };
-            item.Click += async (_, _) =>
-            {
-                var mediator = App.Services.GetRequiredService<IMediator>();
-                await mediator.Send(new LaunchSkillCommand(workspacePath, rendered));
-            };
+            item.Click += async (_, _) => await LaunchSkillAsync(capturedSkill, rendered, workspacePath);
             flyout.Items.Add(item);
         }
         flyout.ShowAt((FrameworkElement)sender);
+    }
+
+    private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath)
+    {
+        if (skill.Stage)
+        {
+            var dialog = new SkillStageDialog(skill.Name, skill.StagePrompt) { XamlRoot = XamlRoot };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+
+            var input = dialog.InputText?.Trim() ?? string.Empty;
+            if (input.Length > 0)
+                rendered = $"{rendered} {input}";
+        }
+
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        await mediator.Send(new LaunchSkillCommand(workspacePath, rendered));
     }
 
     private static string RenderCommand(string template, CardViewModel? card, string workspacePath) =>

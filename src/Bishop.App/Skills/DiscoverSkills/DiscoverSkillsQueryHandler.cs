@@ -31,12 +31,16 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
             fm.TryGetValue("description", out var description);
             fm.TryGetValue("bishop.scope", out var scope);
             fm.TryGetValue("bishop.command", out var command);
+            fm.TryGetValue("bishop.stage", out var stage);
+            fm.TryGetValue("bishop.stage_prompt", out var stagePrompt);
 
             skills.Add(new InstalledSkill(
                 name,
                 description ?? string.Empty,
                 string.IsNullOrWhiteSpace(scope) ? null : scope,
-                string.IsNullOrWhiteSpace(command) ? null : command));
+                string.IsNullOrWhiteSpace(command) ? null : command,
+                string.Equals(stage, "true", StringComparison.OrdinalIgnoreCase),
+                string.IsNullOrWhiteSpace(stagePrompt) ? null : stagePrompt));
         }
 
         return Task.FromResult<IReadOnlyList<InstalledSkill>>(skills);

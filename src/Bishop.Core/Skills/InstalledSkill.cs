@@ -4,4 +4,6 @@ public sealed record InstalledSkill(
     string Name,
     string Description,
     string? Scope,
-    string? Command);
+    string? Command,
+    bool Stage = false,
+    string? StagePrompt = null);

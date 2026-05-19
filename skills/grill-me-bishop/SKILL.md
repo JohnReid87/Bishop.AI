@@ -4,6 +4,7 @@ description: Interview the user relentlessly about a plan or design targeting th
 allowed-tools: Read, Glob, Grep, Write, Agent, AskUserQuestion, Bash(bishop:*)
 bishop.scope: workspace
 bishop.command: /grill-me-bishop
+bishop.stage: true
 ---
 
 **Before interviewing, detect the active Bishop workspace:**
