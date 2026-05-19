@@ -392,6 +392,30 @@ public sealed partial class WorkspaceDetailPage : Page
         _isDraggingNotes = false;
     }
 
+    private void BeginAddCard_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Parent: Grid footerGrid }) return;
+        var textBox = footerGrid.Children.OfType<StackPanel>().FirstOrDefault()
+                                ?.Children.OfType<TextBox>().FirstOrDefault();
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => textBox?.Focus(FocusState.Programmatic));
+    }
+
+    private void AddCardTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
+        if (e.Key == VirtualKey.Enter)
+        {
+            e.Handled = true;
+            _ = lane.ConfirmAddCardCommand.ExecuteAsync(null);
+        }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            e.Handled = true;
+            lane.CancelAddCardCommand.Execute(null);
+        }
+    }
+
     private async void NotesTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.S) return;

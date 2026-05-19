@@ -139,6 +139,7 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <Grid Grid.Row="0" RightTapped="LaneHeader_RightTapped">
@@ -238,8 +239,31 @@
                                 </ListView>
 
 
+                                <!-- Lane footer: inline add-card form -->
+                                <Grid Grid.Row="2" Margin="8,4,8,0">
+                                    <Button Content="+ Add card"
+                                            HorizontalAlignment="Stretch"
+                                            Command="{x:Bind BeginAddCardCommand}"
+                                            Click="BeginAddCard_Click"
+                                            Visibility="{x:Bind IsAddingCard, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                    <StackPanel Spacing="4"
+                                                Visibility="{x:Bind IsAddingCard, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBox PlaceholderText="Card title"
+                                                 Text="{x:Bind NewCardTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 PreviewKeyDown="AddCardTextBox_PreviewKeyDown"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                                            <Button Content="&#x2713;"
+                                                    Command="{x:Bind ConfirmAddCardCommand}"
+                                                    ToolTipService.ToolTip="Add card (Enter)"/>
+                                            <Button Content="&#x2715;"
+                                                    Command="{x:Bind CancelAddCardCommand}"
+                                                    ToolTipService.ToolTip="Cancel (Escape)"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+
 <!-- Drag-target highlight overlay -->
-                                <Border Grid.RowSpan="2"
+                                <Border Grid.RowSpan="3"
                                         IsHitTestVisible="False"
                                         CornerRadius="8"
                                         BorderBrush="{StaticResource AppDragTargetBorderBrush}"
