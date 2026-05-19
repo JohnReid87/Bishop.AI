@@ -1,6 +1,7 @@
 using Bishop.App;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.GetCard;
+using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
@@ -157,30 +158,40 @@ cardAddCmd.SetHandler(async (string? workspace, string lane, string title, strin
         ?? throw new InvalidOperationException($"Lane '{lane}' not found in workspace '{ws.Name}'.");
     var card = await mediator.Send(new AddCardCommand(targetLane.Id, title, desc, tags.Length > 0 ? tags : null));
     var tagSuffix = tags.Length > 0 ? $"  [{string.Join(", ", tags)}]" : "";
-    Console.WriteLine($"Added card {card.Id} — '{card.Title}' → [{targetLane.Name}]{tagSuffix}");
+    Console.WriteLine($"Added card #{card.Number} — '{card.Title}' → [{targetLane.Name}]{tagSuffix}");
 }, workspaceOpt, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt);
 
 // ── card short-ID prefix resolver ─────────────────────────────────────────────
 // Returns null (exit code already set) for ambiguous prefix; throws for no match.
 
-async Task<(Guid cardId, Bishop.Core.Workspace ws)?> resolveCardByPrefixAsync(string? workspaceOption, string prefix)
+async Task<(Guid cardId, int cardNumber, Bishop.Core.Workspace ws)?> resolveCardByPrefixAsync(string? workspaceOption, string prefix)
 {
     var ws = await resolver.ResolveAsync(workspaceOption);
+    var stripped = prefix.TrimStart('#');
+
+    if (stripped.Length > 0 && stripped.All(char.IsDigit) && int.TryParse(stripped, out var number))
+    {
+        var card = await mediator.Send(new GetCardByNumberQuery(number, ws.Id));
+        if (card is null)
+            throw new InvalidOperationException($"No card found matching '#{number}'.");
+        return (card.Id, card.Number, ws);
+    }
+
     var cards = await mediator.Send(new ListCardsByWorkspaceQuery(ws.Id));
     var matches = cards
-        .Where(c => c.Id.ToString("N").StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        .Where(c => c.Id.ToString("N").StartsWith(stripped, StringComparison.OrdinalIgnoreCase))
         .ToList();
     if (matches.Count == 0)
-        throw new InvalidOperationException($"No card found matching '{prefix}'.");
+        throw new InvalidOperationException($"No card found matching '{stripped}'.");
     if (matches.Count > 1)
     {
-        Console.Error.WriteLine($"Ambiguous prefix '{prefix}' — {matches.Count} matches:");
+        Console.Error.WriteLine($"Ambiguous prefix '{stripped}' — {matches.Count} matches:");
         foreach (var c in matches)
             Console.Error.WriteLine($"  {c.Id.ToString("N")[..8]}  {c.Title}");
         Environment.ExitCode = 1;
         return null;
     }
-    return (matches[0].Id, ws);
+    return (matches[0].Id, matches[0].Number, ws);
 }
 
 // ── card view ─────────────────────────────────────────────────────────────────
@@ -195,7 +206,7 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
 {
     var resolved = await resolveCardByPrefixAsync(workspace, prefix);
     if (resolved is null) return;
-    var (cardId, _) = resolved.Value;
+    var (cardId, _, _) = resolved.Value;
 
     var card = await mediator.Send(new GetCardQuery(cardId))
         ?? throw new InvalidOperationException($"Card {cardId} not found.");
@@ -205,6 +216,7 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
         Console.WriteLine(JsonSerializer.Serialize(new
         {
             id = card.Id,
+            number = card.Number,
             title = card.Title,
             description = card.Description,
             laneId = card.LaneId,
@@ -245,13 +257,13 @@ cardMoveCmd.SetHandler(async (string prefix, string? workspace, string toLane, i
 {
     var resolved = await resolveCardByPrefixAsync(workspace, prefix);
     if (resolved is null) return;
-    var (cardId, ws) = resolved.Value;
+    var (cardId, _, ws) = resolved.Value;
     var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
     var targetLane = lanes.FirstOrDefault(l =>
         string.Equals(l.Name, toLane, StringComparison.OrdinalIgnoreCase))
         ?? throw new InvalidOperationException($"Lane '{toLane}' not found in workspace '{ws.Name}'.");
     var card = await mediator.Send(new MoveCardCommand(cardId, targetLane.Id, toPosition));
-    Console.WriteLine($"Moved card {card.Id} → [{targetLane.Name}] position {card.Position}");
+    Console.WriteLine($"Moved card #{card.Number} → [{targetLane.Name}] position {card.Position}");
 }, cardIdArg, workspaceOpt, toLaneOpt, toPositionOpt);
 
 // ── card remove ───────────────────────────────────────────────────────────────
@@ -265,9 +277,9 @@ cardRemoveCmd.SetHandler(async (string prefix, string? workspace) =>
 {
     var resolved = await resolveCardByPrefixAsync(workspace, prefix);
     if (resolved is null) return;
-    var (cardId, _) = resolved.Value;
+    var (cardId, cardNumber, _) = resolved.Value;
     await mediator.Send(new RemoveCardCommand(cardId));
-    Console.WriteLine($"Removed card {cardId}");
+    Console.WriteLine($"Removed card #{cardNumber}");
 }, cardRemoveIdArg, workspaceOpt);
 
 // ── card edit ─────────────────────────────────────────────────────────────────
@@ -291,7 +303,7 @@ cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, s
 {
     var resolved = await resolveCardByPrefixAsync(workspace, prefix);
     if (resolved is null) return;
-    var (cardId, _) = resolved.Value;
+    var (cardId, _, _) = resolved.Value;
 
     var desc = descFile switch
     {
@@ -304,7 +316,7 @@ cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, s
     var tagNames = clearTags ? (string[])[] : tags;
 
     var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTags, tagNames));
-    Console.WriteLine($"Updated card {card.Id} — '{card.Title}'");
+    Console.WriteLine($"Updated card #{card.Number} — '{card.Title}'");
 }, cardEditIdArg, workspaceOpt, editTitleOpt, editDescOpt, editDescFileOpt, editTagOpt, editClearTagsOpt);
 
 // ── card claim ────────────────────────────────────────────────────────────────
@@ -349,6 +361,7 @@ cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, bool js
         Console.WriteLine(JsonSerializer.Serialize(new
         {
             id = card.Id,
+            number = card.Number,
             title = card.Title,
             description = card.Description,
             laneId = card.LaneId,
@@ -362,7 +375,7 @@ cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, bool js
     else
     {
         var tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
-        Console.WriteLine($"Claimed {card.Id.ToString("N")[..8]} — '{card.Title}' [{sourceLane.Name}] → [{doingLane.Name}]");
+        Console.WriteLine($"Claimed #{card.Number} — '{card.Title}' [{sourceLane.Name}] → [{doingLane.Name}]");
         if (tags.Count > 0)
             Console.WriteLine($"Tags: {string.Join(", ", tags)}");
         if (!string.IsNullOrEmpty(card.Description))
@@ -390,6 +403,7 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
         var output = cards.Select(c => new
         {
             id = c.Id,
+            number = c.Number,
             title = c.Title,
             description = c.Description,
             laneId = c.LaneId,
@@ -415,7 +429,7 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
             {
                 var tags = c.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
                 var tagSuffix = tags.Count > 0 ? $"  [{string.Join(", ", tags)}]" : "";
-                Console.WriteLine($"  {c.Id.ToString("N")[..8]}  {c.Title}{tagSuffix}");
+                Console.WriteLine($"  #{c.Number,-4}  {c.Title}{tagSuffix}");
             }
         }
     }

@@ -54,7 +54,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop tag list|add [--colour <hex>]|remove [-w]` — `add` accepts an optional `--colour` flag (6-char hex with or without `#`; defaults to `#888888`)
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
 
-Card identifiers accept the first 8 hex chars of the GUID as a short-ID prefix (ambiguous prefixes are rejected with a list of candidates on stderr).
+Card identifiers accept either a workspace-scoped Number (`42`, `#42`) or the first 8 hex chars of the GUID as a short-ID prefix. Number lookup is exact; hex-prefix lookup falls back and rejects ambiguous prefixes with a list of 8-char hex candidates on stderr. CLI output renders `#N` (e.g. `#42`) rather than the full UUID.
 
 ### Current UI scope
 Bishop.UI is the interactive surface; the CLI remains the automation surface for skills. UI affordances by entity:
