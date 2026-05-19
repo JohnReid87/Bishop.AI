@@ -22,7 +22,7 @@
   <ItemGroup>
     <Content Include="..\..\skills\**\*">
       <Link>skills\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
