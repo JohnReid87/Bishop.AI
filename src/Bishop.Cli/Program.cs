@@ -645,8 +645,17 @@ installSkillsCmd.SetHandler(() =>
     foreach (var skillSourceDir in Directory.GetDirectories(sourceDir))
     {
         var name = Path.GetFileName(skillSourceDir);
+        var sourceFiles = Directory.GetFiles(skillSourceDir, "*", SearchOption.AllDirectories);
+        if (sourceFiles.Length == 0)
+        {
+            // Empty husk left in bin/ output by MSBuild after a skill rename — content-copy
+            // semantics don't delete files removed from source. Skip silently rather than
+            // print a misleading "Installed" line for a directory with nothing in it.
+            continue;
+        }
+
         var skillDestDir = Path.Combine(destRoot, name);
-        foreach (var file in Directory.GetFiles(skillSourceDir, "*", SearchOption.AllDirectories))
+        foreach (var file in sourceFiles)
         {
             var relative = Path.GetRelativePath(skillSourceDir, file);
             var destFile = Path.Combine(skillDestDir, relative);
