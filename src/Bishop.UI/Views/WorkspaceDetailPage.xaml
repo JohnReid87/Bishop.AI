@@ -176,13 +176,13 @@
                                     </ListView.ItemContainerStyle>
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="vm:CardViewModel">
-                                            <Border Background="{StaticResource AppCardBackgroundBrush}"
-                                                    CornerRadius="4"
-                                                    Margin="8,0,8,4"
+                                            <local:HandCursorGrid Margin="8,0,8,4"
                                                     Opacity="{x:Bind CardOpacity}"
                                                     CanDrag="True"
                                                     DragStarting="Card_DragStarting"
                                                     DropCompleted="Card_DropCompleted">
+                                                <Border Background="{StaticResource AppCardBackgroundBrush}"
+                                                        CornerRadius="4">
                                                 <StackPanel>
                                                     <!-- Card header: short ID + optional tag chip + action buttons -->
                                                     <Grid Padding="10,4,4,4"
@@ -233,7 +233,8 @@
                                                                TextWrapping="Wrap"
                                                                Padding="10,6,10,8"/>
                                                 </StackPanel>
-                                            </Border>
+                                                </Border>
+                                            </local:HandCursorGrid>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
                                 </ListView>
