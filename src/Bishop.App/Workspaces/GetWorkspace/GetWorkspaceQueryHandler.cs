@@ -14,6 +14,7 @@ public sealed class GetWorkspaceQueryHandler : IRequestHandler<GetWorkspaceQuery
     public async Task<Workspace?> Handle(GetWorkspaceQuery request, CancellationToken cancellationToken)
     {
         return await _db.Workspaces
+            .AsNoTracking()
             .Include(w => w.Lanes.OrderBy(l => l.Position))
             .Include(w => w.Tags.OrderBy(t => t.Name))
             .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);

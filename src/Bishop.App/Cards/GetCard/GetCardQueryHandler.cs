@@ -14,6 +14,7 @@ public sealed class GetCardQueryHandler : IRequestHandler<GetCardQuery, Card?>
     public async Task<Card?> Handle(GetCardQuery request, CancellationToken cancellationToken)
     {
         return await _db.Cards
+            .AsNoTracking()
             .Include(c => c.Lane)
             .Include(c => c.CardTags)
             .ThenInclude(ct => ct.Tag)

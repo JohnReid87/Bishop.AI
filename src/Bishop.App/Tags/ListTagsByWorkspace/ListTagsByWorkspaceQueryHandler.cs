@@ -14,6 +14,7 @@ public sealed class ListTagsByWorkspaceQueryHandler : IRequestHandler<ListTagsBy
     public async Task<IReadOnlyList<Tag>> Handle(ListTagsByWorkspaceQuery request, CancellationToken cancellationToken)
     {
         return await _db.Tags
+            .AsNoTracking()
             .Where(t => t.WorkspaceId == request.WorkspaceId)
             .OrderBy(t => t.Name)
             .ToListAsync(cancellationToken);

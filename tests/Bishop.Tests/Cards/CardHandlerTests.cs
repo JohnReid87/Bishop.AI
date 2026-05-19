@@ -1,4 +1,5 @@
 using Bishop.App.Cards.AddCard;
+using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
@@ -343,6 +344,33 @@ public sealed class CardHandlerTests : IDisposable
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*At least one field*");
+    }
+
+    [Fact]
+    public async Task GetCard_ReflectsOutOfBandRename()
+    {
+        // Regression for card #6: same staleness fix as card #5, applied to GetCard.
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Original title"), default);
+
+        var handler = new GetCardQueryHandler(_db);
+        var initial = await handler.Handle(new GetCardQuery(card.Id), default);
+        initial!.Title.Should().Be("Original title");
+
+        var cliOptions = new DbContextOptionsBuilder<BishopDbContext>()
+            .UseSqlite(_connection)
+            .Options;
+        await using (var cliDb = new BishopDbContext(cliOptions))
+        {
+            var cliCard = await cliDb.Cards.SingleAsync(c => c.Id == card.Id);
+            cliCard.Title = "Renamed title";
+            await cliDb.SaveChangesAsync();
+        }
+
+        var refreshed = await handler.Handle(new GetCardQuery(card.Id), default);
+
+        refreshed!.Title.Should().Be("Renamed title");
     }
 
     [Fact]

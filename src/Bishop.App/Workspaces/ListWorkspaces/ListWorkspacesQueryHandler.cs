@@ -14,6 +14,7 @@ public sealed class ListWorkspacesQueryHandler : IRequestHandler<ListWorkspacesQ
     public async Task<IReadOnlyList<Workspace>> Handle(ListWorkspacesQuery request, CancellationToken cancellationToken)
     {
         return await _db.Workspaces
+            .AsNoTracking()
             .Include(w => w.Lanes.OrderBy(l => l.Position))
             .Include(w => w.Tags.OrderBy(t => t.Name))
             .OrderBy(w => w.Position)
