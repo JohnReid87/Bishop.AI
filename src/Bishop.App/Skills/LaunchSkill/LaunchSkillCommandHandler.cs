@@ -10,5 +10,5 @@ public sealed class LaunchSkillCommandHandler : IRequestHandler<LaunchSkillComma
     public LaunchSkillCommandHandler(ITerminalLauncher launcher) => _launcher = launcher;
 
     public Task<bool> Handle(LaunchSkillCommand request, CancellationToken cancellationToken) =>
-        Task.FromResult(_launcher.Launch(request.WorkspacePath, request.RenderedCommand, request.Snap));
+        Task.FromResult(_launcher.Launch(request.WorkspacePath, request.RenderedCommand, request.Snap, request.ModelId));
 }

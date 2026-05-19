@@ -14,11 +14,12 @@ public sealed class TerminalLauncher : ITerminalLauncher
     private const uint SWP_NOZORDER = 0x0004;
     private const uint SWP_NOACTIVATE = 0x0010;
 
-    public bool Launch(string workingDirectory, string? claudeArgs, TerminalSnap? snap)
+    public bool Launch(string workingDirectory, string? claudeArgs, TerminalSnap? snap, string? modelId = null)
     {
         var fullPath = BuildFullPath();
         var wt = FindWindowsTerminal();
-        var cmdSuffix = claudeArgs is null ? "" : $" \"{claudeArgs}\"";
+        var modelFlag = modelId is not null ? $" --model {modelId}" : "";
+        var cmdSuffix = claudeArgs is null ? modelFlag : $"{modelFlag} \"{claudeArgs}\"";
 
         if (wt is not null)
         {
