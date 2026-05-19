@@ -10,7 +10,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 - **Architecture pattern:** MVVM via `CommunityToolkit.Mvvm` (source generators for `ObservableProperty` / `RelayCommand`).
 - **App layer:** MediatR for commands/queries.
 - **DI:** `Microsoft.Extensions.DependencyInjection` via the generic host.
-- **Data:** EF Core 9 + SQLite (WAL mode for concurrent UI + CLI access). DB file at `%AppData%\Bishop.AI\bishop.db`.
+- **Data:** EF Core 9 + SQLite (WAL mode for concurrent UI + CLI access). DB file at `%AppData%\Bishop.AI\bishop.db` (override with the `BISHOP_DB` env var — set it to an absolute path; useful for tests and portable configs).
 - **Testing:** xUnit + FluentAssertions. Handlers and repos tested against in-memory or temp SQLite. No UI tests for MVP.
 - **Target framework:** `net10.0` for Core / Data / App / Cli / Tests; `net10.0-windows10.0.19041.0` for Bishop.UI.
 
@@ -74,6 +74,8 @@ Bundled Claude Code skills (`skills/work-on-card-bishop`, `skills/grill-me-bisho
 - `allowed-tools` — comma-separated Claude Code tool allowlist.
 - `bishop.scope` — `card` (button on each card) or `workspace` (button on workspace header); null/missing → not surfaced in the UI.
 - `bishop.command` — slash-command template launched on click. Placeholders: `{{card_number}}` (card scope) and `{{workspace_path}}` (workspace scope).
+- `bishop.stage` — optional boolean (`true`/`false`, default `false`). When `true`, clicking the skill button opens a staging dialog before launch; the user can type optional extra text that is appended to the rendered command.
+- `bishop.stage_prompt` — optional string. Overrides the placeholder text shown inside the staging dialog (e.g. "Enter a card number to work on").
 
 `DiscoverSkillsQueryHandler` (Bishop.App) scans `~/.claude/skills/` at workspace load and feeds two button groups in `WorkspaceDetailPage`. Clicking a skill renders the template, opens Windows Terminal at the workspace path, and runs `claude "<rendered command>"` (`LaunchSkillCommandHandler`; falls back to PowerShell if `wt.exe` is unavailable). Adding a new skill: drop a directory under `skills/`, set scope + command, rebuild, run `bishop install-skills`.
 

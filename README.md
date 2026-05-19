@@ -6,7 +6,7 @@ The UI is the primary surface for kanban work (cards, lanes, tags); the `bishop`
 
 ## Getting started
 
-- Requires: .NET 10.0 SDK, Windows 10+, Visual Studio or VS Code with .NET extension
+- Requires: .NET 10.0 SDK, Windows 10 version 1809 (build 17763) or later, Visual Studio or VS Code with .NET extension
 - Build: `dotnet build Bishop.AI.slnx`
 - Tests: `dotnet test`
 - Per-user MSI: `pwsh installer/build.ps1` (one-time prereq: `dotnet tool install --global wix --version 5.0.2`). Output at `installer/bin/Release/Bishop.AI.msi`.
