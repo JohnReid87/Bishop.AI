@@ -164,6 +164,57 @@ public sealed class CardHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task AddCard_AssignsMonotonicallyIncreasingNumbers()
+    {
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var laneId = lanes[0].Id;
+        var add = new AddCardCommandHandler(_db);
+
+        var first = await add.Handle(new AddCardCommand(laneId, "First"), default);
+        var second = await add.Handle(new AddCardCommand(laneId, "Second"), default);
+        var third = await add.Handle(new AddCardCommand(laneId, "Third"), default);
+
+        first.Number.Should().Be(1);
+        second.Number.Should().Be(2);
+        third.Number.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task AddCard_NumberDoesNotReuseAfterDeletion()
+    {
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var laneId = lanes[0].Id;
+        var add = new AddCardCommandHandler(_db);
+
+        var first = await add.Handle(new AddCardCommand(laneId, "First"), default);
+        await new RemoveCardCommandHandler(_db).Handle(new RemoveCardCommand(first.Id), default);
+        var second = await add.Handle(new AddCardCommand(laneId, "Second"), default);
+
+        second.Number.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task AddCard_NumbersArePerWorkspace()
+    {
+        var (_, lanesA) = await CreateWorkspaceWithLanesAsync();
+        var workspaceB = await new CreateWorkspaceCommandHandler(_db)
+            .Handle(new CreateWorkspaceCommand("Other", @"C:\other"), default);
+        var lanesB = await new ListLanesByWorkspaceQueryHandler(_db)
+            .Handle(new ListLanesByWorkspaceQuery(workspaceB.Id), default);
+
+        var add = new AddCardCommandHandler(_db);
+        var a1 = await add.Handle(new AddCardCommand(lanesA[0].Id, "A1"), default);
+        var b1 = await add.Handle(new AddCardCommand(lanesB[0].Id, "B1"), default);
+        var a2 = await add.Handle(new AddCardCommand(lanesA[0].Id, "A2"), default);
+        var b2 = await add.Handle(new AddCardCommand(lanesB[0].Id, "B2"), default);
+
+        a1.Number.Should().Be(1);
+        a2.Number.Should().Be(2);
+        b1.Number.Should().Be(1);
+        b2.Number.Should().Be(2);
+    }
+
+    [Fact]
     public async Task AddCard_SucceedsWhenLaneIdCasingDiffersFromStoredRow()
     {
         // Regression: older write paths stored Guid TEXT in mixed case, causing
@@ -172,7 +223,7 @@ public sealed class CardHandlerTests : IDisposable
         var workspaceId = Guid.NewGuid();
         var laneId = Guid.NewGuid();
         await _db.Database.ExecuteSqlRawAsync(
-            "INSERT INTO Workspaces (Id, Name, Path, Position, CreatedAt, UpdatedAt) VALUES ({0}, 'WS', 'C:\\ws', 1, {1}, {1})",
+            "INSERT INTO Workspaces (Id, Name, Path, Position, NextCardNumber, CreatedAt, UpdatedAt) VALUES ({0}, 'WS', 'C:\\ws', 1, 1, {1}, {1})",
             workspaceId.ToString().ToUpperInvariant(),
             DateTimeOffset.UtcNow);
         await _db.Database.ExecuteSqlRawAsync(

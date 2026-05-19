@@ -14,21 +14,25 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
     public async Task<Card> Handle(AddCardCommand request, CancellationToken cancellationToken)
     {
         var position = await _db.Cards.CountAsync(c => c.LaneId == request.LaneId, cancellationToken) + 1;
+
+        var lane = await _db.Lanes.FindAsync([request.LaneId], cancellationToken);
+        var workspace = await _db.Workspaces.FindAsync([lane!.WorkspaceId], cancellationToken);
+        var number = workspace!.NextCardNumber++;
+
         var card = new Card
         {
             Id = Guid.NewGuid(),
             LaneId = request.LaneId,
             Title = request.Title,
             Description = request.Description,
+            Number = number,
             Position = position,
         };
         _db.Cards.Add(card);
 
         if (request.TagNames is { Count: > 0 })
         {
-            var lane = await _db.Lanes.FindAsync([request.LaneId], cancellationToken);
-            var workspaceId = lane!.WorkspaceId;
-
+            var workspaceId = lane.WorkspaceId;
             foreach (var tagName in request.TagNames.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 var tag = await _db.Tags.FirstOrDefaultAsync(

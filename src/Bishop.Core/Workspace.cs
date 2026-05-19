@@ -6,6 +6,7 @@ public sealed class Workspace
     public string Name { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public int Position { get; set; }
+    public int NextCardNumber { get; set; } = 1;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
