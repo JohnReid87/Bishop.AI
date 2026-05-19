@@ -71,7 +71,18 @@ Run `bishop workspace current --json`.
    Parse the JSON of the final chosen card and capture:
    - `number` — the canonical `#N` reference (used in commit messages and
      headings, regardless of what the user typed)
-   - `title`, `description`, `laneName`, `tags`
+   - `title`, `description`, `laneName`, `tags`, `isClosed`
+
+   **Closed-card guard:** If `isClosed` is `true`:
+   - If you are on Path B (the card was just claimed), revert the claim first:
+     ```
+     bishop card move <claimed-number> --to-lane "To Do" --to-position 1
+     ```
+   - STOP and output this error (exit non-zero):
+     > Card #N is already closed — run `bishop card reopen <number>` first if
+     > you want to work on it.
+
+   Do NOT echo the title, move the card to "Doing", or begin any implementation.
 
    Echo the card title back on its own line so the user can confirm the right
    card was loaded before any move or implementation:
