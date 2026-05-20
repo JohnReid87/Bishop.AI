@@ -75,10 +75,13 @@
                                   x:Name="WorkspacesListView"
                                   ItemsSource="{x:Bind ViewModel.Workspaces}"
                                   SelectedItem="{x:Bind ViewModel.SelectedWorkspace, Mode=TwoWay}"
-                                  CanReorderItems="True"
+                                  CanDragItems="True"
                                   AllowDrop="True"
                                   SelectionMode="Single"
-                                  DragItemsCompleted="WorkspacesListView_DragItemsCompleted">
+                                  DragItemsStarting="WorkspaceDragItemsStarting"
+                                  DropCompleted="WorkspacesDragCompleted"
+                                  DragOver="WorkspacesDragOver"
+                                  Drop="WorkspacesDrop">
                             <ListView.Resources>
                                 <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#20FFFFFF"/>
                                 <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#30FFFFFF"/>
@@ -156,10 +159,13 @@
                             <ListView x:Name="WorkspacesCollapsedListView"
                                       ItemsSource="{x:Bind ViewModel.Workspaces}"
                                       SelectedItem="{x:Bind ViewModel.SelectedWorkspace, Mode=TwoWay}"
-                                      CanReorderItems="True"
+                                      CanDragItems="True"
                                       AllowDrop="True"
                                       SelectionMode="Single"
-                                      DragItemsCompleted="WorkspacesCollapsedListView_DragItemsCompleted">
+                                      DragItemsStarting="WorkspaceDragItemsStarting"
+                                      DropCompleted="WorkspacesDragCompleted"
+                                      DragOver="WorkspacesDragOver"
+                                      Drop="WorkspacesDrop">
                                 <ListView.Resources>
                                     <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="Transparent"/>
                                     <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="Transparent"/>

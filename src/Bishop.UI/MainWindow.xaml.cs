@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using System.IO;
 using System.Text.Json;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage.Pickers;
 using Windows.UI;
@@ -28,7 +29,6 @@ public sealed partial class MainWindow : Window
         Closed += (_, _) => SaveWindowGeometry();
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
-        WorkspacesListView.DragItemsCompleted += WorkspacesListView_DragItemsCompleted;
 
         _ = ViewModel.LoadAsync();
     }
@@ -51,6 +51,10 @@ public sealed partial class MainWindow : Window
     {
         if (e.PropertyName == nameof(MainWindowViewModel.SelectedWorkspace))
         {
+            // CanDragItems clears the ListView selection during drag; suppress navigation until drag ends.
+            if (ViewModel.SelectedWorkspace is null && _selectionBeforeDrag is not null)
+                return;
+
             if (ViewModel.SelectedWorkspace is { } selected)
                 ContentFrame.Navigate(typeof(WorkspaceDetailPage), selected);
             else
@@ -64,24 +68,74 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async void WorkspacesListView_DragItemsCompleted(
-        ListViewBase sender,
-        DragItemsCompletedEventArgs args)
+    private WorkspaceItemViewModel? _draggedWorkspace;
+    private WorkspaceItemViewModel? _selectionBeforeDrag;
+
+    private void WorkspaceDragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
-        var ordered = WorkspacesListView.Items
-            .OfType<WorkspaceItemViewModel>()
-            .ToList();
-        await ViewModel.PersistReorderAsync(ordered);
+        _draggedWorkspace = e.Items.OfType<WorkspaceItemViewModel>().FirstOrDefault();
+        _selectionBeforeDrag = ViewModel.SelectedWorkspace;
+        if (_draggedWorkspace is null) return;
+        e.Data.RequestedOperation = DataPackageOperation.Move;
+        e.Data.SetText(_draggedWorkspace.Id.ToString());
     }
 
-    private async void WorkspacesCollapsedListView_DragItemsCompleted(
-        ListViewBase sender,
-        DragItemsCompletedEventArgs args)
+    private void WorkspacesDragCompleted(UIElement sender, DropCompletedEventArgs e)
     {
-        var ordered = WorkspacesCollapsedListView.Items
-            .OfType<WorkspaceItemViewModel>()
-            .ToList();
-        await ViewModel.PersistReorderAsync(ordered);
+        // Fallback for cancelled drags; successful drops restore selection in WorkspacesDrop.
+        _draggedWorkspace = null;
+        if (_selectionBeforeDrag is not null)
+        {
+            ViewModel.SelectedWorkspace = _selectionBeforeDrag;
+            _selectionBeforeDrag = null;
+        }
+    }
+
+    private void WorkspacesDragOver(object sender, DragEventArgs e)
+    {
+        if (_draggedWorkspace is null) return;
+        e.AcceptedOperation = DataPackageOperation.Move;
+        e.DragUIOverride.IsGlyphVisible = false;
+        e.DragUIOverride.Caption = string.Empty;
+    }
+
+    private async void WorkspacesDrop(object sender, DragEventArgs e)
+    {
+        if (_draggedWorkspace is null || sender is not ListView listView) return;
+        var item = _draggedWorkspace;
+        _draggedWorkspace = null;
+
+        var insertIndex = GetWorkspaceDropIndex(listView, e);
+        var oldIndex = ViewModel.Workspaces.IndexOf(item);
+        if (oldIndex >= 0)
+        {
+            insertIndex = Math.Clamp(insertIndex, 0, ViewModel.Workspaces.Count);
+            var moveTarget = insertIndex > oldIndex ? insertIndex - 1 : insertIndex;
+            if (moveTarget != oldIndex)
+            {
+                ViewModel.Workspaces.Move(oldIndex, moveTarget);
+                await ViewModel.PersistReorderAsync(ViewModel.Workspaces);
+            }
+        }
+
+        if (_selectionBeforeDrag is not null)
+        {
+            ViewModel.SelectedWorkspace = _selectionBeforeDrag;
+            _selectionBeforeDrag = null;
+        }
+    }
+
+    private static int GetWorkspaceDropIndex(ListView listView, DragEventArgs e)
+    {
+        var dropPoint = e.GetPosition(listView);
+        for (var i = 0; i < listView.Items.Count; i++)
+        {
+            if (listView.ContainerFromIndex(i) is not ListViewItem item) continue;
+            var itemTop = item.TransformToVisual(listView).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
+            if (dropPoint.Y < itemTop + item.ActualHeight / 2)
+                return i;
+        }
+        return listView.Items.Count;
     }
 
     private async void AddWorkspaceButton_Click(object sender, RoutedEventArgs e)
