@@ -290,6 +290,13 @@ public sealed partial class WorkspaceDetailPage : Page
         return $"{(int)(elapsed.TotalDays / 30)}mo ago";
     }
 
+    private void CardHeader_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+        if (!card.IsDoneLane) return;
+        card.ToggleExpand();
+    }
+
     private async void CardSkillsButton_Click(object sender, RoutedEventArgs e)
     {
         if (_item is null || _cardSkills.Count == 0) return;

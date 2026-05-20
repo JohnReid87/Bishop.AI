@@ -202,7 +202,8 @@
                                                     <!-- Card header: short ID + optional tag chip + action buttons -->
                                                     <Grid Padding="10,4,4,4"
                                                           BorderBrush="{StaticResource AppDividerBrush}"
-                                                          BorderThickness="0,0,0,1">
+                                                          BorderThickness="{x:Bind HeaderBorderThickness, Mode=OneWay}"
+                                                          Tapped="CardHeader_Tapped">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
@@ -246,7 +247,8 @@
                                                     <!-- Card title -->
                                                     <TextBlock Text="{x:Bind Title}"
                                                                TextWrapping="Wrap"
-                                                               Padding="10,6,10,8"/>
+                                                               Padding="10,6,10,8"
+                                                               Visibility="{x:Bind BodyVisibility, Mode=OneWay}"/>
                                                 </StackPanel>
                                                 </Border>
                                             </local:HandCursorGrid>

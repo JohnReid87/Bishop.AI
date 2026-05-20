@@ -36,7 +36,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             foreach (var card in cardsByLane[lane.Id])
             {
                 var firstTag = card.CardTags.FirstOrDefault()?.Tag;
-                laneVm.Cards.Add(new CardViewModel
+                var cardVm = new CardViewModel
                 {
                     Id = card.Id,
                     LaneId = card.LaneId,
@@ -50,7 +50,9 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
                     IsClosed = card.IsClosed,
                     GitHubIssueNumber = card.GitHubIssueNumber,
                     GitHubPushedAt = card.GitHubPushedAt,
-                });
+                };
+                cardVm.IsExpanded = lane.Name != "Done";
+                laneVm.Cards.Add(cardVm);
             }
             Lanes.Add(laneVm);
         }

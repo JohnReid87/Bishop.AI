@@ -1,8 +1,9 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
 
 namespace Bishop.UI.ViewModels;
 
-public sealed class CardViewModel
+public sealed partial class CardViewModel : ObservableObject
 {
     public Guid Id { get; init; }
     public Guid LaneId { get; init; }
@@ -24,4 +25,16 @@ public sealed class CardViewModel
     // Set by WorkspaceDetailPage before cards are rendered so the one-time x:Bind reads the correct value.
     public static Visibility CardSkillsButtonVisibility { get; set; } = Visibility.Collapsed;
     public Visibility SkillsButtonVisibility => CardSkillsButtonVisibility;
+
+    public bool IsDoneLane => LaneName == "Done";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BodyVisibility))]
+    [NotifyPropertyChangedFor(nameof(HeaderBorderThickness))]
+    public partial bool IsExpanded { get; set; }
+
+    public Visibility BodyVisibility => IsExpanded ? Visibility.Visible : Visibility.Collapsed;
+    public Thickness HeaderBorderThickness => IsExpanded ? new Thickness(0, 0, 0, 1) : new Thickness(0);
+
+    public void ToggleExpand() => IsExpanded = !IsExpanded;
 }
