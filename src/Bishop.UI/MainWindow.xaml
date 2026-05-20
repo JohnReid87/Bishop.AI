@@ -171,7 +171,6 @@
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="vm:WorkspaceItemViewModel">
                                         <Grid Height="40" Width="40" HorizontalAlignment="Left"
-                                              Margin="0,0,0,4"
                                               ToolTipService.ToolTip="{x:Bind Name, Mode=OneWay}"
                                               RightTapped="WorkspaceItem_RightTapped">
                                             <Button Width="200"
@@ -207,6 +206,8 @@
                                     <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                         <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="MinHeight" Value="40"/>
+                                        <Setter Property="Margin" Value="0,0,0,4"/>
                                     </Style>
                                 </ListView.ItemContainerStyle>
                             </ListView>
