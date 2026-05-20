@@ -10,8 +10,10 @@ using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
+using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace Bishop.Tests.App.Cards;
 
@@ -129,7 +131,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var a = await add.Handle(new AddCardCommand(laneId, "A"), default);
         var b = await add.Handle(new AddCardCommand(laneId, "B"), default);
         var c = await add.Handle(new AddCardCommand(laneId, "C"), default);
-        var handler = new MoveCardCommandHandler(_db);
+        var handler = new MoveCardCommandHandler(_db, Substitute.For<ISender>());
 
         // Act — with insert-at-top, initial order is C(1), B(2), A(3); move A to position 1 → A, C, B
         await handler.Handle(new MoveCardCommand(a.Id, laneId, 1), default);
@@ -154,7 +156,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var a = await add.Handle(new AddCardCommand(todoId, "A"), default);
         var b = await add.Handle(new AddCardCommand(todoId, "B"), default);
         await add.Handle(new AddCardCommand(doingId, "X"), default);
-        var handler = new MoveCardCommandHandler(_db);
+        var handler = new MoveCardCommandHandler(_db, Substitute.For<ISender>());
 
         // Act — move A from To Do to Doing at position 1 → Doing: A(1), X(2); To Do: B(1)
         await handler.Handle(new MoveCardCommand(a.Id, doingId, 1), default);
@@ -274,7 +276,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var a = await add.Handle(new AddCardCommand(laneId, "A"), default);
         var b = await add.Handle(new AddCardCommand(laneId, "B"), default);
         var c = await add.Handle(new AddCardCommand(laneId, "C"), default);
-        var handler = new MoveCardCommandHandler(_db);
+        var handler = new MoveCardCommandHandler(_db, Substitute.For<ISender>());
 
         // Act — with insert-at-top, initial order is C(1), B(2), A(3); move C to position 3 (end) → B, A, C
         await handler.Handle(new MoveCardCommand(c.Id, laneId, 3), default);

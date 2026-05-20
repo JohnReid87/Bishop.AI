@@ -1,3 +1,5 @@
+using Bishop.App.Cards.CloseCard;
+using Bishop.App.Cards.ReopenCard;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
@@ -8,8 +10,13 @@ namespace Bishop.App.Cards.MoveCard;
 public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Card>
 {
     private readonly BishopDbContext _db;
+    private readonly ISender _sender;
 
-    public MoveCardCommandHandler(BishopDbContext db) => _db = db;
+    public MoveCardCommandHandler(BishopDbContext db, ISender sender)
+    {
+        _db = db;
+        _sender = sender;
+    }
 
     public async Task<Card> Handle(MoveCardCommand request, CancellationToken cancellationToken)
     {
@@ -19,8 +26,21 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
         var sourceLaneId = card.LaneId;
         var movingAcrossLanes = sourceLaneId != request.ToLaneId;
 
+        var enteringDone = false;
+        var leavingDone = false;
+
         if (movingAcrossLanes)
         {
+            var sourceLane = await _db.Lanes.FindAsync([sourceLaneId], cancellationToken)
+                ?? throw new InvalidOperationException($"Lane {sourceLaneId} not found.");
+            var targetLane = await _db.Lanes.FindAsync([request.ToLaneId], cancellationToken)
+                ?? throw new InvalidOperationException($"Lane {request.ToLaneId} not found.");
+
+            var sourceDone = sourceLane.IsSystem && sourceLane.Name == "Done";
+            var targetDone = targetLane.IsSystem && targetLane.Name == "Done";
+            enteringDone = targetDone && !sourceDone;
+            leavingDone = sourceDone && !targetDone;
+
             // Renumber remaining cards in the source lane.
             var sourceCards = await _db.Cards
                 .Where(c => c.LaneId == sourceLaneId && c.Id != card.Id)
@@ -45,6 +65,12 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
             targetCards[i].Position = i + 1;
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (enteringDone)
+            await _sender.Send(new CloseCardCommand(card.Id), cancellationToken);
+        else if (leavingDone)
+            await _sender.Send(new ReopenCardCommand(card.Id), cancellationToken);
+
         return card;
     }
 }

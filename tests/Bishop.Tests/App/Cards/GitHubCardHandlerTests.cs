@@ -1,5 +1,6 @@
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.CloseCard;
+using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.GitHub;
@@ -8,6 +9,7 @@ using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 
 namespace Bishop.Tests.App.Cards;
@@ -267,5 +269,134 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         await _ghCli.Received(1).RunAsync(
             Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "close" && a[2] == "99"),
             Arg.Any<CancellationToken>());
+    }
+
+    // ── MoveCard → Done-lane transitions ─────────────────────────────────────
+
+    private ISender CreateForwardingSender()
+    {
+        var sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<CloseCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new CloseCardCommandHandler(_db, _ghCli)
+                .Handle(ci.Arg<CloseCardCommand>(), ci.Arg<CancellationToken>()));
+        sender.Send(Arg.Any<ReopenCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ReopenCardCommandHandler(_db, _ghCli)
+                .Handle(ci.Arg<ReopenCardCommand>(), ci.Arg<CancellationToken>()));
+        return sender;
+    }
+
+    [Fact]
+    public async Task MoveCard_ToDoneLane_SetsIsClosedTrue()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+        var handler = new MoveCardCommandHandler(_db, CreateForwardingSender());
+
+        // Act
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[2].Id, 1), default);
+
+        // Assert
+        (await _db.Cards.FindAsync(card.Id))!.IsClosed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MoveCard_ToDoneLane_WithGitHubIssueAndRepo_ClosesIssue()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+        card.GitHubIssueNumber = 11;
+        await _db.SaveChangesAsync();
+        var handler = new MoveCardCommandHandler(_db, CreateForwardingSender());
+
+        // Act
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[2].Id, 1), default);
+
+        // Assert
+        await _ghCli.Received(1).RunAsync(
+            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "close" && a[2] == "11"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MoveCard_FromDoneLane_SetsIsClosedFalse()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[2].Id, "Task"), default);
+        card.IsClosed = true;
+        await _db.SaveChangesAsync();
+        var handler = new MoveCardCommandHandler(_db, CreateForwardingSender());
+
+        // Act
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[1].Id, 1), default);
+
+        // Assert
+        (await _db.Cards.FindAsync(card.Id))!.IsClosed.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MoveCard_FromDoneLane_WithGitHubIssueAndRepo_ReopensIssue()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[2].Id, "Task"), default);
+        card.GitHubIssueNumber = 22;
+        card.IsClosed = true;
+        await _db.SaveChangesAsync();
+        var handler = new MoveCardCommandHandler(_db, CreateForwardingSender());
+
+        // Act
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[1].Id, 1), default);
+
+        // Assert
+        await _ghCli.Received(1).RunAsync(
+            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "reopen" && a[2] == "22"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MoveCard_WithinDoneLane_PreservesCloseState()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var add = new AddCardCommandHandler(_db);
+        var a = await add.Handle(new AddCardCommand(lanes[2].Id, "A"), default);
+        var b = await add.Handle(new AddCardCommand(lanes[2].Id, "B"), default);
+        a.IsClosed = true;
+        b.IsClosed = true;
+        await _db.SaveChangesAsync();
+        var handler = new MoveCardCommandHandler(_db, CreateForwardingSender());
+
+        // Act — reorder within Done; no close/reopen should be dispatched
+        await handler.Handle(new MoveCardCommand(a.Id, lanes[2].Id, 1), default);
+
+        // Assert
+        await _ghCli.DidNotReceive().RunAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
+        (await _db.Cards.FindAsync(a.Id))!.IsClosed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MoveCard_BetweenNonDoneLanes_DoesNotChangeCloseState()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+        var handler = new MoveCardCommandHandler(_db, CreateForwardingSender());
+
+        // Act — To Do → Doing
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[1].Id, 1), default);
+
+        // Assert
+        (await _db.Cards.FindAsync(card.Id))!.IsClosed.Should().BeFalse();
+        await _ghCli.DidNotReceive().RunAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
     }
 }
