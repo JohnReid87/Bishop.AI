@@ -2,9 +2,9 @@ using System.Diagnostics;
 
 namespace Bishop.App.GitHub;
 
-internal static class GhCli
+public sealed class GhCli : IGhCli
 {
-    internal static async Task RunAsync(string[] args, CancellationToken cancellationToken)
+    public async Task RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
         var psi = new ProcessStartInfo("gh") { UseShellExecute = false, CreateNoWindow = true };
         foreach (var a in args) psi.ArgumentList.Add(a);
@@ -12,7 +12,7 @@ internal static class GhCli
         if (proc is not null) await proc.WaitForExitAsync(cancellationToken);
     }
 
-    internal static async Task<string> RunCaptureAsync(string[] args, CancellationToken cancellationToken)
+    public async Task<string> RunCaptureAsync(string[] args, CancellationToken cancellationToken = default)
     {
         var psi = new ProcessStartInfo("gh")
         {

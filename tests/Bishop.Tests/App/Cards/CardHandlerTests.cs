@@ -1,5 +1,6 @@
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.GetCard;
+using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
@@ -407,6 +408,57 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Assert
         var refreshed = await handler.Handle(new GetCardQuery(card.Id), default);
         refreshed!.Title.Should().Be("Renamed title");
+    }
+
+    // ── GetCardByNumber ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetCardByNumber_ReturnsCard_WhenMatchFound()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var added = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Find me"), default);
+        var handler = new GetCardByNumberQueryHandler(_db);
+
+        // Act
+        var result = await handler.Handle(new GetCardByNumberQuery(added.Number, workspace.Id), default);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(added.Id);
+        result.Title.Should().Be("Find me");
+        result.Lane.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetCardByNumber_ReturnsNull_WhenNumberNotFound()
+    {
+        // Arrange
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+        var handler = new GetCardByNumberQueryHandler(_db);
+
+        // Act
+        var result = await handler.Handle(new GetCardByNumberQuery(9999, workspace.Id), default);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetCardByNumber_ReturnsNull_WhenWrongWorkspace()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var added = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+        var handler = new GetCardByNumberQueryHandler(_db);
+
+        // Act
+        var result = await handler.Handle(new GetCardByNumberQuery(added.Number, Guid.NewGuid()), default);
+
+        // Assert
+        result.Should().BeNull();
     }
 
     [Fact]

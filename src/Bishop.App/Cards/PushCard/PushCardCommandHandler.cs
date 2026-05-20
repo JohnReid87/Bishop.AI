@@ -9,8 +9,13 @@ namespace Bishop.App.Cards.PushCard;
 public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Card>
 {
     private readonly BishopDbContext _db;
+    private readonly IGhCli _ghCli;
 
-    public PushCardCommandHandler(BishopDbContext db) => _db = db;
+    public PushCardCommandHandler(BishopDbContext db, IGhCli ghCli)
+    {
+        _db = db;
+        _ghCli = ghCli;
+    }
 
     public async Task<Card> Handle(PushCardCommand request, CancellationToken cancellationToken)
     {
@@ -36,7 +41,7 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
             var color = tag.Colour.TrimStart('#');
             try
             {
-                await GhCli.RunAsync(["label", "create", tag.Name, "--color", color, "--repo", repo, "--force"], cancellationToken);
+                await _ghCli.RunAsync(["label", "create", tag.Name, "--color", color, "--repo", repo, "--force"], cancellationToken);
             }
             catch { /* label creation is best-effort */ }
         }
@@ -54,7 +59,7 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
             createArgs.Add(tag.Name);
         }
 
-        var issueUrl = await GhCli.RunCaptureAsync([.. createArgs], cancellationToken);
+        var issueUrl = await _ghCli.RunCaptureAsync([.. createArgs], cancellationToken);
 
         // Parse issue number from URL (https://github.com/owner/repo/issues/123)
         if (!int.TryParse(issueUrl.Split('/').Last(), out var issueNumber))
@@ -62,7 +67,7 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
 
         // Mirror closed state
         if (card.IsClosed)
-            await GhCli.RunAsync(["issue", "close", issueNumber.ToString(), "--repo", repo], cancellationToken);
+            await _ghCli.RunAsync(["issue", "close", issueNumber.ToString(), "--repo", repo], cancellationToken);
 
         card.GitHubIssueNumber = issueNumber;
         card.GitHubPushedAt = DateTimeOffset.UtcNow;

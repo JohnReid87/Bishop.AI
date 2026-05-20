@@ -9,8 +9,13 @@ namespace Bishop.App.Cards.ReopenCard;
 public sealed class ReopenCardCommandHandler : IRequestHandler<ReopenCardCommand, Card>
 {
     private readonly BishopDbContext _db;
+    private readonly IGhCli _ghCli;
 
-    public ReopenCardCommandHandler(BishopDbContext db) => _db = db;
+    public ReopenCardCommandHandler(BishopDbContext db, IGhCli ghCli)
+    {
+        _db = db;
+        _ghCli = ghCli;
+    }
 
     public async Task<Card> Handle(ReopenCardCommand request, CancellationToken cancellationToken)
     {
@@ -24,7 +29,7 @@ public sealed class ReopenCardCommandHandler : IRequestHandler<ReopenCardCommand
         await _db.SaveChangesAsync(cancellationToken);
 
         if (card.GitHubIssueNumber.HasValue && card.Lane.Workspace.GitHubRepo is { } repo)
-            await GhCli.RunAsync(["issue", "reopen", card.GitHubIssueNumber.ToString()!, "--repo", repo], cancellationToken);
+            await _ghCli.RunAsync(["issue", "reopen", card.GitHubIssueNumber.ToString()!, "--repo", repo], cancellationToken);
 
         return card;
     }
