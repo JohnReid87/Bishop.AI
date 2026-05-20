@@ -478,7 +478,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
         launcher.Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>()).Returns(true);
-        var handler = new LaunchWorkspaceCommandHandler(launcher);
+        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
 
         // Act
         var result = await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace"), default);
@@ -493,7 +493,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
         launcher.Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>()).Returns(false);
-        var handler = new LaunchWorkspaceCommandHandler(launcher);
+        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
 
         // Act
         var result = await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace"), default);
@@ -508,7 +508,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var snap = new TerminalSnap(0, 0, 800, 600);
         var launcher = Substitute.For<ITerminalLauncher>();
-        var handler = new LaunchWorkspaceCommandHandler(launcher);
+        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
 
         // Act
         await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace", snap), default);

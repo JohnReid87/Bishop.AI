@@ -7,6 +7,10 @@ bishop.command: /bish-audit-docs
 bishop.stage: false
 ---
 
+**Orientation:** if `BISHOP_CONTEXT.md` exists in the workspace root, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.
+
+---
+
 Audit the repo's Markdown documentation for drift against the current code,
 confirm each finding with the user, and apply the agreed edits in place.
 

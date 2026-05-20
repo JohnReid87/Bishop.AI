@@ -7,6 +7,10 @@ bishop.command: /bish-coverage
 bishop.stage: false
 ---
 
+**Orientation:** if `BISHOP_CONTEXT.md` exists in the workspace root, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.
+
+---
+
 **Before anything else — detect the active Bishop workspace:**
 
 Run `bishop workspace current --json`.

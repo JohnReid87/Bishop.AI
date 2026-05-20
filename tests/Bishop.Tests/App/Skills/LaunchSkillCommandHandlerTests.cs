@@ -13,7 +13,7 @@ public sealed class LaunchSkillCommandHandlerTests
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
         launcher.Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>()).Returns(true);
-        var handler = new LaunchSkillCommandHandler(launcher);
+        var handler = new LaunchSkillCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
 
         // Act
         var result = await handler.Handle(new LaunchSkillCommand(@"C:\workspace", "code ."), default);
@@ -28,7 +28,7 @@ public sealed class LaunchSkillCommandHandlerTests
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
         launcher.Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>()).Returns(false);
-        var handler = new LaunchSkillCommandHandler(launcher);
+        var handler = new LaunchSkillCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
 
         // Act
         var result = await handler.Handle(new LaunchSkillCommand(@"C:\workspace", "code ."), default);
@@ -43,7 +43,7 @@ public sealed class LaunchSkillCommandHandlerTests
         // Arrange
         var snap = new TerminalSnap(0, 0, 800, 600);
         var launcher = Substitute.For<ITerminalLauncher>();
-        var handler = new LaunchSkillCommandHandler(launcher);
+        var handler = new LaunchSkillCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
 
         // Act
         await handler.Handle(new LaunchSkillCommand(@"C:\workspace", "/bish-work-on-card 42", snap, "claude-opus-4-7"), default);
@@ -57,7 +57,7 @@ public sealed class LaunchSkillCommandHandlerTests
     {
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
-        var handler = new LaunchSkillCommandHandler(launcher);
+        var handler = new LaunchSkillCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
 
         // Act
         await handler.Handle(new LaunchSkillCommand(@"C:\workspace", "code ."), default);
