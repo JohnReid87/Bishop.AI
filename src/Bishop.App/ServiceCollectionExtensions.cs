@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Bishop.App.Claude;
 using Bishop.App.Git;
 using Bishop.App.GitHub;
 using Bishop.App.Ping;
@@ -23,6 +24,7 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<DatabaseInitializer>();
         services.AddSingleton<IGitCli, GitCli>();
         services.AddSingleton<IGhCli, GhCli>();
+        services.AddSingleton<IClaudeCliRunner, ClaudeCliRunner>();
         services.AddScoped<IAppSettings, AppSettingsService>();
 #pragma warning disable CA1416 // Bishop.AI is Windows-only; TerminalLauncher requires Windows APIs
         services.AddSingleton<ITerminalLauncher, TerminalLauncher>();

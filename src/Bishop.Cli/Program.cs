@@ -23,6 +23,7 @@ using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
+using Bishop.App.WorkNext;
 using Bishop.Cli;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -774,6 +775,57 @@ installSkillsCmd.SetHandler(() =>
     }
 });
 root.AddCommand(installSkillsCmd);
+
+// ── work-next ─────────────────────────────────────────────────────────────────
+
+var workNextTagOpt = new Option<string>("--tag", () => "test", "Only claim cards carrying this tag");
+var workNextMaxOpt = new Option<int>("--max", () => 10, "Max cards to process; 0 means uncapped");
+
+var workNextCmd = new Command("work-next", "Loop: claim a tagged card and run claude on it until exhaustion, failure, or cap");
+workNextCmd.AddOption(workspaceOpt);
+workNextCmd.AddOption(workNextTagOpt);
+workNextCmd.AddOption(workNextMaxOpt);
+workNextCmd.SetHandler(async (string? workspace, string tag, int max) =>
+{
+    if (max < 0)
+    {
+        Console.Error.WriteLine("--max must be >= 0 (0 means uncapped).");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    var ws = await resolver.ResolveAsync(workspace);
+    var result = await mediator.Send(new WorkNextCommand(ws.Id, ws.Path, tag, max));
+
+    switch (result.StopReason)
+    {
+        case WorkNextStopReason.EmptyLane:
+            Console.WriteLine($"work-next: processed {result.CardsProcessed} card(s); no more '{tag}' cards in 'To Do'.");
+            break;
+        case WorkNextStopReason.CapReached:
+            Console.WriteLine($"work-next: processed {result.CardsProcessed} card(s); reached --max cap.");
+            break;
+        case WorkNextStopReason.DirtyWorkingTree:
+            Console.Error.WriteLine($"work-next: processed {result.CardsProcessed} card(s); aborted — working tree at '{ws.Path}' is dirty:");
+            foreach (var path in result.DirtyPaths ?? Array.Empty<string>())
+                Console.Error.WriteLine($"  {path}");
+            Environment.ExitCode = 1;
+            break;
+        case WorkNextStopReason.ClaudeFailed:
+            Console.Error.WriteLine($"work-next: processed {result.CardsProcessed} card(s); claude exited non-zero on card #{result.FailedCardNumber} (left in 'Doing').");
+            Environment.ExitCode = 1;
+            break;
+        case WorkNextStopReason.NotAGitRepo:
+            Console.Error.WriteLine($"work-next: workspace '{ws.Path}' is not a git repository — refusing to start.");
+            Environment.ExitCode = 1;
+            break;
+        case WorkNextStopReason.GitNotFound:
+            Console.Error.WriteLine("work-next: 'git' executable not found on PATH — refusing to start.");
+            Environment.ExitCode = 1;
+            break;
+    }
+}, workspaceOpt, workNextTagOpt, workNextMaxOpt);
+root.AddCommand(workNextCmd);
 
 // ── run ───────────────────────────────────────────────────────────────────────
 

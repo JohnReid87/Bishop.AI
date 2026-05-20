@@ -87,4 +87,59 @@ public sealed class GitCli : IGitCli
                 : new GetRecentCommitsResult.Success(commits);
         }
     }
+
+    public async Task<GetWorkingTreeStatusResult> GetWorkingTreeStatusAsync(
+        string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("status");
+        psi.ArgumentList.Add("--porcelain");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            return new GetWorkingTreeStatusResult.GitNotFound();
+        }
+
+        if (proc is null)
+            return new GetWorkingTreeStatusResult.GitNotFound();
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode == 128 &&
+                stderr.Contains("not a git repository", StringComparison.OrdinalIgnoreCase))
+            {
+                return new GetWorkingTreeStatusResult.NotAGitRepo();
+            }
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git exited {proc.ExitCode}: {stderr.Trim()}");
+
+            var paths = stdout
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.TrimEnd('\r'))
+                .Where(line => line.Length > 0)
+                .Select(line => line.Length > 3 ? line[3..] : line)
+                .ToList();
+
+            return paths.Count == 0
+                ? new GetWorkingTreeStatusResult.Clean()
+                : new GetWorkingTreeStatusResult.Dirty(paths);
+        }
+    }
 }
