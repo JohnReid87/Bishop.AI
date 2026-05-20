@@ -121,11 +121,31 @@ Run `bishop workspace current --json`.
    - Do not add libraries or introduce patterns not already in use.
    - Do not gold-plate — implement exactly what the card describes.
 
-6. Validate the changes:
+6. **Test coverage check** — before validating, analyse what was changed:
+   - Identify any files added or modified in production projects (paths that do
+     NOT contain `.Tests` or `Tests` in a directory segment).
+   - If production files were touched, assess whether the new or changed code
+     contains testable logic: command/query handlers, services, domain methods,
+     non-trivial algorithms, or any logic with branching behaviour.
+   - If testable logic is present and no test files were written in this session,
+     **write the unit tests as part of this card** — do not defer them. Follow
+     the existing test project structure and naming conventions.
+   - Only ask the user if the need for tests is genuinely ambiguous (e.g. a
+     thin pass-through or pure scaffolding with no meaningful behaviour). In
+     that case, briefly describe what was added and ask:
+
+     > The new code appears to be [description]. Tests may not add much value
+     > here — should I write them anyway, or track as a follow-up?
+     > (`write` / `follow-up` / `skip`)
+
+   - If the card is already tagged `test`, or only test files changed, skip
+     this check entirely.
+
+7. Validate the changes:
    - Run the build (`dotnet build`) and confirm it succeeds.
    - Run the tests (`dotnet test`) and confirm none are broken.
 
-7. Output a concise completion summary:
+8. Output a concise completion summary:
 
    ## Done — Card #N: <title>
    **Files changed:**
@@ -137,7 +157,7 @@ Run `bishop workspace current --json`.
    **Follow-up cards to consider:**
    - <anything discovered that is out of scope but worth tracking>
 
-8. Ask the user whether to **move the card to "Done" and commit the changes**
+9. Ask the user whether to **move the card to "Done" and commit the changes**
    in a single confirmation. Derive a pre-filled Conventional Commits proposal
    from the card's first tag (captured in step 1) and title:
 
