@@ -1,7 +1,7 @@
 using Bishop.App.Git;
 using FluentAssertions;
 
-namespace Bishop.Tests.Git;
+namespace Bishop.Tests.App.Git;
 
 public sealed class GetRecentCommitsTests : IDisposable
 {
@@ -47,11 +47,14 @@ public sealed class GetRecentCommitsTests : IDisposable
     [Fact]
     public async Task GetRecentCommitsAsync_ReturnsSuccess_WithOneCommit()
     {
+        // Arrange
         InitRepoWithCommit("Fix the thing");
         var sut = new GitCli();
 
+        // Act
         var result = await sut.GetRecentCommitsAsync(_tempDir);
 
+        // Assert
         var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
         success.Commits.Should().HaveCount(1);
         success.Commits[0].Subject.Should().Be("Fix the thing");
@@ -63,27 +66,34 @@ public sealed class GetRecentCommitsTests : IDisposable
     [Fact]
     public async Task GetRecentCommitsAsync_ReturnsNoCommits_WhenRepoIsEmpty()
     {
+        // Arrange
         Git(_tempDir, "init");
         var sut = new GitCli();
 
+        // Act
         var result = await sut.GetRecentCommitsAsync(_tempDir);
 
+        // Assert
         result.Should().BeOfType<GetRecentCommitsResult.NoCommits>();
     }
 
     [Fact]
     public async Task GetRecentCommitsAsync_ReturnsNotAGitRepo_WhenDirectoryIsNotRepo()
     {
+        // Arrange
         var sut = new GitCli();
 
+        // Act
         var result = await sut.GetRecentCommitsAsync(_tempDir);
 
+        // Assert
         result.Should().BeOfType<GetRecentCommitsResult.NotAGitRepo>();
     }
 
     [Fact]
     public async Task GetRecentCommitsAsync_ReturnsAtMostFiveCommits_WhenRepoHasMore()
     {
+        // Arrange
         InitRepoWithCommit("Commit 1");
         for (var i = 2; i <= 7; i++)
         {
@@ -93,8 +103,10 @@ public sealed class GetRecentCommitsTests : IDisposable
         }
         var sut = new GitCli();
 
+        // Act
         var result = await sut.GetRecentCommitsAsync(_tempDir);
 
+        // Assert
         var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
         success.Commits.Should().HaveCount(5);
     }

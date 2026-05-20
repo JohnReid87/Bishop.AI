@@ -11,34 +11,26 @@ using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
-namespace Bishop.Tests.Lanes;
+namespace Bishop.Tests.App.Lanes;
 
-public sealed class LaneHandlerTests : IDisposable
+public sealed class LaneHandlerTests : IClassFixture<DbFixture>
 {
-    private readonly SqliteConnection _connection;
     private readonly BishopDbContext _db;
+    private readonly SqliteConnection _connection;
 
-    public LaneHandlerTests()
+    public LaneHandlerTests(DbFixture fixture)
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open();
-        var options = new DbContextOptionsBuilder<BishopDbContext>()
-            .UseSqlite(_connection)
-            .Options;
-        _db = new BishopDbContext(options);
-        _db.Database.EnsureCreated();
+        _db = fixture.Db;
+        _connection = fixture.Connection;
     }
 
-    public void Dispose()
-    {
-        _db.Dispose();
-        _connection.Dispose();
-    }
+    private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
 
     private async Task<(Workspace workspace, IReadOnlyList<Lane> lanes)> CreateWorkspaceWithLanesAsync()
     {
+        var name = U("Test");
         var workspace = await new CreateWorkspaceCommandHandler(_db)
-            .Handle(new CreateWorkspaceCommand("Test", @"C:\test"), default);
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var lanes = await new ListLanesByWorkspaceQueryHandler(_db)
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         return (workspace, lanes);
@@ -47,12 +39,16 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task CreateWorkspace_SeedsThreeLanes()
     {
+        // Arrange
+        var name = U("Seeded");
         var workspace = await new CreateWorkspaceCommandHandler(_db)
-            .Handle(new CreateWorkspaceCommand("Seeded", @"C:\seeded"), default);
-
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var handler = new ListLanesByWorkspaceQueryHandler(_db);
+
+        // Act
         var lanes = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
 
+        // Assert
         lanes.Should().HaveCount(3);
         lanes.Select(l => l.Name).Should().Equal("To Do", "Doing", "Done");
         lanes.Select(l => l.Position).Should().Equal(1, 2, 3);
@@ -61,14 +57,19 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task ListLanesByWorkspace_ReturnsOnlyLanesForThatWorkspace()
     {
+        // Arrange
+        var n1 = U("WS1");
+        var n2 = U("WS2");
         var ws1 = await new CreateWorkspaceCommandHandler(_db)
-            .Handle(new CreateWorkspaceCommand("WS1", @"C:\ws1"), default);
+            .Handle(new CreateWorkspaceCommand(n1, $@"C:\{n1}"), default);
         var ws2 = await new CreateWorkspaceCommandHandler(_db)
-            .Handle(new CreateWorkspaceCommand("WS2", @"C:\ws2"), default);
-
+            .Handle(new CreateWorkspaceCommand(n2, $@"C:\{n2}"), default);
         var handler = new ListLanesByWorkspaceQueryHandler(_db);
+
+        // Act
         var lanes = await handler.Handle(new ListLanesByWorkspaceQuery(ws1.Id), default);
 
+        // Assert
         lanes.Should().HaveCount(3);
         lanes.Should().AllSatisfy(l => l.WorkspaceId.Should().Be(ws1.Id));
     }
@@ -76,11 +77,14 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task AddLane_PersistsAndReturnsLane()
     {
+        // Arrange
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-
         var handler = new AddLaneCommandHandler(_db);
+
+        // Act
         var result = await handler.Handle(new AddLaneCommand(workspace.Id, "Backlog"), default);
 
+        // Assert
         result.Id.Should().NotBeEmpty();
         result.Name.Should().Be("Backlog");
         result.WorkspaceId.Should().Be(workspace.Id);
@@ -90,12 +94,15 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task AddLane_AssignsSequentialPositions()
     {
+        // Arrange
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
         var handler = new AddLaneCommandHandler(_db);
 
+        // Act
         var fourth = await handler.Handle(new AddLaneCommand(workspace.Id, "Review"), default);
         var fifth = await handler.Handle(new AddLaneCommand(workspace.Id, "Deploy"), default);
 
+        // Assert
         fourth.Position.Should().Be(4);
         fifth.Position.Should().Be(5);
     }
@@ -103,15 +110,17 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task RenameLane_UpdatesName()
     {
+        // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes[0];
-
         var handler = new RenameLaneCommandHandler(_db);
+
+        // Act
         var result = await handler.Handle(new RenameLaneCommand(todo.Id, "Inbox"), default);
 
+        // Assert
         result.Id.Should().Be(todo.Id);
         result.Name.Should().Be("Inbox");
-
         var persisted = await _db.Lanes.FindAsync(todo.Id);
         persisted!.Name.Should().Be("Inbox");
     }
@@ -119,18 +128,19 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task MoveLane_ReordersLanesCorrectly()
     {
+        // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var done = lanes[2];
-
-        // Move "Done" (pos 3) to position 1 → Done, To Do, Doing
         var handler = new MoveLaneCommandHandler(_db);
+
+        // Act — move "Done" (pos 3) to position 1 → Done, To Do, Doing
         await handler.Handle(new MoveLaneCommand(done.Id, 1), default);
 
+        // Assert
         var updated = await _db.Lanes
             .Where(l => l.WorkspaceId == done.WorkspaceId)
             .OrderBy(l => l.Position)
             .ToListAsync();
-
         updated.Select(l => l.Name).Should().Equal("Done", "To Do", "Doing");
         updated.Select(l => l.Position).Should().Equal(1, 2, 3);
     }
@@ -138,18 +148,19 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task MoveLane_ToEnd_PlacesLast()
     {
+        // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes[0];
-
-        // Move "To Do" (pos 1) to position 3 → Doing, Done, To Do
         var handler = new MoveLaneCommandHandler(_db);
+
+        // Act — move "To Do" (pos 1) to position 3 → Doing, Done, To Do
         await handler.Handle(new MoveLaneCommand(todo.Id, 3), default);
 
+        // Assert
         var updated = await _db.Lanes
             .Where(l => l.WorkspaceId == todo.WorkspaceId)
             .OrderBy(l => l.Position)
             .ToListAsync();
-
         updated.Select(l => l.Name).Should().Equal("Doing", "Done", "To Do");
         updated.Select(l => l.Position).Should().Equal(1, 2, 3);
     }
@@ -157,17 +168,19 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task RemoveLane_DeletesLane_AndRenumbersRemaining()
     {
+        // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var doing = lanes[1];
-
         var handler = new RemoveLaneCommandHandler(_db);
+
+        // Act
         await handler.Handle(new RemoveLaneCommand(doing.Id), default);
 
+        // Assert
         var remaining = await _db.Lanes
             .Where(l => l.WorkspaceId == doing.WorkspaceId)
             .OrderBy(l => l.Position)
             .ToListAsync();
-
         remaining.Should().HaveCount(2);
         remaining.Select(l => l.Name).Should().Equal("To Do", "Done");
         remaining.Select(l => l.Position).Should().Equal(1, 2);
@@ -176,14 +189,17 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task RemoveLane_ThrowsWhenNonEmpty()
     {
+        // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes[0];
         await new AddCardCommandHandler(_db)
             .Handle(new AddCardCommand(todo.Id, "A task"), default);
-
         var handler = new RemoveLaneCommandHandler(_db);
+
+        // Act
         var act = async () => await handler.Handle(new RemoveLaneCommand(todo.Id), default);
 
+        // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*not empty*");
     }
@@ -191,14 +207,16 @@ public sealed class LaneHandlerTests : IDisposable
     [Fact]
     public async Task ListLanesByWorkspace_ReflectsOutOfBandRename()
     {
-        // Regression for card #5: same caching bug for lanes. A lane renamed via the
-        // CLI must surface on refresh in the UI.
-        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        // Regression for card #5: a lane renamed via the CLI must surface on refresh
+        // in the UI (the UI's long-lived DbContext was caching tracked entities).
 
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var handler = new ListLanesByWorkspaceQueryHandler(_db);
         var initial = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         initial[0].Name.Should().Be("To Do");
 
+        // Act — simulate CLI rename via a second context on the same connection
         var cliOptions = new DbContextOptionsBuilder<BishopDbContext>()
             .UseSqlite(_connection)
             .Options;
@@ -209,8 +227,8 @@ public sealed class LaneHandlerTests : IDisposable
             await cliDb.SaveChangesAsync();
         }
 
+        // Assert
         var refreshed = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
-
         refreshed[0].Name.Should().Be("Renamed");
     }
 }

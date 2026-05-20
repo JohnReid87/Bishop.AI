@@ -43,11 +43,14 @@ public sealed class DatabaseInitializerTests : IDisposable
     [Fact]
     public Task StopAsync_ReturnsCompletedTask()
     {
+        // Arrange
         using var db = CreateDbContext();
         var sut = new DatabaseInitializer(db);
 
+        // Act
         var task = sut.StopAsync(default);
 
+        // Assert
         task.IsCompleted.Should().BeTrue();
         return task;
     }
@@ -55,27 +58,33 @@ public sealed class DatabaseInitializerTests : IDisposable
     [Fact]
     public async Task StartAsync_WhenStampIsCurrent_DoesNotThrow()
     {
+        // Arrange
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
         File.WriteAllText(_stampPath, latestMigration);
         var sut = new DatabaseInitializer(db);
 
+        // Act
         var act = () => sut.StartAsync(default);
 
+        // Assert
         await act.Should().NotThrowAsync();
     }
 
     [Fact]
     public async Task StartAsync_WhenStampIsMissing_RunsMigrationsAndWritesStamp()
     {
+        // Arrange
         if (File.Exists(_stampPath))
             File.Delete(_stampPath);
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
         var sut = new DatabaseInitializer(db);
 
+        // Act
         await sut.StartAsync(default);
 
+        // Assert
         File.Exists(_stampPath).Should().BeTrue();
         File.ReadAllText(_stampPath).Trim().Should().Be(latestMigration);
     }

@@ -20,21 +20,27 @@ public sealed class BishopDbConnectionStringTests : IDisposable
     [Fact]
     public void Resolve_WhenBishopDbEnvVarIsSet_ReturnsEnvVarConnectionString()
     {
+        // Arrange
         var dbPath = Path.Combine(Path.GetTempPath(), "test_bishop.db");
         Environment.SetEnvironmentVariable("BISHOP_DB", dbPath);
 
+        // Act
         var result = BishopDbConnectionString.Resolve();
 
+        // Assert
         result.Should().Be($"Data Source={dbPath}");
     }
 
     [Fact]
     public void Resolve_WhenBishopDbEnvVarIsNotSet_ReturnsAppDataConnectionString()
     {
+        // Arrange
         Environment.SetEnvironmentVariable("BISHOP_DB", null);
 
+        // Act
         var result = BishopDbConnectionString.Resolve();
 
+        // Assert
         var expected = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Bishop.AI",
@@ -45,10 +51,13 @@ public sealed class BishopDbConnectionStringTests : IDisposable
     [Fact]
     public void Resolve_WhenBishopDbEnvVarIsNotSet_EnsuresDirectoryExists()
     {
+        // Arrange
         Environment.SetEnvironmentVariable("BISHOP_DB", null);
 
+        // Act
         BishopDbConnectionString.Resolve();
 
+        // Assert
         var dir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Bishop.AI");
