@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Bishop.Core;
 
 public sealed class Lane
@@ -7,6 +9,7 @@ public sealed class Lane
     public string Name { get; set; } = string.Empty;
     public int Position { get; set; }
 
+    [JsonIgnore]
     public Workspace Workspace { get; set; } = null!;
     public ICollection<Card> Cards { get; set; } = [];
 }

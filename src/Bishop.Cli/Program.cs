@@ -35,7 +35,8 @@ using System.Text.Json.Serialization;
 var jsonOpts = new JsonSerializerOptions
 {
     WriteIndented = true,
-    DefaultIgnoreCondition = JsonIgnoreCondition.Never
+    DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+    ReferenceHandler = ReferenceHandler.IgnoreCycles
 };
 
 var builder = Host.CreateEmptyApplicationBuilder(null);

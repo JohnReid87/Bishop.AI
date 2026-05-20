@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Bishop.Core;
 
 public sealed class Tag
@@ -9,6 +11,8 @@ public sealed class Tag
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
+    [JsonIgnore]
     public Workspace Workspace { get; set; } = null!;
+    [JsonIgnore]
     public ICollection<CardTag> CardTags { get; set; } = [];
 }
