@@ -120,6 +120,16 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().NotContain("bish-work-on-card");
     }
 
+    [Fact]
+    public void LoadStaticBody_ReturnsNonEmptyString()
+    {
+        var body = WorkspaceContextSeeder.LoadStaticBody();
+
+        body.Should().NotBeNullOrEmpty();
+        body.Should().Contain("## Card model");
+        body.Should().Contain("## CLI quick reference");
+    }
+
     // ── EnsureContextMd ────────────────────────────────────────────────────────
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using Bishop.Core;
 using Bishop.Data;
@@ -99,78 +100,19 @@ public sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         }
         sb.AppendLine();
 
-        sb.AppendLine("## Card model");
-        sb.AppendLine();
-        sb.AppendLine("Bishop tracks work as **cards** inside **lanes** on a per-workspace kanban board.");
-        sb.AppendLine("Cards are addressed by their workspace-scoped Number, written as `#N` (e.g. `#42`).");
-        sb.AppendLine("Card identifiers also accept the first 8 hex characters of the card's GUID.");
-        sb.AppendLine("Tags are workspace-scoped and attach to cards via the `CardTag` join.");
-        sb.AppendLine();
-
-        sb.AppendLine("### Card body convention");
-        sb.AppendLine();
-        sb.AppendLine("Bodies use H3-section markdown. Required sections: `### Why` and `### Acceptance`.");
-        sb.AppendLine("Optional sections (include only when relevant): `### Changes`, `### Decided`,");
-        sb.AppendLine("`### Out of scope`, `### Related`.");
-        sb.AppendLine();
-        sb.AppendLine("Use backticks for code-like tokens: commands, file paths, flags, and identifiers.");
-        sb.AppendLine();
-        sb.AppendLine("Pass multi-line bodies via `--description-file -` (stdin) — do not escape `\\n` inline.");
-        sb.AppendLine();
-        sb.AppendLine("```");
-        sb.AppendLine("### Why");
-        sb.AppendLine("Describe the motivation in 1–3 sentences.");
-        sb.AppendLine();
-        sb.AppendLine("### Changes");
-        sb.AppendLine("- What to do, as bullet points.");
-        sb.AppendLine();
-        sb.AppendLine("### Acceptance");
-        sb.AppendLine("- Verifiable criterion one.");
-        sb.AppendLine("```");
-        sb.AppendLine();
-
-        sb.AppendLine("## CLI quick reference");
-        sb.AppendLine();
-        sb.AppendLine("All commands accept `-w <workspace>` to target a specific workspace; without it");
-        sb.AppendLine("they resolve from the current working directory.");
-        sb.AppendLine();
-
-        sb.AppendLine("### Workspace");
-        sb.AppendLine();
-        sb.AppendLine("- `bishop workspace list [--json]`");
-        sb.AppendLine("- `bishop workspace current [--json]` — resolves the workspace from cwd by ancestor match");
-        sb.AppendLine("- `bishop workspace init [--path <dir>] [--name <name>]` — register a directory; idempotent");
-        sb.AppendLine("- `bishop workspace set-github <owner/repo>` — link the workspace to a GitHub repo");
-        sb.AppendLine();
-
-        sb.AppendLine("### Card");
-        sb.AppendLine();
-        sb.AppendLine("- `bishop card list [--json]`");
-        sb.AppendLine("- `bishop card view <id> [--json]`");
-        sb.AppendLine("- `bishop card add --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>...]`");
-        sb.AppendLine("- `bishop card move <id> --to-lane <name> --to-position <int>`");
-        sb.AppendLine("- `bishop card edit <id> [--title <t>] [--description <d> | --description-file <path>] [--tag <name>...] [--clear-tags]`");
-        sb.AppendLine("- `bishop card claim [--lane <name>] [--json]` — pop the top card of a lane into \"Doing\"");
-        sb.AppendLine("- `bishop card push <id>` — create a GitHub issue for the card");
-        sb.AppendLine("- `bishop card close <id>` / `bishop card reopen <id>`");
-        sb.AppendLine();
-
-        sb.AppendLine("### Lane");
-        sb.AppendLine();
-        sb.AppendLine("- `bishop lane list`");
-        sb.AppendLine("- `bishop lane add` / `bishop lane rename` / `bishop lane move`");
-        sb.AppendLine();
-
-        sb.AppendLine("### Tag");
-        sb.AppendLine();
-        sb.AppendLine("- `bishop tag list`");
-        sb.AppendLine("- `bishop tag add [--colour <hex>]`");
-        sb.AppendLine();
-
-        sb.AppendLine("Prefer `--json` output for any command an agent will parse. Pipe multi-line");
-        sb.AppendLine("descriptions via `--description-file -` (stdin) to avoid quote escaping.");
+        sb.Append(LoadStaticBody());
 
         return sb.ToString();
+    }
+
+    internal static string LoadStaticBody()
+    {
+        var assembly = typeof(WorkspaceContextSeeder).Assembly;
+        using var stream = assembly.GetManifestResourceStream(
+            "Bishop.App.Terminal.BishopContext.static.md")!;
+        using var reader = new StreamReader(stream);
+        var raw = reader.ReadToEnd();
+        return raw.Replace("\r\n", "\n").Replace("\n", Environment.NewLine);
     }
 
     internal static string EnsureContextMd(string? existing, Workspace workspace)

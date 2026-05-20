@@ -17,6 +17,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Terminal\BishopContext.static.md" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Bishop.Tests" />
   </ItemGroup>
 
