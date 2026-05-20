@@ -3,9 +3,9 @@ using Bishop.App.Git;
 using Bishop.App.Lanes.AddLane;
 using Bishop.UI.Services;
 using Bishop.App.Settings;
-using Bishop.App.Lanes.MoveLane;
 using Bishop.App.Lanes.RemoveLane;
 using Bishop.App.Lanes.RenameLane;
+using Bishop.App.Lanes.ReorderLanes;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
@@ -37,6 +37,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private WorkspaceItemViewModel? _item;
     private CardViewModel? _draggedCard;
     private LaneViewModel? _dragSourceLane;
+    private LaneViewModel? _draggedLane;
     private bool _isDraggingNotes;
     private double _dragStartPageY;
     private double _dragStartNoteHeight;
@@ -583,13 +584,59 @@ public sealed partial class WorkspaceDetailPage : Page
         }
     }
 
-    private async void Lanes_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+    private void LaneHeader_DragStarting(UIElement sender, DragStartingEventArgs e)
     {
+        _draggedLane = (sender as FrameworkElement)?.DataContext as LaneViewModel;
+        if (_draggedLane is null) return;
+        e.Data.RequestedOperation = DataPackageOperation.Move;
+        e.Data.SetText(_draggedLane.Id.ToString());
+    }
+
+    private void LaneHeader_DropCompleted(UIElement sender, DropCompletedEventArgs e)
+    {
+        _draggedLane = null;
+    }
+
+    private void Lanes_DragOver(object sender, DragEventArgs e)
+    {
+        if (_draggedLane is null) return;
+        e.AcceptedOperation = DataPackageOperation.Move;
+        e.DragUIOverride.IsGlyphVisible = false;
+        e.DragUIOverride.Caption = string.Empty;
+    }
+
+    private async void Lanes_Drop(object sender, DragEventArgs e)
+    {
+        if (_draggedLane is null || _item is null) return;
+        if (sender is not ListView listView) return;
+
+        var draggedId = _draggedLane.Id;
+        var targetIndex = GetLaneDropIndex(listView, e);
+        _draggedLane = null;
+
+        var orderedIds = Board.Lanes
+            .Where(l => l.Id != draggedId)
+            .Select(l => l.Id)
+            .ToList();
+        targetIndex = Math.Clamp(targetIndex, 0, orderedIds.Count);
+        orderedIds.Insert(targetIndex, draggedId);
+
         var mediator = App.Services.GetRequiredService<IMediator>();
-        var ordered = LanesListView.Items.OfType<LaneViewModel>().ToList();
-        for (var i = 0; i < ordered.Count; i++)
-            await mediator.Send(new MoveLaneCommand(ordered[i].Id, i + 1));
+        await mediator.Send(new ReorderLanesCommand(_item.Id, orderedIds));
         await Board.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private static int GetLaneDropIndex(ListView listView, DragEventArgs e)
+    {
+        var dropPoint = e.GetPosition(listView);
+        for (var i = 0; i < listView.Items.Count; i++)
+        {
+            if (listView.ContainerFromIndex(i) is not ListViewItem item) continue;
+            var itemLeft = item.TransformToVisual(listView).TransformPoint(new Windows.Foundation.Point(0, 0)).X;
+            if (dropPoint.X < itemLeft + item.ActualWidth / 2)
+                return i;
+        }
+        return listView.Items.Count;
     }
 
     private void NotesSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
