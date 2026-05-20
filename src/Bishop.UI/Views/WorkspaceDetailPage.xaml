@@ -111,8 +111,6 @@
                     <Button x:Name="AddLaneButton"
                             Content="+ New lane"
                             Click="AddLane_Click"/>
-                    <Button Command="{x:Bind Board.RefreshCommand}"
-                            Content="Refresh"/>
                 </StackPanel>
             </Grid>
 
