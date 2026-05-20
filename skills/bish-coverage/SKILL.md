@@ -60,8 +60,9 @@ A .NET workspace using `coverlet.collector` for instrumentation and a
    - `name` — .NET full class name. Used for card titles and as a fallback label.
    - `file` — repo-relative source file path. Used for clustering.
    - `lineCoverage` — percent line coverage, 0–100.
-   - `linesCoverable` — instrumented line count. The skill drops classes with
-     fewer than 3 to avoid noise from single-line records / handler stubs.
+   - `linesCoverable` — instrumented line count. Surfaced in the interview so
+     the user can judge effort, but the skill no longer filters on it — even
+     a one-line handler may hide a guard, null check, or mapping worth testing.
 
 Note: example values throughout this skill use `Bishop.App.*` names because
 that's the workspace where the skill was first written. The skill itself
@@ -99,9 +100,10 @@ makes no assumption about specific namespace prefixes — it works for any
 
 4. **Identify gaps.** From `modules[]`:
 
-   - Drop any module with `linesCoverable < 3` (records, stubs, single-line
-     adapters — testing them is noise).
-   - Keep any module with `lineCoverage < summary.threshold` (default 80).
+   - Keep any module with `lineCoverage < summary.threshold` (default 80),
+     regardless of size. Small classes are included — a 1- or 2-line handler
+     can still hide a guard, null check, or mapping worth testing, and the
+     user decides per-card in the interview whether it's worth filing.
 
    If nothing survives, congratulate the user — coverage is at or above the
    threshold — and STOP without pushing anything.
@@ -184,8 +186,8 @@ makes no assumption about specific namespace prefixes — it works for any
 <guardrails>
 
 - Do NOT push cards before the user confirms each suggestion via the interview.
-- Do NOT lower the threshold or skip the `linesCoverable < 3` filter to surface
-  more gaps. Both rules exist to keep board signal high.
+- Do NOT lower the threshold to surface more gaps. The interview is the signal
+  filter — class size is not, since small classes can still contain logic.
 - Do NOT parse `Summary.json` (ReportGenerator) or `*.cobertura.xml` directly.
   The skill consumes `TestResults/coverage-summary.json` only. .NET-specific
   format conversion belongs in the workspace's `coverage.ps1`, not here.
