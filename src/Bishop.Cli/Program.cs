@@ -299,13 +299,15 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
 var cardIdArg = new Argument<string>("card-id", "Card short ID or prefix");
 var toLaneOpt = new Option<string>("--to-lane", "Target lane name") { IsRequired = true };
 var toPositionOpt = new Option<int>("--to-position", "Target zero-based position") { IsRequired = true };
+var noCloseOpt = new Option<bool>("--no-close", "Skip auto-close when moving into the Done lane");
 
 var cardMoveCmd = new Command("move", "Move a card to another lane or position");
 cardMoveCmd.AddArgument(cardIdArg);
 cardMoveCmd.AddOption(workspaceOpt);
 cardMoveCmd.AddOption(toLaneOpt);
 cardMoveCmd.AddOption(toPositionOpt);
-cardMoveCmd.SetHandler(async (string prefix, string? workspace, string toLane, int toPosition) =>
+cardMoveCmd.AddOption(noCloseOpt);
+cardMoveCmd.SetHandler(async (string prefix, string? workspace, string toLane, int toPosition, bool noClose) =>
 {
     var resolved = await resolveCardByPrefixAsync(workspace, prefix);
     if (resolved is null) return;
@@ -314,9 +316,9 @@ cardMoveCmd.SetHandler(async (string prefix, string? workspace, string toLane, i
     var targetLane = lanes.FirstOrDefault(l =>
         string.Equals(l.Name, toLane, StringComparison.OrdinalIgnoreCase))
         ?? throw new InvalidOperationException($"Lane '{toLane}' not found in workspace '{ws.Name}'.");
-    var card = await mediator.Send(new MoveCardCommand(cardId, targetLane.Id, toPosition));
+    var card = await mediator.Send(new MoveCardCommand(cardId, targetLane.Id, toPosition, noClose));
     Console.WriteLine($"Moved card #{card.Number} → [{targetLane.Name}] position {card.Position}");
-}, cardIdArg, workspaceOpt, toLaneOpt, toPositionOpt);
+}, cardIdArg, workspaceOpt, toLaneOpt, toPositionOpt, noCloseOpt);
 
 // ── card remove ───────────────────────────────────────────────────────────────
 

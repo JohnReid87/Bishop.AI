@@ -66,7 +66,7 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (enteringDone)
+        if (enteringDone && !request.KeepOpen)
             await _sender.Send(new CloseCardCommand(card.Id), cancellationToken);
         else if (leavingDone)
             await _sender.Send(new ReopenCardCommand(card.Id), cancellationToken);
