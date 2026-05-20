@@ -51,7 +51,6 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
                     GitHubIssueNumber = card.GitHubIssueNumber,
                     GitHubPushedAt = card.GitHubPushedAt,
                 };
-                cardVm.IsExpanded = lane.Name != "Done";
                 laneVm.Cards.Add(cardVm);
             }
             Lanes.Add(laneVm);

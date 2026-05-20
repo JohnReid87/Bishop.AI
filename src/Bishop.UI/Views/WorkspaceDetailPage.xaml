@@ -225,24 +225,23 @@
                                     </ListView.ItemContainerStyle>
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="vm:CardViewModel">
-                                            <local:HandCursorGrid Margin="8,0,8,4"
-                                                    Opacity="{x:Bind CardOpacity}"
-                                                    CanDrag="True"
-                                                    DragStarting="Card_DragStarting"
-                                                    DropCompleted="Card_DropCompleted">
+                                            <Grid Margin="8,0,8,4"
+                                                  Opacity="{x:Bind CardOpacity}">
                                                 <Border Background="{StaticResource AppCardBackgroundBrush}"
                                                         CornerRadius="4">
                                                 <StackPanel>
-                                                    <!-- Card header: short ID + optional tag chip + action buttons -->
-                                                    <Grid Padding="10,4,4,4"
-                                                          BorderBrush="{StaticResource AppDividerBrush}"
-                                                          BorderThickness="{x:Bind HeaderBorderThickness, Mode=OneWay}"
-                                                          Tapped="CardHeader_Tapped">
-                                                        <Grid.ColumnDefinitions>
+                                                    <!-- Card header: drag handle -->
+                                                    <local:HandCursorGrid Padding="10,4,4,4"
+                                                                          Background="Transparent"
+                                                                          BorderBrush="{StaticResource AppDividerBrush}"
+                                                                          BorderThickness="0,0,0,1"
+                                                                          CanDrag="True"
+                                                                          DragStarting="Card_DragStarting"
+                                                                          DropCompleted="Card_DropCompleted">
+                                                        <local:HandCursorGrid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                        </Grid.ColumnDefinitions>
+                                                        </local:HandCursorGrid.ColumnDefinitions>
                                                         <StackPanel Grid.Column="0"
                                                                     Orientation="Horizontal"
                                                                     Spacing="6"
@@ -270,22 +269,15 @@
                                                                 VerticalAlignment="Center">
                                                             <FontIcon Glyph="&#xE756;" FontSize="12"/>
                                                         </Button>
-                                                        <Button Grid.Column="2"
-                                                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                                ToolTipService.ToolTip="View card"
-                                                                Click="ViewCard_Click"
-                                                                VerticalAlignment="Center">
-                                                            <FontIcon Glyph="&#xE7B3;" FontSize="12"/>
-                                                        </Button>
-                                                    </Grid>
-                                                    <!-- Card title -->
+                                                    </local:HandCursorGrid>
+                                                    <!-- Card title: tap to open detail -->
                                                     <TextBlock Text="{x:Bind Title}"
                                                                TextWrapping="Wrap"
                                                                Padding="10,6,10,8"
-                                                               Visibility="{x:Bind BodyVisibility, Mode=OneWay}"/>
+                                                               Tapped="CardTitle_Tapped"/>
                                                 </StackPanel>
                                                 </Border>
-                                            </local:HandCursorGrid>
+                                            </Grid>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
                                 </ListView>

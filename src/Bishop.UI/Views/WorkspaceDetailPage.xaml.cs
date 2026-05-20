@@ -294,11 +294,14 @@ public sealed partial class WorkspaceDetailPage : Page
         return $"{(int)(elapsed.TotalDays / 30)}mo ago";
     }
 
-    private void CardHeader_Tapped(object sender, TappedRoutedEventArgs e)
+    private async void CardTitle_Tapped(object sender, TappedRoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
-        if (!card.IsDoneLane) return;
-        card.ToggleExpand();
+
+        var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty, _item?.GitHubRepo) { XamlRoot = XamlRoot };
+        await dialog.ShowAsync();
+        if (dialog.ViewModel.Deleted || dialog.ViewModel.Updated)
+            await Board.RefreshCommand.ExecuteAsync(null);
     }
 
     private async void CardSkillsButton_Click(object sender, RoutedEventArgs e)
@@ -415,17 +418,6 @@ public sealed partial class WorkspaceDetailPage : Page
         template
             .Replace("{{workspace_path}}", workspacePath)
             .Replace("{{card_number}}", card?.Number.ToString() ?? string.Empty);
-
-    private async void ViewCard_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card)
-            return;
-
-        var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty, _item?.GitHubRepo) { XamlRoot = XamlRoot };
-        await dialog.ShowAsync();
-        if (dialog.ViewModel.Deleted || dialog.ViewModel.Updated)
-            await Board.RefreshCommand.ExecuteAsync(null);
-    }
 
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
     {
