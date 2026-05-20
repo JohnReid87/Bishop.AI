@@ -137,20 +137,19 @@
                         <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
                             <Setter Property="Padding" Value="0"/>
                             <Setter Property="Margin" Value="0,0,8,0"/>
-                            <Setter Property="VerticalContentAlignment" Value="Top"/>
+                            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="vm:LaneViewModel">
                             <Grid Width="220"
-                                  VerticalAlignment="Top"
+                                  VerticalAlignment="Stretch"
                                   Background="{StaticResource AppLaneBackgroundBrush}"
                                   CornerRadius="8"
                                   Padding="0,0,0,8">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
 
                                 <Grid Grid.Row="0"
@@ -158,9 +157,22 @@
                                       CanDrag="True"
                                       DragStarting="LaneHeader_DragStarting"
                                       DropCompleted="LaneHeader_DropCompleted">
-                                    <TextBlock Text="{x:Bind Name, Mode=OneWay}"
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{x:Bind Name, Mode=OneWay}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}"
                                                Padding="12,10,12,8"/>
+                                    <Button Grid.Column="1"
+                                            Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                            Command="{x:Bind BeginAddCardCommand}"
+                                            Click="BeginAddCard_Click"
+                                            Margin="0,0,8,0"
+                                            ToolTipService.ToolTip="Add card">
+                                        <FontIcon Glyph="&#xE710;" FontSize="12"/>
+                                    </Button>
                                     <FlyoutBase.AttachedFlyout>
                                         <MenuFlyout>
                                             <MenuFlyoutItem Text="Rename" Click="RenameLane_Click">
@@ -178,10 +190,32 @@
                                           ItemsSource="{x:Bind Cards}"
                                           SelectionMode="None"
                                           AllowDrop="True"
-                                          MinHeight="200"
+                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                                           DragOver="Cards_DragOver"
                                           DragLeave="Cards_DragLeave"
                                           Drop="Cards_Drop">
+                                    <ListView.Header>
+                                        <StackPanel Spacing="4"
+                                                    Margin="8,4,8,4"
+                                                    Visibility="{x:Bind IsAddingCard, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBox PlaceholderText="Card title"
+                                                     Text="{x:Bind NewCardTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     PreviewKeyDown="AddCardTextBox_PreviewKeyDown"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                                                <Button Content="&#x2713;"
+                                                        Command="{x:Bind ConfirmAddCardCommand}"
+                                                        ToolTipService.ToolTip="Add card (Enter)"/>
+                                                <Button Content="&#x2715;"
+                                                        Command="{x:Bind CancelAddCardCommand}"
+                                                        ToolTipService.ToolTip="Cancel (Escape)"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{x:Bind AddCardErrorMessage, Mode=OneWay}"
+                                                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                                       TextWrapping="Wrap"
+                                                       FontSize="12"
+                                                       Visibility="{x:Bind HasAddCardError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        </StackPanel>
+                                    </ListView.Header>
                                     <ListView.ItemContainerStyle>
                                         <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
                                             <Setter Property="Padding" Value="0"/>
@@ -257,36 +291,8 @@
                                 </ListView>
 
 
-                                <!-- Lane footer: inline add-card form -->
-                                <Grid Grid.Row="2" Margin="8,4,8,0">
-                                    <Button Content="+ Add card"
-                                            HorizontalAlignment="Stretch"
-                                            Command="{x:Bind BeginAddCardCommand}"
-                                            Click="BeginAddCard_Click"
-                                            Visibility="{x:Bind IsAddingCard, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
-                                    <StackPanel Spacing="4"
-                                                Visibility="{x:Bind IsAddingCard, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBox PlaceholderText="Card title"
-                                                 Text="{x:Bind NewCardTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 PreviewKeyDown="AddCardTextBox_PreviewKeyDown"/>
-                                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
-                                            <Button Content="&#x2713;"
-                                                    Command="{x:Bind ConfirmAddCardCommand}"
-                                                    ToolTipService.ToolTip="Add card (Enter)"/>
-                                            <Button Content="&#x2715;"
-                                                    Command="{x:Bind CancelAddCardCommand}"
-                                                    ToolTipService.ToolTip="Cancel (Escape)"/>
-                                        </StackPanel>
-                                        <TextBlock Text="{x:Bind AddCardErrorMessage, Mode=OneWay}"
-                                                   Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                                   TextWrapping="Wrap"
-                                                   FontSize="12"
-                                                   Visibility="{x:Bind HasAddCardError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                    </StackPanel>
-                                </Grid>
-
 <!-- Drag-target highlight overlay -->
-                                <Border Grid.RowSpan="3"
+                                <Border Grid.RowSpan="2"
                                         IsHitTestVisible="False"
                                         CornerRadius="8"
                                         BorderBrush="{StaticResource AppDragTargetBorderBrush}"

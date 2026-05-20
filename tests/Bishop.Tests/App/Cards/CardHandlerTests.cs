@@ -60,7 +60,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task AddCard_AssignsSequentialPositions()
+    public async Task AddCard_InsertsAtTopOfLane()
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
@@ -68,12 +68,17 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var add = new AddCardCommandHandler(_db);
 
         // Act
-        var first = await add.Handle(new AddCardCommand(laneId, "First"), default);
+        await add.Handle(new AddCardCommand(laneId, "First"), default);
         var second = await add.Handle(new AddCardCommand(laneId, "Second"), default);
 
         // Assert
-        first.Position.Should().Be(1);
-        second.Position.Should().Be(2);
+        var cards = await _db.Cards
+            .Where(x => x.LaneId == laneId)
+            .OrderBy(x => x.Position)
+            .ToListAsync();
+        second.Position.Should().Be(1);
+        cards.Select(x => x.Title).Should().Equal("Second", "First");
+        cards.Select(x => x.Position).Should().Equal(1, 2);
     }
 
     [Fact]
@@ -109,8 +114,8 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         result.Should().HaveCount(3);
-        result[0].Title.Should().Be("Todo-1");
-        result[1].Title.Should().Be("Todo-2");
+        result[0].Title.Should().Be("Todo-2");
+        result[1].Title.Should().Be("Todo-1");
         result[2].Title.Should().Be("Doing-1");
     }
 
@@ -126,15 +131,15 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var c = await add.Handle(new AddCardCommand(laneId, "C"), default);
         var handler = new MoveCardCommandHandler(_db);
 
-        // Act — move C (pos 3) to position 1 → expected order: C, A, B
-        await handler.Handle(new MoveCardCommand(c.Id, laneId, 1), default);
+        // Act — with insert-at-top, initial order is C(1), B(2), A(3); move A to position 1 → A, C, B
+        await handler.Handle(new MoveCardCommand(a.Id, laneId, 1), default);
 
         // Assert
         var cards = await _db.Cards
             .Where(x => x.LaneId == laneId)
             .OrderBy(x => x.Position)
             .ToListAsync();
-        cards.Select(x => x.Title).Should().Equal("C", "A", "B");
+        cards.Select(x => x.Title).Should().Equal("A", "C", "B");
         cards.Select(x => x.Position).Should().Equal(1, 2, 3);
     }
 
@@ -271,15 +276,15 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var c = await add.Handle(new AddCardCommand(laneId, "C"), default);
         var handler = new MoveCardCommandHandler(_db);
 
-        // Act — move A (pos 1) to position 3 (end) → expected order: B, C, A
-        await handler.Handle(new MoveCardCommand(a.Id, laneId, 3), default);
+        // Act — with insert-at-top, initial order is C(1), B(2), A(3); move C to position 3 (end) → B, A, C
+        await handler.Handle(new MoveCardCommand(c.Id, laneId, 3), default);
 
         // Assert
         var cards = await _db.Cards
             .Where(x => x.LaneId == laneId)
             .OrderBy(x => x.Position)
             .ToListAsync();
-        cards.Select(x => x.Title).Should().Equal("B", "C", "A");
+        cards.Select(x => x.Title).Should().Equal("B", "A", "C");
         cards.Select(x => x.Position).Should().Equal(1, 2, 3);
     }
 

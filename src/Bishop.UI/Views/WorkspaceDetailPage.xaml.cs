@@ -677,9 +677,13 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private void BeginAddCard_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { Parent: Grid footerGrid }) return;
-        var textBox = footerGrid.Children.OfType<StackPanel>().FirstOrDefault()
-                                ?.Children.OfType<TextBox>().FirstOrDefault();
+        // button lives in the header Grid (col 1) → lane Grid → find the cards ListView → its Header
+        if (sender is not FrameworkElement fe) return;
+        var headerGrid = fe.Parent as Grid;
+        var laneGrid = headerGrid?.Parent as Grid;
+        var listView = laneGrid?.Children.OfType<ListView>().FirstOrDefault();
+        var headerPanel = listView?.Header as StackPanel;
+        var textBox = headerPanel?.Children.OfType<TextBox>().FirstOrDefault();
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             () => textBox?.Focus(FocusState.Programmatic));
     }
