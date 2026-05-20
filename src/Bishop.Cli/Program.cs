@@ -33,6 +33,9 @@ using System.CommandLine.Parsing;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+Console.InputEncoding = new System.Text.UTF8Encoding(false);
+Console.OutputEncoding = new System.Text.UTF8Encoding(false);
+
 var jsonOpts = new JsonSerializerOptions
 {
     WriteIndented = true,
