@@ -337,10 +337,5 @@ public sealed partial class CardDetailDialog : ContentDialog
             .Replace("{{workspace_path}}", workspacePath)
             .Replace("{{card_number}}", cardNumber.ToString());
 
-    private static TerminalSnap ComputeSnap()
-    {
-        var display = DisplayArea.GetFromWindowId(App.MainWindow!.AppWindow.Id, DisplayAreaFallback.Primary);
-        var wa = display.WorkArea;
-        return TerminalSnap.RightHalf(wa.X, wa.Y, wa.Width, wa.Height);
-    }
+    private static TerminalSnap ComputeSnap() => SnapHelper.ComputeSnap();
 }

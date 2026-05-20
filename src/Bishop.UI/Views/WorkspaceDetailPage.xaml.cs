@@ -407,12 +407,7 @@ public sealed partial class WorkspaceDetailPage : Page
         return row;
     }
 
-    private static TerminalSnap ComputeSnap()
-    {
-        var display = DisplayArea.GetFromWindowId(App.MainWindow!.AppWindow.Id, DisplayAreaFallback.Primary);
-        var wa = display.WorkArea;
-        return TerminalSnap.RightHalf(wa.X, wa.Y, wa.Width, wa.Height);
-    }
+    private static TerminalSnap ComputeSnap() => SnapHelper.ComputeSnap();
 
     private static string RenderCommand(string template, CardViewModel? card, string workspacePath) =>
         template
