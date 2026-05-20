@@ -216,15 +216,20 @@ that aren't in this list — the headings above are the floor, not the ceiling.
 
    > "Please review the tasks above. Say **push** to create the Bishop cards."
 
-8. **Push confirmed cards** in order. For each:
+8. **Push confirmed cards** in order. For each, pipe the body via stdin:
 
-   ```
-   bishop card add --lane "<Lane>" --title "<Title>" --tag arch --description "<body with \n replaced by real newlines>" --bottom
+   ```bash
+   bishop card add --lane "<Lane>" --title "<Title>" --tag arch --description-file - --bottom << 'BODY'
+   ### Why
+   <fill in>
+
+   ### Acceptance
+   - <fill in>
+   BODY
    ```
 
    Always pass `--bottom` so arch cards land at the bottom of the target lane
-   without disrupting manual ordering. If the body contains double quotes, use
-   `--description-file -` and pipe via stdin.
+   without disrupting manual ordering.
 
 9. **Print summary table:**
 
@@ -242,14 +247,27 @@ that aren't in this list — the headings above are the floor, not the ceiling.
 
 ## Card body template
 
-Single line; use literal `\n` for paragraph breaks.
+Use the H3-section markdown template below. Required sections: `### Why` and `### Acceptance`. Include optional sections only when they add value.
 
-`<dimension> — <what's wrong, 1 sentence>.\nLocations: <file:line[, file:line]...>.\nWhy it matters: <consequence in this codebase>.\nSuggested change: <action>.\nAcceptance: <how we'll know it's done>.`
+```markdown
+### Why
+<dimension> — <what's wrong, 1 sentence>. Locations: `<file:line[, file:line]...>`.
 
-For **clustered** cards, append each additional finding on its own `\n`-separated
-line under a `Also:` prefix:
+### Changes
+- `<file:line>` — <suggested change>
 
-`...\nAlso: <file:line> — <one-line summary>.`
+### Acceptance
+- <how we'll know it's done>
+
+### Related
+<for clustered cards: list each additional finding as `<file:line> — <one-line summary>`>
+```
+
+Rules:
+- Backtick file paths, identifiers, and CLI commands.
+- Use bullets in `### Changes` and `### Acceptance`.
+- Omit `### Related` for single-finding cards.
+- Omit `### Changes` when the suggested action is already clear from `### Why`.
 
 <guardrails>
 

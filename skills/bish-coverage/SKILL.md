@@ -134,8 +134,18 @@ makes no assumption about specific namespace prefixes — it works for any
    - **Title:** `Add tests for <cluster-folder-or-class-name>`. For singletons
      use the class name (e.g. `Add tests for TerminalLauncher`); for clusters
      use the folder (e.g. `Add tests for src/Bishop.App/Tags`).
-   - **Body** (use literal `\n` for paragraph breaks):
-     `<cluster> is below the <threshold>% line-coverage threshold (worst class: <name> at <coverage>%).\nAcceptance: all listed classes report lineCoverage ≥ <threshold> in the next coverage run.\nClasses in scope: <comma-separated class names>.`
+   - **Body** (use the H3-section template; `### Why` and `### Acceptance` are required):
+
+     ```markdown
+     ### Why
+     `<cluster>` is below the `<threshold>%` line-coverage threshold (worst class: `<name>` at `<coverage>%`).
+
+     ### Acceptance
+     - All listed classes report `lineCoverage ≥ <threshold>` in the next coverage run.
+
+     ### Changes
+     Classes in scope: `<ClassName1>`, `<ClassName2>`, ...
+     ```
    - **Tag:** `test`.
    - **Lane:** `To Do`.
 
@@ -165,14 +175,17 @@ makes no assumption about specific namespace prefixes — it works for any
    When two or more suggestions clearly belong together (same top-level folder,
    same theme), offer a fourth option to merge them into one card before pushing.
 
-9. **Push confirmed cards** via:
+9. **Push confirmed cards** by piping the body via stdin:
 
-   ```
-   bishop card add --lane "To Do" --title "<Title>" --tag test --description "<body with \n replaced by real newlines>" --bottom
-   ```
+   ```bash
+   bishop card add --lane "To Do" --title "<Title>" --tag test --description-file - --bottom << 'BODY'
+   ### Why
+   <fill in>
 
-   If the body contains double-quotes (rare — file paths and class names don't),
-   pipe it via stdin with `--description-file -` instead.
+   ### Acceptance
+   - <fill in>
+   BODY
+   ```
 
 10. **Print a summary table** after all cards are pushed:
 

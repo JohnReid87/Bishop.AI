@@ -73,29 +73,51 @@ If the workspace has no tags defined, use `feature` as the default.
 **Lane** defaults to `To Do`. Use a lane name from `lanes[].name` when placing
 the card somewhere other than the default.
 
-**Body format.** Single line; use literal `\n` to denote paragraph breaks. Template:
+**Body format.** Use the H3-section markdown template below. Required sections: `### Why` and `### Acceptance`. Include optional sections only when they add value.
 
-`<what, 1 sentence>.\nDecided: <choice> over <alt> because <reason>.\nAcceptance: <criteria>.`
+```markdown
+### Why
+<what this task does, 1 sentence — do not restate the title>
+
+### Changes
+- <specific change>
+
+### Decided
+<choice> over <alt> because <reason>
+
+### Acceptance
+- <acceptance criterion>
+
+### Out of scope
+<anything explicitly excluded>
+
+### Related
+<links or card numbers>
+```
 
 Rules:
-- Omit the `Decided:` clause if no real tradeoff was discussed — don't invent one.
-- Do not restate the title in the body.
-- Constraints, gotchas, or links go on their own `\n`-separated line.
+- Omit `### Decided` if no real tradeoff was discussed — don't invent one.
+- Omit `### Changes`, `### Out of scope`, `### Related` when they add no value.
+- Do not restate the title in `### Why`.
+- Backtick file paths, identifiers, and CLI commands.
+- Use bullets in `### Changes` and `### Acceptance`.
 
 After printing the task list, ask:
 > "Please review the tasks above. Say **push** to create the Bishop cards."
 
 **When the user confirms, push each card in order:**
 
-For each task, run:
+For each task, pipe the body via stdin:
 
-```
-bishop card add --lane "<Lane>" --title "<Title>" --tag "<Tag>" --description "<body with \n replaced by real newlines>" --bottom
-```
+```bash
+bishop card add --lane "<Lane>" --title "<Title>" --tag "<Tag>" --description-file - --bottom << 'BODY'
+### Why
+<fill in>
 
-Replace literal `\n` sequences in the body with real newlines before passing
-`--description`. If the body contains double-quotes, use `--description-file -`
-and pipe the body via stdin instead.
+### Acceptance
+- <fill in>
+BODY
+```
 
 After all cards are created, print a brief summary:
 
