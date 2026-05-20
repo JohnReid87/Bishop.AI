@@ -53,7 +53,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop card view <card-id> [-w] [--json]`
 - `bishop card move <card-id> --to-lane <name> --to-position <int> [-w]` — moving a card into the system `Done` lane auto-closes it (and its linked GitHub issue, if any); moving out of `Done` auto-reopens
 - `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path>] [--tag <name>...] [--clear-tags] [-w]` — updates only the supplied fields; `--clear-tags` empties tags; `--tag` replaces all tags
-- `bishop card claim [--lane <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; exits non-zero if the source lane is empty
+- `bishop card claim [--lane <name>] [--tag <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; `--tag` restricts the pick to the first card carrying that tag; exits non-zero if no matching card exists
 - `bishop card remove <card-id> [-w]`
 - `bishop card push <card-id> [-w]` — create a GitHub issue for the card in the workspace's linked repo and store the issue number on the card
 - `bishop card close <card-id> [-w]` — mark a card as closed; also closes the linked GitHub issue via `gh` if the card has been pushed

@@ -1,6 +1,7 @@
 using Bishop.App;
 using Bishop.App.Cards.AddCard;
 using Bishop.Core;
+using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.PushCard;
@@ -376,39 +377,27 @@ cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, s
 // ── card claim ────────────────────────────────────────────────────────────────
 
 var claimSourceLaneOpt = new Option<string>("--lane", () => "To Do", "Source lane to claim from");
+var claimTagOpt = new Option<string?>("--tag", "Only claim the first card carrying this tag");
 
 var cardClaimCmd = new Command("claim", "Pick the top card from a lane and move it to Doing");
 cardClaimCmd.AddOption(workspaceOpt);
 cardClaimCmd.AddOption(claimSourceLaneOpt);
+cardClaimCmd.AddOption(claimTagOpt);
 cardClaimCmd.AddOption(jsonOpt);
-cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, bool json) =>
+cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, string? tagName, bool json) =>
 {
     var ws = await resolver.ResolveAsync(workspace);
-    var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
 
-    var sourceLane = lanes.FirstOrDefault(l =>
-        string.Equals(l.Name, sourceLaneName, StringComparison.OrdinalIgnoreCase))
-        ?? throw new InvalidOperationException($"Lane '{sourceLaneName}' not found in workspace '{ws.Name}'.");
+    var card = await mediator.Send(new ClaimCardCommand(ws.Id, sourceLaneName, tagName));
 
-    var doingLane = lanes.FirstOrDefault(l =>
-        string.Equals(l.Name, "Doing", StringComparison.OrdinalIgnoreCase))
-        ?? throw new InvalidOperationException($"Lane 'Doing' not found in workspace '{ws.Name}'.");
-
-    var allCards = await mediator.Send(new ListCardsByWorkspaceQuery(ws.Id));
-    var topCard = allCards
-        .Where(c => c.LaneId == sourceLane.Id)
-        .OrderBy(c => c.Position)
-        .FirstOrDefault();
-
-    if (topCard is null)
+    if (card is null)
     {
-        Console.Error.WriteLine($"Lane '{sourceLane.Name}' is empty — nothing to claim.");
+        Console.Error.WriteLine(tagName is null
+            ? $"Lane '{sourceLaneName}' is empty — nothing to claim."
+            : $"No card tagged '{tagName}' in '{sourceLaneName}'.");
         Environment.ExitCode = 1;
         return;
     }
-
-    await mediator.Send(new MoveCardCommand(topCard.Id, doingLane.Id, 1));
-    var card = (await mediator.Send(new GetCardQuery(topCard.Id)))!;
 
     if (json)
     {
@@ -429,7 +418,7 @@ cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, bool js
     else
     {
         var tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
-        Console.WriteLine($"Claimed #{card.Number} — '{card.Title}' [{sourceLane.Name}] → [{doingLane.Name}]");
+        Console.WriteLine($"Claimed #{card.Number} — '{card.Title}' [{sourceLaneName}] → [{card.Lane.Name}]");
         if (tags.Count > 0)
             Console.WriteLine($"Tags: {string.Join(", ", tags)}");
         if (!string.IsNullOrEmpty(card.Description))
@@ -438,7 +427,7 @@ cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, bool js
             Console.WriteLine(card.Description);
         }
     }
-}, workspaceOpt, claimSourceLaneOpt, jsonOpt);
+}, workspaceOpt, claimSourceLaneOpt, claimTagOpt, jsonOpt);
 
 // ── card list ─────────────────────────────────────────────────────────────────
 
