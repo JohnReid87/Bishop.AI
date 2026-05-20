@@ -109,16 +109,24 @@ public sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 
         sb.AppendLine("### Card body convention");
         sb.AppendLine();
-        sb.AppendLine("Bodies use a structured, single-line-per-paragraph format. Paragraphs are");
-        sb.AppendLine("separated by blank lines (or literal `\\n` when passing via the CLI):");
+        sb.AppendLine("Bodies use H3-section markdown. Required sections: `### Why` and `### Acceptance`.");
+        sb.AppendLine("Optional sections (include only when relevant): `### Changes`, `### Decided`,");
+        sb.AppendLine("`### Out of scope`, `### Related`.");
+        sb.AppendLine();
+        sb.AppendLine("Use backticks for code-like tokens: commands, file paths, flags, and identifiers.");
+        sb.AppendLine();
+        sb.AppendLine("Pass multi-line bodies via `--description-file -` (stdin) — do not escape `\\n` inline.");
         sb.AppendLine();
         sb.AppendLine("```");
-        sb.AppendLine("<what changes, 1 sentence>.");
-        sb.AppendLine("Decided: <choice> over <alternative> because <reason>.");
-        sb.AppendLine("Acceptance: <criteria>.");
-        sb.AppendLine("```");
+        sb.AppendLine("### Why");
+        sb.AppendLine("Describe the motivation in 1–3 sentences.");
         sb.AppendLine();
-        sb.AppendLine("Omit the `Decided:` clause when no real tradeoff was discussed.");
+        sb.AppendLine("### Changes");
+        sb.AppendLine("- What to do, as bullet points.");
+        sb.AppendLine();
+        sb.AppendLine("### Acceptance");
+        sb.AppendLine("- Verifiable criterion one.");
+        sb.AppendLine("```");
         sb.AppendLine();
 
         sb.AppendLine("## CLI quick reference");

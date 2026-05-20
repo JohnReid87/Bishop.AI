@@ -91,6 +91,23 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public void BuildBishopContext_CardBodyConvention_DescribesH3SectionFormat()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("### Card body convention");
+        output.Should().Contain("`### Why`");
+        output.Should().Contain("`### Acceptance`");
+        output.Should().Contain("`### Changes`");
+        output.Should().Contain("`### Decided`");
+        output.Should().Contain("--description-file -");
+        output.Should().Contain("### Why");
+        output.Should().Contain("### Acceptance");
+    }
+
+    [Fact]
     public void BuildBishopContext_OmitsDestructiveCommandsAndSkillCatalog()
     {
         var workspace = MakeWorkspace();
