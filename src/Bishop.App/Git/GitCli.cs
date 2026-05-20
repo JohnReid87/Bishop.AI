@@ -18,7 +18,7 @@ public sealed class GitCli : IGitCli
         };
         psi.ArgumentList.Add("log");
         psi.ArgumentList.Add("--max-count=5");
-        psi.ArgumentList.Add("--format=%h\x1f%H\x1f%s\x1f%aI");
+        psi.ArgumentList.Add("--format=%h\x1f%H\x1f%B\x1f%aI\x1e");
 
         Process? proc;
         try
@@ -51,17 +51,35 @@ public sealed class GitCli : IGitCli
             if (proc.ExitCode != 0)
                 throw new InvalidOperationException($"git exited {proc.ExitCode}: {stderr.Trim()}");
 
-            var lines = stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            if (lines.Length == 0)
+            var records = stdout.Split('\x1e', StringSplitOptions.RemoveEmptyEntries);
+            if (records.Length == 0)
                 return new GetRecentCommitsResult.NoCommits();
 
-            var commits = new List<CommitInfo>(lines.Length);
-            foreach (var line in lines)
+            var commits = new List<CommitInfo>(records.Length);
+            foreach (var record in records)
             {
-                var parts = line.Split('\x1f');
+                var parts = record.Split('\x1f');
                 if (parts.Length != 4) continue;
                 if (!DateTimeOffset.TryParse(parts[3].Trim(), out var ts)) continue;
-                commits.Add(new CommitInfo(parts[0].Trim(), parts[1].Trim(), parts[2].Trim(), ts));
+
+                var fullMessage = parts[2];
+                var newlineIdx = fullMessage.IndexOf('\n');
+                string subject, body;
+                if (newlineIdx < 0)
+                {
+                    subject = fullMessage.Trim();
+                    body = "";
+                }
+                else
+                {
+                    subject = fullMessage[..newlineIdx].Trim();
+                    var remainder = fullMessage[(newlineIdx + 1)..];
+                    if (remainder.StartsWith('\n'))
+                        remainder = remainder[1..];
+                    body = remainder.TrimEnd();
+                }
+
+                commits.Add(new CommitInfo(parts[0].Trim(), parts[1].Trim(), subject, body, ts));
             }
 
             return commits.Count == 0

@@ -277,6 +277,10 @@ public sealed partial class WorkspaceDetailPage : Page
             Padding = new Thickness(4, 4, 4, 4),
         };
         btn.Click += async (_, _) => await onClick();
+
+        var tooltipText = string.IsNullOrEmpty(commit.Body) ? commit.Subject : $"{commit.Subject}\n\n{commit.Body}";
+        ToolTipService.SetToolTip(btn, new TextBlock { Text = tooltipText, TextWrapping = TextWrapping.Wrap, MaxWidth = 600 });
+
         return btn;
     }
 

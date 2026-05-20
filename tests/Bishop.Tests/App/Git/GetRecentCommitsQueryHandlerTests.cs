@@ -49,7 +49,7 @@ public sealed class GetRecentCommitsQueryHandlerTests
         // Arrange
         var commits = new List<CommitInfo>
         {
-            new("abc1234", "abc1234def5678901234567890", "Initial commit", DateTimeOffset.UtcNow)
+            new("abc1234", "abc1234def5678901234567890", "Initial commit", "", DateTimeOffset.UtcNow)
         };
         var expected = new GetRecentCommitsResult.Success(commits);
         var git = Substitute.For<IGitCli>();

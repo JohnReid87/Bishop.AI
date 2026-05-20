@@ -58,9 +58,31 @@ public sealed class GetRecentCommitsTests : IDisposable
         var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
         success.Commits.Should().HaveCount(1);
         success.Commits[0].Subject.Should().Be("Fix the thing");
+        success.Commits[0].Body.Should().BeEmpty();
         success.Commits[0].ShortHash.Should().NotBeNullOrEmpty();
         success.Commits[0].FullHash.Should().HaveLength(40);
         success.Commits[0].Timestamp.Should().NotBe(default);
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_PopulatesBody_WhenCommitHasMultiParagraphMessage()
+    {
+        // Arrange
+        Git(_tempDir, "init");
+        Git(_tempDir, "config", "user.email", "test@example.com");
+        Git(_tempDir, "config", "user.name", "Test");
+        File.WriteAllText(Path.Combine(_tempDir, "file.txt"), "content");
+        Git(_tempDir, "add", ".");
+        Git(_tempDir, "commit", "-m", "Add the thing\n\nThis explains why.\n\nCo-Authored-By: Test <t@t.com>");
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
+        success.Commits[0].Subject.Should().Be("Add the thing");
+        success.Commits[0].Body.Should().Be("This explains why.\n\nCo-Authored-By: Test <t@t.com>");
     }
 
     [Fact]
