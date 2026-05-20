@@ -38,16 +38,24 @@ Tags are workspace-scoped and attach to cards via the `CardTag` join.
 
 ### Card body convention
 
-Bodies use a structured, single-line-per-paragraph format. Paragraphs are
-separated by blank lines (or literal `\n` when passing via the CLI):
+Bodies use H3-section markdown. Required sections: `### Why` and `### Acceptance`.
+Optional sections (include only when relevant): `### Changes`, `### Decided`,
+`### Out of scope`, `### Related`.
+
+Use backticks for code-like tokens: commands, file paths, flags, and identifiers.
+
+Pass multi-line bodies via `--description-file -` (stdin) — do not escape `\n` inline.
 
 ```
-<what changes, 1 sentence>.
-Decided: <choice> over <alternative> because <reason>.
-Acceptance: <criteria>.
-```
+### Why
+Describe the motivation in 1–3 sentences.
 
-Omit the `Decided:` clause when no real tradeoff was discussed.
+### Changes
+- What to do, as bullet points.
+
+### Acceptance
+- Verifiable criterion one.
+```
 
 ## CLI quick reference
 

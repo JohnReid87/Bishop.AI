@@ -195,8 +195,9 @@ makes no assumption about specific namespace prefixes — it works for any
 
     Then offer:
 
-    > Re-run `/bish-coverage` after the new cards are worked. Dedupe makes
-    > repeated runs safe.
+    > Re-run `/bish-coverage` after the new cards are worked, then
+    > `/bish-tests` to audit the test files of well-covered classes.
+    > Dedupe makes repeated runs safe.
 
 </what-to-do>
 
