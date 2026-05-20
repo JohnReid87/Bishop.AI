@@ -1,4 +1,6 @@
+using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.MoveCard;
+using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Git;
 using Bishop.App.Lanes.AddLane;
 using Bishop.UI.Services;
@@ -333,6 +335,40 @@ public sealed partial class WorkspaceDetailPage : Page
 
         flyout.Content = panel;
         flyout.ShowAt((FrameworkElement)sender);
+    }
+
+    private async void CardCloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        try
+        {
+            if (card.IsClosed)
+                await mediator.Send(new ReopenCardCommand(card.Id));
+            else
+                await mediator.Send(new CloseCardCommand(card.Id));
+
+            var lane = Board.Lanes.FirstOrDefault(l => l.Id == card.LaneId);
+            if (lane is null) return;
+            var idx = lane.Cards.IndexOf(card);
+            if (idx < 0) return;
+            lane.Cards[idx] = new CardViewModel
+            {
+                Id = card.Id,
+                LaneId = card.LaneId,
+                Number = card.Number,
+                Title = card.Title,
+                Description = card.Description,
+                LaneName = card.LaneName,
+                Tags = card.Tags,
+                FirstTagName = card.FirstTagName,
+                FirstTagColour = card.FirstTagColour,
+                IsClosed = !card.IsClosed,
+                GitHubIssueNumber = card.GitHubIssueNumber,
+                GitHubPushedAt = card.GitHubPushedAt,
+            };
+        }
+        catch { }
     }
 
     private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath, string? modelId = null)

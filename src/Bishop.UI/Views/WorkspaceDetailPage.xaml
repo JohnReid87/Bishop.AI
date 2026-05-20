@@ -261,14 +261,22 @@
                                                                            VerticalAlignment="Center"/>
                                                             </Border>
                                                         </StackPanel>
-                                                        <Button Grid.Column="1"
-                                                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                                ToolTipService.ToolTip="Launch skill"
-                                                                Click="CardSkillsButton_Click"
-                                                                Visibility="{x:Bind SkillsButtonVisibility}"
-                                                                VerticalAlignment="Center">
-                                                            <FontIcon Glyph="&#xE756;" FontSize="12"/>
-                                                        </Button>
+                                                        <StackPanel Grid.Column="1"
+                                                                    Orientation="Horizontal">
+                                                            <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                                    ToolTipService.ToolTip="Launch skill"
+                                                                    Click="CardSkillsButton_Click"
+                                                                    Visibility="{x:Bind SkillsButtonVisibility}"
+                                                                    VerticalAlignment="Center">
+                                                                <FontIcon Glyph="&#xE756;" FontSize="12"/>
+                                                            </Button>
+                                                            <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                                    ToolTipService.ToolTip="{x:Bind CloseReopenTooltip}"
+                                                                    Click="CardCloseButton_Click"
+                                                                    VerticalAlignment="Center">
+                                                                <FontIcon Glyph="{x:Bind CloseReopenGlyph}" FontSize="12"/>
+                                                            </Button>
+                                                        </StackPanel>
                                                     </local:HandCursorGrid>
                                                     <!-- Card title: tap to open detail -->
                                                     <TextBlock Text="{x:Bind Title}"
