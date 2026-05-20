@@ -4,6 +4,7 @@ using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Lanes.MoveLane;
 using Bishop.App.Lanes.RemoveLane;
 using Bishop.App.Lanes.RenameLane;
+using Bishop.App.Lanes.ReorderLanes;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
 using Bishop.Data;
@@ -202,6 +203,75 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*not empty*");
+    }
+
+    [Fact]
+    public async Task ReorderLanes_PersistsNewPositions()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes[0];  // pos 1
+        var doing = lanes[1]; // pos 2
+        var done = lanes[2];  // pos 3
+        var handler = new ReorderLanesCommandHandler(_db);
+
+        // Act — reverse order: Done, To Do, Doing
+        await handler.Handle(
+            new ReorderLanesCommand(workspace.Id, [done.Id, todo.Id, doing.Id]),
+            default);
+
+        // Assert
+        var updated = await _db.Lanes
+            .Where(l => l.WorkspaceId == workspace.Id)
+            .OrderBy(l => l.Position)
+            .ToListAsync();
+        updated.Select(l => l.Name).Should().Equal("Done", "To Do", "Doing");
+        updated.Select(l => l.Position).Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public async Task ReorderLanes_PartialOrderedIds_LeavesUnmappedLanesUnchanged()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes[0];  // pos 1
+        var doing = lanes[1]; // pos 2
+        var done = lanes[2];  // pos 3
+        var handler = new ReorderLanesCommandHandler(_db);
+
+        // Act — supply only Done and To Do; Doing is omitted from the list
+        await handler.Handle(
+            new ReorderLanesCommand(workspace.Id, [done.Id, todo.Id]),
+            default);
+
+        // Assert — mapped lanes get new positions; Doing retains its original position
+        var doneLane = await _db.Lanes.FindAsync(done.Id);
+        var todoLane = await _db.Lanes.FindAsync(todo.Id);
+        var doingLane = await _db.Lanes.FindAsync(doing.Id);
+        doneLane!.Position.Should().Be(1);
+        todoLane!.Position.Should().Be(2);
+        doingLane!.Position.Should().Be(2); // unchanged
+    }
+
+    [Fact]
+    public async Task ReorderLanes_DoesNotAffectOtherWorkspace()
+    {
+        // Arrange
+        var (ws1, lanes1) = await CreateWorkspaceWithLanesAsync();
+        var (ws2, _) = await CreateWorkspaceWithLanesAsync();
+        var handler = new ReorderLanesCommandHandler(_db);
+
+        // Act — reorder ws1 lanes only
+        await handler.Handle(
+            new ReorderLanesCommand(ws1.Id, [lanes1[2].Id, lanes1[1].Id, lanes1[0].Id]),
+            default);
+
+        // Assert — ws2 lanes are unchanged
+        var ws2Lanes = await _db.Lanes
+            .Where(l => l.WorkspaceId == ws2.Id)
+            .OrderBy(l => l.Position)
+            .ToListAsync();
+        ws2Lanes.Select(l => l.Position).Should().Equal(1, 2, 3);
     }
 
     [Fact]
