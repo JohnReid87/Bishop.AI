@@ -231,7 +231,7 @@
                                                         CornerRadius="4">
                                                 <StackPanel>
                                                     <!-- Card header: drag handle -->
-                                                    <local:HandCursorGrid Padding="10,4,4,4"
+                                                    <local:HandCursorGrid Padding="{x:Bind CardHeaderPadding}"
                                                                           Background="Transparent"
                                                                           BorderBrush="{StaticResource AppDividerBrush}"
                                                                           BorderThickness="0,0,0,1"
@@ -281,7 +281,8 @@
                                                     <!-- Card title: tap to open detail -->
                                                     <TextBlock Text="{x:Bind Title}"
                                                                TextWrapping="Wrap"
-                                                               Padding="10,6,10,8"
+                                                               Padding="{x:Bind CardTitlePadding}"
+                                                               FontSize="{x:Bind CardTitleFontSize}"
                                                                Tapped="CardTitle_Tapped"/>
                                                 </StackPanel>
                                                 </Border>
