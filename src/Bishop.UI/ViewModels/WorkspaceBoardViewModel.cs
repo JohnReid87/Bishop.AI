@@ -32,7 +32,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         Lanes.Clear();
         foreach (var lane in lanes)
         {
-            var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { Id = lane.Id, Name = lane.Name };
+            var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { Id = lane.Id, Name = lane.Name, IsSystem = lane.IsSystem };
             foreach (var card in cardsByLane[lane.Id])
             {
                 var firstTag = card.CardTags.FirstOrDefault()?.Tag;

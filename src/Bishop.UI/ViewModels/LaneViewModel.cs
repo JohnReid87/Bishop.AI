@@ -13,6 +13,7 @@ public sealed partial class LaneViewModel : ObservableObject
 
     public Guid Id { get; init; }
     public string Name { get; init; } = string.Empty;
+    public bool IsSystem { get; init; }
     public ObservableCollection<CardViewModel> Cards { get; } = [];
 
     [ObservableProperty]

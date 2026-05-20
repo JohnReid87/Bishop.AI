@@ -550,6 +550,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private void LaneHeader_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
+        if ((sender as FrameworkElement)?.DataContext is LaneViewModel { IsSystem: true }) return;
         FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
     }
 
@@ -572,8 +573,17 @@ public sealed partial class WorkspaceDetailPage : Page
         if (await renameDialog.ShowAsync() == ContentDialogResult.Primary)
         {
             var mediator = App.Services.GetRequiredService<IMediator>();
-            await mediator.Send(new RenameLaneCommand(lane.Id, nameBox.Text));
-            await Board.RefreshCommand.ExecuteAsync(null);
+            try
+            {
+                await mediator.Send(new RenameLaneCommand(lane.Id, nameBox.Text));
+                await Board.RefreshCommand.ExecuteAsync(null);
+            }
+            catch (InvalidOperationException ex)
+            {
+                LaneErrorBar.Title = "Cannot rename lane";
+                LaneErrorBar.Message = ex.Message;
+                LaneErrorBar.IsOpen = true;
+            }
         }
     }
 
