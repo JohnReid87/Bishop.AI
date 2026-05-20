@@ -137,19 +137,9 @@ Run `bishop workspace current --json`.
    **Follow-up cards to consider:**
    - <anything discovered that is out of scope but worth tracking>
 
-8. Ask the user whether to **move the card to "Done"**:
-
-   > Move card #N to "Done"? (y/n)
-
-   If yes, run:
-   ```
-   bishop card move <number> --to-lane "Done" --to-position 0
-   ```
-
-   If no, leave the card in "Doing".
-
-9. Offer to commit and push the changes. Derive a pre-filled Conventional
-   Commits proposal from the card's first tag (captured in step 1) and title:
+8. Ask the user whether to **move the card to "Done" and commit the changes**
+   in a single confirmation. Derive a pre-filled Conventional Commits proposal
+   from the card's first tag (captured in step 1) and title:
 
    Tag → prefix mapping:
    - `feature` or `enhancement` → `feat`
@@ -162,12 +152,23 @@ Run `bishop workspace current --json`.
 
    Proposal format: `<prefix>: <title> (card #N)`
 
-   Example — tags `["feature"]`, title "Add lane CRUD", number 42:
-   > Proposed: `feat: Add lane CRUD (card #42)` — confirm, edit, or skip?
+   Present the combined prompt — confirming Done implies confirming the commit:
 
-   Present the proposal and ask the user to confirm, provide their own message,
-   or skip entirely. Do not stage, commit, or push without explicit confirmation.
-   If the user declines, leave the working tree as-is.
+   > Move card #N to "Done" and commit as `feat: Add lane CRUD (card #42)`?
+   > (`y` to do both / paste a different commit message to use instead / `n`
+   > to leave the card in "Doing" and the working tree untouched)
+
+   - On `y` (or an edited commit message) → run both, in order:
+     ```
+     bishop card move <number> --to-lane "Done" --to-position 0
+     git add -A && git commit -m "<message>"
+     ```
+     If the commit fails (e.g. pre-commit hook), do NOT roll the card back —
+     surface the error and let the user re-run the commit manually.
+   - On `n` → leave the card in "Doing" and the working tree as-is. Do not
+     commit or move.
+
+   Do not push. Pushing is out of scope for this skill.
 
 </what-to-do>
 
