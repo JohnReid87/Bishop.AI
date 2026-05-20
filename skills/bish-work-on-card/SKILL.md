@@ -4,7 +4,7 @@ description: Fetches a Bishop card by Number (#N) from the current workspace, au
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.scope: card
 bishop.command: /bish-work-on-card {{card_number}}
-bishop.stage: true
+bishop.stage: false
 ---
 
 Accepts an **optional** card Number (`bish-work-on-card 42` or `bish-work-on-card #42`).
