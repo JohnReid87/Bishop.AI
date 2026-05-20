@@ -40,11 +40,20 @@ public sealed partial class CardDetailDialog : ContentDialog
         _workspacePath = workspacePath;
         ViewModel = new CardDetailDialogViewModel(card, cardSkills, workspaceId, gitHubRepo, mediator);
         InitializeComponent();
+        PreviewKeyDown += CardDetailDialog_PreviewKeyDown;
         ViewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(CardDetailDialogViewModel.Deleted) && ViewModel.Deleted)
                 Hide();
         };
+    }
+
+    private void CardDetailDialog_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Escape) return;
+        if (ViewModel.IsTitleEditing || ViewModel.IsDescriptionEditing) return;
+        e.Handled = true;
+        Hide();
     }
 
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
