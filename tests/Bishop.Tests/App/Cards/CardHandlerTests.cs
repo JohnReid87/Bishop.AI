@@ -495,4 +495,59 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var refreshed = await handler.Handle(new ListCardsByWorkspaceQuery(workspace.Id), default);
         refreshed.Single().LaneId.Should().Be(lanes[1].Id);
     }
+
+    [Fact]
+    public async Task AddCard_Bottom_InsertsAfterLastCard()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var laneId = lanes[0].Id;
+        var add = new AddCardCommandHandler(_db);
+        await add.Handle(new AddCardCommand(laneId, "First"), default);
+        await add.Handle(new AddCardCommand(laneId, "Second"), default);
+
+        // Act
+        var bottom = await add.Handle(new AddCardCommand(laneId, "Third", Position: CardInsertPosition.Bottom), default);
+
+        // Assert
+        var cards = await _db.Cards
+            .Where(x => x.LaneId == laneId)
+            .OrderBy(x => x.Position)
+            .ToListAsync();
+        bottom.Position.Should().Be(3);
+        cards.Select(x => x.Title).Should().Equal("Second", "First", "Third");
+        cards.Select(x => x.Position).Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public async Task AddCard_Bottom_DoesNotShiftExistingCards()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var laneId = lanes[0].Id;
+        var add = new AddCardCommandHandler(_db);
+        var existing = await add.Handle(new AddCardCommand(laneId, "Existing"), default);
+
+        // Act
+        await add.Handle(new AddCardCommand(laneId, "Bottom", Position: CardInsertPosition.Bottom), default);
+
+        // Assert
+        var refreshed = await _db.Cards.FindAsync(existing.Id);
+        refreshed!.Position.Should().Be(existing.Position);
+    }
+
+    [Fact]
+    public async Task AddCard_Bottom_IntoEmptyLane_PlacesAtPositionOne()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var laneId = lanes[0].Id;
+        var add = new AddCardCommandHandler(_db);
+
+        // Act
+        var card = await add.Handle(new AddCardCommand(laneId, "Only", Position: CardInsertPosition.Bottom), default);
+
+        // Assert
+        card.Position.Should().Be(1);
+    }
 }

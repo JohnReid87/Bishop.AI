@@ -90,7 +90,7 @@ After printing the task list, ask:
 For each task, run:
 
 ```
-bishop card add --lane "<Lane>" --title "<Title>" --tag "<Tag>" --description "<body with \n replaced by real newlines>"
+bishop card add --lane "<Lane>" --title "<Title>" --tag "<Tag>" --description "<body with \n replaced by real newlines>" --bottom
 ```
 
 Replace literal `\n` sequences in the body with real newlines before passing

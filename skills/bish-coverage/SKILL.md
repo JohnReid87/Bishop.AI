@@ -168,7 +168,7 @@ makes no assumption about specific namespace prefixes — it works for any
 9. **Push confirmed cards** via:
 
    ```
-   bishop card add --lane "To Do" --title "<Title>" --tag test --description "<body with \n replaced by real newlines>"
+   bishop card add --lane "To Do" --title "<Title>" --tag test --description "<body with \n replaced by real newlines>" --bottom
    ```
 
    If the body contains double-quotes (rare — file paths and class names don't),

@@ -1,5 +1,6 @@
 using Bishop.App;
 using Bishop.App.Cards.AddCard;
+using Bishop.Core;
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.PushCard;
@@ -175,6 +176,8 @@ var descOpt = new Option<string?>("--description", "Card description (optional)"
 var tagOpt = new Option<string[]>("--tag", "Tag name (repeatable)") { Arity = ArgumentArity.ZeroOrMore };
 var descFileOpt = new Option<string?>("--description-file", "Read description from file (use - for stdin)");
 
+var bottomOpt = new Option<bool>("--bottom", "Insert at the bottom of the lane instead of the top");
+
 var cardAddCmd = new Command("add", "Add a card to a lane");
 cardAddCmd.AddOption(workspaceOpt);
 cardAddCmd.AddOption(laneNameOpt);
@@ -182,7 +185,8 @@ cardAddCmd.AddOption(titleOpt);
 cardAddCmd.AddOption(descOpt);
 cardAddCmd.AddOption(tagOpt);
 cardAddCmd.AddOption(descFileOpt);
-cardAddCmd.SetHandler(async (string? workspace, string lane, string title, string? description, string[] tags, string? descFile) =>
+cardAddCmd.AddOption(bottomOpt);
+cardAddCmd.SetHandler(async (string? workspace, string lane, string title, string? description, string[] tags, string? descFile, bool bottom) =>
 {
     var desc = descFile switch
     {
@@ -195,10 +199,11 @@ cardAddCmd.SetHandler(async (string? workspace, string lane, string title, strin
     var targetLane = lanes.FirstOrDefault(l =>
         string.Equals(l.Name, lane, StringComparison.OrdinalIgnoreCase))
         ?? throw new InvalidOperationException($"Lane '{lane}' not found in workspace '{ws.Name}'.");
-    var card = await mediator.Send(new AddCardCommand(targetLane.Id, title, desc, tags.Length > 0 ? tags : null));
+    var insertPosition = bottom ? CardInsertPosition.Bottom : CardInsertPosition.Top;
+    var card = await mediator.Send(new AddCardCommand(targetLane.Id, title, desc, tags.Length > 0 ? tags : null, insertPosition));
     var tagSuffix = tags.Length > 0 ? $"  [{string.Join(", ", tags)}]" : "";
     Console.WriteLine($"Added card #{card.Number} — '{card.Title}' → [{targetLane.Name}]{tagSuffix}");
-}, workspaceOpt, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt);
+}, workspaceOpt, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt, bottomOpt);
 
 // ── card short-ID prefix resolver ─────────────────────────────────────────────
 // Returns null (exit code already set) for ambiguous prefix; throws for no match.

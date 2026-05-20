@@ -16,8 +16,18 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
         var existing = await _db.Cards
             .Where(c => c.LaneId == request.LaneId)
             .ToListAsync(cancellationToken);
-        foreach (var c in existing)
-            c.Position++;
+
+        int newPosition;
+        if (request.Position == CardInsertPosition.Bottom)
+        {
+            newPosition = existing.Count > 0 ? existing.Max(c => c.Position) + 1 : 1;
+        }
+        else
+        {
+            foreach (var c in existing)
+                c.Position++;
+            newPosition = 1;
+        }
 
         var lane = await _db.Lanes.FindAsync([request.LaneId], cancellationToken);
         var workspace = await _db.Workspaces.FindAsync([lane!.WorkspaceId], cancellationToken);
@@ -30,7 +40,7 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
             Title = request.Title,
             Description = request.Description,
             Number = number,
-            Position = 1,
+            Position = newPosition,
         };
         _db.Cards.Add(card);
 
