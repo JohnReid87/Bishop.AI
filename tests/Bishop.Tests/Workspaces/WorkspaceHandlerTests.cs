@@ -3,6 +3,7 @@ using Bishop.App.Workspaces.DeleteWorkspace;
 using Bishop.App.Workspaces.GetWorkspace;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
+using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UpdateWorkspace;
 using Bishop.Data;
 using FluentAssertions;
@@ -207,5 +208,67 @@ public sealed class WorkspaceHandlerTests : IDisposable
 
         result.Created.Should().BeFalse();
         result.LanesAdded.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SetWorkspaceGitHubRepo_PlainOwnerRepo_PersistsAndReturnsWorkspace()
+    {
+        var workspace = await new CreateWorkspaceCommandHandler(_db)
+            .Handle(new CreateWorkspaceCommand("Repo", @"C:\code\repo"), default);
+
+        var handler = new SetWorkspaceGitHubRepoCommandHandler(_db);
+        var result = await handler.Handle(
+            new SetWorkspaceGitHubRepoCommand(workspace.Id, "owner/repo"), default);
+
+        result.GitHubRepo.Should().Be("owner/repo");
+        result.UpdatedAt.Should().BeOnOrAfter(result.CreatedAt);
+        (await _db.Workspaces.FindAsync(workspace.Id))!.GitHubRepo.Should().Be("owner/repo");
+    }
+
+    [Theory]
+    [InlineData("https://github.com/owner/repo", "owner/repo")]
+    [InlineData("https://github.com/owner/repo.git", "owner/repo")]
+    [InlineData("https://github.com/owner/repo/", "owner/repo")]
+    [InlineData("http://github.com/owner/repo", "owner/repo")]
+    [InlineData("git@github.com:owner/repo.git", "owner/repo")]
+    [InlineData("git@github.com:owner/repo", "owner/repo")]
+    [InlineData("  owner/repo  ", "owner/repo")]
+    public async Task SetWorkspaceGitHubRepo_NormalizesVariousFormats(string input, string expected)
+    {
+        var workspace = await new CreateWorkspaceCommandHandler(_db)
+            .Handle(new CreateWorkspaceCommand("Repo", @"C:\code\repo"), default);
+
+        var handler = new SetWorkspaceGitHubRepoCommandHandler(_db);
+        var result = await handler.Handle(
+            new SetWorkspaceGitHubRepoCommand(workspace.Id, input), default);
+
+        result.GitHubRepo.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("justarepo")]
+    [InlineData("owner/repo/extra")]
+    [InlineData("/owner/repo")]
+    public async Task SetWorkspaceGitHubRepo_InvalidFormat_Throws(string input)
+    {
+        var workspace = await new CreateWorkspaceCommandHandler(_db)
+            .Handle(new CreateWorkspaceCommand("Repo", @"C:\code\repo"), default);
+
+        var handler = new SetWorkspaceGitHubRepoCommandHandler(_db);
+        var act = () => handler.Handle(new SetWorkspaceGitHubRepoCommand(workspace.Id, input), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*owner/repo*");
+    }
+
+    [Fact]
+    public async Task SetWorkspaceGitHubRepo_WorkspaceNotFound_Throws()
+    {
+        var handler = new SetWorkspaceGitHubRepoCommandHandler(_db);
+        var act = () => handler.Handle(
+            new SetWorkspaceGitHubRepoCommand(Guid.NewGuid(), "owner/repo"), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
     }
 }
