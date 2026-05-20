@@ -48,16 +48,16 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop workspace init [--path <dir>] [--name <name>]` — register a directory (defaults to cwd) as a workspace and seed the default lanes; idempotent (no-op when fully seeded, fills gaps when partial)
 - `bishop workspace set-github <owner/repo> [-w]` — link this workspace to a GitHub repo (used by `bishop card push`)
 - `bishop workspace unset-github [-w]` — remove the GitHub repo link
-- `bishop card add --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>...] [-w <workspace>]`
+- `bishop card add --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>...] [--bottom] [-w <workspace>]` — inserts at the top of the lane by default; `--bottom` appends to the end
 - `bishop card list [-w] [--json]`
 - `bishop card view <card-id> [-w] [--json]`
-- `bishop card move <card-id> --to-lane <name> --to-position <int> [-w]`
+- `bishop card move <card-id> --to-lane <name> --to-position <int> [-w]` — moving a card into the system `Done` lane auto-closes it (and its linked GitHub issue, if any); moving out of `Done` auto-reopens
 - `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path>] [--tag <name>...] [--clear-tags] [-w]` — updates only the supplied fields; `--clear-tags` empties tags; `--tag` replaces all tags
 - `bishop card claim [--lane <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; exits non-zero if the source lane is empty
 - `bishop card remove <card-id> [-w]`
 - `bishop card push <card-id> [-w]` — create a GitHub issue for the card in the workspace's linked repo and store the issue number on the card
-- `bishop card close <card-id> [-w]` — mark a card as closed
-- `bishop card reopen <card-id> [-w]` — reopen a closed card
+- `bishop card close <card-id> [-w]` — mark a card as closed; also closes the linked GitHub issue via `gh` if the card has been pushed
+- `bishop card reopen <card-id> [-w]` — reopen a closed card; also reopens the linked GitHub issue via `gh` if the card has been pushed
 - `bishop lane list|add|rename|move|remove [-w]` — lane CRUD; `remove` refuses non-empty lanes
 - `bishop tag list|add [--colour <hex>]|remove [-w]` — `add` accepts an optional `--colour` flag (6-char hex with or without `#`; defaults to `#888888`)
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
