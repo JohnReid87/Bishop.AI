@@ -14,6 +14,17 @@ public sealed class TerminalLauncher : ITerminalLauncher
     private const uint SWP_NOZORDER = 0x0004;
     private const uint SWP_NOACTIVATE = 0x0010;
 
+    private readonly Func<string, bool> _fileExists;
+    private readonly Action<ProcessStartInfo> _startProcess;
+
+    public TerminalLauncher() : this(File.Exists, psi => Process.Start(psi)) { }
+
+    internal TerminalLauncher(Func<string, bool> fileExists, Action<ProcessStartInfo> startProcess)
+    {
+        _fileExists = fileExists;
+        _startProcess = startProcess;
+    }
+
     public bool Launch(string workingDirectory, string? claudeArgs, TerminalSnap? snap, string? modelId = null)
     {
         var fullPath = BuildFullPath();
@@ -33,7 +44,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
             };
             psi.Environment["PATH"] = fullPath;
             var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
-            Process.Start(psi);
+            _startProcess(psi);
             if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
             return true;
         }
@@ -47,7 +58,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
         };
         psFallback.Environment["PATH"] = fullPath;
         var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
-        Process.Start(psFallback);
+        _startProcess(psFallback);
         if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
         return false;
     }
@@ -68,7 +79,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
             };
             psi.Environment["PATH"] = fullPath;
             var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
-            Process.Start(psi);
+            _startProcess(psi);
             if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
             return true;
         }
@@ -82,19 +93,19 @@ public sealed class TerminalLauncher : ITerminalLauncher
         };
         psFallback.Environment["PATH"] = fullPath;
         var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
-        Process.Start(psFallback);
+        _startProcess(psFallback);
         if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
         return false;
     }
 
-    private static bool HasPwsh(string fullPath)
+    private bool HasPwsh(string fullPath)
     {
         foreach (var segment in fullPath.Split(';'))
         {
             try
             {
                 var candidate = Path.Combine(segment.Trim(), "pwsh.exe");
-                if (File.Exists(candidate)) return true;
+                if (_fileExists(candidate)) return true;
             }
             catch (ArgumentException) { }
         }
@@ -160,19 +171,19 @@ public sealed class TerminalLauncher : ITerminalLauncher
         return result;
     }
 
-    private static string? FindWindowsTerminal()
+    private string? FindWindowsTerminal()
     {
         var alias = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Microsoft", "WindowsApps", "wt.exe");
-        if (File.Exists(alias)) return alias;
+        if (_fileExists(alias)) return alias;
 
         foreach (var segment in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';'))
         {
             try
             {
                 var candidate = Path.Combine(segment.Trim(), "wt.exe");
-                if (File.Exists(candidate)) return candidate;
+                if (_fileExists(candidate)) return candidate;
             }
             catch (ArgumentException) { }
         }
