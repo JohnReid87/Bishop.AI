@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bishop.App\Bishop.App.csproj" />
+    <ProjectReference Include="..\..\src\Bishop.Data\Bishop.Data.csproj" />
   </ItemGroup>
 
 </Project>
