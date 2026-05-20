@@ -29,6 +29,39 @@ dotnet reportgenerator `
     "-reporttypes:Html;JsonSummary"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+# Emit normalized summary consumed by /bish-coverage. Schema (stack-agnostic):
+#   { schemaVersion, threshold, generatedAt, modules: [{ name, file, lineCoverage, linesCoverable }] }
+$cob = Get-ChildItem $resultsDir -Recurse -Filter coverage.cobertura.xml | Select-Object -First 1
+if ($null -eq $cob) {
+    Write-Warning "coverage.cobertura.xml not found; skipping normalized summary."
+} else {
+    [xml]$xml = Get-Content $cob.FullName
+    $rootForward = ($repoRoot -replace '\\', '/').TrimEnd('/') + '/'
+    $modules = foreach ($pkg in $xml.coverage.packages.package) {
+        foreach ($cls in $pkg.classes.class) {
+            $rel = ($cls.filename -replace '\\', '/')
+            if ($rel.StartsWith($rootForward, [StringComparison]::OrdinalIgnoreCase)) {
+                $rel = $rel.Substring($rootForward.Length)
+            }
+            [PSCustomObject]@{
+                name           = $cls.name
+                file           = $rel
+                lineCoverage   = [Math]::Round([double]$cls.'line-rate' * 100, 2)
+                linesCoverable = @($cls.lines.line).Count
+            }
+        }
+    }
+    $summary = [PSCustomObject]@{
+        schemaVersion = 1
+        threshold     = 80
+        generatedAt   = (Get-Date).ToString('o')
+        modules       = $modules
+    }
+    $summaryPath = Join-Path $resultsDir 'coverage-summary.json'
+    $summary | ConvertTo-Json -Depth 5 | Set-Content $summaryPath -Encoding UTF8
+}
+
 Write-Host ""
-Write-Host "Coverage report: $reportDir/index.html"
-Write-Host "Summary JSON:    $reportDir/Summary.json"
+Write-Host "Coverage report:    $reportDir/index.html"
+Write-Host "ReportGen summary:  $reportDir/Summary.json"
+Write-Host "Bishop summary:     $resultsDir/coverage-summary.json"
