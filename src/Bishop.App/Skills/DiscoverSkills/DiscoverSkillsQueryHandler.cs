@@ -5,18 +5,24 @@ namespace Bishop.App.Skills.DiscoverSkills;
 
 public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQuery, IReadOnlyList<InstalledSkill>>
 {
-    private static readonly string SkillsRoot = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ".claude", "skills");
+    private readonly string _skillsRoot;
+
+    public DiscoverSkillsQueryHandler()
+        : this(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".claude", "skills"))
+    { }
+
+    internal DiscoverSkillsQueryHandler(string skillsRoot) => _skillsRoot = skillsRoot;
 
     public Task<IReadOnlyList<InstalledSkill>> Handle(DiscoverSkillsQuery request, CancellationToken cancellationToken)
     {
-        if (!Directory.Exists(SkillsRoot))
+        if (!Directory.Exists(_skillsRoot))
             return Task.FromResult<IReadOnlyList<InstalledSkill>>([]);
 
         var skills = new List<InstalledSkill>();
 
-        foreach (var dir in Directory.EnumerateDirectories(SkillsRoot))
+        foreach (var dir in Directory.EnumerateDirectories(_skillsRoot))
         {
             var skillFile = Path.Combine(dir, "SKILL.md");
             if (!File.Exists(skillFile))
