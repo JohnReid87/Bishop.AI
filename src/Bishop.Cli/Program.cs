@@ -786,3 +786,6 @@ var parser = new CommandLineBuilder(root)
 var exitCode = await parser.InvokeAsync(args);
 await host.StopAsync();
 return exitCode;
+
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+public partial class Program { }

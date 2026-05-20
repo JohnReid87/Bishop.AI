@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Bishop.App.Git;
 using Bishop.App.Ping;
 using Bishop.App.Settings;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Bishop.App;
 
+[ExcludeFromCodeCoverage]
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddBishopApp(this IServiceCollection services, string dbConnectionString)
