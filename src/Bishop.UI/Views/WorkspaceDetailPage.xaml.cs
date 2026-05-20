@@ -40,6 +40,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private CardViewModel? _draggedCard;
     private LaneViewModel? _dragSourceLane;
     private LaneViewModel? _draggedLane;
+    private LaneViewModel? _currentDropTargetLane;
     private bool _isDraggingNotes;
     private double _dragStartPageY;
     private double _dragStartNoteHeight;
@@ -495,6 +496,15 @@ public sealed partial class WorkspaceDetailPage : Page
         }
     }
 
+    private void ClearAllDropTargets()
+    {
+        if (_currentDropTargetLane is not null)
+        {
+            _currentDropTargetLane.IsDropTarget = false;
+            _currentDropTargetLane = null;
+        }
+    }
+
     private void Card_DragStarting(UIElement sender, DragStartingEventArgs e)
     {
         _draggedCard = (sender as FrameworkElement)?.DataContext as CardViewModel;
@@ -507,6 +517,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private void Card_DropCompleted(UIElement sender, DropCompletedEventArgs e)
     {
+        ClearAllDropTargets();
         LanesListView.CanReorderItems = true;
     }
 
@@ -516,14 +527,17 @@ public sealed partial class WorkspaceDetailPage : Page
         e.AcceptedOperation = DataPackageOperation.Move;
         e.DragUIOverride.IsGlyphVisible = false;
         e.DragUIOverride.Caption = string.Empty;
-        if ((sender as FrameworkElement)?.DataContext is LaneViewModel lane)
+        if ((sender as FrameworkElement)?.DataContext is LaneViewModel lane && lane != _currentDropTargetLane)
+        {
+            ClearAllDropTargets();
             lane.IsDropTarget = true;
+            _currentDropTargetLane = lane;
+        }
     }
 
     private void Cards_DragLeave(object sender, DragEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is LaneViewModel lane)
-            lane.IsDropTarget = false;
+        ClearAllDropTargets();
     }
 
     private async void Cards_Drop(object sender, DragEventArgs e)
@@ -531,6 +545,8 @@ public sealed partial class WorkspaceDetailPage : Page
         if (_draggedCard is null || _dragSourceLane is null) return;
         var targetLane = (sender as FrameworkElement)?.DataContext as LaneViewModel;
         if (targetLane is null) return;
+
+        ClearAllDropTargets();
 
         var position = GetDropIndex(sender as ListView, e, targetLane);
         var card = _draggedCard;
