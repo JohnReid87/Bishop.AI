@@ -56,6 +56,37 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task CreateWorkspace_SeedsSystemLanes()
+    {
+        // Arrange
+        var name = U("Sys");
+        var workspace = await new CreateWorkspaceCommandHandler(_db)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        var handler = new ListLanesByWorkspaceQueryHandler(_db);
+
+        // Act
+        var lanes = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
+
+        // Assert
+        lanes.Should().AllSatisfy(l => l.IsSystem.Should().BeTrue());
+    }
+
+    [Fact]
+    public async Task MoveLane_AllowsSystemLane()
+    {
+        // Reorder of system lanes must not be blocked
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var done = lanes[2];
+        var handler = new MoveLaneCommandHandler(_db);
+
+        // Act — move "Done" (pos 3) to position 1
+        var act = async () => await handler.Handle(new MoveLaneCommand(done.Id, 1), default);
+
+        // Assert — no exception
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
     public async Task ListLanesByWorkspace_ReturnsOnlyLanesForThatWorkspace()
     {
         // Arrange
@@ -112,18 +143,34 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     public async Task RenameLane_UpdatesName()
     {
         // Arrange
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+        var custom = await new AddLaneCommandHandler(_db).Handle(new AddLaneCommand(workspace.Id, "Review"), default);
+        var handler = new RenameLaneCommandHandler(_db);
+
+        // Act
+        var result = await handler.Handle(new RenameLaneCommand(custom.Id, "Inbox"), default);
+
+        // Assert
+        result.Id.Should().Be(custom.Id);
+        result.Name.Should().Be("Inbox");
+        var persisted = await _db.Lanes.FindAsync(custom.Id);
+        persisted!.Name.Should().Be("Inbox");
+    }
+
+    [Fact]
+    public async Task RenameLane_ThrowsOnSystemLane()
+    {
+        // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes[0];
         var handler = new RenameLaneCommandHandler(_db);
 
         // Act
-        var result = await handler.Handle(new RenameLaneCommand(todo.Id, "Inbox"), default);
+        var act = async () => await handler.Handle(new RenameLaneCommand(todo.Id, "Inbox"), default);
 
         // Assert
-        result.Id.Should().Be(todo.Id);
-        result.Name.Should().Be("Inbox");
-        var persisted = await _db.Lanes.FindAsync(todo.Id);
-        persisted!.Name.Should().Be("Inbox");
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system lane*cannot be renamed*");
     }
 
     [Fact]
@@ -169,36 +216,52 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task RemoveLane_DeletesLane_AndRenumbersRemaining()
     {
+        // Arrange — add a custom (non-system) lane to remove
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+        var custom = await new AddLaneCommandHandler(_db).Handle(new AddLaneCommand(workspace.Id, "Review"), default);
+        var handler = new RemoveLaneCommandHandler(_db);
+
+        // Act
+        await handler.Handle(new RemoveLaneCommand(custom.Id), default);
+
+        // Assert
+        var remaining = await _db.Lanes
+            .Where(l => l.WorkspaceId == workspace.Id)
+            .OrderBy(l => l.Position)
+            .ToListAsync();
+        remaining.Should().HaveCount(3);
+        remaining.Select(l => l.Name).Should().Equal("To Do", "Doing", "Done");
+        remaining.Select(l => l.Position).Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public async Task RemoveLane_ThrowsOnSystemLane()
+    {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var doing = lanes[1];
         var handler = new RemoveLaneCommandHandler(_db);
 
         // Act
-        await handler.Handle(new RemoveLaneCommand(doing.Id), default);
+        var act = async () => await handler.Handle(new RemoveLaneCommand(doing.Id), default);
 
         // Assert
-        var remaining = await _db.Lanes
-            .Where(l => l.WorkspaceId == doing.WorkspaceId)
-            .OrderBy(l => l.Position)
-            .ToListAsync();
-        remaining.Should().HaveCount(2);
-        remaining.Select(l => l.Name).Should().Equal("To Do", "Done");
-        remaining.Select(l => l.Position).Should().Equal(1, 2);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*system lane*cannot be deleted*");
     }
 
     [Fact]
     public async Task RemoveLane_ThrowsWhenNonEmpty()
     {
-        // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var todo = lanes[0];
+        // Arrange — use a custom (non-system) lane so the non-empty guard fires
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+        var custom = await new AddLaneCommandHandler(_db).Handle(new AddLaneCommand(workspace.Id, "Review"), default);
         await new AddCardCommandHandler(_db)
-            .Handle(new AddCardCommand(todo.Id, "A task"), default);
+            .Handle(new AddCardCommand(custom.Id, "A task"), default);
         var handler = new RemoveLaneCommandHandler(_db);
 
         // Act
-        var act = async () => await handler.Handle(new RemoveLaneCommand(todo.Id), default);
+        var act = async () => await handler.Handle(new RemoveLaneCommand(custom.Id), default);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()

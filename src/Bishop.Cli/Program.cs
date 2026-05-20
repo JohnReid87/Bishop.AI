@@ -627,7 +627,10 @@ laneListCmd.SetHandler(async (string? workspace, bool json) =>
         Console.WriteLine(JsonSerializer.Serialize(lanes, jsonOpts));
     else
         foreach (var l in lanes)
-            Console.WriteLine($"  {l.Position}  {l.Name}");
+        {
+            var marker = l.IsSystem ? " [system]" : string.Empty;
+            Console.WriteLine($"  {l.Position}  {l.Name}{marker}");
+        }
 }, workspaceOpt, jsonOpt);
 
 // ── lane add ──────────────────────────────────────────────────────────────────

@@ -15,6 +15,10 @@ public sealed class RenameLaneCommandHandler : IRequestHandler<RenameLaneCommand
         var lane = await _db.Lanes.FindAsync([request.LaneId], cancellationToken)
             ?? throw new InvalidOperationException($"Lane {request.LaneId} not found.");
 
+        if (lane.IsSystem)
+            throw new InvalidOperationException(
+                $"Lane '{lane.Name}' is a system lane and cannot be renamed.");
+
         lane.Name = request.NewName;
         await _db.SaveChangesAsync(cancellationToken);
         return lane;

@@ -44,6 +44,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
                     WorkspaceId = workspace.Id,
                     Name = DefaultLaneNames[i],
                     Position = i + 1,
+                    IsSystem = true,
                 });
             }
 
@@ -71,6 +72,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
                 WorkspaceId = existing.Id,
                 Name = laneName,
                 Position = nextPosition++,
+                IsSystem = true,
             });
         }
 

@@ -15,6 +15,10 @@ public sealed class RemoveLaneCommandHandler : IRequestHandler<RemoveLaneCommand
         var lane = await _db.Lanes.FindAsync([request.LaneId], cancellationToken)
             ?? throw new InvalidOperationException($"Lane {request.LaneId} not found.");
 
+        if (lane.IsSystem)
+            throw new InvalidOperationException(
+                $"Lane '{lane.Name}' is a system lane and cannot be deleted.");
+
         var cardCount = await _db.Cards.CountAsync(c => c.LaneId == lane.Id, cancellationToken);
         if (cardCount > 0)
             throw new InvalidOperationException(

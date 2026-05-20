@@ -47,6 +47,7 @@ public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorksp
                 WorkspaceId = workspace.Id,
                 Name = laneNames[i],
                 Position = i + 1,
+                IsSystem = true,
             });
         }
 

@@ -10,6 +10,7 @@ internal sealed class LaneConfiguration : IEntityTypeConfiguration<Lane>
     {
         builder.HasKey(l => l.Id);
         builder.Property(l => l.Name).HasMaxLength(200).IsRequired();
+        builder.Property(l => l.IsSystem).HasDefaultValue(false).IsRequired();
         builder.HasOne(l => l.Workspace)
                .WithMany(w => w.Lanes)
                .HasForeignKey(l => l.WorkspaceId)

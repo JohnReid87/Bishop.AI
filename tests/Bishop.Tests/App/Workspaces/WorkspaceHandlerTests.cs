@@ -179,6 +179,24 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task InitWorkspace_MarksSeededLanesAsSystem()
+    {
+        // Arrange
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\sys-{tag}";
+        var handler = new InitWorkspaceCommandHandler(_db);
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path, "Sys Repo"), default);
+
+        // Assert
+        var lanes = await _db.Lanes
+            .Where(l => l.WorkspaceId == result.Workspace.Id)
+            .ToListAsync();
+        lanes.Should().AllSatisfy(l => l.IsSystem.Should().BeTrue());
+    }
+
+    [Fact]
     public async Task InitWorkspace_DefaultsNameToDirectoryName()
     {
         // Arrange
