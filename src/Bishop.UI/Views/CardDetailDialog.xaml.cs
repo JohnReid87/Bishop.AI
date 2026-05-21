@@ -1,3 +1,5 @@
+using Bishop.App.Cards.GetCard;
+using Bishop.App.FxRates;
 using Bishop.App.Settings;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
@@ -22,6 +24,7 @@ public sealed partial class CardDetailDialog : ContentDialog
 {
     private readonly IReadOnlyList<InstalledSkill> _cardSkills;
     private readonly string _workspacePath;
+    private readonly Guid _workspaceId;
 
     private static readonly (string Id, string Label)[] Models =
     [
@@ -38,14 +41,45 @@ public sealed partial class CardDetailDialog : ContentDialog
         var mediator = App.Services.GetRequiredService<IMediator>();
         _cardSkills = cardSkills;
         _workspacePath = workspacePath;
+        _workspaceId = workspaceId;
         ViewModel = new CardDetailDialogViewModel(card, cardSkills, workspaceId, gitHubRepo, mediator);
         InitializeComponent();
         PreviewKeyDown += CardDetailDialog_PreviewKeyDown;
+        Loaded += CardDetailDialog_Loaded;
         ViewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(CardDetailDialogViewModel.Deleted) && ViewModel.Deleted)
                 Hide();
         };
+    }
+
+    private async void CardDetailDialog_Loaded(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            var card = await mediator.Send(new GetCardQuery(ViewModel.CardId));
+            if (card is null) return;
+
+            decimal? fxRate = null;
+            if (card.TotalCostUsd > 0m)
+            {
+                using var scope = App.Services.CreateScope();
+                var fx = scope.ServiceProvider.GetRequiredService<IFxRateProvider>();
+                fxRate = await fx.GetUsdToGbpAsync(_workspaceId);
+            }
+
+            ViewModel.SetClaudeTotals(
+                card.TotalCostUsd,
+                card.TotalInputTokens,
+                card.TotalOutputTokens,
+                card.ClaudeRunCount,
+                fxRate);
+        }
+        catch
+        {
+            // Silent fail — row stays hidden.
+        }
     }
 
     private void CardDetailDialog_PreviewKeyDown(object sender, KeyRoutedEventArgs e)

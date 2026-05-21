@@ -99,6 +99,14 @@
             </Button>
         </Grid>
 
+        <!-- Claude totals (cost / tokens / runs) — hidden when no Claude activity yet -->
+        <TextBlock Text="{x:Bind ViewModel.ClaudeTotalsText, Mode=OneWay}"
+                   Style="{StaticResource CaptionTextBlockStyle}"
+                   Foreground="{StaticResource AppTextSecondaryBrush}"
+                   FontFamily="Cascadia Mono"
+                   Margin="0,0,0,10"
+                   Visibility="{x:Bind ViewModel.ClaudeTotalsVisibility, Mode=OneWay}"/>
+
         <!-- Divider: header / body -->
         <Border Height="1" Background="{StaticResource AppDividerBrush}" Margin="0,0,0,12"/>
 

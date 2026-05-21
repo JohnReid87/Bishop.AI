@@ -3,6 +3,7 @@ using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
+using Bishop.App.Claude;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.Core;
 using Bishop.Core.Skills;
@@ -57,6 +58,16 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PushErrorVisibility))]
     public partial string? PushError { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ClaudeTotalsVisibility))]
+    public partial string? ClaudeTotalsText { get; set; }
+
+    public Visibility ClaudeTotalsVisibility =>
+        string.IsNullOrEmpty(ClaudeTotalsText) ? Visibility.Collapsed : Visibility.Visible;
+
+    public void SetClaudeTotals(decimal costUsd, int inputTokens, int outputTokens, int runCount, decimal? usdToGbpRate) =>
+        ClaudeTotalsText = ClaudeTotalsFormatter.Format(costUsd, inputTokens, outputTokens, runCount, usdToGbpRate);
 
     public string NumberDisplay => $"#{Number}";
 

@@ -58,4 +58,22 @@ public sealed class ClaudeTotalsFormatterTests
 
         line.Should().Be("Claude: $0.00 (1 run, 0 in / 0 out)");
     }
+
+    // ── Visible / hidden contract ─────────────────────────────────────────────
+    // The CardDetailDialog binds row visibility to (Format result is not null).
+    // These two cases pin down that contract.
+
+    [Fact]
+    public void Format_Hidden_State_When_All_Totals_Are_Zero_Returns_Null()
+    {
+        ClaudeTotalsFormatter.Format(0m, 0, 0, 0, null).Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_Visible_State_With_FxRate_Matches_Cli_ByteForByte()
+    {
+        var line = ClaudeTotalsFormatter.Format(0.12m, 8100, 2400, 3, 0.75m);
+
+        line.Should().Be("Claude: $0.12 (£0.09) (3 runs, 8.1k in / 2.4k out)");
+    }
 }
