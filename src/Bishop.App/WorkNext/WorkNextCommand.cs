@@ -5,5 +5,5 @@ namespace Bishop.App.WorkNext;
 public sealed record WorkNextCommand(
     Guid WorkspaceId,
     string WorkspacePath,
-    string Tag,
+    string? Tag,
     int MaxIterations) : IRequest<WorkNextResult>;

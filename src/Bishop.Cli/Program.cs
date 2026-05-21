@@ -804,14 +804,14 @@ root.AddCommand(installSkillsCmd);
 
 // ── work-next ─────────────────────────────────────────────────────────────────
 
-var workNextTagOpt = new Option<string>("--tag", () => "test", "Only claim cards carrying this tag");
+var workNextTagOpt = new Option<string?>("--tag", () => null, "Only claim cards carrying this tag (omit for any tag)");
 var workNextMaxOpt = new Option<int>("--max", () => 10, "Max cards to process; 0 means uncapped");
 
 var workNextCmd = new Command("work-next", "Loop: claim a tagged card and run claude on it until exhaustion, failure, or cap");
 workNextCmd.AddOption(workspaceOpt);
 workNextCmd.AddOption(workNextTagOpt);
 workNextCmd.AddOption(workNextMaxOpt);
-workNextCmd.SetHandler(async (string? workspace, string tag, int max) =>
+workNextCmd.SetHandler(async (string? workspace, string? tag, int max) =>
 {
     if (max < 0)
     {
