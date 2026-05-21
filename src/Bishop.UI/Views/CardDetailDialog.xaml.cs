@@ -295,7 +295,7 @@ public sealed partial class CardDetailDialog : ContentDialog
 
         foreach (var (skill, i) in _cardSkills.Select((s, i) => (s, i)))
         {
-            var rendered = RenderCommand(skill.Command!, ViewModel.Number, _workspacePath);
+            var rendered = RenderCommand(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath);
             var capturedSkill = skill;
             var settingKey = $"skill.{skill.Name}.last_model";
             var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
@@ -318,7 +318,11 @@ public sealed partial class CardDetailDialog : ContentDialog
     {
         if (skill.Stage)
         {
-            var stageDialog = new SkillStageDialog(skill.Name, skill.StagePrompt) { XamlRoot = XamlRoot };
+            var prefill = skill.StagePrefill is null
+                ? null
+                : RenderCommand(skill.StagePrefill, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath).Trim();
+            var initialText = string.IsNullOrEmpty(prefill) ? null : prefill;
+            var stageDialog = new SkillStageDialog(skill.Name, skill.StagePrompt, initialText) { XamlRoot = XamlRoot };
             if (await stageDialog.ShowAsync() != ContentDialogResult.Primary)
                 return;
 
@@ -386,10 +390,12 @@ public sealed partial class CardDetailDialog : ContentDialog
         return row;
     }
 
-    private static string RenderCommand(string template, int cardNumber, string workspacePath) =>
+    private static string RenderCommand(string template, int cardNumber, string cardTitle, string cardDescription, string workspacePath) =>
         template
             .Replace("{{workspace_path}}", workspacePath)
-            .Replace("{{card_number}}", cardNumber.ToString());
+            .Replace("{{card_number}}", cardNumber.ToString())
+            .Replace("{{card_title}}", cardTitle)
+            .Replace("{{card_description}}", cardDescription);
 
     private static TerminalSnap ComputeSnap() => SnapHelper.ComputeSnap();
 }
