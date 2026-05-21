@@ -32,6 +32,23 @@ public sealed class ClaudeCliRunnerTests
     }
 
     [Fact]
+    public async Task RunPromptAsync_Throws_WithEmptyPathMessage_WhenResolverReportsMissingAndDirectoriesEmpty()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver
+            .When(r => r.Resolve())
+            .Do(_ => throw new ClaudeNotFoundException(
+                candidates: new[] { "claude.EXE" },
+                directories: Array.Empty<string>()));
+        var sut = new ClaudeCliRunner(resolver);
+
+        var act = async () => await sut.RunPromptAsync("C:\\ws", "hello");
+
+        var ex = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
+        ex.Message.Should().Contain("(PATH was empty)");
+    }
+
+    [Fact]
     public async Task RunPromptAsync_ReturnsExitCode_WhenProcessExitsNormally()
     {
         var resolver = Substitute.For<IClaudeExecutableResolver>();
