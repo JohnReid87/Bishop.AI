@@ -194,6 +194,21 @@
                                          Padding="0" VerticalAlignment="Center"/>
                     </StackPanel>
 
+                    <StackPanel Orientation="Horizontal" Spacing="4"
+                                Visibility="{x:Bind ViewModel.CommitVisibility, Mode=OneWay}">
+                        <TextBlock Text="commit"
+                                   Foreground="{StaticResource AppTextTertiaryBrush}"
+                                   VerticalAlignment="Center" FontSize="12"/>
+                        <HyperlinkButton Content="{x:Bind ViewModel.CommitShortHash, Mode=OneWay}"
+                                         Click="CommitButton_Click"
+                                         Visibility="{x:Bind ViewModel.CommitLinkVisibility, Mode=OneWay}"
+                                         Padding="0" VerticalAlignment="Center" FontSize="12"/>
+                        <TextBlock Text="{x:Bind ViewModel.CommitShortHash, Mode=OneWay}"
+                                   FontFamily="Cascadia Mono"
+                                   VerticalAlignment="Center" FontSize="12"
+                                   Visibility="{x:Bind ViewModel.CommitTextVisibility, Mode=OneWay}"/>
+                    </StackPanel>
+
                     <StackPanel Orientation="Horizontal" Spacing="6"
                                 Visibility="{x:Bind ViewModel.DeleteConfirmVisibility, Mode=OneWay}">
                         <TextBlock Text="Delete this card?"

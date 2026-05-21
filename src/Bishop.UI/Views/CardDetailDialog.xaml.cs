@@ -1,5 +1,6 @@
 using Bishop.App.Cards.GetCard;
 using Bishop.App.FxRates;
+using Bishop.App.Git;
 using Bishop.App.Settings;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
@@ -75,6 +76,10 @@ public sealed partial class CardDetailDialog : ContentDialog
                 card.TotalOutputTokens,
                 card.ClaudeRunCount,
                 fxRate);
+
+            var commitResult = await mediator.Send(new GetCardCommitQuery(ViewModel.Number, _workspacePath));
+            if (commitResult is GetCardCommitResult.Found found)
+                ViewModel.SetCommit(found.Commit);
         }
         catch
         {
@@ -95,6 +100,12 @@ public sealed partial class CardDetailDialog : ContentDialog
     private async void GitHubIssueButton_Click(object sender, RoutedEventArgs e)
     {
         if (ViewModel.GitHubIssueUrl is { } url)
+            await Launcher.LaunchUriAsync(new Uri(url));
+    }
+
+    private async void CommitButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.CommitUrl is { } url)
             await Launcher.LaunchUriAsync(new Uri(url));
     }
 

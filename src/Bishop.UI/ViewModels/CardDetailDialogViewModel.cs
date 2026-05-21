@@ -4,6 +4,7 @@ using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Claude;
+using Bishop.App.Git;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.Core;
 using Bishop.Core.Skills;
@@ -83,6 +84,38 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public Visibility GitHubLinkVisibility => GitHubIssueNumber is not null ? Visibility.Visible : Visibility.Collapsed;
     public Visibility PushErrorVisibility => string.IsNullOrEmpty(PushError) ? Visibility.Collapsed : Visibility.Visible;
     public Visibility PushSectionVisibility => _workspaceGitHubRepo is not null ? Visibility.Visible : Visibility.Collapsed;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CommitVisibility), nameof(CommitTextVisibility))]
+    public partial string? CommitShortHash { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CommitLinkVisibility), nameof(CommitTextVisibility))]
+    public partial string? CommitHash { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CommitLinkVisibility), nameof(CommitTextVisibility))]
+    public partial bool CommitIsPushed { get; set; }
+
+    public string? CommitUrl => CommitIsPushed && CommitHash is not null && _workspaceGitHubRepo is not null
+        ? $"https://github.com/{_workspaceGitHubRepo}/commit/{CommitHash}"
+        : null;
+
+    public Visibility CommitVisibility =>
+        string.IsNullOrEmpty(CommitShortHash) ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility CommitLinkVisibility =>
+        CommitUrl is not null ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility CommitTextVisibility =>
+        !string.IsNullOrEmpty(CommitShortHash) && CommitUrl is null ? Visibility.Visible : Visibility.Collapsed;
+
+    public void SetCommit(CommitInfo commit)
+    {
+        CommitHash = commit.FullHash;
+        CommitIsPushed = commit.IsPushed;
+        CommitShortHash = commit.ShortHash;
+    }
 
     public Visibility TitleViewVisibility => IsTitleEditing ? Visibility.Collapsed : Visibility.Visible;
     public Visibility TitleEditVisibility => IsTitleEditing ? Visibility.Visible : Visibility.Collapsed;
