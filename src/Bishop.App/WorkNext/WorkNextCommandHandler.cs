@@ -42,8 +42,12 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
             if (card is null)
                 return new WorkNextResult(processed, WorkNextStopReason.EmptyLane);
 
+            Console.Out.WriteLine($"== Card #{card.Number}: {card.Title} ==");
+
             var prompt = $"/bish-auto-card #{card.Number}";
             var exitCode = await _claude.RunPromptAsync(request.WorkspacePath, prompt, cancellationToken);
+
+            Console.Out.WriteLine($"exit {exitCode}");
 
             if (exitCode != 0)
                 return new WorkNextResult(processed, WorkNextStopReason.ClaudeFailed, FailedCardNumber: card.Number);

@@ -797,30 +797,32 @@ workNextCmd.SetHandler(async (string? workspace, string tag, int max) =>
     var ws = await resolver.ResolveAsync(workspace);
     var result = await mediator.Send(new WorkNextCommand(ws.Id, ws.Path, tag, max));
 
+    var summary = $"Processed {result.CardsProcessed} card(s). Stopped: {result.StopReason}";
+    if (result.FailedCardNumber is { } failed)
+        summary += $" on card #{failed}";
+    Console.Out.WriteLine(summary + ".");
+
     switch (result.StopReason)
     {
         case WorkNextStopReason.EmptyLane:
-            Console.WriteLine($"work-next: processed {result.CardsProcessed} card(s); no more '{tag}' cards in 'To Do'.");
-            break;
         case WorkNextStopReason.CapReached:
-            Console.WriteLine($"work-next: processed {result.CardsProcessed} card(s); reached --max cap.");
             break;
         case WorkNextStopReason.DirtyWorkingTree:
-            Console.Error.WriteLine($"work-next: processed {result.CardsProcessed} card(s); aborted — working tree at '{ws.Path}' is dirty:");
+            Console.Error.WriteLine($"Working tree at '{ws.Path}' is dirty:");
             foreach (var path in result.DirtyPaths ?? Array.Empty<string>())
                 Console.Error.WriteLine($"  {path}");
             Environment.ExitCode = 1;
             break;
         case WorkNextStopReason.ClaudeFailed:
-            Console.Error.WriteLine($"work-next: processed {result.CardsProcessed} card(s); claude exited non-zero on card #{result.FailedCardNumber} (left in 'Doing').");
+            Console.Error.WriteLine($"Card #{result.FailedCardNumber} left in 'Doing'.");
             Environment.ExitCode = 1;
             break;
         case WorkNextStopReason.NotAGitRepo:
-            Console.Error.WriteLine($"work-next: workspace '{ws.Path}' is not a git repository — refusing to start.");
+            Console.Error.WriteLine($"Workspace '{ws.Path}' is not a git repository.");
             Environment.ExitCode = 1;
             break;
         case WorkNextStopReason.GitNotFound:
-            Console.Error.WriteLine("work-next: 'git' executable not found on PATH — refusing to start.");
+            Console.Error.WriteLine("'git' executable not found on PATH.");
             Environment.ExitCode = 1;
             break;
     }

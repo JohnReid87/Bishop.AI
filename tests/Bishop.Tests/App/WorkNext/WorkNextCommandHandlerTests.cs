@@ -218,4 +218,100 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
             $"/bish-auto-card #{card.Number}",
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task SuccessfulIteration_WritesBannerAndExitZero()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_db);
+        var card = await add.Handle(new AddCardCommand(todo.Id, "Pretty Title", TagNames: ["test"]), default);
+
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+
+        // Act
+        try
+        {
+            await handler.Handle(
+                new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1),
+                default);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        // Assert
+        var lines = output.ToString().Split(Environment.NewLine);
+        lines.Should().Contain($"== Card #{card.Number}: Pretty Title ==");
+        lines.Should().Contain("exit 0");
+    }
+
+    [Fact]
+    public async Task ClaudeNonZeroExit_WritesExitLineWithExitCode()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_db);
+        var card = await add.Handle(new AddCardCommand(todo.Id, "Broken", TagNames: ["test"]), default);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(7);
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+
+        // Act
+        try
+        {
+            await handler.Handle(
+                new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1),
+                default);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        // Assert
+        var lines = output.ToString().Split(Environment.NewLine);
+        lines.Should().Contain($"== Card #{card.Number}: Broken ==");
+        lines.Should().Contain("exit 7");
+    }
+
+    [Fact]
+    public async Task EmptyLane_WritesNothingToStdout()
+    {
+        // Arrange
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+
+        // Act
+        try
+        {
+            await handler.Handle(
+                new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10),
+                default);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        // Assert
+        output.ToString().Should().BeEmpty();
+    }
 }
