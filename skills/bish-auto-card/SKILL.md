@@ -125,7 +125,7 @@ Run `bishop workspace current --json`.
    - no tag or unrecognised tag → `chore`
 
    Take the **first** tag from `tags` (the same field captured in step 1).
-   Format: `<prefix>: <title> (card #N)`.
+   Format: `<prefix>: <title> (card N)`.
 
 9. **Commit and move to Done, in that order.** No prompt.
    ```
@@ -153,7 +153,7 @@ Run `bishop workspace current --json`.
 11. On full success, output a concise completion line so the parent log has
     a clear marker:
 
-    > **Done — Card #N:** <title> — committed as `<prefix>: <title> (card #N)`,
+    > **Done — Card #N:** <title> — committed as `<prefix>: <title> (card N)`,
     > moved to "Done" (still open).
 
 </what-to-do>

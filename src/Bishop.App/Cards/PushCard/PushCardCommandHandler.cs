@@ -48,8 +48,8 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
 
         // Build issue body with Bishop footer
         var body = string.IsNullOrWhiteSpace(card.Description)
-            ? $"---\nBishop card #{card.Number}"
-            : $"{card.Description}\n\n---\nBishop card #{card.Number}";
+            ? $"---\nBishop card {card.Number}"
+            : $"{card.Description}\n\n---\nBishop card {card.Number}";
 
         // Build gh issue create args
         var createArgs = new List<string> { "issue", "create", "--repo", repo, "--title", card.Title, "--body", body };

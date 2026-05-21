@@ -225,6 +225,27 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task PushCard_IssueBody_FooterContainsBishopCardNumberWithoutHash()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var card = await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("https://github.com/owner/repo/issues/1"));
+        var handler = new PushCardCommandHandler(_db, _ghCli);
+
+        // Act
+        await handler.Handle(new PushCardCommand(card.Id), default);
+
+        // Assert
+        await _ghCli.Received(1).RunCaptureAsync(
+            Arg.Is<string[]>(a => a[6] == "--body" && a[7].Contains($"Bishop card {card.Number}") && !a[7].Contains($"Bishop card #{card.Number}")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task PushCard_WithTags_CreatesLabelsForEachTag()
     {
         // Arrange
