@@ -72,70 +72,24 @@ public sealed class StreamJsonFormatterTests
         sut.Format(line).Should().Be("… line1 line2 end");
     }
 
-    [Fact]
-    public void Format_Tool_Use_Bash_Uses_Colon_With_Command_Subject()
+    [Theory]
+    [InlineData("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"dotnet test"}}]}}""")]
+    [InlineData("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"src/Foo.cs"}}]}}""")]
+    [InlineData("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Grep","input":{"pattern":"TODO"}}]}}""")]
+    [InlineData("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"TodoWrite","input":{"todos":[]}}]}}""")]
+    [InlineData("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":"not an object"}]}}""")]
+    public void Format_Tool_Use_Block_Produces_No_Output(string line)
     {
-        var sut = new StreamJsonFormatter();
-        var line = """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"dotnet test"}}]}}""";
-
-        sut.Format(line).Should().Be("→ Bash: dotnet test");
+        new StreamJsonFormatter().Format(line).Should().BeNull();
     }
 
     [Fact]
-    public void Format_Tool_Use_Edit_Uses_Space_With_File_Path()
+    public void Format_Multiple_Content_Blocks_With_Tool_Use_Returns_Only_Text_Lines()
     {
         var sut = new StreamJsonFormatter();
-        var line = """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"src/Foo.cs"}}]}}""";
+        var line = """{"type":"assistant","message":{"content":[{"type":"text","text":"hi"},{"type":"tool_use","name":"Bash","input":{"command":"ls"}},{"type":"text","text":"bye"}]}}""";
 
-        sut.Format(line).Should().Be("→ Edit src/Foo.cs");
-    }
-
-    [Fact]
-    public void Format_Tool_Use_Grep_Uses_Colon_With_Pattern()
-    {
-        var sut = new StreamJsonFormatter();
-        var line = """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Grep","input":{"pattern":"TODO"}}]}}""";
-
-        sut.Format(line).Should().Be("→ Grep: TODO");
-    }
-
-    [Fact]
-    public void Format_Tool_Use_Without_Recognised_Input_Field_Omits_Subject()
-    {
-        var sut = new StreamJsonFormatter();
-        var line = """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"TodoWrite","input":{"todos":[]}}]}}""";
-
-        sut.Format(line).Should().Be("→ TodoWrite");
-    }
-
-    [Fact]
-    public void Format_Tool_Use_Subject_Is_Truncated()
-    {
-        var sut = new StreamJsonFormatter();
-        var longCmd = new string('x', 200);
-        var line = "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\""
-            + longCmd + "\"}}]}}";
-
-        var output = sut.Format(line);
-
-        output.Should().NotBeNull();
-        output!.Should().StartWith("→ Bash: ");
-        output.Should().EndWith("…");
-    }
-
-    [Fact]
-    public void Format_Multiple_Content_Blocks_Produces_One_Line_Per_Block()
-    {
-        var sut = new StreamJsonFormatter();
-        var line = """{"type":"assistant","message":{"content":[{"type":"text","text":"hi"},{"type":"tool_use","name":"Bash","input":{"command":"ls"}}]}}""";
-
-        var output = sut.Format(line);
-
-        output.Should().NotBeNull();
-        var lines = output!.Split(Environment.NewLine);
-        lines.Should().HaveCount(2);
-        lines[0].Should().Be("… hi");
-        lines[1].Should().Be("→ Bash: ls");
+        sut.Format(line).Should().Be("… hi" + Environment.NewLine + "… bye");
     }
 
     [Fact]
@@ -273,15 +227,6 @@ public sealed class StreamJsonFormatterTests
     public void Format_Assistant_Returns_Null_When_Content_Is_Not_An_Array()
     {
         new StreamJsonFormatter().Format("""{"type":"assistant","message":{"content":"not an array"}}""").Should().BeNull();
-    }
-
-    [Fact]
-    public void Format_Tool_Use_Returns_Name_Only_When_Input_Is_Not_An_Object()
-    {
-        var sut = new StreamJsonFormatter();
-        var line = """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":"not an object"}]}}""";
-
-        sut.Format(line).Should().Be("→ Bash");
     }
 
     [Fact]

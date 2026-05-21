@@ -53,14 +53,17 @@ public sealed class StreamJsonFormatter
         {
             if (block.ValueKind != JsonValueKind.Object) continue;
             if (!block.TryGetProperty("type", out var t) || t.ValueKind != JsonValueKind.String) continue;
-            var formatted = t.GetString() switch
+            switch (t.GetString())
             {
-                "text" => FormatAssistantText(block),
-                "tool_use" => FormatToolUse(block),
-                _ => null,
-            };
-            if (!string.IsNullOrEmpty(formatted))
-                lines.Add(formatted);
+                case "text":
+                    var formatted = FormatAssistantText(block);
+                    if (!string.IsNullOrEmpty(formatted))
+                        lines.Add(formatted);
+                    break;
+                case "tool_use":
+                    _toolUseCount++;
+                    break;
+            }
         }
 
         return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
@@ -74,55 +77,6 @@ public sealed class StreamJsonFormatter
         var raw = textProp.GetString();
         if (string.IsNullOrWhiteSpace(raw)) return null;
         return $"… {Truncate(CollapseWhitespace(raw))}";
-    }
-
-    private string? FormatToolUse(JsonElement block)
-    {
-        if (!block.TryGetProperty("name", out var nameProp)
-            || nameProp.ValueKind != JsonValueKind.String)
-            return null;
-        var name = nameProp.GetString()!;
-        _toolUseCount++;
-
-        var subject = ExtractToolSubject(name, block);
-        if (string.IsNullOrEmpty(subject))
-            return $"→ {name}";
-
-        var separator = IsFilePathTool(name) ? ' ' : ':';
-        return separator == ' '
-            ? $"→ {name} {subject}"
-            : $"→ {name}: {subject}";
-    }
-
-    private static bool IsFilePathTool(string name) => name switch
-    {
-        "Read" or "Edit" or "Write" or "NotebookEdit" => true,
-        _ => false,
-    };
-
-    private static string? ExtractToolSubject(string toolName, JsonElement block)
-    {
-        if (!block.TryGetProperty("input", out var input) || input.ValueKind != JsonValueKind.Object)
-            return null;
-
-        var field = toolName switch
-        {
-            "Bash" or "PowerShell" => "command",
-            "Read" or "Edit" or "Write" or "NotebookEdit" => "file_path",
-            "Glob" or "Grep" => "pattern",
-            "WebFetch" => "url",
-            "WebSearch" => "query",
-            "Task" or "Agent" => "description",
-            "Skill" => "skill",
-            "ToolSearch" => "query",
-            _ => null,
-        };
-        if (field is null) return null;
-        if (!input.TryGetProperty(field, out var value) || value.ValueKind != JsonValueKind.String)
-            return null;
-        var raw = value.GetString();
-        if (string.IsNullOrWhiteSpace(raw)) return null;
-        return Truncate(CollapseWhitespace(raw));
     }
 
     private static string? FormatUser(JsonElement root)

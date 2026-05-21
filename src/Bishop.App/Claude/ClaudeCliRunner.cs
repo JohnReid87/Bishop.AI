@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using Spectre.Console;
 
 namespace Bishop.App.Claude;
 
@@ -77,10 +78,16 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
             {
                 if (e.Data is not null) Console.Error.WriteLine(e.Data);
             };
-            proc.BeginOutputReadLine();
-            proc.BeginErrorReadLine();
 
-            await proc.WaitForExitAsync(cancellationToken);
+            await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync("Working...", async _ =>
+                {
+                    proc.BeginOutputReadLine();
+                    proc.BeginErrorReadLine();
+                    await proc.WaitForExitAsync(cancellationToken);
+                });
+
             return proc.ExitCode;
         }
     }
