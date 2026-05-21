@@ -26,6 +26,8 @@
 
   <ItemGroup>
     <Content Remove="Assets\bishop-ai.ico" />
+    <Content Remove="Assets\Brand\01-logo-mark.svg" />
+    <Content Remove="Assets\Brand\02-wordmark-horizontal.svg" />
   </ItemGroup>
 
   <ItemGroup>
