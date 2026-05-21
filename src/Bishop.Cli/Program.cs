@@ -25,6 +25,7 @@ using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
+using Bishop.App.Git;
 using Bishop.App.WorkNext;
 using Bishop.Cli;
 using MediatR;
@@ -273,6 +274,19 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
 
     if (json)
     {
+        var gitCommit = await mediator.Send(new GetCardCommitQuery(card.Number, ws.Path));
+        object? commitObj = gitCommit is GetCardCommitResult.Found found
+            ? new
+            {
+                hash = found.Commit.FullHash,
+                shortHash = found.Commit.ShortHash,
+                isPushed = found.Commit.IsPushed,
+                url = ws.GitHubRepo is not null
+                    ? $"https://github.com/{ws.GitHubRepo}/commit/{found.Commit.FullHash}"
+                    : (string?)null
+            }
+            : null;
+
         Console.WriteLine(JsonSerializer.Serialize(new
         {
             id = card.Id,
@@ -291,7 +305,8 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             totalInputTokens = card.TotalInputTokens,
             totalOutputTokens = card.TotalOutputTokens,
             claudeRunCount = card.ClaudeRunCount,
-            tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
+            tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList(),
+            commit = commitObj
         }, jsonOpts));
     }
     else

@@ -158,6 +158,135 @@ public sealed class GitCli : IGitCli
         }
     }
 
+    public async Task<GetCardCommitResult> GetCardCommitAsync(
+        int cardNumber, string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("log");
+        psi.ArgumentList.Add("--perl-regexp");
+        psi.ArgumentList.Add($"--grep=\\(card #?{cardNumber}\\)");
+        psi.ArgumentList.Add("-1");
+        psi.ArgumentList.Add("--format=%h\x1f%H\x1f%aI");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            return new GetCardCommitResult.GitNotFound();
+        }
+
+        if (proc is null)
+            return new GetCardCommitResult.GitNotFound();
+
+        string shortHash, fullHash;
+        DateTimeOffset timestamp;
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode == 128)
+            {
+                if (stderr.Contains("not a git repository", StringComparison.OrdinalIgnoreCase))
+                    return new GetCardCommitResult.NotAGitRepo();
+                if (stderr.Contains("does not have any commits yet", StringComparison.OrdinalIgnoreCase))
+                    return new GetCardCommitResult.NotFound();
+                throw new InvalidOperationException($"git exited {proc.ExitCode}: {stderr.Trim()}");
+            }
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git exited {proc.ExitCode}: {stderr.Trim()}");
+
+            var line = stdout.Trim();
+            if (string.IsNullOrEmpty(line))
+                return new GetCardCommitResult.NotFound();
+
+            var parts = line.Split('\x1f');
+            if (parts.Length != 3 || !DateTimeOffset.TryParse(parts[2].Trim(), out timestamp))
+                return new GetCardCommitResult.NotFound();
+
+            shortHash = parts[0].Trim();
+            fullHash = parts[1].Trim();
+        }
+
+        var isPushed = false;
+
+        try
+        {
+            var upPsi = new ProcessStartInfo("git")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = workspacePath,
+            };
+            upPsi.ArgumentList.Add("rev-parse");
+            upPsi.ArgumentList.Add("--abbrev-ref");
+            upPsi.ArgumentList.Add("--symbolic-full-name");
+            upPsi.ArgumentList.Add("@{u}");
+
+            var upProc = Process.Start(upPsi);
+            if (upProc is not null)
+            {
+                using (upProc)
+                {
+                    await upProc.StandardOutput.ReadToEndAsync(cancellationToken);
+                    await upProc.WaitForExitAsync(cancellationToken);
+                    if (upProc.ExitCode == 0)
+                    {
+                        var revPsi = new ProcessStartInfo("git")
+                        {
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            WorkingDirectory = workspacePath,
+                        };
+                        revPsi.ArgumentList.Add("rev-list");
+                        revPsi.ArgumentList.Add("@{u}..HEAD");
+
+                        var revProc = Process.Start(revPsi);
+                        if (revProc is not null)
+                        {
+                            using (revProc)
+                            {
+                                var revOut = await revProc.StandardOutput.ReadToEndAsync(cancellationToken);
+                                await revProc.WaitForExitAsync(cancellationToken);
+                                if (revProc.ExitCode == 0)
+                                {
+                                    var unpushedShas = revOut
+                                        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                        .Select(s => s.Trim())
+                                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                                    isPushed = !unpushedShas.Contains(fullHash);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            // git unavailable for upstream check — IsPushed stays false
+        }
+
+        return new GetCardCommitResult.Found(new CommitInfo(shortHash, fullHash, Subject: "", Body: "", timestamp, isPushed));
+    }
+
     public async Task<GetWorkingTreeStatusResult> GetWorkingTreeStatusAsync(
         string workspacePath, CancellationToken cancellationToken = default)
     {
