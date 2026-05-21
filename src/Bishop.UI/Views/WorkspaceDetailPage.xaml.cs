@@ -113,6 +113,7 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         WorkspaceNameText.Text = vm.Name;
         WorkspacePathText.Text = vm.Path;
+        ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
         UpdatePathStatus();
         await LoadSkillsAsync();
         _ = Board.LoadAsync(vm.Id);

@@ -10,8 +10,9 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Persistent header bar -->
-        <Grid Grid.Row="0" Padding="16,12"
+        <!-- Compact header bar -->
+        <Grid Grid.Row="0" Padding="16,0"
+              MinHeight="48"
               BorderBrush="{StaticResource AppDividerBrush}"
               BorderThickness="0,0,0,1">
             <Grid.ColumnDefinitions>
@@ -19,33 +20,62 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
                 <TextBlock x:Name="WorkspaceNameText"
-                           Style="{StaticResource SubtitleTextBlockStyle}"/>
+                           Style="{StaticResource BodyStrongTextBlockStyle}"/>
                 <TextBlock x:Name="WorkspacePathText"
                            Style="{StaticResource CaptionTextBlockStyle}"
-                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                           Foreground="{StaticResource AppTextSecondaryBrush}"
+                           TextTrimming="CharacterEllipsis"/>
             </StackPanel>
 
             <StackPanel x:Name="LaunchButtonWrapper"
                         Grid.Column="1"
                         Orientation="Horizontal"
-                        Spacing="8"
+                        Spacing="4"
                         VerticalAlignment="Center"
                         Margin="16,0,0,0">
                 <Button x:Name="WorkspaceSkillsButton"
-                        Content="Skills"
+                        Padding="8,4"
                         Visibility="Collapsed"
-                        Click="WorkspaceSkillsButton_Click"/>
+                        Click="WorkspaceSkillsButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xEBD2;" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="Skills" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <Button x:Name="CommitsButton"
-                        Content="Commits"
-                        Click="CommitsButton_Click"/>
+                        Padding="8,4"
+                        Click="CommitsButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE81C;" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="Commits" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <Button x:Name="TerminalButton"
-                        Content="Terminal"
-                        Click="TerminalButton_Click"/>
+                        Padding="8,4"
+                        Click="TerminalButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE8A7;" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="Terminal" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <Button x:Name="ClaudeButton"
-                        Content="Claude"
-                        Click="ClaudeButton_Click"/>
+                        Padding="8,4"
+                        Click="ClaudeButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE768;" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="Claude" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="AddLaneButton"
+                        Padding="8,4"
+                        Click="AddLane_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE710;" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="Lane" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <Button x:Name="WorkspaceSettingsButton"
                         ToolTipService.ToolTip="Workspace settings"
                         Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
@@ -58,7 +88,6 @@
         <!-- Content area -->
         <Grid Grid.Row="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
@@ -95,27 +124,8 @@
                          Title="Copied to clipboard"/>
             </StackPanel>
 
-            <!-- Board subheader -->
-            <Grid Grid.Row="1" Padding="16,8"
-                  BorderBrush="{StaticResource AppDividerBrush}"
-                  BorderThickness="0,0,0,1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="Board"
-                           Style="{StaticResource BodyStrongTextBlockStyle}"
-                           VerticalAlignment="Center"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="AddLaneButton"
-                            Content="+ New lane"
-                            Click="AddLane_Click"/>
-                </StackPanel>
-            </Grid>
-
             <!-- Kanban lanes -->
-            <ScrollViewer Grid.Row="2"
+            <ScrollViewer Grid.Row="1"
                           HorizontalScrollMode="Auto"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Disabled"
@@ -314,7 +324,7 @@
             </ScrollViewer>
 
             <!-- Notes splitter -->
-            <local:NotesSplitter Grid.Row="3"
+            <local:NotesSplitter Grid.Row="2"
                                  Height="6"
                                  Background="{StaticResource AppDividerBrush}"
                                  Visibility="{x:Bind Notes.IsExpanded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -324,7 +334,7 @@
                                  PointerCaptureLost="NotesSplitter_PointerCaptureLost"/>
 
             <!-- Notes panel -->
-            <Grid Grid.Row="4"
+            <Grid Grid.Row="3"
                   BorderBrush="{StaticResource AppDividerBrush}"
                   BorderThickness="0,1,0,0">
                 <Grid.RowDefinitions>
