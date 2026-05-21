@@ -40,6 +40,11 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         };
         psi.ArgumentList.Add("-p");
         psi.ArgumentList.Add(prompt);
+        psi.ArgumentList.Add("--output-format");
+        psi.ArgumentList.Add("stream-json");
+        psi.ArgumentList.Add("--verbose");
+
+        var formatter = new StreamJsonFormatter();
 
         Process? proc;
         try
@@ -59,7 +64,9 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         {
             proc.OutputDataReceived += (_, e) =>
             {
-                if (e.Data is not null) Console.Out.WriteLine(e.Data);
+                if (e.Data is null) return;
+                var formatted = formatter.Format(e.Data);
+                if (formatted is not null) Console.Out.WriteLine(formatted);
             };
             proc.ErrorDataReceived += (_, e) =>
             {
