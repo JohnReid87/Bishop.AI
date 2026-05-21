@@ -1,3 +1,4 @@
+using System.Reflection;
 using Bishop.App.Skills.DiscoverSkills;
 using FluentAssertions;
 
@@ -217,6 +218,21 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_FrontmatterLineWithColonAtIndexZero_SkipsLineAndReturnsSkill()
+    {
+        // Arrange — colonIdx == 0 triggers the colonIdx <= 0 guard in ParseFrontmatter
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\n: value\nname: my-skill\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].Name.Should().Be("my-skill");
+    }
+
+    [Fact]
     public async Task Handle_UppercaseFrontmatterKey_ParsedCaseInsensitively()
     {
         // Arrange
@@ -232,15 +248,20 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task ParameterlessConstructor_ResolvesUserProfileSkillsPath_DoesNotThrow()
+    public void ParameterlessConstructor_ResolvesUserProfileSkillsPath()
     {
-        // Arrange — exercises the hardcoded ~/.claude/skills path resolution
-        var sut = new DiscoverSkillsQueryHandler();
+        // Arrange
+        var expected = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".claude", "skills");
 
         // Act
-        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+        var sut = new DiscoverSkillsQueryHandler();
+        var field = typeof(DiscoverSkillsQueryHandler)
+            .GetField("_skillsRoot", BindingFlags.NonPublic | BindingFlags.Instance);
+        var actual = (string)field!.GetValue(sut)!;
 
         // Assert
-        result.Should().NotBeNull();
+        actual.Should().Be(expected);
     }
 }
