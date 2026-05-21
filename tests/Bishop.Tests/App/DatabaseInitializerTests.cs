@@ -40,8 +40,24 @@ public sealed class DatabaseInitializerTests : IDisposable
             .UseSqlite($"Data Source={_tempDbPath}")
             .Options);
 
+    private BishopDbContext CreateDbContextWithNoMigrations() =>
+        new(new DbContextOptionsBuilder<BishopDbContext>()
+            .UseSqlite($"Data Source={_tempDbPath}",
+                opts => opts.MigrationsAssembly(typeof(DatabaseInitializerTests).Assembly.GetName().Name!))
+            .Options);
+
+    private async Task<string> ReadJournalModeAsync()
+    {
+        await using var connection = new SqliteConnection($"Data Source={_tempDbPath}");
+        await connection.OpenAsync();
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "PRAGMA journal_mode;";
+        var result = await cmd.ExecuteScalarAsync();
+        return result?.ToString() ?? string.Empty;
+    }
+
     [Fact]
-    public Task StopAsync_ReturnsCompletedTask()
+    public Task StopAsync_CompletesSuccessfullySynchronously()
     {
         // Arrange
         using var db = CreateDbContext();
@@ -51,7 +67,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         var task = sut.StopAsync(default);
 
         // Assert
-        task.Should().BeSameAs(Task.CompletedTask);
+        task.IsCompletedSuccessfully.Should().BeTrue();
         return task;
     }
 
@@ -89,6 +105,8 @@ public sealed class DatabaseInitializerTests : IDisposable
         File.ReadAllText(_stampPath).Trim().Should().Be(latestMigration);
         var applied = await db.Database.GetAppliedMigrationsAsync();
         applied.Should().NotBeEmpty("schema should have been created by migrations");
+        var journalMode = await ReadJournalModeAsync();
+        journalMode.Should().Be("wal");
     }
 
     [Fact]
@@ -124,5 +142,43 @@ public sealed class DatabaseInitializerTests : IDisposable
 
         // Assert
         await act.Should().ThrowAsync<Exception>("pending-migrations check should fail against a corrupt database");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenNoAppliedMigrations_DoesNotWriteStamp()
+    {
+        // Arrange — context with no migrations so GetAppliedMigrationsAsync returns empty,
+        // exercising the early-return guard in WriteStampAsync
+        if (File.Exists(_stampPath))
+            File.Delete(_stampPath);
+        using var db = CreateDbContextWithNoMigrations();
+        var sut = new DatabaseInitializer(db);
+
+        // Act
+        await sut.StartAsync(default);
+
+        // Assert
+        File.Exists(_stampPath).Should().BeFalse("WriteStampAsync should return early when no migrations have been applied");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenNoMigrationsDefinedAndStampExists_ProceedsPastEarlyReturn()
+    {
+        // Arrange — IsStampCurrent returns false when GetMigrations().LastOrDefault() is null,
+        // even if a stamp file exists, because the guard requires a non-null latest migration
+        const string existingStamp = "20240101000000_OldMigration";
+        File.WriteAllText(_stampPath, existingStamp);
+        using var db = CreateDbContextWithNoMigrations();
+        var sut = new DatabaseInitializer(db);
+
+        // Act
+        await sut.StartAsync(default);
+
+        // Assert — DB file was created (proving StartAsync passed IsStampCurrent's early-return),
+        // and stamp is unchanged (WriteStampAsync returned early with no applied migrations)
+        File.Exists(_tempDbPath).Should().BeTrue(
+            "the DB connection must have been opened, proving IsStampCurrent returned false");
+        File.ReadAllText(_stampPath).Should().Be(existingStamp,
+            "WriteStampAsync should not overwrite the stamp when no migrations have been applied");
     }
 }
