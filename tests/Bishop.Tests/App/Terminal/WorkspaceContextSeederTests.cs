@@ -108,7 +108,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public void BuildBishopContext_OmitsDestructiveCommandsAndSkillCatalog()
+    public void BuildBishopContext_OmitsDestructiveCommands()
     {
         var workspace = MakeWorkspace();
 
@@ -117,7 +117,86 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().NotContain("card remove");
         output.Should().NotContain("lane remove");
         output.Should().NotContain("tag remove");
-        output.Should().NotContain("bish-work-on-card");
+    }
+
+    [Fact]
+    public void BuildBishopContext_IncludesWorkflowSection_WithSkillRoles()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("## Workflow");
+        output.Should().Contain("`bish-grill-me`");
+        output.Should().Contain("`bish-work-on-card`");
+        output.Should().Contain("`bish-auto-card`");
+        output.Should().Contain("`bish-arch`");
+        output.Should().Contain("`bish-coverage`");
+        output.Should().Contain("`bish-tests`");
+        output.Should().Contain("`bish-audit-docs`");
+    }
+
+    [Fact]
+    public void BuildBishopContext_DistinguishesGrillMeFromWorkOnCard()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("Choosing between `bish-grill-me` and `bish-work-on-card`");
+    }
+
+    [Fact]
+    public void BuildBishopContext_DescribesCardPushFlow()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("## Publishing cards to GitHub");
+        output.Should().Contain("bishop card push <number>");
+        output.Should().Contain("on-demand");
+    }
+
+    [Fact]
+    public void BuildBishopContext_DocumentsCommitReferenceConvention()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("## Commit-reference convention");
+        output.Should().Contain("(card #N)");
+        output.Should().Contain("(card #42)");
+    }
+
+    [Fact]
+    public void BuildBishopContext_OrdersWorkflowBeforeCardModel()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.IndexOf("## Workflow", StringComparison.Ordinal)
+            .Should().BeLessThan(output.IndexOf("## Card model", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BuildBishopContext_StillIncludesLiveWorkspaceMetadata_AlongsideStaticBody()
+    {
+        var workspace = MakeWorkspace(
+            name: "epsilon",
+            gitHubRepo: "owner/epsilon",
+            lanes: [("To Do", 1, true), ("Doing", 2, true)],
+            tags: ["bug"]);
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.IndexOf("# BISHOP_CONTEXT — epsilon", StringComparison.Ordinal)
+            .Should().BeLessThan(output.IndexOf("## Workflow", StringComparison.Ordinal));
+        output.Should().Contain("- **GitHub:** `owner/epsilon`");
+        output.Should().Contain("1. To Do _(system)_");
+        output.Should().Contain("- `bug`");
     }
 
     [Fact]

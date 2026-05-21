@@ -1,3 +1,75 @@
+## Workflow
+
+Bishop ships with a family of Claude Code skills (`bish-*`) that collaborate
+through the kanban board. Each skill plays one role; pick the right one for
+the task instead of doing everything inside a single session.
+
+### Planning skills — produce cards
+
+- `bish-grill-me` — relentlessly interviews the user about a plan or design,
+  then pushes the agreed-on tasks as cards on the board. Use when work is
+  **not yet on the board** — you have an idea and need it stress-tested and
+  broken down into trackable items.
+- `bish-arch` — architectural / SOLID review of the current .NET solution.
+  Walks findings one at a time; agreed items become cards tagged `arch`.
+- `bish-coverage` — runs the coverage script, identifies classes below the
+  line threshold, and pushes test-gap cards tagged `test`.
+- `bish-tests` — audits the quality of existing tests (shallow asserts,
+  brittle mocks, missing edge cases, untested public methods) and pushes
+  cards tagged `test`.
+- `bish-audit-docs` — audits Markdown docs in the repo for drift against the
+  code and edits the docs in place per agreed finding.
+
+### Execution skills — consume cards
+
+- `bish-work-on-card` — interactive. Accepts a single card Number
+  (e.g. `42` or `#42`), moves it to "Doing", implements it, then prompts
+  before moving it to "Done" and committing. **One card per session** —
+  long-running sessions accumulate context that hurts cost and quality.
+  Use when work is **already a card** and you want it implemented now.
+- `bish-auto-card` — unattended sibling of `bish-work-on-card`, intended
+  for automation (e.g. a parent loop driving `bishop card claim`). Same
+  contract, but no prompts and non-zero exit on any failure.
+
+### Choosing between `bish-grill-me` and `bish-work-on-card`
+
+- No Number yet, just an idea or proposal → `bish-grill-me`. Produces cards.
+- A Number in hand (`#42`) → `bish-work-on-card`. Consumes one card.
+
+## Publishing cards to GitHub
+
+Cards live in the local SQLite DB by default and are **not** synced to
+GitHub automatically. To surface a card as a GitHub issue (e.g. for
+stakeholders or external collaborators), run:
+
+```
+bishop card push <number>
+```
+
+Requires the workspace to be linked (`bishop workspace set-github <owner/repo>`)
+and the `gh` CLI to be authenticated. Once pushed, the card stores its issue
+number; subsequent `bishop card close`, `bishop card reopen`, and moves into
+or out of the `Done` lane also close / reopen the linked issue.
+
+Push is **on-demand** — call it explicitly for the cards that need to be
+visible on GitHub; everything else stays local.
+
+## Commit-reference convention
+
+When a commit implements work tracked by a card, end the Conventional Commits
+subject with `(card #N)` so the card and the commit can be traced to each
+other:
+
+```
+feat: Add lane CRUD (card #42)
+fix: Skip closed cards in claim (card #58)
+chore: Tidy board header spacing (card #114)
+```
+
+The `bish-work-on-card` skill proposes this format automatically. When
+committing by hand, follow the same convention so future agents can locate
+the work that produced a change.
+
 ## Card model
 
 Bishop tracks work as **cards** inside **lanes** on a per-workspace kanban board.
