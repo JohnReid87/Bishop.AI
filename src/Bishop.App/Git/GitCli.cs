@@ -322,6 +322,45 @@ public sealed class GitCli : IGitCli
         }
     }
 
+    public async Task<PushResult> PushAsync(
+        string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("push");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            return new PushResult(Success: false, Message: "git executable not found");
+        }
+
+        if (proc is null)
+            return new PushResult(Success: false, Message: "git executable not found");
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            var message = string.IsNullOrWhiteSpace(stderr) ? stdout.Trim() : stderr.Trim();
+            return new PushResult(
+                Success: proc.ExitCode == 0,
+                Message: string.IsNullOrEmpty(message) ? null : message);
+        }
+    }
+
     public async Task<GetWorkingTreeStatusResult> GetWorkingTreeStatusAsync(
         string workspacePath, CancellationToken cancellationToken = default)
     {
