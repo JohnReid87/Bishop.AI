@@ -49,9 +49,9 @@ public sealed class GetRecentCommitsQueryHandlerTests
         // Arrange
         var commits = new List<CommitInfo>
         {
-            new("abc1234", "abc1234def5678901234567890", "Initial commit", "", DateTimeOffset.UtcNow)
+            new("abc1234", "abc1234def5678901234567890", "Initial commit", "", DateTimeOffset.UtcNow, false)
         };
-        var expected = new GetRecentCommitsResult.Success(commits);
+        var expected = new GetRecentCommitsResult.Success(commits, null);
         var git = Substitute.For<IGitCli>();
         git.GetRecentCommitsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(expected);
         var sut = CreateSut(git);

@@ -79,12 +79,82 @@ public sealed class GitCli : IGitCli
                     body = remainder.TrimEnd();
                 }
 
-                commits.Add(new CommitInfo(parts[0].Trim(), parts[1].Trim(), subject, body, ts));
+                commits.Add(new CommitInfo(parts[0].Trim(), parts[1].Trim(), subject, body, ts, IsPushed: false));
             }
 
-            return commits.Count == 0
-                ? new GetRecentCommitsResult.NoCommits()
-                : new GetRecentCommitsResult.Success(commits);
+            if (commits.Count == 0)
+                return new GetRecentCommitsResult.NoCommits();
+
+            string? upstreamRef = null;
+            HashSet<string> unpushedShas = [];
+
+            var upPsi = new ProcessStartInfo("git")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = workspacePath,
+            };
+            upPsi.ArgumentList.Add("rev-parse");
+            upPsi.ArgumentList.Add("--abbrev-ref");
+            upPsi.ArgumentList.Add("--symbolic-full-name");
+            upPsi.ArgumentList.Add("@{u}");
+
+            try
+            {
+                var upProc = Process.Start(upPsi);
+                if (upProc is not null)
+                {
+                    using (upProc)
+                    {
+                        var upOut = await upProc.StandardOutput.ReadToEndAsync(cancellationToken);
+                        await upProc.WaitForExitAsync(cancellationToken);
+                        if (upProc.ExitCode == 0)
+                        {
+                            upstreamRef = upOut.Trim();
+
+                            var revPsi = new ProcessStartInfo("git")
+                            {
+                                UseShellExecute = false,
+                                CreateNoWindow = true,
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true,
+                                WorkingDirectory = workspacePath,
+                            };
+                            revPsi.ArgumentList.Add("rev-list");
+                            revPsi.ArgumentList.Add("@{u}..HEAD");
+
+                            var revProc = Process.Start(revPsi);
+                            if (revProc is not null)
+                            {
+                                using (revProc)
+                                {
+                                    var revOut = await revProc.StandardOutput.ReadToEndAsync(cancellationToken);
+                                    await revProc.WaitForExitAsync(cancellationToken);
+                                    if (revProc.ExitCode == 0)
+                                    {
+                                        unpushedShas = revOut
+                                            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                            .Select(s => s.Trim())
+                                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+            {
+                // git unavailable for upstream check — no upstream
+            }
+
+            var finalCommits = upstreamRef is not null
+                ? commits.Select(c => c with { IsPushed = !unpushedShas.Contains(c.FullHash) }).ToList()
+                : commits;
+
+            return new GetRecentCommitsResult.Success(finalCommits, upstreamRef);
         }
     }
 

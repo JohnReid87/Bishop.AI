@@ -132,4 +132,69 @@ public sealed class GetRecentCommitsTests : IDisposable
         var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
         success.Commits.Should().HaveCount(5);
     }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_AllCommitsIsPushedTrue_WhenAllCommitsPushedToUpstream()
+    {
+        // Arrange
+        InitRepoWithCommit("Initial commit");
+        var barePath = Path.Combine(_tempDir, "remote.git");
+        Directory.CreateDirectory(barePath);
+        Git(barePath, "init", "--bare");
+        Git(_tempDir, "remote", "add", "origin", barePath);
+        Git(_tempDir, "push", "-u", "origin", "HEAD");
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
+        success.UpstreamRef.Should().NotBeNullOrEmpty();
+        success.Commits.Should().AllSatisfy(c => c.IsPushed.Should().BeTrue());
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_MarksOnlyPushedCommits_WhenSomeCommitsAheadOfUpstream()
+    {
+        // Arrange
+        InitRepoWithCommit("Initial commit");
+        var barePath = Path.Combine(_tempDir, "remote.git");
+        Directory.CreateDirectory(barePath);
+        Git(barePath, "init", "--bare");
+        Git(_tempDir, "remote", "add", "origin", barePath);
+        Git(_tempDir, "push", "-u", "origin", "HEAD");
+
+        File.WriteAllText(Path.Combine(_tempDir, "extra.txt"), "extra");
+        Git(_tempDir, "add", ".");
+        Git(_tempDir, "commit", "-m", "Unpushed commit");
+
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
+        success.UpstreamRef.Should().NotBeNullOrEmpty();
+        success.Commits.Should().HaveCount(2);
+        success.Commits[0].IsPushed.Should().BeFalse(); // most recent, not yet pushed
+        success.Commits[1].IsPushed.Should().BeTrue();  // initial commit, pushed
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_AllCommitsIsPushedFalse_WhenNoUpstreamConfigured()
+    {
+        // Arrange
+        InitRepoWithCommit("Initial commit");
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
+        success.UpstreamRef.Should().BeNull();
+        success.Commits.Should().AllSatisfy(c => c.IsPushed.Should().BeFalse());
+    }
 }

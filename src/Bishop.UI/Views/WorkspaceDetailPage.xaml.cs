@@ -202,12 +202,12 @@ public sealed partial class WorkspaceDetailPage : Page
 
         switch (result)
         {
-            case GetRecentCommitsResult.Success { Commits: var commits }:
+            case GetRecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef }:
                 var gitHubRepo = _item.GitHubRepo;
                 foreach (var (commit, i) in commits.Select((c, idx) => (c, idx)))
                 {
                     var capturedCommit = commit;
-                    panel.Children.Add(MakeCommitRow(commit, async () =>
+                    panel.Children.Add(MakeCommitRow(commit, upstreamRef, async () =>
                     {
                         flyout.Hide();
                         if (gitHubRepo is not null)
@@ -248,7 +248,7 @@ public sealed partial class WorkspaceDetailPage : Page
         CopiedBar.IsOpen = false;
     }
 
-    private static FrameworkElement MakeCommitRow(CommitInfo commit, Func<Task> onClick)
+    private static FrameworkElement MakeCommitRow(CommitInfo commit, string? upstreamRef, Func<Task> onClick)
     {
         var secondaryBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppTextSecondaryBrush"];
 
@@ -285,6 +285,19 @@ public sealed partial class WorkspaceDetailPage : Page
         inner.Children.Add(subjectBlock);
         inner.Children.Add(timeBlock);
 
+        if (commit.IsPushed && upstreamRef is not null)
+        {
+            var accentBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppAccentBrush"];
+            var cloudUpData = (string)Application.Current.Resources["IconCloudUpData"];
+            var icon = (Microsoft.UI.Xaml.Shapes.Path)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+                $"<Path xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
+                $"Data='{cloudUpData}' StrokeThickness='1.5' StrokeLineCap='Round' StrokeLineJoin='Round' " +
+                $"Width='12' Height='12' Stretch='Uniform' VerticalAlignment='Center'/>");
+            icon.Stroke = accentBrush;
+            icon.Margin = new Thickness(4, 0, 0, 0);
+            inner.Children.Add(icon);
+        }
+
         var btn = new Button
         {
             Content = inner,
@@ -295,6 +308,8 @@ public sealed partial class WorkspaceDetailPage : Page
         btn.Click += async (_, _) => await onClick();
 
         var tooltipText = string.IsNullOrEmpty(commit.Body) ? commit.Subject : $"{commit.Subject}\n\n{commit.Body}";
+        if (commit.IsPushed && upstreamRef is not null)
+            tooltipText += $"\n\nPushed to {upstreamRef}";
         ToolTipService.SetToolTip(btn, new TextBlock { Text = tooltipText, TextWrapping = TextWrapping.Wrap, MaxWidth = 600 });
 
         return btn;
