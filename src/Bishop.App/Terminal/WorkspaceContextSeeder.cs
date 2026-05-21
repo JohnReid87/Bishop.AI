@@ -10,6 +10,7 @@ public sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 {
     internal const string BishopContextFileName = "BISHOP_CONTEXT.md";
     internal const string ContextFileName = "CONTEXT.md";
+    internal const string ClaudeMdFileName = "CLAUDE.md";
     internal const string PointerLine = "> See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.";
     internal const string PointerMarker = "BISHOP_CONTEXT.md";
 
@@ -34,6 +35,12 @@ public sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         var merged = EnsureContextMd(existing, workspace);
         if (!string.Equals(existing, merged, StringComparison.Ordinal))
             File.WriteAllText(contextFile, merged);
+
+        var claudeFile = Path.Combine(fullPath, ClaudeMdFileName);
+        var existingClaude = File.Exists(claudeFile) ? File.ReadAllText(claudeFile) : null;
+        var mergedClaude = EnsureClaudeMd(existingClaude, workspace);
+        if (!string.Equals(existingClaude, mergedClaude, StringComparison.Ordinal))
+            File.WriteAllText(claudeFile, mergedClaude);
     }
 
     private async Task<Workspace?> ResolveWorkspaceAsync(string fullPath, CancellationToken cancellationToken)
@@ -158,6 +165,49 @@ public sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         sb.AppendLine();
         sb.AppendLine("<!-- Add a description of this workspace here: what it is, who uses it, and");
         sb.AppendLine("     the conventions a contributor (human or LLM) needs to know. -->");
+        return sb.ToString();
+    }
+
+    internal static string EnsureClaudeMd(string? existing, Workspace workspace)
+    {
+        if (existing is null)
+            return BuildClaudeMdStub(workspace);
+
+        if (existing.Contains(PointerMarker, StringComparison.Ordinal))
+            return existing;
+
+        var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var lines = existing.Split('\n').ToList();
+        var h1Index = -1;
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var trimmed = lines[i].TrimEnd('\r');
+            if (trimmed.StartsWith("# ", StringComparison.Ordinal))
+            {
+                h1Index = i;
+                break;
+            }
+        }
+
+        var pointerBlock = new[] { "", PointerLine, "" };
+        if (h1Index >= 0)
+        {
+            lines.InsertRange(h1Index + 1, pointerBlock);
+        }
+        else
+        {
+            lines.InsertRange(0, new[] { PointerLine, "" });
+        }
+
+        return string.Join(newline, lines.Select(l => l.TrimEnd('\r')));
+    }
+
+    private static string BuildClaudeMdStub(Workspace workspace)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"# {workspace.Name}");
+        sb.AppendLine();
+        sb.AppendLine(PointerLine);
         return sb.ToString();
     }
 }

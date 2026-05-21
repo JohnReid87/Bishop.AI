@@ -307,10 +307,87 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().NotContain("\r\n");
     }
 
+    // ── EnsureClaudeMd ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void EnsureClaudeMd_ReturnsStub_WhenExistingNull()
+    {
+        var workspace = MakeWorkspace(name: "alpha");
+
+        var output = WorkspaceContextSeeder.EnsureClaudeMd(null, workspace);
+
+        output.Should().Contain("# alpha");
+        output.Should().Contain(WorkspaceContextSeeder.PointerLine);
+    }
+
+    [Fact]
+    public void EnsureClaudeMd_ReturnsExistingUnchanged_WhenPointerAlreadyPresent()
+    {
+        var workspace = MakeWorkspace();
+        var existing = "# Existing\r\n\r\n> See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) for stuff.\r\n\r\nbody\r\n";
+
+        var output = WorkspaceContextSeeder.EnsureClaudeMd(existing, workspace);
+
+        output.Should().Be(existing);
+    }
+
+    [Fact]
+    public void EnsureClaudeMd_InsertsPointerAfterH1_WhenH1Present()
+    {
+        var workspace = MakeWorkspace();
+        var existing = "# My Project\n\nClaude-specific notes.\n";
+
+        var output = WorkspaceContextSeeder.EnsureClaudeMd(existing, workspace);
+
+        output.Should().Contain("# My Project");
+        output.Should().Contain(WorkspaceContextSeeder.PointerLine);
+        output.Should().Contain("Claude-specific notes.");
+        output.IndexOf("# My Project", StringComparison.Ordinal)
+            .Should().BeLessThan(output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal));
+        output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal)
+            .Should().BeLessThan(output.IndexOf("Claude-specific notes.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void EnsureClaudeMd_InsertsPointerAtTop_WhenNoH1()
+    {
+        var workspace = MakeWorkspace();
+        var existing = "Just a paragraph with no heading.\n";
+
+        var output = WorkspaceContextSeeder.EnsureClaudeMd(existing, workspace);
+
+        output.Should().StartWith(WorkspaceContextSeeder.PointerLine);
+        output.Should().Contain("Just a paragraph with no heading.");
+    }
+
+    [Fact]
+    public void EnsureClaudeMd_PreservesCrLfLineEndings()
+    {
+        var workspace = MakeWorkspace();
+        var existing = "# Project\r\n\r\nIntro.\r\n";
+
+        var output = WorkspaceContextSeeder.EnsureClaudeMd(existing, workspace);
+
+        output.Should().Contain("\r\n");
+        output.Should().NotContain("\n\n\n");
+    }
+
+    [Fact]
+    public void EnsureClaudeMd_PreservesLfLineEndings()
+    {
+        var workspace = MakeWorkspace();
+        var existing = "# Project\n\nIntro.\n";
+
+        var output = WorkspaceContextSeeder.EnsureClaudeMd(existing, workspace);
+
+        output.Should().Contain(WorkspaceContextSeeder.PointerLine);
+        output.Should().NotContain("\r\n");
+    }
+
     // ── SeedAsync (integration with DbFixture + temp dir) ──────────────────────
 
     [Fact]
-    public async Task SeedAsync_WritesBothFiles_WhenWorkspaceResolved()
+    public async Task SeedAsync_WritesAllThreeFiles_WhenWorkspaceResolved()
     {
         var temp = CreateTempDir();
         try
@@ -328,6 +405,10 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
             var contextContent = File.ReadAllText(Path.Combine(temp, "CONTEXT.md"));
             contextContent.Should().Contain("BISHOP_CONTEXT.md");
+
+            var claudeContent = File.ReadAllText(Path.Combine(temp, "CLAUDE.md"));
+            claudeContent.Should().Contain($"# {name}");
+            claudeContent.Should().Contain("BISHOP_CONTEXT.md");
         }
         finally
         {
@@ -375,6 +456,56 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
             File.Exists(Path.Combine(temp, "BISHOP_CONTEXT.md")).Should().BeFalse();
             File.Exists(Path.Combine(temp, "CONTEXT.md")).Should().BeFalse();
+            File.Exists(Path.Combine(temp, "CLAUDE.md")).Should().BeFalse();
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_PreservesUserClaudeMd_AndInjectsPointer()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Zeta"));
+            var claudePath = Path.Combine(temp, "CLAUDE.md");
+            var original = "# Zeta Project\r\n\r\nProject-specific Claude Code instructions.\r\n";
+            File.WriteAllText(claudePath, original);
+
+            var sut = new WorkspaceContextSeeder(_db);
+            await sut.SeedAsync(temp);
+
+            var updated = File.ReadAllText(claudePath);
+            updated.Should().Contain("Project-specific Claude Code instructions.");
+            updated.Should().Contain("BISHOP_CONTEXT.md");
+            updated.Should().Contain("# Zeta Project");
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_RoundTrip_LeavesClaudeMdUnchanged_WhenPointerAlreadyPresent()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Eta"));
+            var claudePath = Path.Combine(temp, "CLAUDE.md");
+
+            var sut = new WorkspaceContextSeeder(_db);
+            await sut.SeedAsync(temp);
+            var firstPass = File.ReadAllText(claudePath);
+
+            await sut.SeedAsync(temp);
+            var secondPass = File.ReadAllText(claudePath);
+
+            secondPass.Should().Be(firstPass);
         }
         finally
         {
