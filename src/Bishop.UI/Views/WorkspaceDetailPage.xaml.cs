@@ -280,10 +280,16 @@ public sealed partial class WorkspaceDetailPage : Page
             Foreground = secondaryBrush,
         };
 
-        var inner = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        inner.Children.Add(hashBlock);
-        inner.Children.Add(subjectBlock);
-        inner.Children.Add(timeBlock);
+        var textPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        textPanel.Children.Add(hashBlock);
+        textPanel.Children.Add(subjectBlock);
+        textPanel.Children.Add(timeBlock);
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(textPanel, 0);
+        grid.Children.Add(textPanel);
 
         if (commit.IsPushed && upstreamRef is not null)
         {
@@ -295,13 +301,14 @@ public sealed partial class WorkspaceDetailPage : Page
                 $"Width='12' Height='12' Stretch='Uniform' VerticalAlignment='Center'/>");
             icon.Stroke = accentBrush;
             icon.Margin = new Thickness(4, 0, 0, 0);
-            inner.Children.Add(icon);
+            Grid.SetColumn(icon, 1);
+            grid.Children.Add(icon);
         }
 
         var btn = new Button
         {
-            Content = inner,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Content = grid,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(4, 4, 4, 4),
         };
