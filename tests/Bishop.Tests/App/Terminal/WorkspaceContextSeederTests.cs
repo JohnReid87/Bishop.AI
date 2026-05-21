@@ -203,18 +203,43 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         var temp = CreateTempDir();
         try
         {
-            await SeedRegisteredWorkspaceAsync(temp, name: U("Alpha"));
+            var name = U("Alpha");
+            await SeedRegisteredWorkspaceAsync(temp, name: name);
 
             var sut = new WorkspaceContextSeeder(_db);
             await sut.SeedAsync(temp);
 
-            File.Exists(Path.Combine(temp, "BISHOP_CONTEXT.md")).Should().BeTrue();
-            File.Exists(Path.Combine(temp, "CONTEXT.md")).Should().BeTrue();
+            var bishopContent = File.ReadAllText(Path.Combine(temp, "BISHOP_CONTEXT.md"));
+            bishopContent.Should().Contain($"# BISHOP_CONTEXT — {name}");
+            bishopContent.Should().Contain("## Card model");
+            bishopContent.Should().Contain("## CLI quick reference");
+
+            var contextContent = File.ReadAllText(Path.Combine(temp, "CONTEXT.md"));
+            contextContent.Should().Contain("BISHOP_CONTEXT.md");
         }
         finally
         {
             CleanupTempDir(temp);
         }
+    }
+
+    [Fact]
+    public async Task SeedAsync_DoesNothing_WhenPathIsWhitespaceOnly()
+    {
+        var sut = new WorkspaceContextSeeder(_db);
+
+        await sut.SeedAsync("   ");
+        // Covers the IsNullOrWhiteSpace early-return guard — no exception, no files written.
+    }
+
+    [Fact]
+    public void BishopContextStaticResource_IsPresent_InAssemblyManifest()
+    {
+        var assembly = typeof(WorkspaceContextSeeder).Assembly;
+
+        using var stream = assembly.GetManifestResourceStream("Bishop.App.Terminal.BishopContext.static.md");
+
+        stream.Should().NotBeNull("the embedded BishopContext.static.md resource must exist in the assembly manifest");
     }
 
     [Fact]
