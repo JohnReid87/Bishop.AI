@@ -310,7 +310,7 @@
                                                                     Click="CardSkillsButton_Click"
                                                                     Visibility="{x:Bind SkillsButtonVisibility}"
                                                                     VerticalAlignment="Center">
-                                                                <FontIcon Glyph="&#xE756;" FontSize="12"/>
+                                                                <FontIcon Glyph="&#xEBD2;" FontSize="12"/>
                                                             </Button>
                                                             <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                                     ToolTipService.ToolTip="{x:Bind CloseReopenTooltip}"
