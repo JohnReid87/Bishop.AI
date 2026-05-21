@@ -2,9 +2,10 @@
 name: bish-grill-me
 description: Interview the user relentlessly about a plan or design targeting the current Bishop workspace, then push the agreed cards directly to the board after confirmation. Use when working inside a Bishop workspace and the user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
 allowed-tools: Read, Glob, Grep, Write, Agent, AskUserQuestion, Bash(bishop:*)
-bishop.scope: workspace
+bishop.scope: card,workspace
 bishop.command: /bish-grill-me
 bishop.stage: true
+bishop.stage_prefill: "{{card_title}}\n\n{{card_description}}"
 ---
 
 **Orientation:** if `BISHOP_CONTEXT.md` exists in the workspace root, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.

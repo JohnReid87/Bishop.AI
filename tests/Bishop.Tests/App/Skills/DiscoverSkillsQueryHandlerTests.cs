@@ -98,10 +98,11 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
         var skill = result[0];
         skill.Name.Should().Be("my-skill");
         skill.Description.Should().BeEmpty();
-        skill.Scope.Should().BeNull();
+        skill.Scope.Should().BeEmpty();
         skill.Command.Should().BeNull();
         skill.Stage.Should().BeFalse();
         skill.StagePrompt.Should().BeNull();
+        skill.StagePrefill.Should().BeNull();
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     {
         // Arrange
         WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
-            "---\nname: my-skill\ndescription: Does something useful\nbishop.scope: card\nbishop.command: /my-skill {{card_number}}\nbishop.stage: true\nbishop.stage_prompt: Enter a card number\n---\n");
+            "---\nname: my-skill\ndescription: Does something useful\nbishop.scope: card\nbishop.command: /my-skill {{card_number}}\nbishop.stage: true\nbishop.stage_prompt: Enter a card number\nbishop.stage_prefill: \"{{card_title}}\\n\\n{{card_description}}\"\n---\n");
         var sut = CreateSut();
 
         // Act
@@ -120,10 +121,11 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
         var skill = result[0];
         skill.Name.Should().Be("my-skill");
         skill.Description.Should().Be("Does something useful");
-        skill.Scope.Should().Be("card");
+        skill.Scope.Should().BeEquivalentTo(["card"]);
         skill.Command.Should().Be("/my-skill {{card_number}}");
         skill.Stage.Should().BeTrue();
         skill.StagePrompt.Should().Be("Enter a card number");
+        skill.StagePrefill.Should().Be("{{card_title}}\n\n{{card_description}}");
     }
 
     [Fact]
@@ -141,7 +143,7 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_EmptyScopeAndCommand_ReturnsNullScopeAndCommand()
+    public async Task Handle_EmptyScopeAndCommand_ReturnsEmptyScopeAndNullCommand()
     {
         // Arrange
         WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.scope: \nbishop.command: \n---\n");
@@ -151,8 +153,94 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
         var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
 
         // Assert
-        result[0].Scope.Should().BeNull();
+        result[0].Scope.Should().BeEmpty();
         result[0].Command.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ScopeWithMultipleCommaSeparatedValues_ReturnsSplitList()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.scope: card,workspace\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Scope.Should().BeEquivalentTo(["card", "workspace"]);
+    }
+
+    [Fact]
+    public async Task Handle_ScopeWithCommaSeparatedValuesAndSpaces_TrimsEntries()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.scope: card , workspace\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Scope.Should().BeEquivalentTo(["card", "workspace"]);
+    }
+
+    [Fact]
+    public async Task Handle_ScopeWithCommaSeparatedValuesAndEmptySegments_DropsEmpties()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.scope: card,,workspace,\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Scope.Should().BeEquivalentTo(["card", "workspace"]);
+    }
+
+    [Fact]
+    public async Task Handle_StagePrefillQuotedWithNewlineEscapes_ConvertsToNewlines()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            "---\nname: my-skill\nbishop.stage_prefill: \"line1\\nline2\"\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].StagePrefill.Should().Be("line1\nline2");
+    }
+
+    [Fact]
+    public async Task Handle_StagePrefillUnquoted_ReturnedAsLiteral()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            "---\nname: my-skill\nbishop.stage_prefill: literal\\nvalue\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].StagePrefill.Should().Be("literal\\nvalue");
+    }
+
+    [Fact]
+    public async Task Handle_EmptyStagePrefill_ReturnsNull()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.stage_prefill: \n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].StagePrefill.Should().BeNull();
     }
 
     [Fact]

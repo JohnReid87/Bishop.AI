@@ -3,7 +3,8 @@ namespace Bishop.Core.Skills;
 public sealed record InstalledSkill(
     string Name,
     string Description,
-    string? Scope,
+    IReadOnlyList<string> Scope,
     string? Command,
     bool Stage = false,
-    string? StagePrompt = null);
+    string? StagePrompt = null,
+    string? StagePrefill = null);

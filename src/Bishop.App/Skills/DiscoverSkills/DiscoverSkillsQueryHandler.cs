@@ -39,17 +39,41 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
             fm.TryGetValue("bishop.command", out var command);
             fm.TryGetValue("bishop.stage", out var stage);
             fm.TryGetValue("bishop.stage_prompt", out var stagePrompt);
+            fm.TryGetValue("bishop.stage_prefill", out var stagePrefill);
 
             skills.Add(new InstalledSkill(
                 name,
                 description ?? string.Empty,
-                string.IsNullOrWhiteSpace(scope) ? null : scope,
+                ParseScope(scope),
                 string.IsNullOrWhiteSpace(command) ? null : command,
                 string.Equals(stage, "true", StringComparison.OrdinalIgnoreCase),
-                string.IsNullOrWhiteSpace(stagePrompt) ? null : stagePrompt));
+                string.IsNullOrWhiteSpace(stagePrompt) ? null : stagePrompt,
+                ParseStagePrefill(stagePrefill)));
         }
 
         return Task.FromResult<IReadOnlyList<InstalledSkill>>(skills);
+    }
+
+    private static IReadOnlyList<string> ParseScope(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return [];
+
+        return raw
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+    }
+
+    private static string? ParseStagePrefill(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        var value = raw;
+        if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
+            value = value[1..^1].Replace("\\n", "\n");
+
+        return value;
     }
 
     private static Dictionary<string, string> ParseFrontmatter(string content)

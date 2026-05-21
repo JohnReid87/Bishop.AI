@@ -124,8 +124,8 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         var mediator = App.Services.GetRequiredService<IMediator>();
         var skills = await mediator.Send(new DiscoverSkillsQuery());
-        _cardSkills = skills.Where(s => s.Scope == "card" && s.Command is not null).ToList();
-        _workspaceSkills = skills.Where(s => s.Scope == "workspace" && s.Command is not null).ToList();
+        _cardSkills = skills.Where(s => s.Scope.Contains("card") && s.Command is not null).ToList();
+        _workspaceSkills = skills.Where(s => s.Scope.Contains("workspace") && s.Command is not null).ToList();
         CardViewModel.CardSkillsButtonVisibility = _cardSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         WorkspaceSkillsButton.Visibility = _workspaceSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -185,7 +185,7 @@ public sealed partial class WorkspaceDetailPage : Page
             {
                 await appSettings.SetAsync(settingKey, chosenModel);
                 flyout.Hide();
-                await LaunchSkillAsync(capturedSkill, rendered, workspacePath, chosenModel);
+                await LaunchSkillAsync(capturedSkill, rendered, workspacePath, card: null, chosenModel);
             }));
             if (i < _workspaceSkills.Count - 1)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
@@ -469,7 +469,7 @@ public sealed partial class WorkspaceDetailPage : Page
             {
                 await appSettings.SetAsync(settingKey, chosenModel);
                 flyout.Hide();
-                await LaunchSkillAsync(capturedSkill, rendered, workspacePath, chosenModel);
+                await LaunchSkillAsync(capturedSkill, rendered, workspacePath, card, chosenModel);
             }));
             if (i < _cardSkills.Count - 1)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
@@ -513,11 +513,15 @@ public sealed partial class WorkspaceDetailPage : Page
         catch { }
     }
 
-    private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath, string? modelId = null)
+    private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath, CardViewModel? card, string? modelId = null)
     {
         if (skill.Stage)
         {
-            var dialog = new SkillStageDialog(skill.Name, skill.StagePrompt) { XamlRoot = XamlRoot };
+            var prefill = skill.StagePrefill is null
+                ? null
+                : RenderCommand(skill.StagePrefill, card, workspacePath).Trim();
+            var initialText = string.IsNullOrEmpty(prefill) ? null : prefill;
+            var dialog = new SkillStageDialog(skill.Name, skill.StagePrompt, initialText) { XamlRoot = XamlRoot };
             if (await dialog.ShowAsync() != ContentDialogResult.Primary)
                 return;
 
@@ -590,7 +594,9 @@ public sealed partial class WorkspaceDetailPage : Page
     private static string RenderCommand(string template, CardViewModel? card, string workspacePath) =>
         template
             .Replace("{{workspace_path}}", workspacePath)
-            .Replace("{{card_number}}", card?.Number.ToString() ?? string.Empty);
+            .Replace("{{card_number}}", card?.Number.ToString() ?? string.Empty)
+            .Replace("{{card_title}}", card?.Title ?? string.Empty)
+            .Replace("{{card_description}}", card?.Description ?? string.Empty);
 
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
     {
