@@ -122,6 +122,46 @@ public sealed class ClaudeExecutableResolverTests
     }
 
     [Fact]
+    public void Resolve_Throws_WithPopulatedCandidatesAndDirectories_OnMiss_OnUnix()
+    {
+        var env = MakeEnv(path: Join("/usr/local/bin", "/usr/bin"), pathExt: null);
+        var sut = new ClaudeExecutableResolver(env, _ => false, isWindows: false);
+
+        var act = () => sut.Resolve();
+
+        var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
+        ex.Candidates.Should().Equal("claude");
+        ex.Directories.Should().Equal("/usr/local/bin", "/usr/bin");
+    }
+
+    [Fact]
+    public void DefaultCtor_Resolve_UsesRealEnvironmentDependencies()
+    {
+        var sut = new ClaudeExecutableResolver();
+
+        string? result = null;
+        ClaudeNotFoundException? miss = null;
+        try { result = sut.Resolve(); }
+        catch (ClaudeNotFoundException ex) { miss = ex; }
+
+        if (result is not null)
+        {
+            File.Exists(result).Should().BeTrue("the resolved path must exist on disk");
+        }
+        else
+        {
+            var expectedDirs = (Environment.GetEnvironmentVariable("PATH") ?? "")
+                .Split(Path.PathSeparator)
+                .Select(d => d.Trim())
+                .Where(d => d.Length > 0)
+                .ToList();
+
+            miss!.Directories.Should().BeEquivalentTo(expectedDirs,
+                "directories must reflect the real PATH environment variable");
+        }
+    }
+
+    [Fact]
     public void Resolve_CachesResolvedPath_AcrossCalls()
     {
         var exe = Path.Combine("C:\\bin", "claude.exe");
