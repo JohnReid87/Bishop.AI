@@ -1,5 +1,9 @@
 # Bishop.AI — Context Pane — Pre-Grill Notes
 
+> **Historical naming note.** References to `/grill-me` below predate the
+> `bish-*` skill family. The canonical Bishop equivalent is `bish-grill-me`.
+> Preserved here for decision rationale only.
+
 Seed material for a future `/grill-me` session on whether (and how) Bishop should surface project-context markdown files (`CLAUDE.md`, `README.md`, etc.) inside a workspace. Spawned from a "should we build something mdpeek-shaped into Bishop?" discussion.
 
 These are **pre-decisional notes**, not specs. Re-test before they harden.

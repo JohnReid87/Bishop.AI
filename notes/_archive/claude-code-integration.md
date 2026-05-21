@@ -1,5 +1,13 @@
 # Bishop.AI ↔ Claude Code Integration — Pre-Grill Notes
 
+> **Historical naming note.** This doc references `grill-me`, `push-tasks`, and
+> `work-on-issue` as live skills. Those names were the external/legacy naming
+> that did not ship inside Bishop — the canonical equivalents are the `bish-*`
+> skills (`bish-grill-me`, `bish-work-on-card`, …) bundled under `skills/`.
+> `push-tasks` has no `bish-*` equivalent; that flow was folded into
+> `bish-grill-me` pushing cards directly to the board. Preserved here for
+> decision rationale only.
+
 Seed material for a future `/grill-me` session on the Claude Code integration design. Captures decisions reached in an earlier exploratory discussion, plus open questions to drill.
 
 These are **pre-decisional notes**, not specs. The decisions below are working positions that survived a single round of unpacking — `/grill-me` should re-test them before they harden into CONTEXT.md or implementation.

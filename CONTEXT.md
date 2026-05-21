@@ -103,5 +103,5 @@ Bundled Claude Code skills (`skills/bish-arch`, `skills/bish-audit-docs`, `skill
 Recorded so future-me doesn't drift into them:
 - **Cross-platform** (Mac / Linux). Windows-only by design.
 - **Multi-user / cloud sync.** Single-user local app. No accounts, no servers.
-- **Full GitHub Issues / Projects sync.** Basic integration is shipped (`bishop workspace set-github`, `bishop card push`); bidirectional sync and the broader `grill-me` → `push-tasks` flow remain the boundary.
+- **Full GitHub Issues / Projects sync.** Basic integration is shipped (`bishop workspace set-github`, `bishop card push`); bidirectional sync and a broader issue-backlog ingestion flow remain the boundary.
 - **Plugin system.** Future tabs ship as in-tree code, not external plugins.
