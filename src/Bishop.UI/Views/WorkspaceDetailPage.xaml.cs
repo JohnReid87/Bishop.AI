@@ -11,10 +11,12 @@ using Bishop.App.Lanes.ReorderLanes;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
+using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.App.Workspaces.LaunchPlainTerminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
+using Bishop.App.WorkNext.LaunchWorkNext;
 using Bishop.Core.Skills;
 using Bishop.UI.ViewModels;
 using MediatR;
@@ -70,6 +72,8 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         base.OnNavigatedTo(e);
         _dbWatcher.DatabaseChanged += OnDatabaseChanged;
+        if (App.MainWindow is not null)
+            App.MainWindow.Activated += OnWindowActivated;
 
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
@@ -86,6 +90,8 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         base.OnNavigatedFrom(e);
         _dbWatcher.DatabaseChanged -= OnDatabaseChanged;
+        if (App.MainWindow is not null)
+            App.MainWindow.Activated -= OnWindowActivated;
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
         _ = Notes.FlushAsync();
@@ -93,6 +99,13 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private void OnDatabaseChanged(object? sender, EventArgs e)
     {
+        DispatcherQueue.TryEnqueue(async () =>
+            await Board.RefreshCommand.ExecuteAsync(null));
+    }
+
+    private void OnWindowActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState == Microsoft.UI.Xaml.WindowActivationState.Deactivated) return;
         DispatcherQueue.TryEnqueue(async () =>
             await Board.RefreshCommand.ExecuteAsync(null));
     }
@@ -575,6 +588,25 @@ public sealed partial class WorkspaceDetailPage : Page
         return listView.Items.Count + 1;
     }
 
+    private async void WorkNext_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null) return;
+        if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
+        if (!lane.CanWorkNext) return;
+
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        var tags = await mediator.Send(new ListTagsByWorkspaceQuery(_item.Id));
+
+        var dialog = new WorkNextOptionsDialog(tags.Select(t => t.Name)) { XamlRoot = XamlRoot };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+        await mediator.Send(new LaunchWorkNextCommand(
+            _item.Path,
+            dialog.ViewModel.SelectedTagOrNull,
+            dialog.ViewModel.MaxValue,
+            ComputeSnap()));
+    }
+
     private async void AddLane_Click(object sender, RoutedEventArgs e)
     {
         if (_item is null) return;
@@ -730,9 +762,9 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private void BeginAddCard_Click(object sender, RoutedEventArgs e)
     {
-        // button lives in the header Grid (col 1) → lane Grid → find the cards ListView → its Header
+        // button lives in a StackPanel inside the header Grid (col 1) → lane Grid → cards ListView → Header
         if (sender is not FrameworkElement fe) return;
-        var headerGrid = fe.Parent as Grid;
+        var headerGrid = (fe.Parent as StackPanel)?.Parent as Grid ?? fe.Parent as Grid;
         var laneGrid = headerGrid?.Parent as Grid;
         var listView = laneGrid?.Children.OfType<ListView>().FirstOrDefault();
         var headerPanel = listView?.Header as StackPanel;

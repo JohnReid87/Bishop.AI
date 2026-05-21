@@ -163,14 +163,23 @@
                                                Text="{x:Bind Name, Mode=OneWay}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}"
                                                Padding="12,10,12,8"/>
-                                    <Button Grid.Column="1"
-                                            Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                            Command="{x:Bind BeginAddCardCommand}"
-                                            Click="BeginAddCard_Click"
-                                            Margin="0,0,8,0"
-                                            ToolTipService.ToolTip="Add card">
-                                        <FontIcon Glyph="&#xE710;" FontSize="12"/>
-                                    </Button>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                Click="WorkNext_Click"
+                                                Visibility="{x:Bind IsToDoLane, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                IsEnabled="{x:Bind CanWorkNext, Mode=OneWay}"
+                                                ToolTipService.ToolTip="{x:Bind WorkNextTooltip, Mode=OneWay}"
+                                                Margin="0,0,4,0">
+                                            <FontIcon Glyph="&#xE768;" FontSize="12"/>
+                                        </Button>
+                                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                Command="{x:Bind BeginAddCardCommand}"
+                                                Click="BeginAddCard_Click"
+                                                Margin="0,0,8,0"
+                                                ToolTipService.ToolTip="Add card">
+                                            <FontIcon Glyph="&#xE710;" FontSize="12"/>
+                                        </Button>
+                                    </StackPanel>
                                     <FlyoutBase.AttachedFlyout>
                                         <MenuFlyout>
                                             <MenuFlyoutItem Text="Rename" Click="RenameLane_Click">

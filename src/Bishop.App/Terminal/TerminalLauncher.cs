@@ -63,6 +63,42 @@ public sealed class TerminalLauncher : ITerminalLauncher
         return false;
     }
 
+    public bool LaunchCommand(string workingDirectory, string command, string? args, TerminalSnap? snap)
+    {
+        var fullPath = BuildFullPath();
+        var wt = FindWindowsTerminal();
+        var argSuffix = string.IsNullOrEmpty(args) ? "" : $" {args}";
+
+        if (wt is not null)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = wt,
+                // cmd.exe /k mirrors the Launch path so .cmd / .bat wrappers resolve too.
+                Arguments = $"-d \"{workingDirectory}\" cmd.exe /k {command}{argSuffix}",
+                UseShellExecute = false,
+            };
+            psi.Environment["PATH"] = fullPath;
+            var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
+            _startProcess(psi);
+            if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
+            return true;
+        }
+
+        var psFallback = new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            Arguments = $"-NoExit -Command {command}{argSuffix}",
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+        };
+        psFallback.Environment["PATH"] = fullPath;
+        var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
+        _startProcess(psFallback);
+        if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
+        return false;
+    }
+
     public bool LaunchPlain(string workingDirectory, TerminalSnap? snap)
     {
         var fullPath = BuildFullPath();

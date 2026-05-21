@@ -289,4 +289,74 @@ public sealed class TerminalLauncherTests
         // Assert
         result.Should().BeFalse();
     }
+
+    // ── LaunchCommand ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void LaunchCommand_WtFound_ReturnsTrue()
+    {
+        // Arrange
+        var sut = CreateSut(wtExists: true);
+
+        // Act
+        var result = sut.LaunchCommand(@"C:\Repo", "bishop", "work-next --max 10", null);
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void LaunchCommand_WtFound_BuildsWtArgumentsWithCommandAndArgs()
+    {
+        // Arrange
+        var sut = CreateSut(wtExists: true);
+
+        // Act
+        sut.LaunchCommand(@"C:\Repo", "bishop", "work-next --tag test --max 5", null);
+
+        // Assert
+        _started.Single().Arguments.Should().Be(@"-d ""C:\Repo"" cmd.exe /k bishop work-next --tag test --max 5");
+    }
+
+    [Fact]
+    public void LaunchCommand_WtNotFound_FallsBackToPowerShellWithCommand()
+    {
+        // Arrange
+        var sut = CreateSut(wtExists: false);
+
+        // Act
+        sut.LaunchCommand(@"C:\Repo", "bishop", "work-next --max 10", null);
+
+        // Assert
+        _started.Single().FileName.Should().Be("powershell.exe");
+        _started.Single().Arguments.Should().Be("-NoExit -Command bishop work-next --max 10");
+        _started.Single().WorkingDirectory.Should().Be(@"C:\Repo");
+    }
+
+    [Fact]
+    public void LaunchCommand_WithNullArgs_DoesNotAppendTrailingSpace()
+    {
+        // Arrange
+        var sut = CreateSut(wtExists: false);
+
+        // Act
+        sut.LaunchCommand(@"C:\Repo", "bishop", null, null);
+
+        // Assert
+        _started.Single().Arguments.Should().Be("-NoExit -Command bishop");
+    }
+
+    [Fact]
+    public void LaunchCommand_SetsPathInProcessEnvironment()
+    {
+        // Arrange
+        var sut = CreateSut(wtExists: false);
+
+        // Act
+        sut.LaunchCommand(@"C:\Repo", "bishop", "work-next", null);
+
+        // Assert
+        _started.Single().Environment.Should().ContainKey("PATH");
+        _started.Single().Environment["PATH"].Should().NotBeNullOrEmpty();
+    }
 }

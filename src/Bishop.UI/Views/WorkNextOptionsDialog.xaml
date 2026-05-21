@@ -1,0 +1,27 @@
+<ContentDialog
+    x:Class="Bishop.UI.Views.WorkNextOptionsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Work Next"
+    PrimaryButtonText="Launch"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary">
+    <ContentDialog.Resources>
+        <SolidColorBrush x:Key="ContentDialogBackground" Color="#14141A"/>
+    </ContentDialog.Resources>
+    <StackPanel Spacing="12" MinWidth="280">
+        <StackPanel Spacing="4">
+            <TextBlock Text="Tag" Style="{StaticResource CaptionTextBlockStyle}"/>
+            <ComboBox x:Name="TagComboBox"
+                      ItemsSource="{x:Bind ViewModel.Tags}"
+                      SelectedItem="{x:Bind ViewModel.SelectedTag, Mode=TwoWay}"
+                      HorizontalAlignment="Stretch"/>
+        </StackPanel>
+        <StackPanel Spacing="4">
+            <TextBlock Text="Max cards (0 = uncapped)" Style="{StaticResource CaptionTextBlockStyle}"/>
+            <TextBox PlaceholderText="10"
+                     InputScope="Number"
+                     Text="{x:Bind ViewModel.MaxText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+    </StackPanel>
+</ContentDialog>
