@@ -43,6 +43,16 @@ public sealed class FxRateProvider : IFxRateProvider
         return fresh;
     }
 
+    public async Task<decimal?> RefreshUsdToGbpAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var fresh = await TryFetchAsync(cancellationToken);
+        if (fresh is null)
+            return null;
+
+        await UpsertAsync(workspaceId, fresh.Value, cancellationToken);
+        return fresh;
+    }
+
     private async Task<decimal?> TryFetchAsync(CancellationToken cancellationToken)
     {
         try

@@ -60,6 +60,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop card reopen <card-id> [-w]` — reopen a closed card; also reopens the linked GitHub issue via `gh` if the card has been pushed
 - `bishop lane list|add|rename|move|remove [-w]` — lane CRUD; `remove` refuses non-empty lanes
 - `bishop tag list|add [--colour <hex>]|remove [-w]` — `add` accepts an optional `--colour` flag (6-char hex with or without `#`; defaults to `#888888`)
+- `bishop fx refresh [-w]` — force a USD→GBP rate fetch via the FX provider and update the per-workspace cache; prints the new rate or exits non-zero if the provider is unreachable
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
 
 Card identifiers accept either a workspace-scoped Number (`42`, `#42`) or the first 8 hex chars of the GUID as a short-ID prefix. Number lookup is exact; hex-prefix lookup falls back and rejects ambiguous prefixes with a list of 8-char hex candidates on stderr. CLI output renders `#N` (e.g. `#42`) rather than the full UUID.

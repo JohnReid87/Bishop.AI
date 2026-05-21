@@ -94,6 +94,56 @@ public sealed class FxRateProviderTests : IClassFixture<DbFixture>
         handler.CallCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task RefreshUsdToGbpAsync_FetchesAndUpserts_EvenWhenCacheIsFresh()
+    {
+        var workspaceId = await SeedWorkspaceAsync();
+        _fixture.Db.FxRates.Add(new FxRate
+        {
+            WorkspaceId = workspaceId,
+            UsdToGbp = 0.70m,
+            FetchedAtUtc = new DateTimeOffset(2026, 5, 21, 4, 0, 0, TimeSpan.Zero)
+        });
+        await _fixture.Db.SaveChangesAsync();
+        _fixture.Db.ChangeTracker.Clear();
+
+        var handler = new RecordingHandler(_ => OkJson("""{"rates":{"GBP":0.79}}"""));
+        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 23, 59, 0, TimeSpan.Zero));
+
+        var rate = await sut.RefreshUsdToGbpAsync(workspaceId);
+
+        rate.Should().Be(0.79m);
+        handler.CallCount.Should().Be(1);
+        var cached = await _fixture.Db.FxRates.AsNoTracking().SingleAsync(r => r.WorkspaceId == workspaceId);
+        cached.UsdToGbp.Should().Be(0.79m);
+        cached.FetchedAtUtc.UtcDateTime.Should().Be(new DateTime(2026, 5, 21, 23, 59, 0));
+    }
+
+    [Fact]
+    public async Task RefreshUsdToGbpAsync_ReturnsNullAndLeavesCacheUntouched_WhenFetchFails()
+    {
+        var workspaceId = await SeedWorkspaceAsync();
+        _fixture.Db.FxRates.Add(new FxRate
+        {
+            WorkspaceId = workspaceId,
+            UsdToGbp = 0.75m,
+            FetchedAtUtc = new DateTimeOffset(2026, 5, 20, 10, 0, 0, TimeSpan.Zero)
+        });
+        await _fixture.Db.SaveChangesAsync();
+        _fixture.Db.ChangeTracker.Clear();
+
+        var handler = new RecordingHandler(_ => throw new HttpRequestException("network down"));
+        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 10, 0, 0, TimeSpan.Zero));
+
+        var rate = await sut.RefreshUsdToGbpAsync(workspaceId);
+
+        rate.Should().BeNull();
+        handler.CallCount.Should().Be(1);
+        var cached = await _fixture.Db.FxRates.AsNoTracking().SingleAsync(r => r.WorkspaceId == workspaceId);
+        cached.UsdToGbp.Should().Be(0.75m);
+        cached.FetchedAtUtc.UtcDateTime.Date.Should().Be(new DateTime(2026, 5, 20));
+    }
+
     private FxRateProvider NewSut(RecordingHandler handler, Func<DateTimeOffset> now)
     {
         var client = new HttpClient(handler)

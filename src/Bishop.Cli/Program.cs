@@ -855,6 +855,31 @@ workNextCmd.SetHandler(async (string? workspace, string tag, int max) =>
 }, workspaceOpt, workNextTagOpt, workNextMaxOpt);
 root.AddCommand(workNextCmd);
 
+// ── fx refresh ────────────────────────────────────────────────────────────────
+
+var fxRefreshCmd = new Command("refresh", "Force a USD→GBP FX rate fetch and update the cached value");
+fxRefreshCmd.AddOption(workspaceOpt);
+fxRefreshCmd.SetHandler(async (string? workspace) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    using var scope = host.Services.CreateScope();
+    var provider = scope.ServiceProvider.GetRequiredService<IFxRateProvider>();
+    var rate = await provider.RefreshUsdToGbpAsync(ws.Id);
+
+    if (rate is null)
+    {
+        Console.Error.WriteLine("Failed to fetch FX rate. Cached value (if any) left as-is.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    Console.WriteLine($"Refreshed USD→GBP rate: {rate.Value.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture)}");
+}, workspaceOpt);
+
+var fxCmd = new Command("fx", "Foreign-exchange rate utilities");
+fxCmd.AddCommand(fxRefreshCmd);
+root.AddCommand(fxCmd);
+
 // ── run ───────────────────────────────────────────────────────────────────────
 
 var parser = new CommandLineBuilder(root)
