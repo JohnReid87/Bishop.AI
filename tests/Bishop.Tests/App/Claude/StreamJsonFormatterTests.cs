@@ -384,4 +384,65 @@ public sealed class StreamJsonFormatterTests
 
         statuses.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Format_Returns_Null_For_TruncatedJson_And_Does_Not_Throw()
+    {
+        var sut = new StreamJsonFormatter();
+        string? result = null;
+
+        var act = () => { result = sut.Format("""{"type":"""); };
+
+        act.Should().NotThrow();
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_Tool_Result_With_Error_Flag_Empty_Content_Array_Uses_Placeholder()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":[]}]}}""";
+
+        sut.Format(line).Should().Be("[error] (no detail)");
+    }
+
+    [Fact]
+    public void Format_Tool_Result_With_Error_Flag_NonObject_Array_Content_Uses_Placeholder()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":[1,2,3]}]}}""";
+
+        sut.Format(line).Should().Be("[error] (no detail)");
+    }
+
+    [Fact]
+    public void Format_Tool_Result_With_Error_Flag_NoTextType_In_Array_Uses_Placeholder()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":[{"type":"image"}]}]}}""";
+
+        sut.Format(line).Should().Be("[error] (no detail)");
+    }
+
+    [Fact]
+    public void Format_WorksCorrectly_WhenOnStatusIsExplicitlyNull()
+    {
+        var sut = new StreamJsonFormatter(onStatus: null);
+        var line = """{"type":"assistant","message":{"content":[{"type":"text","text":"hello"}]}}""";
+        string? result = null;
+
+        var act = () => { result = sut.Format(line); };
+
+        act.Should().NotThrow();
+        result.Should().Be("… hello");
+    }
+
+    [Fact]
+    public void Totals_PopulatesFromResultEvent_UsageOnly_WhenCostMissing()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"result","usage":{"input_tokens":5000,"output_tokens":1200}}""");
+
+        sut.Totals.Should().Be(new ClaudeRunTotals(0m, 5000, 1200));
+    }
 }
