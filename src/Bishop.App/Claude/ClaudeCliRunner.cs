@@ -9,10 +9,15 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
     private const string InstallUrl = "https://docs.claude.com/en/docs/claude-code/setup";
 
     private readonly IClaudeExecutableResolver _resolver;
+    private readonly Func<ProcessStartInfo, Process?> _processStarter;
 
     public ClaudeCliRunner(IClaudeExecutableResolver resolver)
+        : this(resolver, Process.Start) { }
+
+    public ClaudeCliRunner(IClaudeExecutableResolver resolver, Func<ProcessStartInfo, Process?> processStarter)
     {
         _resolver = resolver;
+        _processStarter = processStarter;
     }
 
     public async Task<int> RunPromptAsync(
@@ -49,7 +54,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         Process? proc;
         try
         {
-            proc = Process.Start(psi);
+            proc = _processStarter(psi);
         }
         catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
         {
