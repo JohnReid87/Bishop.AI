@@ -144,6 +144,34 @@ public sealed class FxRateProviderTests : IClassFixture<DbFixture>
         cached.FetchedAtUtc.UtcDateTime.Date.Should().Be(new DateTime(2026, 5, 20));
     }
 
+    [Fact]
+    public async Task GetUsdToGbpAsync_ReturnsNull_WhenJsonResponseMissingRatesStructure()
+    {
+        var workspaceId = await SeedWorkspaceAsync();
+        var handler = new RecordingHandler(_ => OkJson("""{"message":"no data"}"""));
+        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 10, 0, 0, TimeSpan.Zero));
+
+        var rate = await sut.GetUsdToGbpAsync(workspaceId);
+
+        rate.Should().BeNull();
+        handler.CallCount.Should().Be(1);
+        (await _fixture.Db.FxRates.AsNoTracking().AnyAsync(r => r.WorkspaceId == workspaceId))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetUsdToGbpAsync_FetchesRate_WhenCreatedWithTwoArgumentConstructor()
+    {
+        var workspaceId = await SeedWorkspaceAsync();
+        var handler = new RecordingHandler(_ => OkJson("""{"rates":{"GBP":0.80}}"""));
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://api.exchangerate.host/") };
+        var sut = new FxRateProvider(client, _fixture.Db);
+
+        var rate = await sut.GetUsdToGbpAsync(workspaceId);
+
+        rate.Should().Be(0.80m);
+    }
+
     private FxRateProvider NewSut(RecordingHandler handler, Func<DateTimeOffset> now)
     {
         var client = new HttpClient(handler)
