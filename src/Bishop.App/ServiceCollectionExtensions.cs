@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Bishop.App.Claude;
+using Bishop.App.FxRates;
 using Bishop.App.Git;
 using Bishop.App.GitHub;
 using Bishop.App.Ping;
@@ -27,6 +28,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IClaudeExecutableResolver, ClaudeExecutableResolver>();
         services.AddSingleton<IClaudeCliRunner, ClaudeCliRunner>();
         services.AddScoped<IAppSettings, AppSettingsService>();
+        services.AddHttpClient<IFxRateProvider, FxRateProvider>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.exchangerate.host/");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
 #pragma warning disable CA1416 // Bishop.AI is Windows-only; TerminalLauncher requires Windows APIs
         services.AddSingleton<ITerminalLauncher, TerminalLauncher>();
 #pragma warning restore CA1416

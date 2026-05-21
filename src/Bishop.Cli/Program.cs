@@ -1,7 +1,7 @@
 using Bishop.App;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Claude;
-using Bishop.App.Settings;
+using Bishop.App.FxRates;
 using Bishop.Core;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.CloseCard;
@@ -247,16 +247,11 @@ async Task<(Guid cardId, int cardNumber, Bishop.Core.Workspace ws)?> resolveCard
 
 // ── fx rate lookup ────────────────────────────────────────────────────────────
 
-async Task<decimal?> ReadUsdToGbpRateAsync(IServiceProvider services)
+async Task<decimal?> ReadUsdToGbpRateAsync(IServiceProvider services, Guid workspaceId)
 {
     using var scope = services.CreateScope();
-    var settings = scope.ServiceProvider.GetRequiredService<IAppSettings>();
-    var raw = await settings.GetAsync("fx.usd_gbp");
-    if (raw is null) return null;
-    return decimal.TryParse(raw, System.Globalization.NumberStyles.Number,
-        System.Globalization.CultureInfo.InvariantCulture, out var rate)
-        ? rate
-        : null;
+    var provider = scope.ServiceProvider.GetRequiredService<IFxRateProvider>();
+    return await provider.GetUsdToGbpAsync(workspaceId);
 }
 
 // ── card view ─────────────────────────────────────────────────────────────────
@@ -271,7 +266,7 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
 {
     var resolved = await resolveCardByPrefixAsync(workspace, prefix);
     if (resolved is null) return;
-    var (cardId, _, _) = resolved.Value;
+    var (cardId, _, ws) = resolved.Value;
 
     var card = await mediator.Send(new GetCardQuery(cardId))
         ?? throw new InvalidOperationException($"Card {cardId} not found.");
@@ -308,7 +303,9 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             Console.WriteLine("Status: closed");
         if (tags.Count > 0)
             Console.WriteLine($"Tags: {string.Join(", ", tags)}");
-        var fxRate = await ReadUsdToGbpRateAsync(host.Services);
+        decimal? fxRate = null;
+        if (card.TotalCostUsd > 0m)
+            fxRate = await ReadUsdToGbpRateAsync(host.Services, ws.Id);
         var claudeLine = ClaudeTotalsFormatter.Format(
             card.TotalCostUsd,
             card.TotalInputTokens,
