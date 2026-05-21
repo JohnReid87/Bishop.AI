@@ -14,6 +14,15 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     public ObservableCollection<LaneViewModel> Lanes { get; } = [];
 
+    [ObservableProperty]
+    public partial string SearchText { get; set; } = string.Empty;
+
+    partial void OnSearchTextChanged(string value)
+    {
+        foreach (var lane in Lanes)
+            lane.ApplyFilter(value);
+    }
+
     public WorkspaceBoardViewModel(IMediator mediator) => _mediator = mediator;
 
     public async Task LoadAsync(Guid workspaceId)
@@ -62,6 +71,12 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             foreach (var card in cardsByLane[lane.Id])
                 laneVm.Cards.Add(BuildCardViewModel(card, lane.Name));
             Lanes.Add(laneVm);
+        }
+
+        if (!string.IsNullOrEmpty(SearchText))
+        {
+            foreach (var laneVm in Lanes)
+                laneVm.ApplyFilter(SearchText);
         }
     }
 

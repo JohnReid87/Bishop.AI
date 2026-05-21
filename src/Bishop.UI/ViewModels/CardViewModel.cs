@@ -31,4 +31,8 @@ public sealed class CardViewModel
     // Set by WorkspaceDetailPage before cards are rendered so the one-time x:Bind reads the correct value.
     public static Visibility CardSkillsButtonVisibility { get; set; } = Visibility.Collapsed;
     public Visibility SkillsButtonVisibility => CardSkillsButtonVisibility;
+
+    public bool MatchesSearch(string searchText) =>
+        Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+        Tags.Any(t => t.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase));
 }

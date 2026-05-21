@@ -18,6 +18,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
@@ -29,8 +30,26 @@
                            TextTrimming="CharacterEllipsis"/>
             </StackPanel>
 
+            <!-- Search box -->
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="6"
+                        VerticalAlignment="Center"
+                        Margin="16,0">
+                <FontIcon Glyph="&#xE721;"
+                          FontSize="12"
+                          VerticalAlignment="Center"
+                          Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                <TextBox x:Name="CardSearchBox"
+                         PlaceholderText="Search cards…"
+                         Text="{x:Bind Board.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         MinWidth="200"
+                         VerticalAlignment="Center"
+                         PreviewKeyDown="CardSearch_PreviewKeyDown"/>
+            </StackPanel>
+
             <StackPanel x:Name="LaunchButtonWrapper"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Orientation="Horizontal"
                         Spacing="4"
                         VerticalAlignment="Center"
@@ -204,7 +223,7 @@
                                 </Grid>
 
                                 <ListView Grid.Row="1"
-                                          ItemsSource="{x:Bind Cards}"
+                                          ItemsSource="{x:Bind FilteredCards}"
                                           SelectionMode="None"
                                           AllowDrop="True"
                                           ScrollViewer.VerticalScrollBarVisibility="Auto"

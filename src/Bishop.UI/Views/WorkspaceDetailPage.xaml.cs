@@ -794,6 +794,15 @@ public sealed partial class WorkspaceDetailPage : Page
             () => textBox?.Focus(FocusState.Programmatic));
     }
 
+    private void CardSearch_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Escape)
+        {
+            e.Handled = true;
+            Board.SearchText = string.Empty;
+        }
+    }
+
     private void AddCardTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
