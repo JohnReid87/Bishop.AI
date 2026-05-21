@@ -1,16 +1,36 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 
 namespace Bishop.App.Claude;
 
 public sealed class ClaudeCliRunner : IClaudeCliRunner
 {
+    private const string InstallUrl = "https://docs.claude.com/en/docs/claude-code/setup";
+
+    private readonly IClaudeExecutableResolver _resolver;
+
+    public ClaudeCliRunner(IClaudeExecutableResolver resolver)
+    {
+        _resolver = resolver;
+    }
+
     public async Task<int> RunPromptAsync(
         string workspacePath,
         string prompt,
         CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("claude")
+        string claudePath;
+        try
+        {
+            claudePath = _resolver.Resolve();
+        }
+        catch (ClaudeNotFoundException ex)
+        {
+            throw new InvalidOperationException(BuildNotFoundMessage(ex), ex);
+        }
+
+        var psi = new ProcessStartInfo(claudePath)
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -29,7 +49,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
         {
             throw new InvalidOperationException(
-                "Could not start 'claude' — is the Claude Code CLI installed and on PATH?", ex);
+                $"Could not start 'claude' from '{claudePath}'. See {InstallUrl}", ex);
         }
 
         if (proc is null)
@@ -51,5 +71,24 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
             await proc.WaitForExitAsync(cancellationToken);
             return proc.ExitCode;
         }
+    }
+
+    private static string BuildNotFoundMessage(ClaudeNotFoundException ex)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Could not find 'claude' on PATH.");
+        sb.AppendLine($"Tried: {string.Join(", ", ex.Candidates)}");
+        sb.AppendLine("Searched directories:");
+        if (ex.Directories.Count == 0)
+        {
+            sb.AppendLine("  (PATH was empty)");
+        }
+        else
+        {
+            foreach (var dir in ex.Directories)
+                sb.AppendLine($"  {dir}");
+        }
+        sb.Append($"Install Claude Code: {InstallUrl}");
+        return sb.ToString();
     }
 }
