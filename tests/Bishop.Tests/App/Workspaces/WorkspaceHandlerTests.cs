@@ -318,7 +318,11 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     [InlineData("justarepo")]
     [InlineData("owner/repo/extra")]
     [InlineData("/owner/repo")]
-    public async Task SetWorkspaceGitHubRepo_InvalidFormat_Throws(string input)
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("   ")]
+    [InlineData("repo/")]
+    public async Task SetWorkspaceGitHubRepo_InvalidFormat_Throws(string? input)
     {
         // Arrange
         var name = U("Repo");
@@ -327,7 +331,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var handler = new SetWorkspaceGitHubRepoCommandHandler(_db);
 
         // Act
-        var act = () => handler.Handle(new SetWorkspaceGitHubRepoCommand(workspace.Id, input), default);
+        var act = () => handler.Handle(new SetWorkspaceGitHubRepoCommand(workspace.Id, input!), default);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()

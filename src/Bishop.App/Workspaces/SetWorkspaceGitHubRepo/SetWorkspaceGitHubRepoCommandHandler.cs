@@ -15,6 +15,9 @@ public sealed class SetWorkspaceGitHubRepoCommandHandler : IRequestHandler<SetWo
         var workspace = await _db.Workspaces.FindAsync([request.WorkspaceId], cancellationToken)
             ?? throw new InvalidOperationException($"Workspace {request.WorkspaceId} not found.");
 
+        if (string.IsNullOrWhiteSpace(request.Repo))
+            throw new InvalidOperationException($"Invalid GitHub repo '{request.Repo}': expected owner/repo format.");
+
         var normalized = Normalize(request.Repo);
         if (normalized.Count(c => c == '/') != 1 || normalized.StartsWith('/') || normalized.EndsWith('/'))
             throw new InvalidOperationException($"Invalid GitHub repo '{request.Repo}': expected owner/repo format.");
