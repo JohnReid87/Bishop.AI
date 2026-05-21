@@ -145,4 +145,40 @@ public sealed class LaunchWorkNextCommandHandlerTests
             Arg.Is<string?>(a => a != null && a.Contains("--tag")),
             null);
     }
+
+    [Fact]
+    public async Task Handle_IncludesModelFlag()
+    {
+        // Arrange
+        var launcher = Substitute.For<ITerminalLauncher>();
+        var handler = new LaunchWorkNextCommandHandler(launcher);
+
+        // Act
+        await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", null, 10, null, "claude-opus-4-7"), default);
+
+        // Assert
+        launcher.Received(1).LaunchCommand(
+            @"C:\workspace",
+            "bishop",
+            Arg.Is<string?>(a => a != null && a.Contains("--model claude-opus-4-7")),
+            null);
+    }
+
+    [Fact]
+    public async Task Handle_DefaultsToSonnet_WhenModelNotSpecified()
+    {
+        // Arrange
+        var launcher = Substitute.For<ITerminalLauncher>();
+        var handler = new LaunchWorkNextCommandHandler(launcher);
+
+        // Act
+        await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", null, 10), default);
+
+        // Assert
+        launcher.Received(1).LaunchCommand(
+            @"C:\workspace",
+            "bishop",
+            Arg.Is<string?>(a => a != null && a.Contains("--model claude-sonnet-4-6")),
+            null);
+    }
 }

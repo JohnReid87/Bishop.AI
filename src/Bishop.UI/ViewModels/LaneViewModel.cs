@@ -19,7 +19,7 @@ public sealed partial class LaneViewModel : ObservableObject
 
     public bool IsToDoLane => IsSystem && Name == "To Do";
     public bool CanWorkNext => IsToDoLane && Cards.Count > 0;
-    public string WorkNextTooltip => CanWorkNext ? "Work next" : "No cards in To Do";
+    public string WorkNextTooltip => CanWorkNext ? "Ralph it" : "No cards in To Do";
 
     [ObservableProperty]
     public partial bool IsDropTarget { get; set; }

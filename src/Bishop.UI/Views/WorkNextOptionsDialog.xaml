@@ -11,6 +11,12 @@
     </ContentDialog.Resources>
     <StackPanel Spacing="12" MinWidth="280">
         <StackPanel Spacing="4">
+            <TextBlock Text="Model" Style="{StaticResource CaptionTextBlockStyle}"/>
+            <ComboBox ItemsSource="{x:Bind ViewModel.AvailableModels}"
+                      SelectedItem="{x:Bind ViewModel.SelectedModel, Mode=TwoWay}"
+                      HorizontalAlignment="Stretch"/>
+        </StackPanel>
+        <StackPanel Spacing="4">
             <TextBlock Text="Tag" Style="{StaticResource CaptionTextBlockStyle}"/>
             <ComboBox x:Name="TagComboBox"
                       ItemsSource="{x:Bind ViewModel.Tags}"

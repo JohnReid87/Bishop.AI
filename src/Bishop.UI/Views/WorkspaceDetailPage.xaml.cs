@@ -49,13 +49,6 @@ public sealed partial class WorkspaceDetailPage : Page
     private IReadOnlyList<InstalledSkill> _cardSkills = [];
     private IReadOnlyList<InstalledSkill> _workspaceSkills = [];
 
-    private static readonly (string Id, string Label)[] Models =
-    [
-        ("claude-opus-4-7",           "Opus 4.7"),
-        ("claude-sonnet-4-6",         "Sonnet 4.6"),
-        ("claude-haiku-4-5-20251001", "Haiku 4.5"),
-    ];
-    private const string DefaultModel = "claude-sonnet-4-6";
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
@@ -175,7 +168,7 @@ public sealed partial class WorkspaceDetailPage : Page
             var workspacePath = _item.Path;
             var capturedSkill = skill;
             var settingKey = $"skill.{skill.Name}.last_model";
-            var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
+            var savedModel = await appSettings.GetAsync(settingKey) ?? WorkNextOptionsDialogViewModel.DefaultModelId;
 
             panel.Children.Add(MakeSkillRow(skill.Name, savedModel, async chosenModel =>
             {
@@ -357,7 +350,7 @@ public sealed partial class WorkspaceDetailPage : Page
             var workspacePath = _item.Path;
             var capturedSkill = skill;
             var settingKey = $"skill.{skill.Name}.last_model";
-            var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
+            var savedModel = await appSettings.GetAsync(settingKey) ?? WorkNextOptionsDialogViewModel.DefaultModelId;
 
             panel.Children.Add(MakeSkillRow(skill.Name, savedModel, async chosenModel =>
             {
@@ -427,7 +420,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch)
     {
         var currentModelId = selectedModelId;
-        var currentLabel = Models.FirstOrDefault(m => m.Id == selectedModelId).Label ?? "Sonnet 4.6";
+        var currentLabel = WorkNextOptionsDialogViewModel.Models.FirstOrDefault(m => m.Id == selectedModelId)?.Label ?? "Sonnet 4.6";
 
         var nameText = new TextBlock
         {
@@ -449,7 +442,7 @@ public sealed partial class WorkspaceDetailPage : Page
         };
 
         var modelFlyout = new MenuFlyout();
-        foreach (var (id, label) in Models)
+        foreach (var (id, label) in WorkNextOptionsDialogViewModel.Models)
         {
             var capturedId = id;
             var capturedLabel = label;
@@ -617,16 +610,21 @@ public sealed partial class WorkspaceDetailPage : Page
         if (!lane.CanWorkNext) return;
 
         var mediator = App.Services.GetRequiredService<IMediator>();
+        var appSettings = App.Services.GetRequiredService<IAppSettings>();
         var tags = await mediator.Send(new ListTagsByWorkspaceQuery(_item.Id));
+        var lastModel = await appSettings.GetAsync("workNext.last_model") ?? WorkNextOptionsDialogViewModel.DefaultModelId;
 
-        var dialog = new WorkNextOptionsDialog(tags.Select(t => t.Name)) { XamlRoot = XamlRoot };
+        var dialog = new WorkNextOptionsDialog(tags.Select(t => t.Name), lastModel) { XamlRoot = XamlRoot };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
+        var chosenModel = dialog.ViewModel.SelectedModelId;
+        await appSettings.SetAsync("workNext.last_model", chosenModel);
         await mediator.Send(new LaunchWorkNextCommand(
             _item.Path,
             dialog.ViewModel.SelectedTagOrNull,
             dialog.ViewModel.MaxValue,
-            ComputeSnap()));
+            ComputeSnap(),
+            chosenModel));
     }
 
     private async void AddLane_Click(object sender, RoutedEventArgs e)

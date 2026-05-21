@@ -7,9 +7,9 @@ public sealed partial class WorkNextOptionsDialog : ContentDialog
 {
     public WorkNextOptionsDialogViewModel ViewModel { get; }
 
-    public WorkNextOptionsDialog(IEnumerable<string> workspaceTagNames)
+    public WorkNextOptionsDialog(IEnumerable<string> workspaceTagNames, string lastModelId = WorkNextOptionsDialogViewModel.DefaultModelId)
     {
-        ViewModel = new WorkNextOptionsDialogViewModel(workspaceTagNames);
+        ViewModel = new WorkNextOptionsDialogViewModel(workspaceTagNames, lastModelId);
         InitializeComponent();
         IsPrimaryButtonEnabled = ViewModel.CanConfirm;
         ViewModel.PropertyChanged += (_, _) =>

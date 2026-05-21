@@ -8,4 +8,5 @@ public sealed record LaunchWorkNextCommand(
     string WorkspacePath,
     string? Tag,
     int Max,
-    TerminalSnap? Snap = null) : IRequest<bool>;
+    TerminalSnap? Snap = null,
+    string Model = "claude-sonnet-4-6") : IRequest<bool>;
