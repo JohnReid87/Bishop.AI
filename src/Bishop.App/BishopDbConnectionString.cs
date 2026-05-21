@@ -8,9 +8,9 @@ public static class BishopDbConnectionString
         if (!string.IsNullOrEmpty(envOverride))
             return $"Data Source={envOverride}";
 
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Bishop.AI");
+        var appData = Environment.GetEnvironmentVariable("APPDATA")
+            ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var dir = Path.Combine(appData, "Bishop.AI");
         Directory.CreateDirectory(dir);
         return $"Data Source={Path.Combine(dir, "bishop.db")}";
     }

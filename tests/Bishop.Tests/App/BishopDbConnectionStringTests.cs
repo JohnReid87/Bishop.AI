@@ -5,16 +5,24 @@ namespace Bishop.Tests.App;
 
 public sealed class BishopDbConnectionStringTests : IDisposable
 {
-    private readonly string? _originalEnvVar;
+    private readonly string? _originalBishopDb;
+    private readonly string? _originalAppData;
+    private readonly string _tempAppData;
 
     public BishopDbConnectionStringTests()
     {
-        _originalEnvVar = Environment.GetEnvironmentVariable("BISHOP_DB");
+        _originalBishopDb = Environment.GetEnvironmentVariable("BISHOP_DB");
+        _originalAppData = Environment.GetEnvironmentVariable("APPDATA");
+        _tempAppData = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(_tempAppData);
     }
 
     public void Dispose()
     {
-        Environment.SetEnvironmentVariable("BISHOP_DB", _originalEnvVar);
+        Environment.SetEnvironmentVariable("BISHOP_DB", _originalBishopDb);
+        Environment.SetEnvironmentVariable("APPDATA", _originalAppData);
+        if (Directory.Exists(_tempAppData))
+            Directory.Delete(_tempAppData, recursive: true);
     }
 
     [Fact]
@@ -32,19 +40,32 @@ public sealed class BishopDbConnectionStringTests : IDisposable
     }
 
     [Fact]
-    public void Resolve_WhenBishopDbEnvVarIsNotSet_ReturnsAppDataConnectionString()
+    public void Resolve_WhenBishopDbEnvVarIsEmptyString_ReturnsAppDataConnectionString()
     {
         // Arrange
-        Environment.SetEnvironmentVariable("BISHOP_DB", null);
+        Environment.SetEnvironmentVariable("BISHOP_DB", "");
+        Environment.SetEnvironmentVariable("APPDATA", _tempAppData);
 
         // Act
         var result = BishopDbConnectionString.Resolve();
 
         // Assert
-        var expected = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Bishop.AI",
-            "bishop.db");
+        var expected = Path.Combine(_tempAppData, "Bishop.AI", "bishop.db");
+        result.Should().Be($"Data Source={expected}");
+    }
+
+    [Fact]
+    public void Resolve_WhenBishopDbEnvVarIsNotSet_ReturnsAppDataConnectionString()
+    {
+        // Arrange
+        Environment.SetEnvironmentVariable("BISHOP_DB", null);
+        Environment.SetEnvironmentVariable("APPDATA", _tempAppData);
+
+        // Act
+        var result = BishopDbConnectionString.Resolve();
+
+        // Assert
+        var expected = Path.Combine(_tempAppData, "Bishop.AI", "bishop.db");
         result.Should().Be($"Data Source={expected}");
     }
 
@@ -53,14 +74,13 @@ public sealed class BishopDbConnectionStringTests : IDisposable
     {
         // Arrange
         Environment.SetEnvironmentVariable("BISHOP_DB", null);
+        Environment.SetEnvironmentVariable("APPDATA", _tempAppData);
 
         // Act
         BishopDbConnectionString.Resolve();
 
         // Assert
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Bishop.AI");
+        var dir = Path.Combine(_tempAppData, "Bishop.AI");
         Directory.Exists(dir).Should().BeTrue();
     }
 }
