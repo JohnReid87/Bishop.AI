@@ -138,7 +138,16 @@ public sealed partial class WorkspaceDetailPage : Page
         ClaudeButton.IsEnabled = !missing;
         PathWarningBar.IsOpen = missing;
         ToolTipService.SetToolTip(LaunchButtonWrapper, missing ? "The workspace directory is missing." : null);
+        UpdateNotificationPanel();
     }
+
+    private void UpdateNotificationPanel() =>
+        NotificationPanel.Visibility =
+            PathWarningBar.IsOpen || FallbackWarningBar.IsOpen || LaneErrorBar.IsOpen || CopiedBar.IsOpen
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+    private void InfoBar_Closed(InfoBar sender, InfoBarClosedEventArgs args) => UpdateNotificationPanel();
 
     private async void ClaudeButton_Click(object sender, RoutedEventArgs e)
     {
@@ -146,6 +155,7 @@ public sealed partial class WorkspaceDetailPage : Page
         var mediator = App.Services.GetRequiredService<IMediator>();
         var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path, ComputeSnap()));
         FallbackWarningBar.IsOpen = !launchedWithTerminal;
+        UpdateNotificationPanel();
     }
 
     private async void TerminalButton_Click(object sender, RoutedEventArgs e)
@@ -238,8 +248,10 @@ public sealed partial class WorkspaceDetailPage : Page
     private async Task ShowCopiedToastAsync()
     {
         CopiedBar.IsOpen = true;
+        UpdateNotificationPanel();
         await Task.Delay(2000);
         CopiedBar.IsOpen = false;
+        UpdateNotificationPanel();
     }
 
     private static FrameworkElement MakeCommitRow(CommitInfo commit, string? upstreamRef, Func<Task> onClick)
@@ -675,6 +687,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 LaneErrorBar.Title = "Cannot rename lane";
                 LaneErrorBar.Message = ex.Message;
                 LaneErrorBar.IsOpen = true;
+                UpdateNotificationPanel();
             }
         }
     }
@@ -694,6 +707,7 @@ public sealed partial class WorkspaceDetailPage : Page
             LaneErrorBar.Title = "Cannot delete lane";
             LaneErrorBar.Message = ex.Message;
             LaneErrorBar.IsOpen = true;
+            UpdateNotificationPanel();
         }
     }
 

@@ -113,8 +113,12 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Notification bars -->
-            <StackPanel Grid.Row="0" Padding="16,12,16,0" Spacing="8">
+            <!-- Notification bars — collapsed when no InfoBar is open -->
+            <StackPanel x:Name="NotificationPanel"
+                        Grid.Row="0"
+                        Padding="16,12,16,0"
+                        Spacing="8"
+                        Visibility="Collapsed">
                 <InfoBar x:Name="PathWarningBar"
                          IsOpen="False"
                          IsClosable="False"
@@ -126,7 +130,8 @@
                          IsClosable="True"
                          Severity="Informational"
                          Title="Windows Terminal not detected"
-                         Message="PowerShell opened instead — claude was not auto-started. If Windows Terminal is installed, enable its app execution alias in Settings → Apps → Advanced app settings → App execution aliases.">
+                         Message="PowerShell opened instead — claude was not auto-started. If Windows Terminal is installed, enable its app execution alias in Settings → Apps → Advanced app settings → App execution aliases."
+                         Closed="InfoBar_Closed">
                     <InfoBar.ActionButton>
                         <HyperlinkButton Content="Get Windows Terminal"
                                          NavigateUri="https://aka.ms/terminal"/>
@@ -135,7 +140,8 @@
                 <InfoBar x:Name="LaneErrorBar"
                          IsOpen="False"
                          IsClosable="True"
-                         Severity="Error"/>
+                         Severity="Error"
+                         Closed="InfoBar_Closed"/>
                 <InfoBar x:Name="CopiedBar"
                          IsOpen="False"
                          IsClosable="False"
@@ -148,7 +154,7 @@
                           HorizontalScrollMode="Auto"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Disabled"
-                          Padding="8,12">
+                          Padding="8,4,8,12">
                 <ListView x:Name="LanesListView"
                           ItemsSource="{x:Bind Board.Lanes}"
                           SelectionMode="None"
