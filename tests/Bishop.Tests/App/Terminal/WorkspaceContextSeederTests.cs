@@ -121,6 +121,17 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public void BuildBishopContext_RendersEmptyFallbacks_WhenNoLanesOrTags()
+    {
+        var workspace = MakeWorkspace(lanes: [], tags: []);
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("_No lanes yet._");
+        output.Should().Contain("_No tags yet._");
+    }
+
+    [Fact]
     public void LoadStaticBody_ReturnsNonEmptyString()
     {
         var body = WorkspaceContextSeeder.LoadStaticBody();
@@ -128,6 +139,16 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         body.Should().NotBeNullOrEmpty();
         body.Should().Contain("## Card model");
         body.Should().Contain("## CLI quick reference");
+    }
+
+    [Fact]
+    public void LoadStaticBody_NormalizesLineEndingsToEnvironmentNewLine()
+    {
+        var body = WorkspaceContextSeeder.LoadStaticBody();
+
+        var stripped = body.Replace(Environment.NewLine, string.Empty);
+        stripped.Should().NotContain("\n");
+        stripped.Should().NotContain("\r");
     }
 
     // ── EnsureContextMd ────────────────────────────────────────────────────────
@@ -193,6 +214,18 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
         output.Should().Contain("\r\n");
         output.Should().NotContain("\n\n\n"); // no LF-only gaps after splitting on \n
+    }
+
+    [Fact]
+    public void EnsureContextMd_PreservesLfLineEndings()
+    {
+        var workspace = MakeWorkspace();
+        var existing = "# Project\n\nIntro.\n";
+
+        var output = WorkspaceContextSeeder.EnsureContextMd(existing, workspace);
+
+        output.Should().Contain(WorkspaceContextSeeder.PointerLine);
+        output.Should().NotContain("\r\n");
     }
 
     // ── SeedAsync (integration with DbFixture + temp dir) ──────────────────────
