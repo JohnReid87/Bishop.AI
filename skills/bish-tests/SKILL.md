@@ -145,11 +145,11 @@ are shallow.
      ### Why
      `<ClassName>` is at `<coverage>%` but the test file has gaps in `<dimensions>`.
 
-     ### Acceptance
-     - <one bullet per listed issue, each addressed in `<FooTests.cs>`>
-
      ### Issues
      - **<dimension>**: <description, test method name, quoted offending line>
+
+     ### Acceptance
+     - <one bullet per listed issue, each addressed in `<FooTests.cs>`>
 
      ### Related
      - `<path/to/FooTests.cs>`
@@ -194,11 +194,11 @@ are shallow.
    ### Why
    <fill in>
 
-   ### Acceptance
-   - <fill in>
-
    ### Issues
    - **<dimension>**: <fill in>
+
+   ### Acceptance
+   - <fill in>
 
    ### Related
    - `<path/to/FooTests.cs>`
