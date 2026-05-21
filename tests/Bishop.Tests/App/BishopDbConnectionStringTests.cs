@@ -83,4 +83,21 @@ public sealed class BishopDbConnectionStringTests : IDisposable
         var dir = Path.Combine(_tempAppData, "Bishop.AI");
         Directory.Exists(dir).Should().BeTrue();
     }
+
+    [Fact]
+    public void Resolve_WhenAppDataEnvVarIsNull_FallsBackToSpecialFolderApplicationData()
+    {
+        // Arrange
+        Environment.SetEnvironmentVariable("BISHOP_DB", null);
+        Environment.SetEnvironmentVariable("APPDATA", null);
+
+        // Act
+        var result = BishopDbConnectionString.Resolve();
+
+        // Assert
+        var specialFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var expectedDir = Path.Combine(specialFolder, "Bishop.AI");
+        result.Should().Be($"Data Source={Path.Combine(expectedDir, "bishop.db")}");
+        Directory.Exists(expectedDir).Should().BeTrue();
+    }
 }
