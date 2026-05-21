@@ -228,4 +228,68 @@ public sealed class StreamJsonFormatterTests
 
         result.Should().Be("done in 1.0s, 3 tool uses");
     }
+
+    [Fact]
+    public void Format_Result_Duration_At_Or_Above_One_Hour_Uses_Hh_Mm()
+    {
+        var sut = new StreamJsonFormatter();
+
+        var result = sut.Format("""{"type":"result","duration_ms":5400000}""");
+
+        result.Should().Be("done in 1h30m, 0 tool uses");
+    }
+
+    [Fact]
+    public void Format_Assistant_Text_With_Leading_Whitespace_Strips_Leading_Space()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"assistant","message":{"content":[{"type":"text","text":"  hello"}]}}""";
+
+        sut.Format(line).Should().Be("… hello");
+    }
+
+    [Fact]
+    public void Format_Assistant_Text_With_Trailing_Whitespace_Strips_Trailing_Space()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"assistant","message":{"content":[{"type":"text","text":"hello  "}]}}""";
+
+        sut.Format(line).Should().Be("… hello");
+    }
+
+    [Fact]
+    public void Format_Assistant_Returns_Null_When_Message_Field_Is_Missing()
+    {
+        new StreamJsonFormatter().Format("""{"type":"assistant"}""").Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_Assistant_Returns_Null_When_Message_Is_Not_An_Object()
+    {
+        new StreamJsonFormatter().Format("""{"type":"assistant","message":"not an object"}""").Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_Assistant_Returns_Null_When_Content_Is_Not_An_Array()
+    {
+        new StreamJsonFormatter().Format("""{"type":"assistant","message":{"content":"not an array"}}""").Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_Tool_Use_Returns_Name_Only_When_Input_Is_Not_An_Object()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":"not an object"}]}}""";
+
+        sut.Format(line).Should().Be("→ Bash");
+    }
+
+    [Fact]
+    public void Format_Assistant_Returns_Null_For_Unknown_Content_Block_Type()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"assistant","message":{"content":[{"type":"image","source":{}}]}}""";
+
+        sut.Format(line).Should().BeNull();
+    }
 }
