@@ -434,8 +434,7 @@ public sealed partial class WorkspaceDetailPage : Page
             Text = skillName,
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxWidth = 120,
-            MinWidth = 60,
+            Width = 120,
             FontSize = 12,
         };
 
@@ -445,6 +444,7 @@ public sealed partial class WorkspaceDetailPage : Page
             Padding = new Thickness(4, 2, 4, 2),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(6, 0, 6, 0),
+            Width = 90,
             FontSize = 12,
         };
 
