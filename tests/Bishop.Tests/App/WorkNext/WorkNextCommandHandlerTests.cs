@@ -72,7 +72,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
     private static IClaudeCliRunner ClaudeAlwaysSucceeds(ClaudeRunTotals? totals = null, int toolUseCount = 0)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(0, totals, toolUseCount));
         return claude;
     }
@@ -80,7 +80,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
     private static IClaudeCliRunner ClaudeReturnsExitCode(int exitCode)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(exitCode, null, 0));
         return claude;
     }
@@ -125,7 +125,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Assert
         result.CardsProcessed.Should().Be(2);
         result.StopReason.Should().Be(WorkNextStopReason.EmptyLane);
-        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Assert
         result.CardsProcessed.Should().Be(2);
         result.StopReason.Should().Be(WorkNextStopReason.CapReached);
-        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         result.CardsProcessed.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.ClaudeFailed);
         result.FailedCardNumber.Should().Be(second.Number);
-        await claude.Received(1).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await claude.Received(1).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         result.CardsProcessed.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.DirtyWorkingTree);
         result.DirtyPaths.Should().Equal("src/foo.cs", "README.md");
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -227,6 +227,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         await claude.Received(1).RunPromptAsync(
             WorkspacePath,
             $"/bish-auto-card #{card.Number}",
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -483,7 +484,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Assert
         result.CardsProcessed.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.NotAGitRepo);
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -508,7 +509,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Assert
         result.CardsProcessed.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.GitNotFound);
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -520,7 +521,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         await new AddCardCommandHandler(_db).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<ClaudeRunResult>(new InvalidOperationException("runner failed")));
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
 
@@ -547,5 +548,94 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
             new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10),
             default);
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("db error");
+    }
+
+    [Fact]
+    public async Task Model_IsThreadedToClaudeRunner()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_db).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        var claude = ClaudeAlwaysSucceeds();
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        await handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1, "claude-sonnet-4-6"),
+            default);
+
+        // Assert
+        await claude.Received(1).RunPromptAsync(
+            WorkspacePath,
+            Arg.Any<string>(),
+            "claude-sonnet-4-6",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task StartLine_IncludesModelBracket_WhenModelIsSet()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_db).Handle(
+            new AddCardCommand(todo.Id, "My Card", TagNames: ["test"]), default);
+
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+
+        // Act
+        try
+        {
+            await handler.Handle(
+                new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1, "claude-sonnet-4-6"),
+                default);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        // Assert
+        output.ToString().Split(Environment.NewLine)
+            .Should().Contain($"== Card #{card.Number}: My Card  [claude-sonnet-4-6] ==");
+    }
+
+    [Fact]
+    public async Task StartLine_ExcludesModelBracket_WhenModelIsNull()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_db).Handle(
+            new AddCardCommand(todo.Id, "My Card", TagNames: ["test"]), default);
+
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+
+        // Act
+        try
+        {
+            await handler.Handle(
+                new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1),
+                default);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        // Assert
+        var lines = output.ToString().Split(Environment.NewLine);
+        lines.Should().Contain($"== Card #{card.Number}: My Card ==");
+        lines.Should().NotContain(l => l.Contains('['));
     }
 }

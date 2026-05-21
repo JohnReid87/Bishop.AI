@@ -6,4 +6,5 @@ public sealed record WorkNextCommand(
     Guid WorkspaceId,
     string WorkspacePath,
     string? Tag,
-    int MaxIterations) : IRequest<WorkNextResult>;
+    int MaxIterations,
+    string? Model = null) : IRequest<WorkNextResult>;

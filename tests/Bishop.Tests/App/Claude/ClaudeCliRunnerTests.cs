@@ -112,7 +112,7 @@ public sealed class ClaudeCliRunnerTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => sut.RunPromptAsync("C:\\ws", "hello", cts.Token);
+        var act = () => sut.RunPromptAsync("C:\\ws", "hello", null, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -171,6 +171,44 @@ public sealed class ClaudeCliRunnerTests
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
         result.ExitCode.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RunPromptAsync_WithModel_AppendsModelArgToArgv()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        ProcessStartInfo? capturedPsi = null;
+        Func<ProcessStartInfo, Process?> starter = psi =>
+        {
+            capturedPsi = psi;
+            return CmdProcess("/c exit 0");
+        };
+        var sut = new ClaudeCliRunner(resolver, starter);
+
+        await sut.RunPromptAsync("C:\\ws", "hello", "claude-sonnet-4-6");
+
+        capturedPsi.Should().NotBeNull();
+        capturedPsi!.ArgumentList.Should().ContainInOrder("--model", "claude-sonnet-4-6");
+    }
+
+    [Fact]
+    public async Task RunPromptAsync_WithoutModel_DoesNotAppendModelArg()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        ProcessStartInfo? capturedPsi = null;
+        Func<ProcessStartInfo, Process?> starter = psi =>
+        {
+            capturedPsi = psi;
+            return CmdProcess("/c exit 0");
+        };
+        var sut = new ClaudeCliRunner(resolver, starter);
+
+        await sut.RunPromptAsync("C:\\ws", "hello");
+
+        capturedPsi.Should().NotBeNull();
+        capturedPsi!.ArgumentList.Should().NotContain("--model");
     }
 
     private static Process CmdProcess(string arguments) =>

@@ -806,12 +806,14 @@ root.AddCommand(installSkillsCmd);
 
 var workNextTagOpt = new Option<string?>("--tag", () => null, "Only claim cards carrying this tag (omit for any tag)");
 var workNextMaxOpt = new Option<int>("--max", () => 10, "Max cards to process; 0 means uncapped");
+var workNextModelOpt = new Option<string?>("--model", () => null, "Claude model ID to pass to claude (omit to use claude's default)");
 
 var workNextCmd = new Command("work-next", "Loop: claim a tagged card and run claude on it until exhaustion, failure, or cap");
 workNextCmd.AddOption(workspaceOpt);
 workNextCmd.AddOption(workNextTagOpt);
 workNextCmd.AddOption(workNextMaxOpt);
-workNextCmd.SetHandler(async (string? workspace, string? tag, int max) =>
+workNextCmd.AddOption(workNextModelOpt);
+workNextCmd.SetHandler(async (string? workspace, string? tag, int max, string? model) =>
 {
     if (max < 0)
     {
@@ -821,7 +823,7 @@ workNextCmd.SetHandler(async (string? workspace, string? tag, int max) =>
     }
 
     var ws = await resolver.ResolveAsync(workspace);
-    var result = await mediator.Send(new WorkNextCommand(ws.Id, ws.Path, tag, max));
+    var result = await mediator.Send(new WorkNextCommand(ws.Id, ws.Path, tag, max, model));
 
     var summary = $"Processed {result.CardsProcessed} card(s). Stopped: {result.StopReason}";
     if (result.FailedCardNumber is { } failed)
@@ -852,7 +854,7 @@ workNextCmd.SetHandler(async (string? workspace, string? tag, int max) =>
             Environment.ExitCode = 1;
             break;
     }
-}, workspaceOpt, workNextTagOpt, workNextMaxOpt);
+}, workspaceOpt, workNextTagOpt, workNextMaxOpt, workNextModelOpt);
 root.AddCommand(workNextCmd);
 
 // ── fx refresh ────────────────────────────────────────────────────────────────

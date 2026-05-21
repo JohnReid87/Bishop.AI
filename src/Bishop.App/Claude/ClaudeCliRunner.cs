@@ -24,6 +24,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
     public async Task<ClaudeRunResult> RunPromptAsync(
         string workspacePath,
         string prompt,
+        string? model = null,
         CancellationToken cancellationToken = default)
     {
         string claudePath;
@@ -49,6 +50,11 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         psi.ArgumentList.Add("--output-format");
         psi.ArgumentList.Add("stream-json");
         psi.ArgumentList.Add("--verbose");
+        if (model is not null)
+        {
+            psi.ArgumentList.Add("--model");
+            psi.ArgumentList.Add(model);
+        }
 
         Process? proc;
         try
