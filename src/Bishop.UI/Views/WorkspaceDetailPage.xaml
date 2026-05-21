@@ -30,23 +30,23 @@
                            TextTrimming="CharacterEllipsis"/>
             </StackPanel>
 
-            <!-- Search box -->
-            <StackPanel Grid.Column="1"
-                        Orientation="Horizontal"
-                        Spacing="6"
-                        VerticalAlignment="Center"
-                        Margin="16,0">
-                <FontIcon Glyph="&#xE721;"
-                          FontSize="12"
-                          VerticalAlignment="Center"
-                          Foreground="{StaticResource AppTextSecondaryBrush}"/>
+            <!-- Search box with custom-coloured fake placeholder -->
+            <Grid Grid.Column="1" VerticalAlignment="Center" Margin="8,0" Width="150">
                 <TextBox x:Name="CardSearchBox"
-                         PlaceholderText="Search cards…"
                          Text="{x:Bind Board.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         MinWidth="200"
-                         VerticalAlignment="Center"
-                         PreviewKeyDown="CardSearch_PreviewKeyDown"/>
-            </StackPanel>
+                         MinHeight="0"
+                         PreviewKeyDown="CardSearch_PreviewKeyDown">
+                    <TextBox.Resources>
+                        <Thickness x:Key="TextControlThemePadding">10,4,10,4</Thickness>
+                    </TextBox.Resources>
+                </TextBox>
+                <TextBlock Text="Search cards…"
+                           Foreground="#44FFFFFF"
+                           VerticalAlignment="Center"
+                           Margin="11,0,0,0"
+                           IsHitTestVisible="False"
+                           Visibility="{x:Bind Board.IsSearchEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </Grid>
 
             <StackPanel x:Name="LaunchButtonWrapper"
                         Grid.Column="2"

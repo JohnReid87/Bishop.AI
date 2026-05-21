@@ -17,10 +17,13 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     [ObservableProperty]
     public partial string SearchText { get; set; } = string.Empty;
 
+    public bool IsSearchEmpty => string.IsNullOrEmpty(SearchText);
+
     partial void OnSearchTextChanged(string value)
     {
         foreach (var lane in Lanes)
             lane.ApplyFilter(value);
+        OnPropertyChanged(nameof(IsSearchEmpty));
     }
 
     public WorkspaceBoardViewModel(IMediator mediator) => _mediator = mediator;
