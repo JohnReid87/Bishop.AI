@@ -1,6 +1,7 @@
 #pragma warning disable CA1416 // Windows-only; tests run on Windows
 using Bishop.App.Terminal;
 using FluentAssertions;
+using Microsoft.Win32;
 using System.Diagnostics;
 
 namespace Bishop.Tests.App.Terminal;
@@ -55,8 +56,11 @@ public sealed class TerminalLauncherTests
         // Act
         sut.Launch(@"C:\Repo", null, null);
 
-        // Assert
-        _started.Single().FileName.ToLowerInvariant().Should().EndWith("wt.exe");
+        // Assert — verify the exact Windows Terminal alias path resolved by FindWindowsTerminal
+        var expectedWt = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Microsoft", "WindowsApps", "wt.exe");
+        _started.Single().FileName.Should().Be(expectedWt);
     }
 
     [Fact]
@@ -127,7 +131,7 @@ public sealed class TerminalLauncherTests
     }
 
     [Fact]
-    public void Launch_SetsPathInProcessEnvironment()
+    public void Launch_SetsPathToBuildFullPathResult()
     {
         // Arrange
         var sut = CreateSut(wtExists: false);
@@ -135,9 +139,9 @@ public sealed class TerminalLauncherTests
         // Act
         sut.Launch(@"C:\Repo", null, null);
 
-        // Assert
+        // Assert — PATH must match the merged registry PATH that BuildFullPath() computes
         _started.Single().Environment.Should().ContainKey("PATH");
-        _started.Single().Environment["PATH"].Should().NotBeNullOrEmpty();
+        _started.Single().Environment["PATH"].Should().Be(ExpectedFullPath());
     }
 
     [Fact]
@@ -249,7 +253,7 @@ public sealed class TerminalLauncherTests
     }
 
     [Fact]
-    public void LaunchPlain_SetsPathInProcessEnvironment()
+    public void LaunchPlain_SetsPathToBuildFullPathResult()
     {
         // Arrange
         var sut = CreateSut(wtExists: false);
@@ -257,9 +261,9 @@ public sealed class TerminalLauncherTests
         // Act
         sut.LaunchPlain(@"C:\Repo", null);
 
-        // Assert
+        // Assert — PATH must match the merged registry PATH that BuildFullPath() computes
         _started.Single().Environment.Should().ContainKey("PATH");
-        _started.Single().Environment["PATH"].Should().NotBeNullOrEmpty();
+        _started.Single().Environment["PATH"].Should().Be(ExpectedFullPath());
     }
 
     [Fact]
@@ -358,5 +362,143 @@ public sealed class TerminalLauncherTests
         // Assert
         _started.Single().Environment.Should().ContainKey("PATH");
         _started.Single().Environment["PATH"].Should().NotBeNullOrEmpty();
+    }
+
+    // ── ArgumentException catch branches ─────────────────────────────────────
+
+    [Fact]
+    public void Launch_FileExistsThrowsArgumentExceptionForWtInPath_FallsBackToPowerShell()
+    {
+        // Exercises the catch(ArgumentException) in FindWindowsTerminal's PATH loop.
+        var alias = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Microsoft", "WindowsApps", "wt.exe");
+        var sut = new TerminalLauncher(
+            path =>
+            {
+                if (path == alias) return false;
+                if (path.EndsWith("wt.exe", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("malformed path segment");
+                return false;
+            },
+            psi => _started.Add(psi));
+
+        sut.Launch(@"C:\Repo", null, null);
+
+        _started.Single().FileName.Should().Be("powershell.exe");
+    }
+
+    [Fact]
+    public void LaunchPlain_FileExistsThrowsArgumentExceptionForPwsh_FallsBackToPowerShell()
+    {
+        // Exercises the catch(ArgumentException) in HasPwsh's PATH loop.
+        var sut = new TerminalLauncher(
+            path =>
+            {
+                if (path.EndsWith("pwsh.exe", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("malformed path segment");
+                return false;
+            },
+            psi => _started.Add(psi));
+
+        sut.LaunchPlain(@"C:\Repo", null);
+
+        _started.Single().FileName.Should().Be("powershell.exe");
+    }
+
+    // ── Null / empty workingDirectory and claudeArgs ──────────────────────────
+
+    [Fact]
+    public void Launch_NullWorkingDirectory_DoesNotThrow()
+    {
+        var sut = CreateSut(wtExists: false);
+        var act = () => sut.Launch(null!, null, null);
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Launch_EmptyWorkingDirectory_DoesNotThrow()
+    {
+        var sut = CreateSut(wtExists: false);
+        var act = () => sut.Launch(string.Empty, null, null);
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Launch_EmptyClaudeArgs_AppendsEmptyQuotedString()
+    {
+        var sut = CreateSut(wtExists: false);
+        sut.Launch(@"C:\Repo", "", null);
+        _started.Single().Arguments.Should().EndWith("claude \"\"");
+    }
+
+    [Fact]
+    public void LaunchPlain_NullWorkingDirectory_DoesNotThrow()
+    {
+        var sut = CreateSut(wtExists: false);
+        var act = () => sut.LaunchPlain(null!, null);
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void LaunchPlain_EmptyWorkingDirectory_DoesNotThrow()
+    {
+        var sut = CreateSut(wtExists: false);
+        var act = () => sut.LaunchPlain(string.Empty, null);
+        act.Should().NotThrow();
+    }
+
+    // ── Parameterless constructor ─────────────────────────────────────────────
+
+    [Fact]
+    public void ParameterlessConstructor_DoesNotThrow()
+    {
+        // Verifies the default File.Exists / Process.Start wiring compiles and initialises.
+        var act = () => _ = new TerminalLauncher();
+        act.Should().NotThrow();
+    }
+
+    // ── SnapLater / ApplySnap ─────────────────────────────────────────────────
+    // ApplySnap and the inner window-poll loop in SnapLater depend on real win32
+    // window handles (EnumWindows, DwmGetWindowAttribute, SetWindowPos). They are
+    // deliberately untested here: no real windows exist in a unit-test process, so
+    // the background Task launched by SnapLater will time out harmlessly after 3 s
+    // and return without snapping. The smoke tests below confirm the snap code path
+    // is reached without crashing the test host.
+
+    [Fact]
+    public void Launch_WithSnap_WtFound_DoesNotThrow()
+    {
+        var sut = CreateSut(wtExists: true);
+        var snap = new TerminalSnap(0, 0, 1280, 1440);
+        var act = () => sut.Launch(@"C:\Repo", null, snap);
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void LaunchPlain_WithSnap_WtNotFound_DoesNotThrow()
+    {
+        var sut = CreateSut(wtExists: false);
+        var snap = new TerminalSnap(0, 0, 1280, 1440);
+        var act = () => sut.LaunchPlain(@"C:\Repo", snap);
+        act.Should().NotThrow();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    // Replicates BuildFullPath() so tests can assert the exact PATH value set on PSI.
+    // Returns "" when both registry sub-keys are absent, matching the SUT's behaviour.
+    private static string ExpectedFullPath()
+    {
+        using var machineEnv = Registry.LocalMachine.OpenSubKey(
+            @"SYSTEM\CurrentControlSet\Control\Session Manager\Environment");
+        using var userEnv = Registry.CurrentUser.OpenSubKey(@"Environment");
+
+        var machine = Environment.ExpandEnvironmentVariables(
+            machineEnv?.GetValue("Path", "") as string ?? "");
+        var user = Environment.ExpandEnvironmentVariables(
+            userEnv?.GetValue("Path", "") as string ?? "");
+
+        return string.IsNullOrEmpty(user) ? machine : $"{machine};{user}";
     }
 }
