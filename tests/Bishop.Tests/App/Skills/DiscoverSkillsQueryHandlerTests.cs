@@ -186,4 +186,61 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
         result.Should().HaveCount(1);
         result[0].Name.Should().Be("valid-skill");
     }
+
+    [Fact]
+    public async Task Handle_WhitespaceOnlyName_ReturnsEmpty()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname:   \n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_MalformedFrontmatterLineWithNoColon_SkipsLineAndReturnsSkill()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nbadkey\nname: my-skill\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].Name.Should().Be("my-skill");
+    }
+
+    [Fact]
+    public async Task Handle_UppercaseFrontmatterKey_ParsedCaseInsensitively()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nName: my-skill\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].Name.Should().Be("my-skill");
+    }
+
+    [Fact]
+    public async Task ParameterlessConstructor_ResolvesUserProfileSkillsPath_DoesNotThrow()
+    {
+        // Arrange — exercises the hardcoded ~/.claude/skills path resolution
+        var sut = new DiscoverSkillsQueryHandler();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+    }
 }
