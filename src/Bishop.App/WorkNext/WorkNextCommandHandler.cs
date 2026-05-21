@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Claude;
@@ -46,9 +48,12 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
             Console.Out.WriteLine($"== Card #{card.Number}: {card.Title} ==");
 
             var prompt = $"/bish-auto-card #{card.Number}";
+            var stopwatch = Stopwatch.StartNew();
             var runResult = await _claude.RunPromptAsync(request.WorkspacePath, prompt, cancellationToken);
+            stopwatch.Stop();
 
             Console.Out.WriteLine($"exit {runResult.ExitCode}");
+            Console.Out.WriteLine(FormatCardSummary(card.Number, runResult, stopwatch.Elapsed));
 
             if (runResult.ExitCode != 0)
                 return new WorkNextResult(processed, WorkNextStopReason.ClaudeFailed, FailedCardNumber: card.Number);
@@ -63,5 +68,16 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
             if (request.MaxIterations > 0 && processed >= request.MaxIterations)
                 return new WorkNextResult(processed, WorkNextStopReason.CapReached);
         }
+    }
+
+    private static string FormatCardSummary(int cardNumber, ClaudeRunResult runResult, TimeSpan elapsed)
+    {
+        var totals = runResult.Totals ?? new ClaudeRunTotals(0m, 0, 0);
+        var cost = totals.CostUsd.ToString("0.0000", CultureInfo.InvariantCulture);
+        var toolUses = runResult.ToolUseCount == 1 ? "1 tool use" : $"{runResult.ToolUseCount} tool uses";
+        var inTokens = RunFormatting.FormatTokens(totals.InputTokens);
+        var outTokens = RunFormatting.FormatTokens(totals.OutputTokens);
+        var duration = RunFormatting.FormatDuration(elapsed);
+        return $"card #{cardNumber}: ${cost}, {toolUses}, {inTokens}↑ {outTokens}↓ in {duration}";
     }
 }

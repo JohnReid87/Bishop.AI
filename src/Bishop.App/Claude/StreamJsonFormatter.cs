@@ -18,6 +18,12 @@ public sealed class StreamJsonFormatter
 
     public ClaudeRunTotals? Totals { get; private set; }
 
+    public int RunningInputTokens { get; private set; }
+
+    public int RunningOutputTokens { get; private set; }
+
+    public int ToolUseCount => _toolUseCount;
+
     public string? Format(string line)
     {
         if (string.IsNullOrWhiteSpace(line))
@@ -53,8 +59,12 @@ public sealed class StreamJsonFormatter
 
     private string? FormatAssistant(JsonElement root)
     {
-        if (!TryGetContentArray(root, out var content))
+        if (!TryGetMessage(root, out var message))
             return null;
+        if (!TryGetContentArray(message, out var content))
+            return null;
+
+        AccumulateAssistantUsage(message);
 
         var lines = new List<string>();
         foreach (var block in content.EnumerateArray())
@@ -67,7 +77,7 @@ public sealed class StreamJsonFormatter
                     var cleaned = ExtractAssistantText(block);
                     if (!string.IsNullOrEmpty(cleaned))
                     {
-                        _onStatus?.Invoke(cleaned);
+                        EmitStatus(cleaned);
                         lines.Add($"… {cleaned}");
                     }
                     break;
@@ -77,13 +87,28 @@ public sealed class StreamJsonFormatter
                     {
                         var toolName = ReadToolName(block);
                         if (!string.IsNullOrEmpty(toolName))
-                            _onStatus.Invoke($"Tool: {toolName}");
+                            EmitStatus($"Tool: {toolName}");
                     }
                     break;
             }
         }
 
         return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
+    }
+
+    private void AccumulateAssistantUsage(JsonElement message)
+    {
+        if (!message.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object)
+            return;
+        RunningInputTokens += ReadInt(usage, "input_tokens");
+        RunningOutputTokens += ReadInt(usage, "output_tokens");
+    }
+
+    private void EmitStatus(string label)
+    {
+        if (_onStatus is null) return;
+        var suffix = RunFormatting.FormatTokenSuffix(RunningInputTokens, RunningOutputTokens);
+        _onStatus.Invoke(suffix is null ? label : $"{label} — {suffix}");
     }
 
     private static string? ExtractAssistantText(JsonElement block)
@@ -106,7 +131,9 @@ public sealed class StreamJsonFormatter
 
     private static string? FormatUser(JsonElement root)
     {
-        if (!TryGetContentArray(root, out var content))
+        if (!TryGetMessage(root, out var message))
+            return null;
+        if (!TryGetContentArray(message, out var content))
             return null;
 
         var lines = new List<string>();
@@ -150,7 +177,7 @@ public sealed class StreamJsonFormatter
             && durProp.ValueKind == JsonValueKind.Number
             && durProp.TryGetInt64(out var durMs))
         {
-            duration = FormatDuration(TimeSpan.FromMilliseconds(durMs));
+            duration = RunFormatting.FormatDuration(TimeSpan.FromMilliseconds(durMs));
         }
 
         decimal? cost = null;
@@ -161,10 +188,8 @@ public sealed class StreamJsonFormatter
             cost = c;
         }
 
-        var (inputTokens, outputTokens) = ExtractUsage(root);
-
-        if (cost is not null || inputTokens > 0 || outputTokens > 0)
-            Totals = new ClaudeRunTotals(cost ?? 0m, inputTokens, outputTokens);
+        if (cost is not null || RunningInputTokens > 0 || RunningOutputTokens > 0)
+            Totals = new ClaudeRunTotals(cost ?? 0m, RunningInputTokens, RunningOutputTokens);
 
         var parts = new List<string>
         {
@@ -175,15 +200,6 @@ public sealed class StreamJsonFormatter
             parts.Add($"${cost.Value.ToString("0.####", CultureInfo.InvariantCulture)}");
 
         return string.Join(", ", parts);
-    }
-
-    private static (int InputTokens, int OutputTokens) ExtractUsage(JsonElement root)
-    {
-        if (!root.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object)
-            return (0, 0);
-        var input = ReadInt(usage, "input_tokens");
-        var output = ReadInt(usage, "output_tokens");
-        return (input, output);
     }
 
     private static int ReadInt(JsonElement obj, string name)
@@ -197,11 +213,18 @@ public sealed class StreamJsonFormatter
         return 0;
     }
 
-    private static bool TryGetContentArray(JsonElement root, out JsonElement content)
+    private static bool TryGetMessage(JsonElement root, out JsonElement message)
+    {
+        message = default;
+        if (!root.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.Object)
+            return false;
+        message = m;
+        return true;
+    }
+
+    private static bool TryGetContentArray(JsonElement message, out JsonElement content)
     {
         content = default;
-        if (!root.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.Object)
-            return false;
         if (!message.TryGetProperty("content", out var c) || c.ValueKind != JsonValueKind.Array)
             return false;
         content = c;
@@ -234,15 +257,4 @@ public sealed class StreamJsonFormatter
 
     private static string Truncate(string s)
         => s.Length > MaxSummaryLength ? s[..MaxSummaryLength] + "…" : s;
-
-    private static string FormatDuration(TimeSpan ts)
-    {
-        if (ts.TotalSeconds < 1)
-            return $"{ts.TotalMilliseconds.ToString("0", CultureInfo.InvariantCulture)}ms";
-        if (ts.TotalMinutes < 1)
-            return $"{ts.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture)}s";
-        if (ts.TotalHours < 1)
-            return $"{(int)ts.TotalMinutes}m{ts.Seconds}s";
-        return $"{(int)ts.TotalHours}h{ts.Minutes}m";
-    }
 }

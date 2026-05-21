@@ -248,16 +248,18 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
-    public void Totals_PopulatesFromResultEvent_CostAndUsage()
+    public void Totals_PopulatesFromAccumulatedAssistantUsage_AndResultCost()
     {
         var sut = new StreamJsonFormatter();
-        sut.Format("""{"type":"result","total_cost_usd":0.12,"usage":{"input_tokens":8100,"output_tokens":2400}}""");
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":5000,"output_tokens":1500},"content":[{"type":"text","text":"hi"}]}}""");
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":3100,"output_tokens":900},"content":[{"type":"text","text":"bye"}]}}""");
+        sut.Format("""{"type":"result","total_cost_usd":0.12}""");
 
         sut.Totals.Should().Be(new ClaudeRunTotals(0.12m, 8100, 2400));
     }
 
     [Fact]
-    public void Totals_PopulatesFromResultEvent_CostOnly_WhenUsageMissing()
+    public void Totals_PopulatesFromResultEvent_CostOnly_WhenNoAssistantUsage()
     {
         var sut = new StreamJsonFormatter();
         sut.Format("""{"type":"result","total_cost_usd":0.05}""");
@@ -266,7 +268,17 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
-    public void Totals_StaysNull_WhenResultHasNoCostOrUsage()
+    public void Totals_PopulatesFromAccumulatedAssistantUsage_WhenResultCostMissing()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":5000,"output_tokens":1200},"content":[{"type":"text","text":"hi"}]}}""");
+        sut.Format("""{"type":"result","duration_ms":900}""");
+
+        sut.Totals.Should().Be(new ClaudeRunTotals(0m, 5000, 1200));
+    }
+
+    [Fact]
+    public void Totals_StaysNull_WhenNoCostAndNoAccumulatedTokens()
     {
         var sut = new StreamJsonFormatter();
         sut.Format("""{"type":"result","duration_ms":900}""");
@@ -275,21 +287,44 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
-    public void Totals_StaysNull_WhenResultUsageIsNotAnObject()
+    public void RunningTokens_AccumulateAcrossMultipleAssistantEvents()
     {
         var sut = new StreamJsonFormatter();
-        sut.Format("""{"type":"result","usage":"nope"}""");
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":40},"content":[{"type":"text","text":"a"}]}}""");
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":250,"output_tokens":60},"content":[{"type":"text","text":"b"}]}}""");
 
-        sut.Totals.Should().BeNull();
+        sut.RunningInputTokens.Should().Be(350);
+        sut.RunningOutputTokens.Should().Be(100);
     }
 
     [Fact]
-    public void Totals_IgnoresNonNumericUsageFields()
+    public void RunningTokens_StayZero_WhenAssistantHasNoUsage()
     {
         var sut = new StreamJsonFormatter();
-        sut.Format("""{"type":"result","total_cost_usd":0.10,"usage":{"input_tokens":"oops","output_tokens":50}}""");
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}""");
 
-        sut.Totals.Should().Be(new ClaudeRunTotals(0.10m, 0, 50));
+        sut.RunningInputTokens.Should().Be(0);
+        sut.RunningOutputTokens.Should().Be(0);
+    }
+
+    [Fact]
+    public void RunningTokens_IgnoreNonNumericUsageFields()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":"oops","output_tokens":50},"content":[{"type":"text","text":"a"}]}}""");
+
+        sut.RunningInputTokens.Should().Be(0);
+        sut.RunningOutputTokens.Should().Be(50);
+    }
+
+    [Fact]
+    public void ToolUseCount_ExposesRunningCount()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{}},{"type":"tool_use","name":"Edit","input":{}}]}}""");
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{}}]}}""");
+
+        sut.ToolUseCount.Should().Be(3);
     }
 
     [Fact]
@@ -438,11 +473,49 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
-    public void Totals_PopulatesFromResultEvent_UsageOnly_WhenCostMissing()
+    public void OnStatus_OmitsTokenSuffix_WhenAssistantHasNoUsage()
     {
-        var sut = new StreamJsonFormatter();
-        sut.Format("""{"type":"result","usage":{"input_tokens":5000,"output_tokens":1200}}""");
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
 
-        sut.Totals.Should().Be(new ClaudeRunTotals(0m, 5000, 1200));
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}""");
+
+        statuses.Should().ContainSingle().Which.Should().Be("hi");
+    }
+
+    [Fact]
+    public void OnStatus_AppendsTokenSuffix_WhenRunningTokensNonZero()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":1234,"output_tokens":340},"content":[{"type":"text","text":"hi"}]}}""");
+
+        statuses.Should().ContainSingle().Which.Should().Be("hi — 1.2k↑ 340↓");
+    }
+
+    [Fact]
+    public void OnStatus_AppendsTokenSuffix_OnToolUseBlock()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":1234,"output_tokens":340},"content":[{"type":"tool_use","name":"Edit","input":{}}]}}""");
+
+        statuses.Should().ContainSingle().Which.Should().Be("Tool: Edit — 1.2k↑ 340↓");
+    }
+
+    [Fact]
+    public void OnStatus_TokenSuffix_AccumulatesAcrossEvents()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":600,"output_tokens":200},"content":[{"type":"text","text":"a"}]}}""");
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":600,"output_tokens":200},"content":[{"type":"text","text":"b"}]}}""");
+
+        statuses.Should().Equal(
+            "a — 600↑ 200↓",
+            "b — 1.2k↑ 400↓");
     }
 }

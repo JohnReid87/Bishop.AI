@@ -26,17 +26,10 @@ public static class ClaudeTotalsFormatter
         sb.Append(" (");
         sb.Append(runCount.ToString(CultureInfo.InvariantCulture));
         sb.Append(runCount == 1 ? " run, " : " runs, ");
-        sb.Append(FormatTokens(inputTokens));
+        sb.Append(RunFormatting.FormatTokens(inputTokens));
         sb.Append(" in / ");
-        sb.Append(FormatTokens(outputTokens));
+        sb.Append(RunFormatting.FormatTokens(outputTokens));
         sb.Append(" out)");
         return sb.ToString();
-    }
-
-    private static string FormatTokens(int n)
-    {
-        if (n < 1000)
-            return n.ToString(CultureInfo.InvariantCulture);
-        return (n / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + "k";
     }
 }

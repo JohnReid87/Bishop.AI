@@ -69,11 +69,11 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         return git;
     }
 
-    private static IClaudeCliRunner ClaudeAlwaysSucceeds(ClaudeRunTotals? totals = null)
+    private static IClaudeCliRunner ClaudeAlwaysSucceeds(ClaudeRunTotals? totals = null, int toolUseCount = 0)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ClaudeRunResult(0, totals));
+            .Returns(new ClaudeRunResult(0, totals, toolUseCount));
         return claude;
     }
 
@@ -81,7 +81,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
     {
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ClaudeRunResult(exitCode, null));
+            .Returns(new ClaudeRunResult(exitCode, null, 0));
         return claude;
     }
 
@@ -360,6 +360,78 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
         saved.ClaudeRunCount.Should().Be(0);
         saved.TotalCostUsd.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task SuccessfulIteration_WritesPerCardSummaryLine_AfterExit()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_db);
+        var card = await add.Handle(new AddCardCommand(todo.Id, "Summarised", TagNames: ["test"]), default);
+
+        var claude = ClaudeAlwaysSucceeds(new ClaudeRunTotals(0.0234m, 12300, 4100), toolUseCount: 14);
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+
+        // Act
+        try
+        {
+            await handler.Handle(
+                new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1),
+                default);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        // Assert
+        var lines = output.ToString().Split(Environment.NewLine);
+        var exitIdx = Array.IndexOf(lines, "exit 0");
+        exitIdx.Should().BeGreaterThan(-1);
+        var summary = lines[exitIdx + 1];
+        summary.Should().StartWith($"card #{card.Number}: $0.0234, 14 tool uses, 12.3k↑ 4.1k↓ in ");
+    }
+
+    [Fact]
+    public async Task FailedIteration_StillWritesPerCardSummaryLine()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_db);
+        var card = await add.Handle(new AddCardCommand(todo.Id, "Broken", TagNames: ["test"]), default);
+
+        var claude = ClaudeReturnsExitCode(7);
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+
+        // Act
+        try
+        {
+            await handler.Handle(
+                new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1),
+                default);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        // Assert
+        var lines = output.ToString().Split(Environment.NewLine);
+        var exitIdx = Array.IndexOf(lines, "exit 7");
+        exitIdx.Should().BeGreaterThan(-1);
+        var summary = lines[exitIdx + 1];
+        summary.Should().StartWith($"card #{card.Number}: $0.0000, 0 tool uses, 0↑ 0↓ in ");
     }
 
     [Fact]

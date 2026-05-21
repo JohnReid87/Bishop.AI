@@ -67,6 +67,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         using (proc)
         {
             ClaudeRunTotals? totals = null;
+            var toolUseCount = 0;
 
             await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
@@ -77,11 +78,11 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
                     {
                         if (e.Data is null) return;
                         var formatted = formatter.Format(e.Data);
-                        if (formatted is not null) Console.Out.WriteLine(formatted);
+                        if (formatted is not null) AnsiConsole.WriteLine(formatted);
                     };
                     proc.ErrorDataReceived += (_, e) =>
                     {
-                        if (e.Data is not null) Console.Error.WriteLine(e.Data);
+                        if (e.Data is not null) AnsiConsole.WriteLine(e.Data);
                     };
 
                     proc.BeginOutputReadLine();
@@ -89,9 +90,10 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
                     await proc.WaitForExitAsync(cancellationToken);
 
                     totals = formatter.Totals;
+                    toolUseCount = formatter.ToolUseCount;
                 });
 
-            return new ClaudeRunResult(proc.ExitCode, totals);
+            return new ClaudeRunResult(proc.ExitCode, totals, toolUseCount);
         }
     }
 

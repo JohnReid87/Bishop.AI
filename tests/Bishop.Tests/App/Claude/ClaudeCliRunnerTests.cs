@@ -101,7 +101,7 @@ public sealed class ClaudeCliRunnerTests
     }
 
     [Fact]
-    public async Task RunPromptAsync_WritesFormattedJsonToConsoleOut()
+    public async Task RunPromptAsync_ParsesStdoutStreamJson_AndSurfacesTotals()
     {
         var resolver = Substitute.For<IClaudeExecutableResolver>();
         resolver.Resolve().Returns("claude");
@@ -117,29 +117,22 @@ public sealed class ClaudeCliRunnerTests
                 Arguments = "/c more",
             };
             var proc = Process.Start(psi)!;
-            proc.StandardInput.WriteLine("{\"type\":\"result\"}");
+            proc.StandardInput.WriteLine("{\"type\":\"assistant\",\"message\":{\"usage\":{\"input_tokens\":1200,\"output_tokens\":340},\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{}}]}}");
+            proc.StandardInput.WriteLine("{\"type\":\"result\",\"total_cost_usd\":0.05}");
             proc.StandardInput.Close();
             return proc;
         };
         var sut = new ClaudeCliRunner(resolver, starter);
 
-        var captured = new StringWriter();
-        var originalOut = Console.Out;
-        Console.SetOut(captured);
-        try
-        {
-            await sut.RunPromptAsync("C:\\ws", "hello");
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
+        var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
-        captured.ToString().Should().Contain("done, 0 tool uses");
+        result.ExitCode.Should().Be(0);
+        result.ToolUseCount.Should().Be(1);
+        result.Totals.Should().Be(new ClaudeRunTotals(0.05m, 1200, 340));
     }
 
     [Fact]
-    public async Task RunPromptAsync_ForwardsStderrToConsoleError()
+    public async Task RunPromptAsync_ConsumesStderr_WithoutFailing()
     {
         var resolver = Substitute.For<IClaudeExecutableResolver>();
         resolver.Resolve().Returns("claude");
@@ -158,19 +151,9 @@ public sealed class ClaudeCliRunnerTests
         };
         var sut = new ClaudeCliRunner(resolver, starter);
 
-        var captured = new StringWriter();
-        var originalError = Console.Error;
-        Console.SetError(captured);
-        try
-        {
-            await sut.RunPromptAsync("C:\\ws", "hello");
-        }
-        finally
-        {
-            Console.SetError(originalError);
-        }
+        var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
-        captured.ToString().Should().Contain("stderr_text");
+        result.ExitCode.Should().Be(0);
     }
 
     private static Process CmdProcess(string arguments) =>
