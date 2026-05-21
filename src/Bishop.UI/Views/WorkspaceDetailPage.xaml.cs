@@ -198,8 +198,10 @@ public sealed partial class WorkspaceDetailPage : Page
     private async void CommitsButton_Click(object sender, RoutedEventArgs e)
     {
         if (_item is null) return;
+        var workspacePath = _item.Path;
+        var gitHubRepo = _item.GitHubRepo;
         var mediator = App.Services.GetRequiredService<IMediator>();
-        var result = await mediator.Send(new GetRecentCommitsQuery(_item.Path));
+        var result = await mediator.Send(new GetRecentCommitsQuery(workspacePath));
 
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
         var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4), MinWidth = 360 };
@@ -207,28 +209,115 @@ public sealed partial class WorkspaceDetailPage : Page
         switch (result)
         {
             case GetRecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef }:
-                var gitHubRepo = _item.GitHubRepo;
-                foreach (var (commit, i) in commits.Select((c, idx) => (c, idx)))
+                var commitsContainer = new StackPanel { Spacing = 2 };
+
+                var errorBlock = new TextBlock
                 {
-                    var capturedCommit = commit;
-                    panel.Children.Add(MakeCommitRow(commit, upstreamRef, async () =>
+                    FontSize = 11,
+                    Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xE5, 0x57, 0x4B)),
+                    TextWrapping = TextWrapping.Wrap,
+                    Visibility = Visibility.Collapsed,
+                    Margin = new Thickness(4, 4, 4, 0),
+                };
+
+                var pushButton = new Button
+                {
+                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Padding = new Thickness(4, 4, 4, 4),
+                    Margin = new Thickness(0, 4, 0, 0),
+                };
+
+                void RenderCommits(IReadOnlyList<CommitInfo> currentCommits, string? currentUpstream)
+                {
+                    commitsContainer.Children.Clear();
+                    foreach (var (commit, i) in currentCommits.Select((c, idx) => (c, idx)))
                     {
-                        flyout.Hide();
-                        if (gitHubRepo is not null)
+                        var capturedCommit = commit;
+                        commitsContainer.Children.Add(MakeCommitRow(commit, currentUpstream, async () =>
                         {
-                            await Launcher.LaunchUriAsync(new Uri($"https://github.com/{gitHubRepo}/commit/{capturedCommit.FullHash}"));
+                            flyout.Hide();
+                            if (gitHubRepo is not null)
+                            {
+                                await Launcher.LaunchUriAsync(new Uri($"https://github.com/{gitHubRepo}/commit/{capturedCommit.FullHash}"));
+                            }
+                            else
+                            {
+                                var pkg = new DataPackage();
+                                pkg.SetText(capturedCommit.FullHash);
+                                Clipboard.SetContent(pkg);
+                                await ShowCopiedToastAsync();
+                            }
+                        }));
+                        if (i < currentCommits.Count - 1)
+                            commitsContainer.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
+                    }
+                }
+
+                void UpdatePushButton(IReadOnlyList<CommitInfo> currentCommits, string? currentUpstream)
+                {
+                    string label;
+                    bool enabled;
+                    if (currentUpstream is null)
+                    {
+                        label = "No upstream configured";
+                        enabled = false;
+                    }
+                    else
+                    {
+                        var unpushed = currentCommits.Count(c => !c.IsPushed);
+                        if (unpushed == 0)
+                        {
+                            label = "Up to date";
+                            enabled = false;
                         }
                         else
                         {
-                            var pkg = new DataPackage();
-                            pkg.SetText(capturedCommit.FullHash);
-                            Clipboard.SetContent(pkg);
-                            await ShowCopiedToastAsync();
+                            label = $"Push {unpushed} commit{(unpushed == 1 ? "" : "s")}";
+                            enabled = true;
                         }
-                    }));
-                    if (i < commits.Count - 1)
-                        panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
+                    }
+                    pushButton.Content = new TextBlock { Text = label, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center };
+                    pushButton.IsEnabled = enabled;
                 }
+
+                pushButton.Click += async (_, _) =>
+                {
+                    errorBlock.Visibility = Visibility.Collapsed;
+                    var previousContent = pushButton.Content;
+                    pushButton.IsEnabled = false;
+                    pushButton.Content = new ProgressRing { IsActive = true, Width = 16, Height = 16 };
+
+                    var pushResult = await mediator.Send(new PushCommand(workspacePath));
+                    if (pushResult.Success)
+                    {
+                        var refreshed = await mediator.Send(new GetRecentCommitsQuery(workspacePath));
+                        if (refreshed is GetRecentCommitsResult.Success { Commits: var refreshedCommits, UpstreamRef: var refreshedUpstream })
+                        {
+                            RenderCommits(refreshedCommits, refreshedUpstream);
+                            UpdatePushButton(refreshedCommits, refreshedUpstream);
+                        }
+                        else
+                        {
+                            pushButton.Content = previousContent;
+                            pushButton.IsEnabled = true;
+                        }
+                    }
+                    else
+                    {
+                        errorBlock.Text = string.IsNullOrWhiteSpace(pushResult.Message) ? "Push failed" : $"Push failed: {pushResult.Message}";
+                        errorBlock.Visibility = Visibility.Visible;
+                        pushButton.Content = previousContent;
+                        pushButton.IsEnabled = true;
+                    }
+                };
+
+                RenderCommits(commits, upstreamRef);
+                UpdatePushButton(commits, upstreamRef);
+                panel.Children.Add(commitsContainer);
+                panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 4, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
+                panel.Children.Add(errorBlock);
+                panel.Children.Add(pushButton);
                 break;
             case GetRecentCommitsResult.NotAGitRepo:
                 panel.Children.Add(new TextBlock { Text = "Not a git repository", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
@@ -297,19 +386,30 @@ public sealed partial class WorkspaceDetailPage : Page
         Grid.SetColumn(textPanel, 0);
         grid.Children.Add(textPanel);
 
-        if (commit.IsPushed && upstreamRef is not null)
+        var accentBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppAccentBrush"];
+        var cloudUpData = (string)Application.Current.Resources["IconCloudUpData"];
+        var icon = (Microsoft.UI.Xaml.Shapes.Path)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            $"<Path xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
+            $"Data='{cloudUpData}' StrokeThickness='1.5' StrokeStartLineCap='Round' StrokeEndLineCap='Round' StrokeLineJoin='Round' " +
+            $"Width='12' Height='12' Stretch='Uniform' VerticalAlignment='Center'/>");
+        icon.Stroke = commit.IsPushed && upstreamRef is not null ? accentBrush : secondaryBrush;
+        string iconTooltip;
+        if (upstreamRef is null)
+            iconTooltip = "No upstream configured";
+        else if (commit.IsPushed)
+            iconTooltip = "Pushed";
+        else
+            iconTooltip = "Not yet pushed";
+        var iconHost = new Border
         {
-            var accentBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppAccentBrush"];
-            var cloudUpData = (string)Application.Current.Resources["IconCloudUpData"];
-            var icon = (Microsoft.UI.Xaml.Shapes.Path)Microsoft.UI.Xaml.Markup.XamlReader.Load(
-                $"<Path xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
-                $"Data='{cloudUpData}' StrokeThickness='1.5' StrokeStartLineCap='Round' StrokeEndLineCap='Round' StrokeLineJoin='Round' " +
-                $"Width='12' Height='12' Stretch='Uniform' VerticalAlignment='Center'/>");
-            icon.Stroke = accentBrush;
-            icon.Margin = new Thickness(4, 0, 0, 0);
-            Grid.SetColumn(icon, 1);
-            grid.Children.Add(icon);
-        }
+            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0)),
+            Padding = new Thickness(2),
+            Margin = new Thickness(4, 0, 0, 0),
+            Child = icon,
+        };
+        ToolTipService.SetToolTip(iconHost, iconTooltip);
+        Grid.SetColumn(iconHost, 1);
+        grid.Children.Add(iconHost);
 
         var btn = new Button
         {
