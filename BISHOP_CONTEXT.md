@@ -74,9 +74,9 @@ they resolve from the current working directory.
 - `bishop card list [--json]`
 - `bishop card view <id> [--json]`
 - `bishop card add --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>...]`
-- `bishop card move <id> --to-lane <name> --to-position <int>`
+- `bishop card move <id> --to-lane <name> --to-position <int> [--no-close]` — `--no-close` keeps the card open when moving into `Done`
 - `bishop card edit <id> [--title <t>] [--description <d> | --description-file <path>] [--tag <name>...] [--clear-tags]`
-- `bishop card claim [--lane <name>] [--json]` — pop the top card of a lane into "Doing"
+- `bishop card claim [--lane <name>] [--tag <name>] [--json]` — pop the top card of a lane into "Doing"; with `--tag`, picks the first card carrying that tag
 - `bishop card push <id>` — create a GitHub issue for the card
 - `bishop card close <id>` / `bishop card reopen <id>`
 
