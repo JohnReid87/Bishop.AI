@@ -156,4 +156,152 @@ public sealed class TerminalSnapTests
         snap.Width.Should().Be(960);
         snap.Height.Should().Be(1080);
     }
+
+    // MinUsableDimension boundary tests — width axis (399 / 400 / 401)
+
+    [Fact]
+    public void RemainderFill_RightStripExactly399Wide_FallsBackToRightHalf()
+    {
+        // Arrange — Bishop leaves a 399px-wide right strip (bishopWidth = 1920 - 399 = 1521); all other strips are zero-sized
+        // Act
+        var snap = TerminalSnap.RemainderFill(0, 0, 1521, 1080, 0, 0, 1920, 1080);
+
+        // Assert — right strip rejected (399 < 400); falls back to RightHalf
+        snap.X.Should().Be(960);
+        snap.Y.Should().Be(0);
+        snap.Width.Should().Be(960);
+        snap.Height.Should().Be(1080);
+    }
+
+    [Fact]
+    public void RemainderFill_RightStripExactly400Wide_PicksRightStrip()
+    {
+        // Arrange — Bishop leaves a 400px-wide right strip (bishopWidth = 1920 - 400 = 1520)
+        // Act
+        var snap = TerminalSnap.RemainderFill(0, 0, 1520, 1080, 0, 0, 1920, 1080);
+
+        // Assert — right strip accepted (400 == MinUsableDimension)
+        snap.X.Should().Be(1520);
+        snap.Y.Should().Be(0);
+        snap.Width.Should().Be(400);
+        snap.Height.Should().Be(1080);
+    }
+
+    [Fact]
+    public void RemainderFill_RightStripExactly401Wide_PicksRightStrip()
+    {
+        // Arrange — Bishop leaves a 401px-wide right strip (bishopWidth = 1920 - 401 = 1519)
+        // Act
+        var snap = TerminalSnap.RemainderFill(0, 0, 1519, 1080, 0, 0, 1920, 1080);
+
+        // Assert — right strip accepted (401 > MinUsableDimension)
+        snap.X.Should().Be(1519);
+        snap.Y.Should().Be(0);
+        snap.Width.Should().Be(401);
+        snap.Height.Should().Be(1080);
+    }
+
+    // MinUsableDimension boundary tests — height axis (399 / 400 / 401)
+
+    [Fact]
+    public void RemainderFill_BottomStripExactly399Tall_FallsBackToRightHalf()
+    {
+        // Arrange — Bishop (full width) leaves a 399px-tall bottom strip (bishopHeight = 1080 - 399 = 681)
+        // Act
+        var snap = TerminalSnap.RemainderFill(0, 0, 1920, 681, 0, 0, 1920, 1080);
+
+        // Assert — bottom strip rejected (height 399 < 400); falls back to RightHalf
+        snap.X.Should().Be(960);
+        snap.Y.Should().Be(0);
+        snap.Width.Should().Be(960);
+        snap.Height.Should().Be(1080);
+    }
+
+    [Fact]
+    public void RemainderFill_BottomStripExactly400Tall_PicksBottomStrip()
+    {
+        // Arrange — Bishop (full width) leaves a 400px-tall bottom strip (bishopHeight = 1080 - 400 = 680)
+        // Act
+        var snap = TerminalSnap.RemainderFill(0, 0, 1920, 680, 0, 0, 1920, 1080);
+
+        // Assert — bottom strip accepted (400 == MinUsableDimension)
+        snap.X.Should().Be(0);
+        snap.Y.Should().Be(680);
+        snap.Width.Should().Be(1920);
+        snap.Height.Should().Be(400);
+    }
+
+    [Fact]
+    public void RemainderFill_BottomStripExactly401Tall_PicksBottomStrip()
+    {
+        // Arrange — Bishop (full width) leaves a 401px-tall bottom strip (bishopHeight = 1080 - 401 = 679)
+        // Act
+        var snap = TerminalSnap.RemainderFill(0, 0, 1920, 679, 0, 0, 1920, 1080);
+
+        // Assert — bottom strip accepted (401 > MinUsableDimension)
+        snap.X.Should().Be(0);
+        snap.Y.Should().Be(679);
+        snap.Width.Should().Be(1920);
+        snap.Height.Should().Be(401);
+    }
+
+    // Opposite-axis filter: wide enough (>= 400) but too short (< 400)
+
+    [Fact]
+    public void RemainderFill_RemainderWideEnoughButTooShort_FallsBackToRightHalf()
+    {
+        // Arrange — Bishop (full width) leaves a 199px-tall bottom strip; width passes but height fails
+        // Act
+        var snap = TerminalSnap.RemainderFill(0, 0, 1920, 881, 0, 0, 1920, 1080);
+
+        // Assert — bottom strip rejected (height 199 < 400 despite width 1920 >= 400); falls back to RightHalf
+        snap.X.Should().Be(960);
+        snap.Y.Should().Be(0);
+        snap.Width.Should().Be(960);
+        snap.Height.Should().Be(1080);
+    }
+
+    // Degenerate inputs — zero-sized Bishop and negative coordinates
+
+    [Fact]
+    public void RemainderFill_ZeroSizedBishopWindow_ReturnsFullWorkAreaAsRightStrip()
+    {
+        // Arrange — zero-width/height Bishop; the "right" strip spans the entire work area
+        // Act
+        var snap = TerminalSnap.RemainderFill(0, 0, 0, 0, 0, 0, 1920, 1080);
+
+        // Assert — right strip (full work area 1920×1080) wins; terminal placed over the whole screen
+        snap.X.Should().Be(0);
+        snap.Y.Should().Be(0);
+        snap.Width.Should().Be(1920);
+        snap.Height.Should().Be(1080);
+    }
+
+    [Fact]
+    public void RemainderFill_BishopPartiallyOffLeftEdge_UsesAdjustedRightStrip()
+    {
+        // Arrange — Bishop starts at x=-100 (partially off screen); right strip is adjusted accordingly
+        // Act
+        var snap = TerminalSnap.RemainderFill(-100, 0, 960, 1080, 0, 0, 1920, 1080);
+
+        // Assert — right strip starts at x=860 (-100+960) with width=1060 (1920-860)
+        snap.X.Should().Be(860);
+        snap.Y.Should().Be(0);
+        snap.Width.Should().Be(1060);
+        snap.Height.Should().Be(1080);
+    }
+
+    [Fact]
+    public void RemainderFill_BishopPartiallyAboveTopEdge_UsesBottomStrip()
+    {
+        // Arrange — Bishop starts at y=-100 (partially above screen, full width); bottom strip is available
+        // Act
+        var snap = TerminalSnap.RemainderFill(0, -100, 1920, 600, 0, 0, 1920, 1080);
+
+        // Assert — bottom strip starts at y=500 (-100+600) with height=580 (1080-500)
+        snap.X.Should().Be(0);
+        snap.Y.Should().Be(500);
+        snap.Width.Should().Be(1920);
+        snap.Height.Should().Be(580);
+    }
 }
