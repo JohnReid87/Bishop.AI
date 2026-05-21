@@ -51,7 +51,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         var task = sut.StopAsync(default);
 
         // Assert
-        task.IsCompleted.Should().BeTrue();
+        task.Should().BeSameAs(Task.CompletedTask);
         return task;
     }
 
@@ -65,10 +65,10 @@ public sealed class DatabaseInitializerTests : IDisposable
         var sut = new DatabaseInitializer(db);
 
         // Act
-        var act = () => sut.StartAsync(default);
+        await sut.StartAsync(default);
 
         // Assert
-        await act.Should().NotThrowAsync();
+        File.Exists(_tempDbPath).Should().BeFalse("migrations should not be invoked when stamp is current");
     }
 
     [Fact]
@@ -87,5 +87,42 @@ public sealed class DatabaseInitializerTests : IDisposable
         // Assert
         File.Exists(_stampPath).Should().BeTrue();
         File.ReadAllText(_stampPath).Trim().Should().Be(latestMigration);
+        var applied = await db.Database.GetAppliedMigrationsAsync();
+        applied.Should().NotBeEmpty("schema should have been created by migrations");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenStampIsStale_RunsMigrationsAndUpdatesStamp()
+    {
+        // Arrange
+        File.WriteAllText(_stampPath, "20000101000000_OldMigration");
+        using var db = CreateDbContext();
+        var latestMigration = db.Database.GetMigrations().Last();
+        var sut = new DatabaseInitializer(db);
+
+        // Act
+        await sut.StartAsync(default);
+
+        // Assert
+        File.ReadAllText(_stampPath).Trim().Should().Be(latestMigration);
+        var applied = await db.Database.GetAppliedMigrationsAsync();
+        applied.Should().NotBeEmpty("migrations should have re-run due to stale stamp");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenDatabaseIsCorrupt_Throws()
+    {
+        // Arrange
+        if (File.Exists(_stampPath))
+            File.Delete(_stampPath);
+        await File.WriteAllTextAsync(_tempDbPath, "not-a-valid-sqlite-database");
+        using var db = CreateDbContext();
+        var sut = new DatabaseInitializer(db);
+
+        // Act
+        var act = () => sut.StartAsync(default);
+
+        // Assert
+        await act.Should().ThrowAsync<Exception>("pending-migrations check should fail against a corrupt database");
     }
 }
