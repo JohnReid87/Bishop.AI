@@ -460,4 +460,92 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Assert
         output.ToString().Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task NotAGitRepo_AbortsBeforeAnyClaimOrClaude()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_db).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.NotAGitRepo());
+        var claude = ClaudeAlwaysSucceeds();
+        var handler = new WorkNextCommandHandler(git, CreateSender(), claude);
+
+        // Act
+        var result = await handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10),
+            default);
+
+        // Assert
+        result.CardsProcessed.Should().Be(0);
+        result.StopReason.Should().Be(WorkNextStopReason.NotAGitRepo);
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GitNotFound_AbortsBeforeAnyClaimOrClaude()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_db).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.GitNotFound());
+        var claude = ClaudeAlwaysSucceeds();
+        var handler = new WorkNextCommandHandler(git, CreateSender(), claude);
+
+        // Act
+        var result = await handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10),
+            default);
+
+        // Assert
+        result.CardsProcessed.Should().Be(0);
+        result.StopReason.Should().Be(WorkNextStopReason.GitNotFound);
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunPromptAsync_Throws_ExceptionPropagates()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_db).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ClaudeRunResult>(new InvalidOperationException("runner failed")));
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act & Assert
+        Func<Task> act = () => handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10),
+            default);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("runner failed");
+    }
+
+    [Fact]
+    public async Task ClaimCardSender_Throws_ExceptionPropagates()
+    {
+        // Arrange
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+
+        var sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<ClaimCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Card?>(new InvalidOperationException("db error")));
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), sender, ClaudeAlwaysSucceeds());
+
+        // Act & Assert
+        Func<Task> act = () => handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10),
+            default);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("db error");
+    }
 }
