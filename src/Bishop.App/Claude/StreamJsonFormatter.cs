@@ -8,7 +8,13 @@ public sealed class StreamJsonFormatter
 {
     private const int MaxSummaryLength = 120;
 
+    private readonly Action<string>? _onStatus;
     private int _toolUseCount;
+
+    public StreamJsonFormatter(Action<string>? onStatus = null)
+    {
+        _onStatus = onStatus;
+    }
 
     public ClaudeRunTotals? Totals { get; private set; }
 
@@ -58,12 +64,21 @@ public sealed class StreamJsonFormatter
             switch (t.GetString())
             {
                 case "text":
-                    var formatted = FormatAssistantText(block);
-                    if (!string.IsNullOrEmpty(formatted))
-                        lines.Add(formatted);
+                    var cleaned = ExtractAssistantText(block);
+                    if (!string.IsNullOrEmpty(cleaned))
+                    {
+                        _onStatus?.Invoke(cleaned);
+                        lines.Add($"… {cleaned}");
+                    }
                     break;
                 case "tool_use":
                     _toolUseCount++;
+                    if (_onStatus is not null)
+                    {
+                        var toolName = ReadToolName(block);
+                        if (!string.IsNullOrEmpty(toolName))
+                            _onStatus.Invoke($"Tool: {toolName}");
+                    }
                     break;
             }
         }
@@ -71,14 +86,22 @@ public sealed class StreamJsonFormatter
         return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
     }
 
-    private static string? FormatAssistantText(JsonElement block)
+    private static string? ExtractAssistantText(JsonElement block)
     {
         if (!block.TryGetProperty("text", out var textProp)
             || textProp.ValueKind != JsonValueKind.String)
             return null;
         var raw = textProp.GetString();
         if (string.IsNullOrWhiteSpace(raw)) return null;
-        return $"… {Truncate(CollapseWhitespace(raw))}";
+        return Truncate(CollapseWhitespace(raw));
+    }
+
+    private static string? ReadToolName(JsonElement block)
+    {
+        if (block.TryGetProperty("name", out var nameProp)
+            && nameProp.ValueKind == JsonValueKind.String)
+            return nameProp.GetString();
+        return null;
     }
 
     private static string? FormatUser(JsonElement root)

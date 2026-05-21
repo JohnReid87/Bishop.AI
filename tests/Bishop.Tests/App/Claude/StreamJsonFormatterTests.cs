@@ -291,4 +291,97 @@ public sealed class StreamJsonFormatterTests
 
         sut.Totals.Should().Be(new ClaudeRunTotals(0.10m, 0, 50));
     }
+
+    [Fact]
+    public void OnStatus_FiresWithCleanedAssistantText_OnTextBlock()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"text","text":"line1\nline2\t\tend"}]}}""");
+
+        statuses.Should().ContainSingle().Which.Should().Be("line1 line2 end");
+    }
+
+    [Fact]
+    public void OnStatus_FiresWithTruncatedAssistantText_WhenLong()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+        var longText = new string('a', 200);
+        var line = "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\""
+            + longText + "\"}]}}";
+
+        sut.Format(line);
+
+        statuses.Should().ContainSingle();
+        statuses[0].Should().EndWith("…");
+        statuses[0].Length.Should().Be(120 + 1);
+    }
+
+    [Fact]
+    public void OnStatus_FiresWithToolName_OnToolUseBlock()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"dotnet test"}}]}}""");
+
+        statuses.Should().ContainSingle().Which.Should().Be("Tool: Bash");
+    }
+
+    [Fact]
+    public void OnStatus_FiresOncePerBlock_ForMultiBlockMessage()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"text","text":"hi"},{"type":"tool_use","name":"Edit","input":{"file_path":"x.cs"}},{"type":"text","text":"bye"}]}}""");
+
+        statuses.Should().Equal("hi", "Tool: Edit", "bye");
+    }
+
+    [Fact]
+    public void OnStatus_DoesNotFire_OnResultEvent()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"result","duration_ms":1000,"total_cost_usd":0.01}""");
+
+        statuses.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OnStatus_DoesNotFire_OnToolResultEvent()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":"boom"}]}}""");
+
+        statuses.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OnStatus_DoesNotFire_WhenToolUseHasNoName()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"tool_use","input":{"command":"ls"}}]}}""");
+
+        statuses.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OnStatus_DoesNotFire_WhenTextBlockIsBlank()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"text","text":"   "}]}}""");
+
+        statuses.Should().BeEmpty();
+    }
 }

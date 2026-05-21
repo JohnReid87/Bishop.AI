@@ -50,8 +50,6 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         psi.ArgumentList.Add("stream-json");
         psi.ArgumentList.Add("--verbose");
 
-        var formatter = new StreamJsonFormatter();
-
         Process? proc;
         try
         {
@@ -68,27 +66,32 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
 
         using (proc)
         {
-            proc.OutputDataReceived += (_, e) =>
-            {
-                if (e.Data is null) return;
-                var formatted = formatter.Format(e.Data);
-                if (formatted is not null) Console.Out.WriteLine(formatted);
-            };
-            proc.ErrorDataReceived += (_, e) =>
-            {
-                if (e.Data is not null) Console.Error.WriteLine(e.Data);
-            };
+            ClaudeRunTotals? totals = null;
 
             await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
-                .StartAsync("Working...", async _ =>
+                .StartAsync("Working...", async ctx =>
                 {
+                    var formatter = new StreamJsonFormatter(label => ctx.Status(label));
+                    proc.OutputDataReceived += (_, e) =>
+                    {
+                        if (e.Data is null) return;
+                        var formatted = formatter.Format(e.Data);
+                        if (formatted is not null) Console.Out.WriteLine(formatted);
+                    };
+                    proc.ErrorDataReceived += (_, e) =>
+                    {
+                        if (e.Data is not null) Console.Error.WriteLine(e.Data);
+                    };
+
                     proc.BeginOutputReadLine();
                     proc.BeginErrorReadLine();
                     await proc.WaitForExitAsync(cancellationToken);
+
+                    totals = formatter.Totals;
                 });
 
-            return new ClaudeRunResult(proc.ExitCode, formatter.Totals);
+            return new ClaudeRunResult(proc.ExitCode, totals);
         }
     }
 
