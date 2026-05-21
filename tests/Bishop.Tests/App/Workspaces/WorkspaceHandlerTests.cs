@@ -1,3 +1,4 @@
+using Bishop.App.Git;
 using Bishop.App.Terminal;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.DeleteWorkspace;
@@ -27,6 +28,17 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
+
+    private InitWorkspaceCommandHandler CreateInitHandler(IGitCli? git = null)
+    {
+        if (git is null)
+        {
+            var g = Substitute.For<IGitCli>();
+            g.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((string?)null);
+            return new InitWorkspaceCommandHandler(_db, g);
+        }
+        return new InitWorkspaceCommandHandler(_db, git);
+    }
 
     [Fact]
     public async Task CreateWorkspace_PersistsAndReturnsWorkspace()
@@ -160,7 +172,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var tag = Guid.NewGuid().ToString("N")[..8];
         var path = $@"C:\projects\my-repo-{tag}";
-        var handler = new InitWorkspaceCommandHandler(_db);
+        var handler = CreateInitHandler();
 
         // Act
         var result = await handler.Handle(new InitWorkspaceCommand(path, "My Repo"), default);
@@ -184,7 +196,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var tag = Guid.NewGuid().ToString("N")[..8];
         var path = $@"C:\projects\sys-{tag}";
-        var handler = new InitWorkspaceCommandHandler(_db);
+        var handler = CreateInitHandler();
 
         // Act
         var result = await handler.Handle(new InitWorkspaceCommand(path, "Sys Repo"), default);
@@ -202,7 +214,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var tag = Guid.NewGuid().ToString("N")[..8];
         var dir = $"my-repo-{tag}";
-        var handler = new InitWorkspaceCommandHandler(_db);
+        var handler = CreateInitHandler();
 
         // Act
         var result = await handler.Handle(new InitWorkspaceCommand($@"C:\projects\{dir}"), default);
@@ -217,7 +229,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var tag = Guid.NewGuid().ToString("N")[..8];
         var path = $@"C:\projects\alpha-{tag}";
-        var handler = new InitWorkspaceCommandHandler(_db);
+        var handler = CreateInitHandler();
         await handler.Handle(new InitWorkspaceCommand(path, "Alpha"), default);
 
         // Act
@@ -243,7 +255,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var doingLane = await _db.Lanes.FirstAsync(l => l.WorkspaceId == ws.Id && l.Name == "Doing");
         _db.Lanes.Remove(doingLane);
         await _db.SaveChangesAsync();
-        var handler = new InitWorkspaceCommandHandler(_db);
+        var handler = CreateInitHandler();
 
         // Act
         var result = await handler.Handle(new InitWorkspaceCommand(path), default);
@@ -260,7 +272,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var tag = Guid.NewGuid().ToString("N")[..8];
-        var handler = new InitWorkspaceCommandHandler(_db);
+        var handler = CreateInitHandler();
         await handler.Handle(new InitWorkspaceCommand($@"C:\Projects\Repo-{tag}", "Repo"), default);
 
         // Act
@@ -269,6 +281,148 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Assert
         result.Created.Should().BeFalse();
         result.LanesAdded.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InitWorkspace_FirstRun_SeedsCanonicalTags()
+    {
+        // Arrange
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\tagged-{tag}";
+        var handler = CreateInitHandler();
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path, "Tagged Repo"), default);
+
+        // Assert
+        result.TagsAdded.Should().BeEquivalentTo(
+            ["feature", "bug", "chore", "docs", "arch", "test", "spike"],
+            opts => opts.WithoutStrictOrdering());
+        var tags = await _db.Tags
+            .Where(t => t.WorkspaceId == result.Workspace.Id)
+            .Select(t => t.Name)
+            .ToListAsync();
+        tags.Should().BeEquivalentTo(
+            ["feature", "bug", "chore", "docs", "arch", "test", "spike"],
+            opts => opts.WithoutStrictOrdering());
+    }
+
+    [Fact]
+    public async Task InitWorkspace_NoTags_SkipsTagSeeding()
+    {
+        // Arrange
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\notags-{tag}";
+        var handler = CreateInitHandler();
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path, SeedTags: false), default);
+
+        // Assert
+        result.TagsAdded.Should().BeEmpty();
+        var tagCount = await _db.Tags.CountAsync(t => t.WorkspaceId == result.Workspace.Id);
+        tagCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task InitWorkspace_Rerun_DoesNotDuplicateTags()
+    {
+        // Arrange
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\idem-{tag}";
+        var handler = CreateInitHandler();
+        await handler.Handle(new InitWorkspaceCommand(path, "Idem"), default);
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        // Assert
+        result.TagsAdded.Should().BeEmpty();
+        var tagCount = await _db.Tags.CountAsync(t => t.WorkspaceId == result.Workspace.Id);
+        tagCount.Should().Be(7);
+    }
+
+    [Theory]
+    [InlineData("https://github.com/owner/repo.git", "owner/repo")]
+    [InlineData("https://github.com/owner/repo", "owner/repo")]
+    [InlineData("http://github.com/owner/repo.git", "owner/repo")]
+    [InlineData("git@github.com:owner/repo.git", "owner/repo")]
+    [InlineData("git@github.com:owner/repo", "owner/repo")]
+    public async Task InitWorkspace_GitHubOrigin_LinksRepoAndReturnsTrue(string originUrl, string expectedSlug)
+    {
+        // Arrange
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\gh-{tag}";
+        var git = Substitute.For<IGitCli>();
+        git.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(originUrl);
+        var handler = CreateInitHandler(git);
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        // Assert
+        result.GitHubLinked.Should().BeTrue();
+        result.Workspace.GitHubRepo.Should().Be(expectedSlug);
+    }
+
+    [Fact]
+    public async Task InitWorkspace_NonGitHubOrigin_DoesNotLink()
+    {
+        // Arrange
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\ngh-{tag}";
+        var git = Substitute.For<IGitCli>();
+        git.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("https://dev.azure.com/org/project/_git/repo");
+        var handler = CreateInitHandler(git);
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        // Assert
+        result.GitHubLinked.Should().BeFalse();
+        result.Workspace.GitHubRepo.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task InitWorkspace_NoGitHubDetect_SkipsDetection()
+    {
+        // Arrange
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\skip-{tag}";
+        var git = Substitute.For<IGitCli>();
+        git.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("https://github.com/owner/repo.git");
+        var handler = CreateInitHandler(git);
+
+        // Act
+        var result = await handler.Handle(
+            new InitWorkspaceCommand(path, DetectGitHub: false), default);
+
+        // Assert
+        result.GitHubLinked.Should().BeFalse();
+        result.Workspace.GitHubRepo.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task InitWorkspace_GitHubAlreadyLinked_DoesNotOverwrite()
+    {
+        // Arrange
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\keep-{tag}";
+        var git = Substitute.For<IGitCli>();
+        git.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("https://github.com/new-owner/new-repo.git");
+        var handler = CreateInitHandler(git);
+        var first = await handler.Handle(new InitWorkspaceCommand(path), default);
+        first.GitHubLinked.Should().BeTrue();
+
+        // Act — rerun with a different origin; existing link must be preserved
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        // Assert
+        result.GitHubLinked.Should().BeFalse();
+        result.Workspace.GitHubRepo.Should().Be("new-owner/new-repo");
     }
 
     [Fact]

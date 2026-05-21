@@ -287,6 +287,41 @@ public sealed class GitCli : IGitCli
         return new GetCardCommitResult.Found(new CommitInfo(shortHash, fullHash, Subject: "", Body: "", timestamp, isPushed));
     }
 
+    public async Task<string?> GetOriginUrlAsync(string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("remote");
+        psi.ArgumentList.Add("get-url");
+        psi.ArgumentList.Add("origin");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            return null;
+        }
+
+        if (proc is null)
+            return null;
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+            return proc.ExitCode == 0 ? stdout.Trim() : null;
+        }
+    }
+
     public async Task<GetWorkingTreeStatusResult> GetWorkingTreeStatusAsync(
         string workspacePath, CancellationToken cancellationToken = default)
     {

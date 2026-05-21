@@ -113,14 +113,18 @@ workspaceCurrentCmd.SetHandler(async (bool json) =>
 
 var initPathOpt = new Option<string?>("--path", "Directory to initialise (defaults to cwd)");
 var initNameOpt = new Option<string?>("--name", "Workspace name (defaults to directory name)");
+var initNoTagsOpt = new Option<bool>("--no-tags", "Skip seeding canonical tags");
+var initNoGitHubDetectOpt = new Option<bool>("--no-github-detect", "Skip auto-detecting GitHub remote");
 
 var workspaceInitCmd = new Command("init", "Register a directory as a workspace and seed default lanes");
 workspaceInitCmd.AddOption(initPathOpt);
 workspaceInitCmd.AddOption(initNameOpt);
-workspaceInitCmd.SetHandler(async (string? path, string? name) =>
+workspaceInitCmd.AddOption(initNoTagsOpt);
+workspaceInitCmd.AddOption(initNoGitHubDetectOpt);
+workspaceInitCmd.SetHandler(async (string? path, string? name, bool noTags, bool noGitHubDetect) =>
 {
     var dir = path ?? Directory.GetCurrentDirectory();
-    var result = await mediator.Send(new InitWorkspaceCommand(dir, name));
+    var result = await mediator.Send(new InitWorkspaceCommand(dir, name, SeedTags: !noTags, DetectGitHub: !noGitHubDetect));
     var ws = result.Workspace;
     if (result.Created)
     {
@@ -135,7 +139,11 @@ workspaceInitCmd.SetHandler(async (string? path, string? name) =>
     {
         Console.WriteLine($"Workspace '{ws.Name}' is already initialized");
     }
-}, initPathOpt, initNameOpt);
+    if (result.TagsAdded.Count > 0)
+        Console.WriteLine($"  Tags: {string.Join(", ", result.TagsAdded)}");
+    if (result.GitHubLinked)
+        Console.WriteLine($"  GitHub: {ws.GitHubRepo}");
+}, initPathOpt, initNameOpt, initNoTagsOpt, initNoGitHubDetectOpt);
 
 // ── workspace set-github ────────────────────────────────────────────────────
 

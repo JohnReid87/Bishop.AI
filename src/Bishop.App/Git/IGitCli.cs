@@ -7,4 +7,6 @@ public interface IGitCli
     Task<GetWorkingTreeStatusResult> GetWorkingTreeStatusAsync(string workspacePath, CancellationToken cancellationToken = default);
 
     Task<GetCardCommitResult> GetCardCommitAsync(int cardNumber, string workspacePath, CancellationToken cancellationToken = default);
+
+    Task<string?> GetOriginUrlAsync(string workspacePath, CancellationToken cancellationToken = default);
 }
