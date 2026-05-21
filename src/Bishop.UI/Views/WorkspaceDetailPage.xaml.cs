@@ -291,7 +291,7 @@ public sealed partial class WorkspaceDetailPage : Page
             var cloudUpData = (string)Application.Current.Resources["IconCloudUpData"];
             var icon = (Microsoft.UI.Xaml.Shapes.Path)Microsoft.UI.Xaml.Markup.XamlReader.Load(
                 $"<Path xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
-                $"Data='{cloudUpData}' StrokeThickness='1.5' StrokeLineCap='Round' StrokeLineJoin='Round' " +
+                $"Data='{cloudUpData}' StrokeThickness='1.5' StrokeStartLineCap='Round' StrokeEndLineCap='Round' StrokeLineJoin='Round' " +
                 $"Width='12' Height='12' Stretch='Uniform' VerticalAlignment='Center'/>");
             icon.Stroke = accentBrush;
             icon.Margin = new Thickness(4, 0, 0, 0);

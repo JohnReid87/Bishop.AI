@@ -9,7 +9,7 @@
         Usage with Path element:
             <Path Data="{StaticResource IconAddData}"
                   Stroke="{ThemeResource TextFillColorPrimaryBrush}"
-                  StrokeThickness="1.5" StrokeLineCap="Round" StrokeLineJoin="Round"
+                  StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
                   Width="16" Height="16" Stretch="Uniform"/>
         Fill-based icons (grip-vertical, dots-menu): use Fill instead of Stroke.
     -->
