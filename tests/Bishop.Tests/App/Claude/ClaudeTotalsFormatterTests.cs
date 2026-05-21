@@ -64,9 +64,12 @@ public sealed class ClaudeTotalsFormatterTests
     // These two cases pin down that contract.
 
     [Fact]
-    public void Format_Hidden_State_When_All_Totals_Are_Zero_Returns_Null()
+    public void Format_Returns_Non_Null_When_Only_CostUsd_Is_NonZero()
     {
-        ClaudeTotalsFormatter.Format(0m, 0, 0, 0, null).Should().BeNull();
+        // Early-return guard fires only when ALL four are zero; a non-zero costUsd must produce output.
+        var line = ClaudeTotalsFormatter.Format(0.01m, 0, 0, 0, null);
+
+        line.Should().Be("Claude: $0.01 (0 runs, 0 in / 0 out)");
     }
 
     [Fact]
@@ -75,5 +78,49 @@ public sealed class ClaudeTotalsFormatterTests
         var line = ClaudeTotalsFormatter.Format(0.12m, 8100, 2400, 3, 0.75m);
 
         line.Should().Be("Claude: $0.12 (£0.09) (3 runs, 8.1k in / 2.4k out)");
+    }
+
+    // ── Negative inputs — documenting current behaviour ───────────────────────
+
+    [Fact]
+    public void Format_Negative_CostUsd_Renders_Negative_Dollar_Amount()
+    {
+        var line = ClaudeTotalsFormatter.Format(-0.12m, 8100, 2400, 3, null);
+
+        line.Should().Be("Claude: $-0.12 (3 runs, 8.1k in / 2.4k out)");
+    }
+
+    [Fact]
+    public void Format_Negative_InputTokens_Renders_Negative_Token_Count()
+    {
+        var line = ClaudeTotalsFormatter.Format(0.01m, -500, 200, 1, null);
+
+        line.Should().Be("Claude: $0.01 (1 run, -500 in / 200 out)");
+    }
+
+    [Fact]
+    public void Format_Negative_OutputTokens_Renders_Negative_Token_Count()
+    {
+        var line = ClaudeTotalsFormatter.Format(0.01m, 500, -200, 1, null);
+
+        line.Should().Be("Claude: $0.01 (1 run, 500 in / -200 out)");
+    }
+
+    [Fact]
+    public void Format_Negative_RunCount_Renders_Negative_Run_Count()
+    {
+        var line = ClaudeTotalsFormatter.Format(0.01m, 500, 200, -1, null);
+
+        line.Should().Be("Claude: $0.01 (-1 runs, 500 in / 200 out)");
+    }
+
+    // ── Very large token counts ───────────────────────────────────────────────
+
+    [Fact]
+    public void Format_VeryLargeTokenCounts_Render_With_K_Suffix()
+    {
+        var line = ClaudeTotalsFormatter.Format(1.00m, 5_000_000, 1_000_000, 10, null);
+
+        line.Should().Be("Claude: $1.00 (10 runs, 5000.0k in / 1000.0k out)");
     }
 }
