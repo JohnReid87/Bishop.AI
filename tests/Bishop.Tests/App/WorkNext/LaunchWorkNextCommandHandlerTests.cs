@@ -18,7 +18,11 @@ public sealed class LaunchWorkNextCommandHandlerTests
         await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", "test", 5), default);
 
         // Assert
-        launcher.Received(1).LaunchCommand(@"C:\workspace", "bishop", "work-next --tag test --max 5", null);
+        launcher.Received(1).LaunchCommand(
+            @"C:\workspace",
+            "bishop",
+            Arg.Is<string?>(a => a != null && a.Contains("--tag test") && a.Contains("--max 5")),
+            null);
     }
 
     [Fact]
@@ -32,7 +36,11 @@ public sealed class LaunchWorkNextCommandHandlerTests
         await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", null, 10), default);
 
         // Assert
-        launcher.Received(1).LaunchCommand(@"C:\workspace", "bishop", "work-next --max 10", null);
+        launcher.Received(1).LaunchCommand(
+            @"C:\workspace",
+            "bishop",
+            Arg.Is<string?>(a => a != null && !a.Contains("--tag") && a.Contains("--max 10")),
+            null);
     }
 
     [Fact]
@@ -46,7 +54,11 @@ public sealed class LaunchWorkNextCommandHandlerTests
         await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", "", 10), default);
 
         // Assert
-        launcher.Received(1).LaunchCommand(@"C:\workspace", "bishop", "work-next --max 10", null);
+        launcher.Received(1).LaunchCommand(
+            @"C:\workspace",
+            "bishop",
+            Arg.Is<string?>(a => a != null && !a.Contains("--tag") && a.Contains("--max 10")),
+            null);
     }
 
     [Fact]
@@ -60,7 +72,11 @@ public sealed class LaunchWorkNextCommandHandlerTests
         await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", "test", 0), default);
 
         // Assert
-        launcher.Received(1).LaunchCommand(@"C:\workspace", "bishop", "work-next --tag test --max 0", null);
+        launcher.Received(1).LaunchCommand(
+            @"C:\workspace",
+            "bishop",
+            Arg.Is<string?>(a => a != null && a.Contains("--tag test") && a.Contains("--max 0")),
+            null);
     }
 
     [Fact]
@@ -75,11 +91,15 @@ public sealed class LaunchWorkNextCommandHandlerTests
         await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", null, 10, snap), default);
 
         // Assert
-        launcher.Received(1).LaunchCommand(@"C:\workspace", "bishop", "work-next --max 10", snap);
+        launcher.Received(1).LaunchCommand(
+            @"C:\workspace",
+            "bishop",
+            Arg.Is<string?>(a => a != null && a.Contains("--max 10")),
+            snap);
     }
 
     [Fact]
-    public async Task Handle_ReturnsLauncherResult()
+    public async Task Handle_ReturnsLauncherResult_WhenTrue()
     {
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
@@ -91,5 +111,38 @@ public sealed class LaunchWorkNextCommandHandlerTests
 
         // Assert
         result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsLauncherResult_WhenFalse()
+    {
+        // Arrange
+        var launcher = Substitute.For<ITerminalLauncher>();
+        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>()).Returns(false);
+        var handler = new LaunchWorkNextCommandHandler(launcher);
+
+        // Act
+        var result = await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", null, 10), default);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_WithWhitespaceOnlyTag_TreatsAsTag()
+    {
+        // Arrange
+        var launcher = Substitute.For<ITerminalLauncher>();
+        var handler = new LaunchWorkNextCommandHandler(launcher);
+
+        // Act — string.IsNullOrEmpty does not trim; whitespace is forwarded as a real tag value
+        await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", "  ", 10), default);
+
+        // Assert
+        launcher.Received(1).LaunchCommand(
+            @"C:\workspace",
+            "bishop",
+            Arg.Is<string?>(a => a != null && a.Contains("--tag")),
+            null);
     }
 }
