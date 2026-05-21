@@ -1,4 +1,5 @@
 using Bishop.App.Cards.ClaimCard;
+using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Claude;
 using Bishop.App.Git;
 using MediatR;
@@ -45,12 +46,17 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
             Console.Out.WriteLine($"== Card #{card.Number}: {card.Title} ==");
 
             var prompt = $"/bish-auto-card #{card.Number}";
-            var exitCode = await _claude.RunPromptAsync(request.WorkspacePath, prompt, cancellationToken);
+            var runResult = await _claude.RunPromptAsync(request.WorkspacePath, prompt, cancellationToken);
 
-            Console.Out.WriteLine($"exit {exitCode}");
+            Console.Out.WriteLine($"exit {runResult.ExitCode}");
 
-            if (exitCode != 0)
+            if (runResult.ExitCode != 0)
                 return new WorkNextResult(processed, WorkNextStopReason.ClaudeFailed, FailedCardNumber: card.Number);
+
+            var totals = runResult.Totals ?? new ClaudeRunTotals(0m, 0, 0);
+            await _sender.Send(
+                new RecordClaudeRunCommand(card.Id, totals.CostUsd, totals.InputTokens, totals.OutputTokens),
+                cancellationToken);
 
             processed++;
 

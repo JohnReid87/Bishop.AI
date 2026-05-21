@@ -2,7 +2,7 @@ namespace Bishop.App.Claude;
 
 public interface IClaudeCliRunner
 {
-    Task<int> RunPromptAsync(
+    Task<ClaudeRunResult> RunPromptAsync(
         string workspacePath,
         string prompt,
         CancellationToken cancellationToken = default);

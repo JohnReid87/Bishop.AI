@@ -40,7 +40,7 @@ public sealed class ClaudeCliRunnerTests
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
-        result.Should().Be(42);
+        result.ExitCode.Should().Be(42);
     }
 
     [Fact]

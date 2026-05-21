@@ -2,6 +2,7 @@ using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.MoveCard;
+using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Claude;
 using Bishop.App.Git;
 using Bishop.App.Lanes.ListLanesByWorkspace;
@@ -12,6 +13,7 @@ using Bishop.Data;
 using FluentAssertions;
 using MediatR;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 
 namespace Bishop.Tests.App.WorkNext;
@@ -53,6 +55,9 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         sender.Send(Arg.Any<GetCardQuery>(), Arg.Any<CancellationToken>())
             .Returns(call => new GetCardQueryHandler(_db)
                 .Handle(call.ArgAt<GetCardQuery>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<RecordClaudeRunCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call => new RecordClaudeRunCommandHandler(_db)
+                .Handle(call.ArgAt<RecordClaudeRunCommand>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }
 
@@ -64,11 +69,19 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         return git;
     }
 
-    private static IClaudeCliRunner ClaudeAlwaysSucceeds()
+    private static IClaudeCliRunner ClaudeAlwaysSucceeds(ClaudeRunTotals? totals = null)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(0);
+            .Returns(new ClaudeRunResult(0, totals));
+        return claude;
+    }
+
+    private static IClaudeCliRunner ClaudeReturnsExitCode(int exitCode)
+    {
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ClaudeRunResult(exitCode, null));
         return claude;
     }
 
@@ -151,9 +164,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Inserted second → ends up at top (position 1) under insert-at-top semantics
         var second = await add.Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
 
-        var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(7);
+        var claude = ClaudeReturnsExitCode(7);
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
 
         // Act
@@ -261,9 +272,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         var add = new AddCardCommandHandler(_db);
         var card = await add.Handle(new AddCardCommand(todo.Id, "Broken", TagNames: ["test"]), default);
 
-        var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(7);
+        var claude = ClaudeReturnsExitCode(7);
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
 
         var output = new StringWriter();
@@ -286,6 +295,71 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         var lines = output.ToString().Split(Environment.NewLine);
         lines.Should().Contain($"== Card #{card.Number}: Broken ==");
         lines.Should().Contain("exit 7");
+    }
+
+    [Fact]
+    public async Task SuccessfulRun_AccumulatesClaudeTotalsOntoCard()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_db);
+        var card = await add.Handle(new AddCardCommand(todo.Id, "Accum", TagNames: ["test"]), default);
+
+        var claude = ClaudeAlwaysSucceeds(new ClaudeRunTotals(0.05m, 1000, 250));
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1), default);
+
+        // Assert
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.TotalCostUsd.Should().Be(0.05m);
+        saved.TotalInputTokens.Should().Be(1000);
+        saved.TotalOutputTokens.Should().Be(250);
+        saved.ClaudeRunCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task SuccessfulRun_WithNullTotals_StillIncrementsRunCount()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_db);
+        var card = await add.Handle(new AddCardCommand(todo.Id, "NoTotals", TagNames: ["test"]), default);
+
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds(totals: null));
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1), default);
+
+        // Assert
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.TotalCostUsd.Should().Be(0m);
+        saved.TotalInputTokens.Should().Be(0);
+        saved.TotalOutputTokens.Should().Be(0);
+        saved.ClaudeRunCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ClaudeFailedRun_DoesNotAccumulateAnyTotals()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_db);
+        var card = await add.Handle(new AddCardCommand(todo.Id, "Fails", TagNames: ["test"]), default);
+
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeReturnsExitCode(7));
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1), default);
+
+        // Assert
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.ClaudeRunCount.Should().Be(0);
+        saved.TotalCostUsd.Should().Be(0m);
     }
 
     [Fact]

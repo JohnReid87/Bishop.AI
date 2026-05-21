@@ -21,7 +21,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         _processStarter = processStarter;
     }
 
-    public async Task<int> RunPromptAsync(
+    public async Task<ClaudeRunResult> RunPromptAsync(
         string workspacePath,
         string prompt,
         CancellationToken cancellationToken = default)
@@ -88,7 +88,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
                     await proc.WaitForExitAsync(cancellationToken);
                 });
 
-            return proc.ExitCode;
+            return new ClaudeRunResult(proc.ExitCode, formatter.Totals);
         }
     }
 

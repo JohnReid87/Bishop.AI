@@ -1,5 +1,7 @@
 using Bishop.App;
 using Bishop.App.Cards.AddCard;
+using Bishop.App.Claude;
+using Bishop.App.Settings;
 using Bishop.Core;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.CloseCard;
@@ -243,6 +245,20 @@ async Task<(Guid cardId, int cardNumber, Bishop.Core.Workspace ws)?> resolveCard
     return (matches[0].Id, matches[0].Number, ws);
 }
 
+// ── fx rate lookup ────────────────────────────────────────────────────────────
+
+async Task<decimal?> ReadUsdToGbpRateAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var settings = scope.ServiceProvider.GetRequiredService<IAppSettings>();
+    var raw = await settings.GetAsync("fx.usd_gbp");
+    if (raw is null) return null;
+    return decimal.TryParse(raw, System.Globalization.NumberStyles.Number,
+        System.Globalization.CultureInfo.InvariantCulture, out var rate)
+        ? rate
+        : null;
+}
+
 // ── card view ─────────────────────────────────────────────────────────────────
 
 var cardViewIdArg = new Argument<string>("card-id", "Card short ID or prefix");
@@ -276,6 +292,10 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             gitHubPushedAt = card.GitHubPushedAt,
             createdAt = card.CreatedAt,
             updatedAt = card.UpdatedAt,
+            totalCostUsd = card.TotalCostUsd,
+            totalInputTokens = card.TotalInputTokens,
+            totalOutputTokens = card.TotalOutputTokens,
+            claudeRunCount = card.ClaudeRunCount,
             tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
         }, jsonOpts));
     }
@@ -288,6 +308,15 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             Console.WriteLine("Status: closed");
         if (tags.Count > 0)
             Console.WriteLine($"Tags: {string.Join(", ", tags)}");
+        var fxRate = await ReadUsdToGbpRateAsync(host.Services);
+        var claudeLine = ClaudeTotalsFormatter.Format(
+            card.TotalCostUsd,
+            card.TotalInputTokens,
+            card.TotalOutputTokens,
+            card.ClaudeRunCount,
+            fxRate);
+        if (claudeLine is not null)
+            Console.WriteLine(claudeLine);
         if (!string.IsNullOrEmpty(card.Description))
         {
             Console.WriteLine();

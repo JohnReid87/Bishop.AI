@@ -10,6 +10,8 @@ public sealed class StreamJsonFormatter
 
     private int _toolUseCount;
 
+    public ClaudeRunTotals? Totals { get; private set; }
+
     public string? Format(string line)
     {
         if (string.IsNullOrWhiteSpace(line))
@@ -128,13 +130,18 @@ public sealed class StreamJsonFormatter
             duration = FormatDuration(TimeSpan.FromMilliseconds(durMs));
         }
 
-        double? cost = null;
+        decimal? cost = null;
         if (root.TryGetProperty("total_cost_usd", out var costProp)
             && costProp.ValueKind == JsonValueKind.Number
-            && costProp.TryGetDouble(out var c))
+            && costProp.TryGetDecimal(out var c))
         {
             cost = c;
         }
+
+        var (inputTokens, outputTokens) = ExtractUsage(root);
+
+        if (cost is not null || inputTokens > 0 || outputTokens > 0)
+            Totals = new ClaudeRunTotals(cost ?? 0m, inputTokens, outputTokens);
 
         var parts = new List<string>
         {
@@ -145,6 +152,26 @@ public sealed class StreamJsonFormatter
             parts.Add($"${cost.Value.ToString("0.####", CultureInfo.InvariantCulture)}");
 
         return string.Join(", ", parts);
+    }
+
+    private static (int InputTokens, int OutputTokens) ExtractUsage(JsonElement root)
+    {
+        if (!root.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object)
+            return (0, 0);
+        var input = ReadInt(usage, "input_tokens");
+        var output = ReadInt(usage, "output_tokens");
+        return (input, output);
+    }
+
+    private static int ReadInt(JsonElement obj, string name)
+    {
+        if (obj.TryGetProperty(name, out var prop)
+            && prop.ValueKind == JsonValueKind.Number
+            && prop.TryGetInt32(out var v))
+        {
+            return v;
+        }
+        return 0;
     }
 
     private static bool TryGetContentArray(JsonElement root, out JsonElement content)

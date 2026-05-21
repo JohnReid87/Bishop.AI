@@ -237,4 +237,58 @@ public sealed class StreamJsonFormatterTests
 
         sut.Format(line).Should().BeNull();
     }
+
+    [Fact]
+    public void Totals_IsNull_BeforeResultEvent()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}""");
+
+        sut.Totals.Should().BeNull();
+    }
+
+    [Fact]
+    public void Totals_PopulatesFromResultEvent_CostAndUsage()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"result","total_cost_usd":0.12,"usage":{"input_tokens":8100,"output_tokens":2400}}""");
+
+        sut.Totals.Should().Be(new ClaudeRunTotals(0.12m, 8100, 2400));
+    }
+
+    [Fact]
+    public void Totals_PopulatesFromResultEvent_CostOnly_WhenUsageMissing()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"result","total_cost_usd":0.05}""");
+
+        sut.Totals.Should().Be(new ClaudeRunTotals(0.05m, 0, 0));
+    }
+
+    [Fact]
+    public void Totals_StaysNull_WhenResultHasNoCostOrUsage()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"result","duration_ms":900}""");
+
+        sut.Totals.Should().BeNull();
+    }
+
+    [Fact]
+    public void Totals_StaysNull_WhenResultUsageIsNotAnObject()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"result","usage":"nope"}""");
+
+        sut.Totals.Should().BeNull();
+    }
+
+    [Fact]
+    public void Totals_IgnoresNonNumericUsageFields()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"result","total_cost_usd":0.10,"usage":{"input_tokens":"oops","output_tokens":50}}""");
+
+        sut.Totals.Should().Be(new ClaudeRunTotals(0.10m, 0, 50));
+    }
 }

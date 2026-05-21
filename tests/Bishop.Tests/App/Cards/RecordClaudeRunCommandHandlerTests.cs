@@ -1,0 +1,84 @@
+using Bishop.App.Cards.AddCard;
+using Bishop.App.Cards.RecordClaudeRun;
+using Bishop.App.Lanes.ListLanesByWorkspace;
+using Bishop.App.Workspaces.CreateWorkspace;
+using Bishop.Core;
+using Bishop.Data;
+using FluentAssertions;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+
+namespace Bishop.Tests.App.Cards;
+
+public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture>
+{
+    private readonly BishopDbContext _db;
+    private readonly SqliteConnection _connection;
+
+    public RecordClaudeRunCommandHandlerTests(DbFixture fixture)
+    {
+        _db = fixture.Db;
+        _connection = fixture.Connection;
+    }
+
+    private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
+
+    private async Task<Card> CreateCardAsync()
+    {
+        var name = U("Test");
+        var workspace = await new CreateWorkspaceCommandHandler(_db)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        var lanes = await new ListLanesByWorkspaceQueryHandler(_db)
+            .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
+        var todo = lanes.Single(l => l.Name == "To Do");
+        return await new AddCardCommandHandler(_db)
+            .Handle(new AddCardCommand(todo.Id, "Title"), default);
+    }
+
+    [Fact]
+    public async Task Handle_SetsTotalsAndIncrementsRunCount_OnFirstRun()
+    {
+        // Arrange
+        var card = await CreateCardAsync();
+        var sut = new RecordClaudeRunCommandHandler(_db);
+
+        // Act
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 0.12m, 8100, 2400), default);
+
+        // Assert
+        var saved = await _db.Cards.AsNoTracking().SingleAsync(c => c.Id == card.Id);
+        saved.TotalCostUsd.Should().Be(0.12m);
+        saved.TotalInputTokens.Should().Be(8100);
+        saved.TotalOutputTokens.Should().Be(2400);
+        saved.ClaudeRunCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_SumsAcrossRetries_RatherThanOverwriting()
+    {
+        // Arrange
+        var card = await CreateCardAsync();
+        var sut = new RecordClaudeRunCommandHandler(_db);
+
+        // Act
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 0.10m, 500, 200), default);
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 0.05m, 300, 150), default);
+
+        // Assert
+        var saved = await _db.Cards.AsNoTracking().SingleAsync(c => c.Id == card.Id);
+        saved.TotalCostUsd.Should().Be(0.15m);
+        saved.TotalInputTokens.Should().Be(800);
+        saved.TotalOutputTokens.Should().Be(350);
+        saved.ClaudeRunCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_Throws_WhenCardDoesNotExist()
+    {
+        var sut = new RecordClaudeRunCommandHandler(_db);
+
+        var act = () => sut.Handle(new RecordClaudeRunCommand(Guid.NewGuid(), 0m, 0, 0), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+}
