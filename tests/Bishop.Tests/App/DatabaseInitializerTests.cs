@@ -3,6 +3,8 @@ using Bishop.Data;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using System.Data.Common;
 
 namespace Bishop.Tests.App;
 
@@ -45,6 +47,38 @@ public sealed class DatabaseInitializerTests : IDisposable
             .UseSqlite($"Data Source={_tempDbPath}",
                 opts => opts.MigrationsAssembly(typeof(DatabaseInitializerTests).Assembly.GetName().Name!))
             .Options);
+
+    private BishopDbContext CreateDbContextWithWalThrowingInterceptor() =>
+        new(new DbContextOptionsBuilder<BishopDbContext>()
+            .UseSqlite($"Data Source={_tempDbPath}")
+            .AddInterceptors(new WalPragmaThrowingInterceptor())
+            .Options);
+
+    private sealed class WalPragmaThrowingInterceptor : DbCommandInterceptor
+    {
+        private const string WalPragmaText = "PRAGMA journal_mode=WAL";
+
+        public override InterceptionResult<int> NonQueryExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result)
+        {
+            if (command.CommandText.Contains(WalPragmaText, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Simulated WAL PRAGMA failure.");
+            return base.NonQueryExecuting(command, eventData, result);
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains(WalPragmaText, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Simulated WAL PRAGMA failure.");
+            return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
 
     private async Task<string> ReadJournalModeAsync()
     {
@@ -159,6 +193,61 @@ public sealed class DatabaseInitializerTests : IDisposable
 
         // Assert
         File.Exists(_stampPath).Should().BeFalse("WriteStampAsync should return early when no migrations have been applied");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenStampFileIsUnreadable_Throws()
+    {
+        // Arrange — create stamp then lock it exclusively so File.ReadAllText throws IOException
+        File.WriteAllText(_stampPath, "any_migration");
+        await using var lockStream = new FileStream(_stampPath, FileMode.Open, FileAccess.Read, FileShare.None);
+        using var db = CreateDbContext();
+        var sut = new DatabaseInitializer(db);
+
+        // Act
+        var act = () => sut.StartAsync(default);
+
+        // Assert
+        await act.Should().ThrowAsync<IOException>();
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenStampFileIsReadOnly_ThrowsOnWrite()
+    {
+        // Arrange — stale stamp so IsStampCurrent returns false; read-only so WriteStampAsync fails
+        File.WriteAllText(_stampPath, "20000101000000_StaleStamp");
+        File.SetAttributes(_stampPath, FileAttributes.ReadOnly);
+        using var db = CreateDbContext();
+        var sut = new DatabaseInitializer(db);
+
+        // Act
+        var act = () => sut.StartAsync(default);
+
+        try
+        {
+            // Assert
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        }
+        finally
+        {
+            File.SetAttributes(_stampPath, FileAttributes.Normal);
+        }
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenWalPragmaFails_Throws()
+    {
+        // Arrange — delete stamp so IsStampCurrent returns false; interceptor throws on PRAGMA WAL
+        if (File.Exists(_stampPath))
+            File.Delete(_stampPath);
+        using var db = CreateDbContextWithWalThrowingInterceptor();
+        var sut = new DatabaseInitializer(db);
+
+        // Act
+        var act = () => sut.StartAsync(default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>("the WAL PRAGMA failure should propagate from StartAsync");
     }
 
     [Fact]
