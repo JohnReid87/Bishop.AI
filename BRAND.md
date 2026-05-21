@@ -8,8 +8,8 @@ icon, or asset.
 
 | Role          | Hex        | Notes                                          |
 | ------------- | ---------- | ---------------------------------------------- |
-| bg            | `#0a0f0a`  | App background                                 |
-| surface       | `#141914`  | Cards, lanes, dialogs                          |
+| bg            | `#0a0a0a`  | App background                                 |
+| surface       | `#141414`  | Cards, lanes, dialogs                          |
 | border        | `#2a2a2a`  | Dividers, outlines                             |
 | text          | `#e8e8e8`  | Primary text                                   |
 | text-muted    | `#888888`  | Secondary text, muted/offline state            |

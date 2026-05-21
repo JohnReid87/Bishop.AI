@@ -166,7 +166,7 @@
             <!-- Inline save error -->
             <TextBlock
                 Text="{x:Bind ViewModel.EditError, Mode=OneWay}"
-                Foreground="#FF5555"
+                Foreground="{StaticResource BrushError}"
                 TextWrapping="Wrap"
                 Visibility="{x:Bind ViewModel.EditErrorVisibility, Mode=OneWay}"/>
 
@@ -185,7 +185,7 @@
                                 Visibility="{x:Bind ViewModel.PushButtonVisibility, Mode=OneWay}"
                                 Padding="8,4" FontSize="12"/>
                         <TextBlock Text="{x:Bind ViewModel.PushError, Mode=OneWay}"
-                                   Foreground="#FF5555"
+                                   Foreground="{StaticResource BrushError}"
                                    VerticalAlignment="Center"
                                    Visibility="{x:Bind ViewModel.PushErrorVisibility, Mode=OneWay}"/>
                         <HyperlinkButton Content="{x:Bind ViewModel.GitHubIssueUrl, Mode=OneWay}"
@@ -212,7 +212,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="6"
                                 Visibility="{x:Bind ViewModel.DeleteConfirmVisibility, Mode=OneWay}">
                         <TextBlock Text="Delete this card?"
-                                   Foreground="#FF5555"
+                                   Foreground="{StaticResource BrushError}"
                                    VerticalAlignment="Center"
                                    FontSize="12"/>
                         <Button Content="Yes, delete"
@@ -228,7 +228,7 @@
                 <Button Content="Delete…"
                         Command="{x:Bind ViewModel.RequestDeleteCommand}"
                         HorizontalAlignment="Right"
-                        Foreground="#FF5555"
+                        Foreground="{StaticResource BrushError}"
                         Padding="8,4" FontSize="12"/>
             </Grid>
         </StackPanel>
