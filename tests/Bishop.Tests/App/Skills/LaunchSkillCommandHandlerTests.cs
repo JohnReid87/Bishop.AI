@@ -2,6 +2,7 @@ using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
 using FluentAssertions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Bishop.Tests.App.Skills;
 
@@ -64,5 +65,56 @@ public sealed class LaunchSkillCommandHandlerTests
 
         // Assert
         launcher.Received(1).Launch(@"C:\workspace", "code .", null, null);
+    }
+
+    [Fact]
+    public async Task Handle_CallsSeedAsync_WithWorkspacePath()
+    {
+        // Arrange
+        var seeder = Substitute.For<IWorkspaceContextSeeder>();
+        var launcher = Substitute.For<ITerminalLauncher>();
+        var handler = new LaunchSkillCommandHandler(launcher, seeder);
+        var ct = new CancellationToken();
+
+        // Act
+        await handler.Handle(new LaunchSkillCommand(@"C:\workspace", "code ."), ct);
+
+        // Assert
+        await seeder.Received(1).SeedAsync(@"C:\workspace", ct);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSeedAsyncThrows_PropagatesExceptionAndDoesNotLaunch()
+    {
+        // Arrange
+        var seeder = Substitute.For<IWorkspaceContextSeeder>();
+        seeder.SeedAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("seed failed")));
+        var launcher = Substitute.For<ITerminalLauncher>();
+        var handler = new LaunchSkillCommandHandler(launcher, seeder);
+
+        // Act
+        var act = async () => await handler.Handle(new LaunchSkillCommand(@"C:\workspace", "code ."), default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("seed failed");
+        launcher.DidNotReceive().Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenLaunchThrows_PropagatesException()
+    {
+        // Arrange
+        var seeder = Substitute.For<IWorkspaceContextSeeder>();
+        var launcher = Substitute.For<ITerminalLauncher>();
+        launcher.Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>())
+            .Throws(new InvalidOperationException("launch failed"));
+        var handler = new LaunchSkillCommandHandler(launcher, seeder);
+
+        // Act
+        var act = async () => await handler.Handle(new LaunchSkillCommand(@"C:\workspace", "code ."), default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("launch failed");
     }
 }
