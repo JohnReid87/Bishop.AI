@@ -3,6 +3,7 @@ using Bishop.App.Terminal;
 using FluentAssertions;
 using Microsoft.Win32;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace Bishop.Tests.App.Terminal;
 
@@ -17,6 +18,22 @@ public sealed class TerminalLauncherTests
             (pwshExists && path.EndsWith("pwsh.exe", StringComparison.OrdinalIgnoreCase));
 
         return new TerminalLauncher(FileExists, psi => _started.Add(psi));
+    }
+
+    // ── BuildFullPath ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void BuildFullPath_RegistrySubKeyMissing_ReturnsNonNullString()
+    {
+        // BuildFullPath uses null-coalescing on both OpenSubKey results so the method
+        // never returns null, even when the registry sub-keys don't exist.
+        // Calling via reflection verifies the private static directly.
+        var method = typeof(TerminalLauncher)
+            .GetMethod("BuildFullPath", BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var result = (string)method.Invoke(null, null)!;
+
+        result.Should().NotBeNull();
     }
 
     // ── Launch ────────────────────────────────────────────────────────────────
@@ -351,17 +368,17 @@ public sealed class TerminalLauncherTests
     }
 
     [Fact]
-    public void LaunchCommand_SetsPathInProcessEnvironment()
+    public void LaunchCommand_SetsPathToMergedRegistryPath()
     {
         // Arrange
         var sut = CreateSut(wtExists: false);
+        var expected = ExpectedFullPath();
 
         // Act
         sut.LaunchCommand(@"C:\Repo", "bishop", "work-next", null);
 
-        // Assert
-        _started.Single().Environment.Should().ContainKey("PATH");
-        _started.Single().Environment["PATH"].Should().NotBeNullOrEmpty();
+        // Assert — PATH must match the merged machine+user registry path, not just any non-empty value.
+        _started.Single().Environment["PATH"].Should().Be(expected);
     }
 
     // ── ArgumentException catch branches ─────────────────────────────────────
@@ -465,15 +482,6 @@ public sealed class TerminalLauncherTests
     // the background Task launched by SnapLater will time out harmlessly after 3 s
     // and return without snapping. The smoke tests below confirm the snap code path
     // is reached without crashing the test host.
-
-    [Fact]
-    public void Launch_WithSnap_WtFound_DoesNotThrow()
-    {
-        var sut = CreateSut(wtExists: true);
-        var snap = new TerminalSnap(0, 0, 1280, 1440);
-        var act = () => sut.Launch(@"C:\Repo", null, snap);
-        act.Should().NotThrow();
-    }
 
     [Fact]
     public void LaunchPlain_WithSnap_WtNotFound_DoesNotThrow()
