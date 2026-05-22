@@ -384,25 +384,37 @@ public sealed class TerminalLauncherTests
     // ── ArgumentException catch branches ─────────────────────────────────────
 
     [Fact]
-    public void Launch_FileExistsThrowsArgumentExceptionForWtInPath_FallsBackToPowerShell()
+    public void Launch_PathSegmentWithIllegalCharsIsSkipped_FallsBackToPowerShell()
     {
-        // Exercises the catch(ArgumentException) in FindWindowsTerminal's PATH loop.
-        var alias = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Microsoft", "WindowsApps", "wt.exe");
-        var sut = new TerminalLauncher(
-            path =>
-            {
-                if (path == alias) return false;
-                if (path.EndsWith("wt.exe", StringComparison.OrdinalIgnoreCase))
-                    throw new ArgumentException("malformed path segment");
-                return false;
-            },
-            psi => _started.Add(psi));
+        // Injects a PATH segment containing '<', a genuinely illegal Windows path character,
+        // via the environment variable so the malformed entry originates from PATH itself.
+        // _fileExists throws ArgumentException when given a path built from that segment,
+        // reflecting what File.Exists does with such paths on Windows.
+        var originalPath = Environment.GetEnvironmentVariable("PATH");
+        try
+        {
+            Environment.SetEnvironmentVariable("PATH", @"C:\Dir<Invalid");
+            var alias = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "WindowsApps", "wt.exe");
+            var sut = new TerminalLauncher(
+                path =>
+                {
+                    if (path == alias) return false;
+                    if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+                        throw new ArgumentException($"Illegal characters in path: {path}");
+                    return false;
+                },
+                psi => _started.Add(psi));
 
-        sut.Launch(@"C:\Repo", null, null);
+            sut.Launch(@"C:\Repo", null, null);
 
-        _started.Single().FileName.Should().Be("powershell.exe");
+            _started.Single().FileName.Should().Be("powershell.exe");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PATH", originalPath);
+        }
     }
 
     [Fact]
@@ -421,6 +433,21 @@ public sealed class TerminalLauncherTests
         sut.LaunchPlain(@"C:\Repo", null);
 
         _started.Single().FileName.Should().Be("powershell.exe");
+    }
+
+    [Fact]
+    public void HasPwsh_EmptyAndWhitespacePathSegments_DoesNotThrowAndReturnsFalse()
+    {
+        // Drives HasPwsh via reflection with a fullPath string containing empty and
+        // whitespace-only segments (";;  ;"). Each trims to "" and produces the relative
+        // candidate "pwsh.exe" via Path.Combine("", "pwsh.exe") — no ArgumentException.
+        var sut = new TerminalLauncher(_ => false, psi => _started.Add(psi));
+        var hasPwsh = typeof(TerminalLauncher)
+            .GetMethod("HasPwsh", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        var result = (bool)hasPwsh.Invoke(sut, [";;  ;C:\\NonExistentDir"])!;
+
+        result.Should().BeFalse();
     }
 
     // ── Null / empty workingDirectory and claudeArgs ──────────────────────────
@@ -446,7 +473,11 @@ public sealed class TerminalLauncherTests
     {
         var sut = CreateSut(wtExists: false);
         sut.Launch(@"C:\Repo", "", null);
-        _started.Single().Arguments.Should().EndWith("claude \"\"");
+
+        var psi = _started.Single();
+        psi.Arguments.Should().Be("-NoExit -Command claude \"\"");
+        psi.Arguments.Should().NotContain("--model");
+        psi.WorkingDirectory.Should().Be(@"C:\Repo");
     }
 
     [Fact]
@@ -463,6 +494,18 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: false);
         var act = () => sut.LaunchPlain(string.Empty, null);
         act.Should().NotThrow();
+    }
+
+    // ── UseShellExecute ───────────────────────────────────────────────────────
+
+    [Fact]
+    public void Launch_SetsUseShellExecuteToFalse()
+    {
+        // UseShellExecute = false is a security-relevant property set on every PSI.
+        // This assertion ensures a refactor cannot silently flip it.
+        var sut = CreateSut(wtExists: false);
+        sut.Launch(@"C:\Repo", null, null);
+        _started.Single().UseShellExecute.Should().BeFalse();
     }
 
     // ── Parameterless constructor ─────────────────────────────────────────────
