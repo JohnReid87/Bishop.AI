@@ -91,16 +91,21 @@ public sealed class BishopDbContextAuditTests : IDisposable
         loaded!.Value.Should().Be("dark");
     }
 
-    [Fact]
-    public void OnModelCreating_SetsNocaseCollation_OnGuidColumns()
+    [Theory]
+    [InlineData("Workspaces")]
+    [InlineData("Lanes")]
+    [InlineData("Cards")]
+    [InlineData("Tags")]
+    [InlineData("CardTags")]
+    public void OnModelCreating_SetsNocaseCollation_OnGuidColumns(string tableName)
     {
-        // Verify via the SQLite schema that Guid columns carry COLLATE NOCASE.
+        // Verify via the SQLite schema that every table with Guid columns carries COLLATE NOCASE.
         // EnsureCreated() already ran in DbFixture, so sqlite_master is populated.
         using var cmd = _fixture.Connection.CreateCommand();
-        cmd.CommandText = "SELECT sql FROM sqlite_master WHERE type='table' AND name='Workspaces'";
+        cmd.CommandText = $"SELECT sql FROM sqlite_master WHERE type='table' AND name='{tableName}'";
         var ddl = (string)cmd.ExecuteScalar()!;
 
-        ddl.Should().Contain("COLLATE NOCASE", because: "all Guid columns must use NOCASE collation");
+        ddl.Should().Contain("COLLATE NOCASE", because: $"all Guid columns in {tableName} must use NOCASE collation");
     }
 
     [Fact]
