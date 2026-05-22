@@ -112,7 +112,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
             .Select(t => t.Name)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var toAdd = BrandTagPalette.DefaultNames.Where(n => !existingTagNames.Contains(n)).ToList();
+        var toAdd = TagNames.All.Where(n => !existingTagNames.Contains(n)).ToList();
         if (toAdd.Count == 0)
             return [];
 

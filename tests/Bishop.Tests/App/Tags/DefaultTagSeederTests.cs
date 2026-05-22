@@ -51,7 +51,7 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
         // old default grey or the legacy docs blue.
         var path = $@"C:\projects\stale-{U()}";
         var workspace = await CreateWorkspaceAsync(path);
-        foreach (var name in BrandTagPalette.DefaultNames)
+        foreach (var name in TagNames.All)
         {
             _db.Tags.Add(new Tag
             {
@@ -184,7 +184,7 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
         var wsB = await CreateWorkspaceAsync($@"C:\projects\all-b-{U()}");
         foreach (var workspaceId in new[] { wsA.Id, wsB.Id })
         {
-            foreach (var name in BrandTagPalette.DefaultNames)
+            foreach (var name in TagNames.All)
             {
                 _db.Tags.Add(new Tag
                 {

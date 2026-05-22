@@ -4,6 +4,7 @@ using Bishop.App.Git;
 using Bishop.App.Settings;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
+using Bishop.Core;
 using Bishop.Core.Skills;
 using Bishop.UI.ViewModels;
 using MediatR;
@@ -224,10 +225,10 @@ public sealed partial class CardDetailDialog : ContentDialog
                 !matches.Any(t => t.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase)) &&
                 !already.Contains(trimmed))
             {
-                tagListPanel.Children.Add(MakeTagRow($"Create \"{trimmed}\"", "#888888", async () =>
+                tagListPanel.Children.Add(MakeTagRow($"Create \"{trimmed}\"", BrandTagPalette.DefaultColour, async () =>
                 {
                     flyout.Hide();
-                    await ViewModel.AddTagAsync(trimmed, "#888888");
+                    await ViewModel.AddTagAsync(trimmed, BrandTagPalette.DefaultColour);
                 }));
             }
         }

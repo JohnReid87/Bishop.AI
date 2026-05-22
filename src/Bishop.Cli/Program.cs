@@ -551,7 +551,7 @@ tagListCmd.SetHandler(async (string? workspace, bool json) =>
 // ── tag add ───────────────────────────────────────────────────────────────────
 
 var tagAddNameArg = new Argument<string>("name", "Tag name");
-var tagColourOpt = new Option<string?>("--colour", "Tag colour as 6-char hex (e.g. #4A90D9 or 4A90D9); defaults to #888888");
+var tagColourOpt = new Option<string?>("--colour", $"Tag colour as 6-char hex (e.g. #4A90D9 or 4A90D9); defaults to {BrandTagPalette.DefaultColour}");
 
 var tagAddCmd = new Command("add", "Add a tag to a workspace");
 tagAddCmd.AddArgument(tagAddNameArg);
