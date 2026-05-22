@@ -43,6 +43,11 @@ containing these segments:
 - `/node_modules/`
 - `/bin/`, `/obj/` (build output)
 
+Also exclude these filenames anywhere in the tree:
+
+- `BISHOP_CONTEXT.md` (auto-generated on workspace launch)
+- `BISHOP_NOTES.md` (agent scratchpad)
+
 Present the candidates via `AskUserQuestion` as a **multi-select** list so the
 user can narrow the audit scope. Pre-select the obvious top-level docs
 (`README.md`, `CONTEXT.md`, `DIRECTION.md`, `CONTRIBUTING.md`) if present.
