@@ -83,4 +83,23 @@ public sealed class FxRateCacheServiceTests : IClassFixture<DbFixture>
         saved.UsdToGbp.Should().Be(0.79m);
         saved.FetchedAtUtc.Should().Be(updated);
     }
+
+    [Fact]
+    public async Task GetAsync_IsSafeUnderConcurrentCalls_OnSharedInstance()
+    {
+        var workspaceId = await SeedWorkspaceAsync();
+        var stamp = new DateTimeOffset(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
+        _fixture.Db.FxRates.Add(new FxRate { WorkspaceId = workspaceId, UsdToGbp = 0.81m, FetchedAtUtc = stamp });
+        await _fixture.Db.SaveChangesAsync();
+        _fixture.Db.ChangeTracker.Clear();
+
+        var sut = NewSut();
+
+        var tasks = Enumerable.Range(0, 20)
+            .Select(_ => Task.Run(() => sut.GetAsync(workspaceId)))
+            .ToArray();
+        var results = await Task.WhenAll(tasks);
+
+        results.Should().OnlyContain(r => r != null && r.UsdToGbp == 0.81m && r.FetchedAtUtc == stamp);
+    }
 }
