@@ -42,6 +42,10 @@ the task instead of doing everything inside a single session.
   then pushes the agreed-on tasks as cards on the board. Use when work is
   **not yet on the board** — you have an idea and need it stress-tested and
   broken down into trackable items.
+- `bish-triage` — interrogates a free-text bug description, validates the
+  suspected cause against the repo via the Explore subagent, and pushes a
+  structured `bug` card (or a `spike` + fix-stub pair when root cause is
+  unconfirmed).
 - `bish-arch` — architectural / SOLID review of the current .NET solution.
   Walks findings one at a time; agreed items become cards tagged `arch`.
 - `bish-coverage` — runs the coverage script, identifies classes below the
