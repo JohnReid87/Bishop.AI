@@ -296,7 +296,6 @@ public sealed partial class CardDetailDialog : ContentDialog
         foreach (var (skill, i) in _cardSkills.Select((s, i) => (s, i)))
         {
             var rendered = RenderCommand(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath);
-            var capturedSkill = skill;
             var settingKey = $"skill.{skill.Name}.last_model";
             var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
 
@@ -304,7 +303,7 @@ public sealed partial class CardDetailDialog : ContentDialog
             {
                 await appSettings.SetAsync(settingKey, chosenModel);
                 flyout.Hide();
-                await LaunchSkillAsync(capturedSkill, rendered, chosenModel);
+                await LaunchSkillAsync(rendered, chosenModel);
             }));
             if (i < _cardSkills.Count - 1)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
@@ -314,23 +313,10 @@ public sealed partial class CardDetailDialog : ContentDialog
         flyout.ShowAt((FrameworkElement)sender);
     }
 
-    private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string? modelId = null)
+    private async Task LaunchSkillAsync(string rendered, string? modelId = null)
     {
-        if (skill.Stage)
-        {
-            var prefill = skill.StagePrefill is null
-                ? null
-                : RenderCommand(skill.StagePrefill, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath).Trim();
-            var initialText = string.IsNullOrEmpty(prefill) ? null : prefill;
-            var stageDialog = new SkillStageDialog(skill.Name, skill.StagePrompt, initialText) { XamlRoot = XamlRoot };
-            if (await stageDialog.ShowAsync() != ContentDialogResult.Primary)
-                return;
-
-            var input = stageDialog.InputText?.Trim() ?? string.Empty;
-            if (input.Length > 0)
-                rendered = $"{rendered} {input}";
-        }
-
+        // Card-context launch: skip the stage dialog. The rendered command already
+        // has {{card_number}} substituted, so any stage_prompt would be redundant.
         var mediator = App.Services.GetRequiredService<IMediator>();
         await mediator.Send(new LaunchSkillCommand(_workspacePath, rendered, ComputeSnap(), modelId));
     }
