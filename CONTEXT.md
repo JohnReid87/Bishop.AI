@@ -22,7 +22,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 ### Repository layout
 - `src/` — .NET projects (Core, Data, App, Cli, UI).
 - `tests/Bishop.Tests/` — xUnit project.
-- `skills/` — vendored Claude Code skill files (`bish-arch`, `bish-audit-docs`, `bish-coverage`, `bish-grill-me`, `bish-onboard`, `bish-tests`, `bish-work-on-card`) shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`.
+- `skills/` — vendored Claude Code skill files (`bish-arch`, `bish-audit-docs`, `bish-auto-card`, `bish-coverage`, `bish-grill-me`, `bish-onboard`, `bish-tests`, `bish-triage`, `bish-work-on-card`) shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`.
 - `installer/` — Wix v5 project that produces the per-user MSI. See `installer/README.md`.
 - `notes/_archive/` — pre-grill design notes; preserved for decision rationale but superseded by DIRECTION.md.
 
@@ -60,7 +60,6 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop card reopen <card-id> [-w]` — reopen a closed card; also reopens the linked GitHub issue via `gh` if the card has been pushed
 - `bishop lane list|add|rename|move|remove [-w]` — lane CRUD; `remove` refuses non-empty lanes
 - `bishop tag list|add [--colour <hex>]|remove [-w]` — `add` accepts an optional `--colour` flag (6-char hex with or without `#`; defaults to `#888888`)
-- `bishop fx refresh [-w]` — force a USD→GBP rate fetch via the FX provider and update the per-workspace cache; prints the new rate or exits non-zero if the provider is unreachable
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
 
 Card identifiers accept either a workspace-scoped Number (`42`, `#42`) or the first 8 hex chars of the GUID as a short-ID prefix. Number lookup is exact; hex-prefix lookup falls back and rejects ambiguous prefixes with a list of 8-char hex candidates on stderr. CLI output renders `#N` (e.g. `#42`) rather than the full UUID.
@@ -76,7 +75,7 @@ Bishop.UI is the interactive surface; the CLI remains the automation surface for
 - **Theming:** dark theme applied across shell, nav, board chrome, and dialogs.
 
 ### Skill integration
-Bundled Claude Code skills (`skills/bish-arch`, `skills/bish-audit-docs`, `skills/bish-coverage`, `skills/bish-grill-me`, `skills/bish-onboard`, `skills/bish-tests`, `skills/bish-work-on-card`) ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
+Bundled Claude Code skills (`skills/bish-arch`, `skills/bish-audit-docs`, `skills/bish-auto-card`, `skills/bish-coverage`, `skills/bish-grill-me`, `skills/bish-onboard`, `skills/bish-tests`, `skills/bish-triage`, `skills/bish-work-on-card`) ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
 
 - `name` — skill identifier (required).
 - `description` — user-facing summary.

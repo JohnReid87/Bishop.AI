@@ -10,6 +10,6 @@ The UI is the primary surface for kanban work (cards, lanes, tags); the `bishop`
 - Build: `dotnet build Bishop.AI.slnx`
 - Tests: `dotnet test`
 - Per-user MSI: `pwsh installer/build.ps1` (one-time prereq: `dotnet tool install --global wix --version 5.0.2`). Output at `installer/bin/Release/Bishop.AI.msi`.
-- After MSI install: run `bishop install-skills` once to populate `~/.claude/skills/` with the bundled Claude Code skills (`bish-arch`, `bish-audit-docs`, `bish-coverage`, `bish-grill-me`, `bish-work-on-card`).
+- After MSI install: run `bishop install-skills` once to populate `~/.claude/skills/` with the bundled Claude Code skills (`bish-arch`, `bish-audit-docs`, `bish-auto-card`, `bish-coverage`, `bish-grill-me`, `bish-onboard`, `bish-tests`, `bish-triage`, `bish-work-on-card`).
 
 See [CONTEXT.md](CONTEXT.md) for tech stack, architecture, and conventions, and [DIRECTION.md](DIRECTION.md) for scope decisions.
