@@ -223,7 +223,59 @@
                 </Grid>
             </NavigationView.PaneCustomContent>
 
-            <Frame x:Name="ContentFrame" Background="{StaticResource AppBackgroundBrush}"/>
+            <Grid Background="{StaticResource AppBackgroundBrush}">
+                <Frame x:Name="ContentFrame"/>
+
+                <!-- Empty state: centered brand mark + wordmark + CTAs -->
+                <Grid x:Name="WorkspaceEmptyState"
+                      Visibility="{x:Bind ViewModel.ContentEmptyStateVisibility, Mode=OneWay}">
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="32">
+                        <!-- Large logo mark, recreated from 01-logo-mark.svg -->
+                        <Viewbox Width="160" Height="192" HorizontalAlignment="Center">
+                            <Canvas Width="200" Height="240">
+                                <Rectangle Canvas.Left="15" Canvas.Top="10"
+                                           Width="22" Height="220"
+                                           RadiusX="3" RadiusY="3"
+                                           Fill="#E8E8E8"/>
+                                <Ellipse Canvas.Left="35" Canvas.Top="90"
+                                         Width="140" Height="140"
+                                         Stroke="#E8E8E8"
+                                         StrokeThickness="22"/>
+                                <Rectangle Canvas.Left="95" Canvas.Top="82"
+                                           Width="20" Height="148"
+                                           RadiusX="3" RadiusY="3"
+                                           Fill="#888888"/>
+                                <Ellipse Canvas.Left="93" Canvas.Top="48"
+                                         Width="24" Height="24"
+                                         Fill="{StaticResource AppAccentBrush}"/>
+                            </Canvas>
+                        </Viewbox>
+
+                        <!-- Wordmark: matches 02-wordmark-horizontal.svg text -->
+                        <TextBlock HorizontalAlignment="Center"
+                                   FontFamily="Cascadia Mono, Consolas, Courier New"
+                                   FontSize="40"
+                                   FontWeight="Medium">
+                            <Run Text="bishop" Foreground="{StaticResource AppTextPrimaryBrush}"/><Run Text=".ai" Foreground="{StaticResource AppAccentBrush}"/>
+                        </TextBlock>
+
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Spacing="12"
+                                    Margin="0,16,0,0">
+                            <Button x:Name="CreateWorkspaceCta"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="CreateWorkspaceCta_Click"
+                                    Content="Create your first workspace"/>
+                            <Button x:Name="OpenWorkspaceCta"
+                                    Click="OpenWorkspaceCta_Click"
+                                    Content="Open an existing workspace"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Grid>
         </NavigationView>
     </Grid>
 </Window>

@@ -21,6 +21,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EmptyStateVisibility))]
+    [NotifyPropertyChangedFor(nameof(ContentEmptyStateVisibility))]
     public partial WorkspaceItemViewModel? SelectedWorkspace { get; set; }
 
     [ObservableProperty]
@@ -30,6 +31,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public Visibility EmptyStateVisibility =>
         Workspaces.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility ContentEmptyStateVisibility =>
+        SelectedWorkspace is null ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility ExpandedPanelVisibility => IsPaneOpen ? Visibility.Visible : Visibility.Collapsed;
     public Visibility CollapsedPanelVisibility => IsPaneOpen ? Visibility.Collapsed : Visibility.Visible;

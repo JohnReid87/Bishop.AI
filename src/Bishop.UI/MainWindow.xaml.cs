@@ -143,9 +143,20 @@ public sealed partial class MainWindow : Window
         return listView.Items.Count;
     }
 
-    private async void AddWorkspaceButton_Click(object sender, RoutedEventArgs e)
+    private async void AddWorkspaceButton_Click(object sender, RoutedEventArgs e) =>
+        await ShowAddWorkspaceDialogAsync();
+
+    private async void CreateWorkspaceCta_Click(object sender, RoutedEventArgs e) =>
+        await ShowAddWorkspaceDialogAsync(pickExisting: false);
+
+    private async void OpenWorkspaceCta_Click(object sender, RoutedEventArgs e) =>
+        await ShowAddWorkspaceDialogAsync(pickExisting: true);
+
+    private async Task ShowAddWorkspaceDialogAsync(bool? pickExisting = null)
     {
         var dialog = new AddWorkspaceDialog { XamlRoot = Content.XamlRoot };
+        if (pickExisting is { } mode)
+            dialog.ViewModel.IsPickExisting = mode;
         var result = await dialog.ShowAsync();
         if (result == ContentDialogResult.Primary)
             await ViewModel.AddWorkspaceAsync(dialog.ViewModel);
