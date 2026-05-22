@@ -1,3 +1,4 @@
+using Bishop.App.Tags;
 using Bishop.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -7,10 +8,21 @@ namespace Bishop.App;
 internal sealed class DatabaseInitializer : IHostedService
 {
     private readonly BishopDbContext _db;
+    private readonly IDefaultTagSeeder _tagSeeder;
 
-    public DatabaseInitializer(BishopDbContext db) => _db = db;
+    public DatabaseInitializer(BishopDbContext db, IDefaultTagSeeder tagSeeder)
+    {
+        _db = db;
+        _tagSeeder = tagSeeder;
+    }
 
     public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        await EnsureSchemaAsync(cancellationToken);
+        await _tagSeeder.EnsureAllAsync(cancellationToken);
+    }
+
+    private async Task EnsureSchemaAsync(CancellationToken cancellationToken)
     {
         if (IsStampCurrent())
             return;

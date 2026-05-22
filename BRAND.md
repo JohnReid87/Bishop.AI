@@ -25,25 +25,29 @@ icon, or asset.
 - **Grey `#888888`** is the muted / offline indicator (disabled buttons,
   dimmed text, "unavailable" affordances).
 
-## Tag greens (hue ramp)
+## Tag palette
 
-The seven workspace tags share a green family that hue-ramps from
-teal-green through pure green to lime, so they read as a coordinated
-set. The ramp deliberately steps around the accent value so no tag
-swatch is indistinguishable from an accented UI element.
+The seven workspace tags use a muted, hue-spaced palette (~50° apart on
+the colour wheel, ~50% saturation, ~55% lightness). The palette sits
+calmly on `#141414` surfaces and stays well clear of the `#00ff41`
+accent so chips never read as "active" UI. Reserved hues — pure red
+(`#ff5555`, errors only) and the bright brand green — are absent.
 
-| Tag       | Hex        |
-| --------- | ---------- |
-| `arch`    | `#00ffaa`  |
-| `bug`     | `#00ff8a`  |
-| `chore`   | `#00ff6a`  |
-| `docs`    | `#1bff50`  |
-| `feature` | `#3fff35`  |
-| `spike`   | `#66ff20`  |
-| `test`    | `#9aff15`  |
+| Tag       | Hex        | Reads as     |
+| --------- | ---------- | ------------ |
+| `arch`    | `#6b8caf`  | slate blue   |
+| `bug`     | `#c97a8a`  | muted rose   |
+| `chore`   | `#a89878`  | warm taupe   |
+| `docs`    | `#5fa89c`  | soft teal    |
+| `feature` | `#7fa87a`  | sage green   |
+| `spike`   | `#9a7ab8`  | muted violet |
+| `test`    | `#c4a85f`  | muted gold   |
 
-Listed alphabetically by tag name. Add new tag colours by inserting
-them into this ramp (interpolate, do not pick arbitrary greens).
+Listed alphabetically. All seven sit above the WCAG 0.179 luminance
+threshold, so the contrast converter renders **black** chip text
+consistently across the set. When adding a custom tag, pick a hue that
+isn't already represented and keep saturation/lightness in the same
+range so it blends with the canonical seven.
 
 ## Icons
 

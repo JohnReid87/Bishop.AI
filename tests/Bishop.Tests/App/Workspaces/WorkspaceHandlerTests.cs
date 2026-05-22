@@ -1,4 +1,5 @@
 using Bishop.App.Git;
+using Bishop.App.Tags;
 using Bishop.App.Terminal;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.DeleteWorkspace;
@@ -11,6 +12,7 @@ using Bishop.App.Workspaces.ReorderWorkspaces;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UpdateWorkspace;
+using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -305,6 +307,25 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         tags.Should().BeEquivalentTo(
             ["feature", "bug", "chore", "docs", "arch", "test", "spike"],
             opts => opts.WithoutStrictOrdering());
+    }
+
+    [Fact]
+    public async Task InitWorkspace_FirstRun_SeedsCanonicalTagColours()
+    {
+        // Arrange
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\colour-{tag}";
+        var handler = CreateInitHandler();
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path, "Coloured"), default);
+
+        // Assert
+        var seeded = await _db.Tags
+            .Where(t => t.WorkspaceId == result.Workspace.Id)
+            .ToDictionaryAsync(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, expected) in BrandTagPalette.DefaultColours)
+            seeded[name].Should().Be(expected);
     }
 
     [Fact]
@@ -636,7 +657,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
         launcher.Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>()).Returns(true);
-        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
+        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var result = await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace"), default);
@@ -651,7 +672,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
         launcher.Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>()).Returns(false);
-        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
+        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var result = await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace"), default);
@@ -666,7 +687,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var snap = new TerminalSnap(0, 0, 800, 600);
         var launcher = Substitute.For<ITerminalLauncher>();
-        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>());
+        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace", snap), default);

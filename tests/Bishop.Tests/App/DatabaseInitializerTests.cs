@@ -1,9 +1,11 @@
 using Bishop.App;
+using Bishop.App.Tags;
 using Bishop.Data;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using NSubstitute;
 using System.Data.Common;
 
 namespace Bishop.Tests.App;
@@ -95,7 +97,7 @@ public sealed class DatabaseInitializerTests : IDisposable
     {
         // Arrange
         using var db = CreateDbContext();
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var task = sut.StopAsync(default);
@@ -112,7 +114,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
         File.WriteAllText(_stampPath, latestMigration);
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);
@@ -129,7 +131,7 @@ public sealed class DatabaseInitializerTests : IDisposable
             File.Delete(_stampPath);
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);
@@ -150,7 +152,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         File.WriteAllText(_stampPath, "20000101000000_OldMigration");
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);
@@ -169,7 +171,7 @@ public sealed class DatabaseInitializerTests : IDisposable
             File.Delete(_stampPath);
         await File.WriteAllTextAsync(_tempDbPath, "not-a-valid-sqlite-database");
         using var db = CreateDbContext();
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -186,7 +188,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         if (File.Exists(_stampPath))
             File.Delete(_stampPath);
         using var db = CreateDbContextWithNoMigrations();
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);
@@ -202,7 +204,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         File.WriteAllText(_stampPath, "any_migration");
         await using var lockStream = new FileStream(_stampPath, FileMode.Open, FileAccess.Read, FileShare.None);
         using var db = CreateDbContext();
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -218,7 +220,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         File.WriteAllText(_stampPath, "20000101000000_StaleStamp");
         File.SetAttributes(_stampPath, FileAttributes.ReadOnly);
         using var db = CreateDbContext();
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -241,13 +243,30 @@ public sealed class DatabaseInitializerTests : IDisposable
         if (File.Exists(_stampPath))
             File.Delete(_stampPath);
         using var db = CreateDbContextWithWalThrowingInterceptor();
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var act = () => sut.StartAsync(default);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>("the WAL PRAGMA failure should propagate from StartAsync");
+    }
+
+    [Fact]
+    public async Task StartAsync_InvokesTagSeederAfterSchemaIsReady()
+    {
+        // Arrange
+        if (File.Exists(_stampPath))
+            File.Delete(_stampPath);
+        using var db = CreateDbContext();
+        var tagSeeder = Substitute.For<IDefaultTagSeeder>();
+        var sut = new DatabaseInitializer(db, tagSeeder);
+
+        // Act
+        await sut.StartAsync(default);
+
+        // Assert
+        await tagSeeder.Received(1).EnsureAllAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -258,7 +277,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         const string existingStamp = "20240101000000_OldMigration";
         File.WriteAllText(_stampPath, existingStamp);
         using var db = CreateDbContextWithNoMigrations();
-        var sut = new DatabaseInitializer(db);
+        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);

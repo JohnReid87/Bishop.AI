@@ -9,7 +9,6 @@ namespace Bishop.App.Workspaces.InitWorkspace;
 public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceCommand, InitWorkspaceResult>
 {
     private static readonly string[] DefaultLaneNames = ["To Do", "Doing", "Done"];
-    private static readonly string[] DefaultTagNames = ["feature", "bug", "chore", "docs", "arch", "test", "spike"];
 
     private readonly BishopDbContext _db;
     private readonly IGitCli _git;
@@ -113,7 +112,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
             .Select(t => t.Name)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var toAdd = DefaultTagNames.Where(n => !existingTagNames.Contains(n)).ToList();
+        var toAdd = BrandTagPalette.DefaultNames.Where(n => !existingTagNames.Contains(n)).ToList();
         if (toAdd.Count == 0)
             return [];
 
@@ -124,6 +123,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
                 Id = Guid.NewGuid(),
                 WorkspaceId = workspace.Id,
                 Name = tagName,
+                Colour = BrandTagPalette.DefaultColours[tagName],
             });
         }
 

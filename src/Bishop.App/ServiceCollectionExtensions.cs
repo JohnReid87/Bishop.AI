@@ -5,6 +5,7 @@ using Bishop.App.Git;
 using Bishop.App.GitHub;
 using Bishop.App.Ping;
 using Bishop.App.Settings;
+using Bishop.App.Tags;
 using Bishop.App.Terminal;
 using Bishop.Data;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITerminalLauncher, TerminalLauncher>();
 #pragma warning restore CA1416
         services.AddScoped<IWorkspaceContextSeeder, WorkspaceContextSeeder>();
+        services.AddScoped<IDefaultTagSeeder, DefaultTagSeeder>();
         return services;
     }
 }
