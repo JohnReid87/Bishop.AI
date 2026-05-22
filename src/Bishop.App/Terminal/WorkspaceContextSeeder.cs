@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Terminal;
 
-public sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
+internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 {
     internal const string BishopContextFileName = "BISHOP_CONTEXT.md";
     internal const string ContextFileName = "CONTEXT.md";
