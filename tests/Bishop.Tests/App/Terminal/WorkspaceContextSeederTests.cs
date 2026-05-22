@@ -174,6 +174,37 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public void BuildBishopContext_IncludesAutoCardPermissionContract()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("## Auto-card permission contract");
+        output.Should().Contain(".claude/settings.json");
+        output.Should().Contain("Bash(bishop:*)");
+        output.Should().Contain("git push");
+        output.Should().Contain("dotnet publish");
+        output.Should().Contain("gh:*");
+        output.Should().Contain("bishop work-next --max 1");
+    }
+
+    [Fact]
+    public void BuildBishopContext_AutoCardPermissionContract_AppearsAfterCommitConventionAndBeforeCardModel()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        var commitIdx = output.IndexOf("## Commit-reference convention", StringComparison.Ordinal);
+        var contractIdx = output.IndexOf("## Auto-card permission contract", StringComparison.Ordinal);
+        var cardModelIdx = output.IndexOf("## Card model", StringComparison.Ordinal);
+
+        contractIdx.Should().BeGreaterThan(commitIdx);
+        contractIdx.Should().BeLessThan(cardModelIdx);
+    }
+
+    [Fact]
     public void BuildBishopContext_OrdersWorkflowBeforeCardModel()
     {
         var workspace = MakeWorkspace();
