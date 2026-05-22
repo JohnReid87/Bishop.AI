@@ -9,4 +9,7 @@ public sealed record LaunchWorkNextCommand(
     string? Tag,
     int Max,
     TerminalSnap? Snap = null,
-    string Model = "claude-sonnet-4-6") : IRequest<bool>;
+    string Model = "claude-sonnet-4-6") : IRequest<bool>
+{
+    public const string DefaultModel = "claude-sonnet-4-6";
+}

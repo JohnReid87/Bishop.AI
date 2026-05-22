@@ -147,7 +147,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
         launcher.Received(1).LaunchCommand(
             @"C:\workspace",
             "bishop",
-            "work-next --max 10 --model claude-sonnet-4-6",
+            $"work-next --max 10 --model {LaunchWorkNextCommand.DefaultModel}",
             null);
     }
 
@@ -179,5 +179,45 @@ public sealed class LaunchWorkNextCommandHandlerTests
         var result = await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", null, 5), cts.Token);
 
         result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BuildArgs_NullTagAndNullModel_ProducesMinimalArgs()
+    {
+        var result = LaunchWorkNextCommandHandler.BuildArgs(null, 5, null);
+
+        result.Should().Be("work-next --max 5");
+    }
+
+    [Fact]
+    public void BuildArgs_NullModel_OmitsModelFlag()
+    {
+        var result = LaunchWorkNextCommandHandler.BuildArgs("bug", 5, null);
+
+        result.Should().Be("work-next --tag bug --max 5");
+    }
+
+    [Fact]
+    public void BuildArgs_NullTag_OmitsTagFlag()
+    {
+        var result = LaunchWorkNextCommandHandler.BuildArgs(null, 5, "claude-opus-4-7");
+
+        result.Should().Be("work-next --max 5 --model claude-opus-4-7");
+    }
+
+    [Fact]
+    public void BuildArgs_NegativeMax_PassesThroughAsIs()
+    {
+        var result = LaunchWorkNextCommandHandler.BuildArgs(null, -1, null);
+
+        result.Should().Be("work-next --max -1");
+    }
+
+    [Fact]
+    public void BuildArgs_AllPartsProvided_ReturnsFullArgs()
+    {
+        var result = LaunchWorkNextCommandHandler.BuildArgs("bug", 3, "claude-opus-4-7");
+
+        result.Should().Be("work-next --tag bug --max 3 --model claude-opus-4-7");
     }
 }
