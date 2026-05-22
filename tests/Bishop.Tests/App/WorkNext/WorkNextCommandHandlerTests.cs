@@ -262,7 +262,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         var lines = output.ToString().Split(Environment.NewLine);
-        lines.Should().Contain(l => l.EndsWith($"== Card #{card.Number}: Pretty Title =="));
+        lines.Should().Contain(l => l.EndsWith($"Card #{card.Number}: Pretty Title =="));
         lines.Should().Contain("exit 0");
     }
 
@@ -296,7 +296,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         var lines = output.ToString().Split(Environment.NewLine);
-        lines.Should().Contain(l => l.EndsWith($"== Card #{card.Number}: Broken =="));
+        lines.Should().Contain(l => l.EndsWith($"Card #{card.Number}: Broken =="));
         lines.Should().Contain("exit 7");
     }
 
@@ -602,7 +602,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         output.ToString().Split(Environment.NewLine)
-            .Should().Contain(l => l.EndsWith($"== Card #{card.Number}: My Card  [claude-sonnet-4-6] =="));
+            .Should().Contain(l => l.EndsWith($"Card #{card.Number}: My Card  [claude-sonnet-4-6] =="));
     }
 
     [Fact]
@@ -634,6 +634,6 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
 
         // Assert — start line ends with the title and ==, with no model bracket between them.
         var lines = output.ToString().Split(Environment.NewLine);
-        lines.Should().ContainSingle(l => l.EndsWith($"== Card #{card.Number}: My Card =="));
+        lines.Should().ContainSingle(l => l.EndsWith($"Card #{card.Number}: My Card =="));
     }
 }
