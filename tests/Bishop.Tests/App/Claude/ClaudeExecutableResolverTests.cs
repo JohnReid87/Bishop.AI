@@ -147,6 +147,9 @@ public sealed class ClaudeExecutableResolverTests
         if (result is not null)
         {
             File.Exists(result).Should().BeTrue("the resolved path must exist on disk");
+            Path.IsPathRooted(result).Should().BeTrue("the resolved path must be absolute");
+            Path.GetFileNameWithoutExtension(result).Should().BeEquivalentTo("claude",
+                "the resolved executable must be named claude");
         }
         else
         {
@@ -181,6 +184,43 @@ public sealed class ClaudeExecutableResolverTests
         PathEquals(first, exe).Should().BeTrue();
         second.Should().Be(first);
         probeCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void Resolve_Throws_WhenPathIsNull()
+    {
+        var env = MakeEnv(path: null, pathExt: ".EXE");
+        var sut = new ClaudeExecutableResolver(env, _ => false, isWindows: true);
+
+        var act = () => sut.Resolve();
+
+        var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
+        ex.Directories.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Resolve_Throws_WhenPathIsEmpty()
+    {
+        var env = MakeEnv(path: "", pathExt: ".EXE");
+        var sut = new ClaudeExecutableResolver(env, _ => false, isWindows: true);
+
+        var act = () => sut.Resolve();
+
+        var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
+        ex.Directories.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Resolve_Throws_WhenPathContainsOnlyEmptyAndWhitespaceEntries()
+    {
+        var allWhitespace = string.Join(Path.PathSeparator, new[] { "", "  ", "" });
+        var env = MakeEnv(path: allWhitespace, pathExt: ".EXE");
+        var sut = new ClaudeExecutableResolver(env, _ => false, isWindows: true);
+
+        var act = () => sut.Resolve();
+
+        var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
+        ex.Directories.Should().BeEmpty();
     }
 
     private static Func<string, string?> MakeEnv(string? path, string? pathExt)
