@@ -64,6 +64,13 @@ public sealed class DatabaseInitializerTests : IDisposable
 
     private IDbContextFactory<BishopDbContext> CreateFactoryWithWalThrowingInterceptor() => new TestDbContextFactory(WalThrowingOptions());
 
+    private IDbContextFactory<BishopDbContext> CreateFactoryWithMigrationDdlThrowingInterceptor() =>
+        new TestDbContextFactory(
+            new DbContextOptionsBuilder<BishopDbContext>()
+                .UseSqlite($"Data Source={_tempDbPath}")
+                .AddInterceptors(new MigrationDdlThrowingInterceptor())
+                .Options);
+
     private sealed class TestDbContextFactory : IDbContextFactory<BishopDbContext>
     {
         private readonly DbContextOptions<BishopDbContext> _options;
@@ -71,6 +78,30 @@ public sealed class DatabaseInitializerTests : IDisposable
         public TestDbContextFactory(DbContextOptions<BishopDbContext> options) => _options = options;
 
         public BishopDbContext CreateDbContext() => new(_options);
+    }
+
+    private sealed class MigrationDdlThrowingInterceptor : DbCommandInterceptor
+    {
+        public override InterceptionResult<int> NonQueryExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result)
+        {
+            if (command.CommandText.Contains("CREATE TABLE", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Simulated migration DDL failure.");
+            return base.NonQueryExecuting(command, eventData, result);
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("CREATE TABLE", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Simulated migration DDL failure.");
+            return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
     }
 
     private sealed class WalPragmaThrowingInterceptor : DbCommandInterceptor
@@ -107,6 +138,19 @@ public sealed class DatabaseInitializerTests : IDisposable
         cmd.CommandText = "PRAGMA journal_mode;";
         var result = await cmd.ExecuteScalarAsync();
         return result?.ToString() ?? string.Empty;
+    }
+
+    private async Task<IReadOnlyList<string>> ReadTableNamesAsync()
+    {
+        await using var connection = new SqliteConnection($"Data Source={_tempDbPath}");
+        await connection.OpenAsync();
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table';";
+        var tables = new List<string>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            tables.Add(reader.GetString(0));
+        return tables;
     }
 
     [Fact]
@@ -297,5 +341,88 @@ public sealed class DatabaseInitializerTests : IDisposable
             "the DB connection must have been opened, proving IsStampCurrent returned false");
         File.ReadAllText(_stampPath).Should().Be(existingStamp,
             "WriteStampAsync should not overwrite the stamp when no migrations have been applied");
+    }
+
+    [Fact]
+    public async Task StartAsync_CalledConcurrently_BothSucceedAndSchemaIsValid()
+    {
+        // Arrange
+        if (File.Exists(_stampPath))
+            File.Delete(_stampPath);
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+
+        // Act — fire both without awaiting to maximise the concurrency window
+        var task1 = sut.StartAsync(default);
+        var task2 = sut.StartAsync(default);
+        await Task.WhenAll(task1, task2);
+
+        // Assert — schema must be present and stamp must be written regardless of interleaving
+        File.Exists(_stampPath).Should().BeTrue("both concurrent calls must leave the stamp in place");
+        var tables = await ReadTableNamesAsync();
+        tables.Should().Contain("Workspaces", "schema must be fully initialised after concurrent StartAsync calls");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenMigrateAsyncThrows_PropagatesException()
+    {
+        // Arrange — interceptor throws when migration DDL (CREATE TABLE) is executed,
+        // while allowing the preceding GetPendingMigrationsAsync SELECT to succeed
+        if (File.Exists(_stampPath))
+            File.Delete(_stampPath);
+        var sut = new DatabaseInitializer(CreateFactoryWithMigrationDdlThrowingInterceptor(), Substitute.For<IDefaultTagSeeder>());
+
+        // Act
+        var act = () => sut.StartAsync(default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>("a migration DDL failure must propagate from StartAsync");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenStampIsMissing_WorkspacesTableIsPresent()
+    {
+        // Arrange
+        if (File.Exists(_stampPath))
+            File.Delete(_stampPath);
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+
+        // Act
+        await sut.StartAsync(default);
+
+        // Assert
+        var tables = await ReadTableNamesAsync();
+        tables.Should().Contain("Workspaces", "the Workspaces table must be created by migrations on first init");
+    }
+
+    [Fact]
+    public Task StopAsync_BeforeStartAsync_DoesNotCreateDatabaseFile()
+    {
+        // Arrange
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+
+        // Act
+        var task = sut.StopAsync(default);
+
+        // Assert — StopAsync must be a no-op: synchronous and no side-effects on disk
+        task.IsCompletedSuccessfully.Should().BeTrue();
+        File.Exists(_tempDbPath).Should().BeFalse("StopAsync must not open a database connection");
+        return task;
+    }
+
+    [Fact]
+    public async Task StopAsync_DuringStartAsync_CompletesImmediately()
+    {
+        // Arrange
+        if (File.Exists(_stampPath))
+            File.Delete(_stampPath);
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+
+        // Act — fire both; StopAsync must not block on StartAsync
+        var startTask = sut.StartAsync(default);
+        var stopTask = sut.StopAsync(default);
+
+        // Assert
+        stopTask.IsCompletedSuccessfully.Should().BeTrue("StopAsync always returns Task.CompletedTask regardless of StartAsync state");
+        await startTask;
     }
 }
