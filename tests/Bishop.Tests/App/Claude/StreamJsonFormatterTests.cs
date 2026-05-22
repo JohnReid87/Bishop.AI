@@ -460,6 +460,44 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
+    public void Format_Assistant_Text_Collapses_Multiple_Consecutive_Spaces_Inside_String()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"assistant","message":{"content":[{"type":"text","text":"a  b   c  d"}]}}""";
+
+        sut.Format(line).Should().Be("… a b c d");
+    }
+
+    [Fact]
+    public void Format_Tool_Result_With_Error_Flag_Array_Item_Without_Text_Property_Uses_Placeholder()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":[{"value":"data"}]}]}}""";
+
+        sut.Format(line).Should().Be("[error] (no detail)");
+    }
+
+    [Fact]
+    public void Format_Result_With_String_Duration_Ms_Does_Not_Crash_And_Omits_Duration()
+    {
+        var sut = new StreamJsonFormatter();
+
+        var result = sut.Format("""{"type":"result","duration_ms":"not a number","total_cost_usd":"abc"}""");
+
+        result.Should().Be("done, 0 tool uses");
+    }
+
+    [Fact]
+    public void RunningTokens_InputTokens_DefaultsToZero_WhenPropertyAbsent()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"assistant","message":{"usage":{"output_tokens":50},"content":[{"type":"text","text":"a"}]}}""");
+
+        sut.RunningInputTokens.Should().Be(0);
+        sut.RunningOutputTokens.Should().Be(50);
+    }
+
+    [Fact]
     public void Format_WorksCorrectly_WhenOnStatusIsExplicitlyNull()
     {
         var sut = new StreamJsonFormatter(onStatus: null);
