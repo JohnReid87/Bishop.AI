@@ -821,7 +821,8 @@ workNextCmd.SetHandler(async (string? workspace, string? tag, int max, string? m
     var ws = await resolver.ResolveAsync(workspace);
     var result = await mediator.Send(new WorkNextCommand(ws.Id, ws.Path, tag, max, model));
 
-    var summary = $"Processed {result.CardsProcessed} card(s). Stopped: {result.StopReason}";
+    var stamp = DateTimeOffset.Now.ToString("HH:mm:ss");
+    var summary = $"[{stamp}] Processed {result.CardsProcessed} card(s). Stopped: {result.StopReason}";
     if (result.FailedCardNumber is { } failed)
         summary += $" on card #{failed}";
     Console.Out.WriteLine(summary + ".");
