@@ -84,7 +84,7 @@
             </StackPanel>
             <Button Grid.Column="1"
                     Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                    ToolTipService.ToolTip="Launch skill"
+                    ToolTipService.ToolTip="Skills"
                     Click="SkillButton_Click"
                     Visibility="{x:Bind ViewModel.SkillsButtonVisibility}"
                     VerticalAlignment="Center">

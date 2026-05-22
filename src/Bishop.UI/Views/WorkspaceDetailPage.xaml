@@ -306,7 +306,7 @@
                                                         <StackPanel Grid.Column="1"
                                                                     Orientation="Horizontal">
                                                             <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                                    ToolTipService.ToolTip="Launch skill"
+                                                                    ToolTipService.ToolTip="Skills"
                                                                     Click="CardSkillsButton_Click"
                                                                     Visibility="{x:Bind SkillsButtonVisibility}"
                                                                     VerticalAlignment="Center">
