@@ -52,6 +52,22 @@ public sealed class ClaudeTotalsFormatterTests
     }
 
     [Fact]
+    public void Format_Returns_Non_Null_When_Only_InputTokens_Is_NonZero()
+    {
+        var line = ClaudeTotalsFormatter.Format(500, 0, 0);
+
+        line.Should().Be("Claude: 0 runs, 500 in / 0 out");
+    }
+
+    [Fact]
+    public void Format_Returns_Non_Null_When_Only_OutputTokens_Is_NonZero()
+    {
+        var line = ClaudeTotalsFormatter.Format(0, 500, 0);
+
+        line.Should().Be("Claude: 0 runs, 0 in / 500 out");
+    }
+
+    [Fact]
     public void Format_Negative_InputTokens_Renders_Negative_Token_Count()
     {
         var line = ClaudeTotalsFormatter.Format(-500, 200, 1);
