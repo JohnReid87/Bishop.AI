@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:Bishop.UI.ViewModels"
     Title="Bishop.AI">
-    <Grid>
+    <Grid x:Name="RootGrid" PreviewKeyDown="RootGrid_PreviewKeyDown">
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="*"/>
@@ -13,12 +13,52 @@
         <!-- Custom title bar drag region -->
         <Grid x:Name="AppTitleBar" Grid.Row="0"
               Background="{StaticResource AppSurfaceBrush}">
-            <TextBlock VerticalAlignment="Center"
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="138"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       VerticalAlignment="Center"
                        Margin="12,0,0,0"
                        FontSize="12"
                        FontFamily="Cascadia Mono, Consolas, Courier New">
                 <Run Text="bishop" Foreground="{StaticResource AppTextPrimaryBrush}"/><Run Text=".ai" Foreground="{StaticResource AppAccentBrush}"/>
             </TextBlock>
+
+            <!-- Cat mode toggle: paw button (off state) -->
+            <Button Grid.Column="1"
+                    Width="40" Height="32"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Visibility="{x:Bind ViewModel.CatModeOffVisibility, Mode=OneWay}"
+                    Command="{x:Bind ViewModel.ToggleCatModeCommand}"
+                    ToolTipService.ToolTip="Pause keyboard input (cat mode)">
+                <Path Data="{StaticResource IconPawPrintData}"
+                      Stroke="{StaticResource AppTextSecondaryBrush}"
+                      StrokeThickness="1.5"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                      Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
+
+            <!-- Cat mode toggle: paw button (on state) -->
+            <Button Grid.Column="1"
+                    Width="40" Height="32"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Visibility="{x:Bind ViewModel.CatModeOnVisibility, Mode=OneWay}"
+                    Command="{x:Bind ViewModel.ToggleCatModeCommand}"
+                    ToolTipService.ToolTip="Resume keyboard input (cat mode active)">
+                <Path Data="{StaticResource IconPawPrintData}"
+                      Fill="{StaticResource AppTextPrimaryBrush}"
+                      Stroke="{StaticResource AppTextPrimaryBrush}"
+                      StrokeThickness="1.5"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                      Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
         </Grid>
 
         <NavigationView
@@ -225,6 +265,22 @@
 
             <Grid Background="{StaticResource AppBackgroundBrush}">
                 <Frame x:Name="ContentFrame"/>
+
+                <!-- Cat mode tint: subtle dark overlay across the whole content area -->
+                <Border IsHitTestVisible="False"
+                        Background="#80000000"
+                        Visibility="{x:Bind ViewModel.CatModeOnVisibility, Mode=OneWay}"/>
+
+                <!-- Cat mode mark: centered cat illustration so the state is visible from across the room -->
+                <Viewbox IsHitTestVisible="False"
+                         MaxWidth="420" MaxHeight="420"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         Visibility="{x:Bind ViewModel.CatModeOnVisibility, Mode=OneWay}">
+                    <Path Data="{StaticResource IconCatModePanelData}"
+                          Fill="#CCE8E8E8"
+                          Stretch="Uniform"/>
+                </Viewbox>
 
                 <!-- Empty state: centered brand mark + wordmark + CTAs -->
                 <Grid x:Name="WorkspaceEmptyState"

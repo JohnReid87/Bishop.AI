@@ -5,6 +5,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
@@ -51,6 +52,12 @@ public sealed partial class MainWindow : Window
             AppWindow.SetIcon(iconPath);
 
         SetTitleBar(AppTitleBar);
+    }
+
+    private void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (ViewModel.CatMode.IsActive)
+            e.Handled = true;
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

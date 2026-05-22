@@ -1,3 +1,4 @@
+using Bishop.App.CatMode;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.DeleteWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
@@ -17,6 +18,8 @@ namespace Bishop.UI.ViewModels;
 public sealed partial class MainWindowViewModel : ObservableObject
 {
     private readonly IMediator _mediator;
+
+    public ICatModeService CatMode { get; }
 
     public ObservableCollection<WorkspaceItemViewModel> Workspaces { get; } = [];
 
@@ -39,11 +42,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public Visibility ExpandedPanelVisibility => IsPaneOpen ? Visibility.Visible : Visibility.Collapsed;
     public Visibility CollapsedPanelVisibility => IsPaneOpen ? Visibility.Collapsed : Visibility.Visible;
 
-    public MainWindowViewModel(IMediator mediator)
+    public Visibility CatModeOnVisibility => CatMode.IsActive ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility CatModeOffVisibility => CatMode.IsActive ? Visibility.Collapsed : Visibility.Visible;
+
+    public MainWindowViewModel(IMediator mediator, ICatModeService catMode)
     {
         _mediator = mediator;
+        CatMode = catMode;
         Workspaces.CollectionChanged += (_, _) => OnPropertyChanged(nameof(EmptyStateVisibility));
+        CatMode.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ICatModeService.IsActive))
+            {
+                OnPropertyChanged(nameof(CatModeOnVisibility));
+                OnPropertyChanged(nameof(CatModeOffVisibility));
+            }
+        };
     }
+
+    [RelayCommand]
+    private void ToggleCatMode() => CatMode.Toggle();
 
     public async Task LoadAsync()
     {

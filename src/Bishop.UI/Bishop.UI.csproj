@@ -38,6 +38,7 @@
     <Content Remove="Assets\Brand\07-app-icon-circular.svg" />
     <Content Remove="Assets\Brand\08-app-icon-mono.svg" />
     <Content Remove="Assets\Brand\09-favicon-32.svg" />
+    <Content Remove="Assets\Brand\cat_mode_panel.svg" />
     <Content Remove="Assets\Brand\icon-branch.svg" />
     <Content Remove="Assets\Brand\icon-chat.svg" />
     <Content Remove="Assets\Brand\icon-code.svg" />
