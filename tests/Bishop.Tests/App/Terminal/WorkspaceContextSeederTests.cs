@@ -306,6 +306,21 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public void EnsureContextMd_InsertsPointerAfterFirstH1_WhenMultipleH1sPresent()
+    {
+        var workspace = MakeWorkspace();
+        var existing = "# First Header\n\nContent under first.\n\n# Second Header\n\nContent under second.\n";
+
+        var output = WorkspaceContextSeeder.EnsureContextMd(existing, workspace);
+
+        var pointerIdx = output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal);
+        var firstH1Idx = output.IndexOf("# First Header", StringComparison.Ordinal);
+        var secondH1Idx = output.IndexOf("# Second Header", StringComparison.Ordinal);
+        pointerIdx.Should().BeGreaterThan(firstH1Idx, "pointer must follow the first H1");
+        pointerIdx.Should().BeLessThan(secondH1Idx, "pointer must not be pushed past the second H1");
+    }
+
+    [Fact]
     public void EnsureContextMd_InsertsPointerAtTop_WhenNoH1()
     {
         var workspace = MakeWorkspace();
@@ -380,6 +395,21 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             .Should().BeLessThan(output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal));
         output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal)
             .Should().BeLessThan(output.IndexOf("Claude-specific notes.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void EnsureClaudeMd_InsertsPointerAfterFirstH1_WhenMultipleH1sPresent()
+    {
+        var workspace = MakeWorkspace();
+        var existing = "# First Header\n\nContent under first.\n\n# Second Header\n\nContent under second.\n";
+
+        var output = WorkspaceContextSeeder.EnsureClaudeMd(existing, workspace);
+
+        var pointerIdx = output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal);
+        var firstH1Idx = output.IndexOf("# First Header", StringComparison.Ordinal);
+        var secondH1Idx = output.IndexOf("# Second Header", StringComparison.Ordinal);
+        pointerIdx.Should().BeGreaterThan(firstH1Idx, "pointer must follow the first H1");
+        pointerIdx.Should().BeLessThan(secondH1Idx, "pointer must not be pushed past the second H1");
     }
 
     [Fact]
@@ -494,6 +524,29 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         }
         finally
         {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_PropagatesException_WhenBishopContextFileIsLocked()
+    {
+        var temp = CreateTempDir();
+        FileStream? lockStream = null;
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Kappa"));
+            var bishopFile = Path.Combine(temp, WorkspaceContextSeeder.BishopContextFileName);
+            lockStream = File.Open(bishopFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            Func<Task> act = () => sut.SeedAsync(temp);
+
+            await act.Should().ThrowAsync<IOException>();
+        }
+        finally
+        {
+            lockStream?.Dispose();
             CleanupTempDir(temp);
         }
     }
