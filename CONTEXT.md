@@ -14,7 +14,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 - **App layer:** MediatR for commands/queries.
 - **DI:** `Microsoft.Extensions.DependencyInjection` via the generic host.
 - **Data:** EF Core 9 + SQLite (WAL mode for concurrent UI + CLI access). DB file at `%AppData%\Bishop.AI\bishop.db` (override with the `BISHOP_DB` env var — set it to an absolute path; useful for tests and portable configs).
-- **Testing:** xUnit + FluentAssertions. Handlers and repos tested against in-memory or temp SQLite. No UI tests for MVP.
+- **Testing:** xUnit + FluentAssertions. Handlers, repos, and UI-layer logic extracted to `Bishop.App` are tested against in-memory or temp SQLite. No tests target `net10.0-windows`; visual rendering and `xaml.cs` orchestration are out of scope.
 - **Target framework:** `net10.0` for Core / Data / App / Cli / Tests; `net10.0-windows10.0.19041.0` for Bishop.UI.
 
 ## Architecture
