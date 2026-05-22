@@ -426,7 +426,7 @@ cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, s
 
 // ── card claim ────────────────────────────────────────────────────────────────
 
-var claimSourceLaneOpt = new Option<string>("--lane", () => "To Do", "Source lane to claim from");
+var claimSourceLaneOpt = new Option<string>("--lane", () => SystemLaneNames.ToDo, "Source lane to claim from");
 var claimTagOpt = new Option<string?>("--tag", "Only claim the first card carrying this tag");
 
 var cardClaimCmd = new Command("claim", "Pick the top card from a lane and move it to Doing");

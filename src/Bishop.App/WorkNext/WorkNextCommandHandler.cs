@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using Bishop.App.Cards.ClaimCard;
+using Bishop.Core;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Claude;
 using Bishop.App.Git;
@@ -39,7 +40,7 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
             }
 
             var card = await _sender.Send(
-                new ClaimCardCommand(request.WorkspaceId, "To Do", request.Tag),
+                new ClaimCardCommand(request.WorkspaceId, SystemLaneNames.ToDo, request.Tag),
                 cancellationToken);
 
             if (card is null)

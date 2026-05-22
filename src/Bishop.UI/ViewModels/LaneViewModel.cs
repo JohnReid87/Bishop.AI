@@ -1,4 +1,5 @@
 using Bishop.App.Cards.AddCard;
+using Bishop.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
@@ -22,7 +23,7 @@ public sealed partial class LaneViewModel : ObservableObject
 
     public string DisplayName => $"{Name} ({FilteredCards.Count})";
 
-    public bool IsToDoLane => IsSystem && Name == "To Do";
+    public bool IsToDoLane => IsSystem && Name == SystemLaneNames.ToDo;
     public bool CanWorkNext => IsToDoLane && Cards.Count > 0;
     public string WorkNextTooltip => CanWorkNext ? "Ralph it" : "No cards in To Do";
 

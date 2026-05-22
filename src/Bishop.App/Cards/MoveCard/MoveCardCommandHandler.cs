@@ -36,8 +36,8 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
             var targetLane = await _db.Lanes.FindAsync([request.ToLaneId], cancellationToken)
                 ?? throw new InvalidOperationException($"Lane {request.ToLaneId} not found.");
 
-            var sourceDone = sourceLane.IsSystem && sourceLane.Name == "Done";
-            var targetDone = targetLane.IsSystem && targetLane.Name == "Done";
+            var sourceDone = sourceLane.IsSystem && sourceLane.Name == SystemLaneNames.Done;
+            var targetDone = targetLane.IsSystem && targetLane.Name == SystemLaneNames.Done;
             enteringDone = targetDone && !sourceDone;
             leavingDone = sourceDone && !targetDone;
 

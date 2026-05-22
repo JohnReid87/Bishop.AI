@@ -31,7 +31,7 @@ public sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, 
                 $"Lane '{request.SourceLaneName}' not found in workspace.");
 
         var doingLane = lanes.FirstOrDefault(l =>
-            string.Equals(l.Name, "Doing", StringComparison.OrdinalIgnoreCase))
+            string.Equals(l.Name, SystemLaneNames.Doing, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException(
                 "Lane 'Doing' not found in workspace.");
 

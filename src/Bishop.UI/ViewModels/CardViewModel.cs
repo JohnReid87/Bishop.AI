@@ -1,3 +1,4 @@
+using Bishop.Core;
 using Microsoft.UI.Xaml;
 
 namespace Bishop.UI.ViewModels;
@@ -23,7 +24,7 @@ public sealed class CardViewModel
     public string CloseReopenGlyph => IsClosed ? "" : "";
     public string CloseReopenTooltip => IsClosed ? "Reopen card" : "Close card";
 
-    public bool IsDoneLane => LaneName == "Done";
+    public bool IsDoneLane => LaneName == SystemLaneNames.Done;
     public Thickness CardHeaderPadding => IsDoneLane ? new Thickness(10, 2, 4, 2) : new Thickness(10, 4, 4, 4);
     public Thickness CardTitlePadding => IsDoneLane ? new Thickness(10, 3, 10, 4) : new Thickness(10, 6, 10, 8);
     public double CardTitleFontSize => IsDoneLane ? 12.0 : 14.0;

@@ -38,8 +38,8 @@ public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorksp
         };
         _db.Workspaces.Add(workspace);
 
-        string[] laneNames = ["To Do", "Doing", "Done"];
-        for (var i = 0; i < laneNames.Length; i++)
+        var laneNames = SystemLaneNames.All;
+        for (var i = 0; i < laneNames.Count; i++)
         {
             _db.Lanes.Add(new Lane
             {

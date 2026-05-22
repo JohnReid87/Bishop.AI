@@ -8,8 +8,6 @@ namespace Bishop.App.Workspaces.InitWorkspace;
 
 public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceCommand, InitWorkspaceResult>
 {
-    private static readonly string[] DefaultLaneNames = ["To Do", "Doing", "Done"];
-
     private readonly BishopDbContext _db;
     private readonly IGitCli _git;
 
@@ -47,13 +45,13 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
             };
             _db.Workspaces.Add(workspace);
 
-            for (var i = 0; i < DefaultLaneNames.Length; i++)
+            for (var i = 0; i < SystemLaneNames.All.Count; i++)
             {
                 _db.Lanes.Add(new Lane
                 {
                     Id = Guid.NewGuid(),
                     WorkspaceId = workspace.Id,
-                    Name = DefaultLaneNames[i],
+                    Name = SystemLaneNames.All[i],
                     Position = i + 1,
                     IsSystem = true,
                 });
@@ -61,7 +59,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
 
             await _db.SaveChangesAsync(cancellationToken);
             created = true;
-            lanesAdded = DefaultLaneNames;
+            lanesAdded = SystemLaneNames.All;
         }
         else
         {
@@ -70,7 +68,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
                 .Select(l => l.Name)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            var missing = DefaultLaneNames.Where(n => !existingLaneNames.Contains(n)).ToList();
+            var missing = SystemLaneNames.All.Where(n => !existingLaneNames.Contains(n)).ToList();
             if (missing.Count > 0)
             {
                 var nextPosition = existing.Lanes.Count > 0
