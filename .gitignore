@@ -431,3 +431,6 @@ FodyWeavers.xsd
 
 # Per-workspace notepad (created by Bishop.AI when this repo is a registered workspace)
 BISHOP_NOTES.md
+
+# Bishop runtime files (worknext.running, worknext.stop, etc.)
+.bishop/

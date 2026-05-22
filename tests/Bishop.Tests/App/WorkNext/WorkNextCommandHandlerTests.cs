@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.GetCard;
@@ -931,5 +932,58 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
         File.Exists(RunningFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DoesNotFalsePositiveDirtyTreeOnOwnRuntimeFiles()
+    {
+        // Arrange — real git repo with .bishop/ gitignored, so the handler's own
+        // runtime files (worknext.running) don't trigger DirtyWorkingTree
+        var repoPath = Path.Combine(Path.GetTempPath(), "bishop-gitignore-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(repoPath);
+        try
+        {
+            RunGit(repoPath, ["init"]);
+            RunGit(repoPath, ["config", "user.email", "test@test.com"]);
+            RunGit(repoPath, ["config", "user.name", "Test"]);
+            File.WriteAllText(Path.Combine(repoPath, ".gitignore"), ".bishop/\n");
+            RunGit(repoPath, ["add", ".gitignore"]);
+            RunGit(repoPath, ["commit", "-m", "init"]);
+
+            var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+            var todo = lanes.Single(l => l.Name == "To Do");
+            await new AddCardCommandHandler(_factory)
+                .Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+            var handler = new WorkNextCommandHandler(new GitCli(), CreateSender(), ClaudeAlwaysSucceeds());
+
+            // Act
+            var result = await handler.Handle(
+                new WorkNextCommand(workspace.Id, repoPath, "test", 1),
+                default);
+
+            // Assert
+            result.StopReason.Should().NotBe(WorkNextStopReason.DirtyWorkingTree);
+        }
+        finally
+        {
+            try { Directory.Delete(repoPath, recursive: true); } catch { }
+        }
+    }
+
+    private static void RunGit(string workingDir, string[] args)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = workingDir,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (var arg in args)
+            psi.ArgumentList.Add(arg);
+        using var proc = Process.Start(psi)!;
+        proc.WaitForExit();
     }
 }
