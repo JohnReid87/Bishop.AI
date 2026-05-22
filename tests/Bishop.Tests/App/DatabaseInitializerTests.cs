@@ -462,4 +462,67 @@ public sealed class DatabaseInitializerTests : IDisposable
         await startTask;
         File.Exists(_stampPath).Should().BeTrue("the stamp must have been written once StartAsync completed");
     }
+
+    [Fact]
+    public async Task StartAsync_WhenCancellationTokenIsAlreadyCancelled_ThrowsOperationCanceledException()
+    {
+        // Arrange — token is cancelled before StartAsync is called; the check at
+        // DatabaseInitializer.cs:57 fires after the mutex is acquired, so the
+        // exception is thrown inside EnsureSchema with the mutex still held.
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var sut = CreateSut();
+
+        // Act
+        var act = () => sut.StartAsync(cts.Token);
+
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    // MutexAcquireTimeout is a 60-second private constant with no injection point.
+    // Holding a real named Mutex for that duration would make the suite unusable.
+    // The TimeoutException path at DatabaseInitializer.cs:53–55 is verified by
+    // code inspection: mutex.WaitOne(MutexAcquireTimeout) returns false when the
+    // timeout expires, which maps directly to the throw new TimeoutException(...) branch.
+    [Fact(Skip =
+        "Cannot reproduce without waiting 60 s — MutexAcquireTimeout has no injection point. " +
+        "Timeout path verified by code inspection (DatabaseInitializer.cs:53).")]
+    public Task StartAsync_WhenMutexHoldExceedsAcquireTimeout_ThrowsTimeoutException()
+    {
+        return Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenMutexWasAbandonedByPriorHolder_CompletesSuccessfully()
+    {
+        // Arrange — a dedicated thread acquires the named mutex then exits without
+        // releasing it, causing the OS to mark the mutex as abandoned.
+        // EnsureSchema catches AbandonedMutexException and treats the acquisition
+        // as successful (DatabaseInitializer.cs:46–50), so StartAsync must complete.
+        var mutexName = DatabaseInitializer.BuildMutexName(_stampPath);
+        var mutexAcquired = new ManualResetEventSlim(false);
+
+        var abandoner = new Thread(() =>
+        {
+            var mutex = new Mutex(initiallyOwned: false, mutexName);
+            mutex.WaitOne();
+            mutexAcquired.Set();
+            // Thread exits here without ReleaseMutex — marks the mutex as abandoned.
+        })
+        { IsBackground = true };
+
+        abandoner.Start();
+        mutexAcquired.Wait(TimeSpan.FromSeconds(5)).Should().BeTrue("the abandoner thread must acquire the mutex");
+        abandoner.Join(TimeSpan.FromSeconds(5)).Should().BeTrue("the abandoner thread must exit, abandoning the mutex");
+
+        var sut = CreateSut();
+
+        // Act
+        var act = () => sut.StartAsync(default);
+
+        // Assert
+        await act.Should().NotThrowAsync("AbandonedMutexException is caught and treated as a successful acquire");
+        File.Exists(_stampPath).Should().BeTrue("schema init must complete even when the mutex was previously abandoned");
+    }
 }
