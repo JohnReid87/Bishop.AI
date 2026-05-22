@@ -138,6 +138,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().Contain("`bish-coverage`");
         output.Should().Contain("`bish-tests`");
         output.Should().Contain("`bish-audit-docs`");
+        output.Should().Contain("`bish-chat`");
     }
 
     [Fact]

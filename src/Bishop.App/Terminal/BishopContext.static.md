@@ -24,6 +24,14 @@ the task instead of doing everything inside a single session.
 - `bish-audit-docs` — audits Markdown docs in the repo for drift against the
   code and edits the docs in place per agreed finding.
 
+### Discussion skill — operates on one existing card
+
+- `bish-chat` — quick open-ended chat about a single card. Accepts a card
+  Number, loads it, and opens a conversation; the wrap-up can edit the
+  source card and/or spin out follow-up cards. Lighter than `bish-grill-me`,
+  and never moves the source card. Use when you have a card in hand that
+  needs more thinking before it's actionable.
+
 ### Execution skills — consume cards
 
 - `bish-work-on-card` — interactive. Accepts a single card Number

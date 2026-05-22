@@ -38,7 +38,7 @@ Bishop does not inject anything into workspace `CLAUDE.md` files. Skills are com
 Cut because (a) workspaces attached from existing repos (FotM.IO-style) already have authored `CLAUDE.md` files and auto-seeding risks collisions, (b) keeping ownership clean is cheap, (c) the skill is already loaded globally for the only consumer that matters.
 
 ### Skills live in this repo
-The bundled skills (`bish-arch`, `bish-audit-docs`, `bish-auto-card`, `bish-coverage`, `bish-grill-me`, `bish-onboard`, `bish-tests`, `bish-triage`, `bish-work-on-card`) are vendored under `skills/` in the Bishop.AI repo, and `bishop install-skills` copies them to `%USERPROFILE%/.claude/skills/`. Skills version with Bishop; CLI evolution and skill text update in the same commit.
+The bundled skills (`bish-arch`, `bish-audit-docs`, `bish-auto-card`, `bish-chat`, `bish-coverage`, `bish-grill-me`, `bish-onboard`, `bish-tests`, `bish-triage`, `bish-work-on-card`) are vendored under `skills/` in the Bishop.AI repo, and `bishop install-skills` copies them to `%USERPROFILE%/.claude/skills/`. Skills version with Bishop; CLI evolution and skill text update in the same commit.
 
 ### CLI surface is unversioned and additive-only
 No `bishop v1 ...` prefix. Commands and flags are not renamed or removed once shipped — additive changes only, in the style of `gh`. Stated here explicitly so a future quietly-renamed flag doesn't silently break the skills.
