@@ -449,6 +449,97 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task InitWorkspace_NullPath_Throws()
+    {
+        var handler = CreateInitHandler();
+
+        var act = () => handler.Handle(new InitWorkspaceCommand(null!), default);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task InitWorkspace_EmptyPath_Throws()
+    {
+        var handler = CreateInitHandler();
+
+        var act = () => handler.Handle(new InitWorkspaceCommand(""), default);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task InitWorkspace_NonExistentDirectory_CreatesWorkspaceWithDirectoryName()
+    {
+        var dirName = $"ghost-{Guid.NewGuid():N}"[..20];
+        var path = $@"C:\does-not-exist\{dirName}";
+        var handler = CreateInitHandler();
+
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        result.Created.Should().BeTrue();
+        result.Workspace.Name.Should().Be(dirName);
+    }
+
+    [Fact]
+    public async Task InitWorkspace_GetOriginUrlThrows_PropagatesException()
+    {
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\ex-{tag}";
+        var git = Substitute.For<IGitCli>();
+        git.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string?>(new InvalidOperationException("git failed")));
+        var handler = CreateInitHandler(git);
+
+        var act = () => handler.Handle(new InitWorkspaceCommand(path), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("git failed");
+    }
+
+    [Theory]
+    [InlineData("https://github.com/")]
+    [InlineData("https://github.com/owner")]
+    [InlineData("/owner/repo")]
+    [InlineData("https://gitlab.com/owner/repo")]
+    public async Task InitWorkspace_InvalidOrNonGitHubOriginVariants_DoNotLink(string originUrl)
+    {
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\slug-{tag}";
+        var git = Substitute.For<IGitCli>();
+        git.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(originUrl);
+        var handler = CreateInitHandler(git);
+
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        result.GitHubLinked.Should().BeFalse();
+        result.Workspace.GitHubRepo.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task InitWorkspace_PartiallySeeded_TagsMissing_FillsGapTags()
+    {
+        // Arrange: CreateWorkspaceCommandHandler seeds lanes but not tags
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\taggap-{tag}";
+        var ws = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand($"TagGap-{tag}", path), default);
+        (await _db.Tags.CountAsync(t => t.WorkspaceId == ws.Id)).Should().Be(0);
+        var handler = CreateInitHandler();
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        // Assert
+        result.Created.Should().BeFalse();
+        result.LanesAdded.Should().BeEmpty();
+        result.TagsAdded.Should().BeEquivalentTo(
+            ["feature", "bug", "chore", "docs", "arch", "test", "spike"],
+            opts => opts.WithoutStrictOrdering());
+        (await _db.Tags.CountAsync(t => t.WorkspaceId == ws.Id)).Should().Be(7);
+    }
+
+    [Fact]
     public async Task SetWorkspaceGitHubRepo_PlainOwnerRepo_PersistsAndReturnsWorkspace()
     {
         // Arrange
