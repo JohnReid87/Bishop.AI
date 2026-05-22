@@ -7,6 +7,7 @@ using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.GetCardByNumber;
+using Bishop.App.Cards.ImportFromGitHub;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
@@ -600,6 +601,37 @@ cardPushCmd.SetHandler(async (string prefix, string? workspace) =>
     Console.WriteLine($"Pushed card #{card.Number} → {issueUrl}");
 }, cardPushIdArg, workspaceOpt);
 
+// ── card import-from-github ───────────────────────────────────────────────────
+
+var importLabelOpt = new Option<string?>("--label", "Filter to issues carrying this GitHub label");
+var importLimitOpt = new Option<int>("--limit", () => 100, "Maximum number of issues to import");
+var importDryRunOpt = new Option<bool>("--dry-run", "Preview what would be imported without writing anything");
+
+var cardImportFromGitHubCmd = new Command("import-from-github", "Import open GitHub issues as cards in the To Do lane");
+cardImportFromGitHubCmd.AddOption(importLabelOpt);
+cardImportFromGitHubCmd.AddOption(importLimitOpt);
+cardImportFromGitHubCmd.AddOption(importDryRunOpt);
+cardImportFromGitHubCmd.AddOption(jsonOpt);
+cardImportFromGitHubCmd.AddOption(workspaceOpt);
+cardImportFromGitHubCmd.SetHandler(async (string? label, int limit, bool dryRun, bool json, string? workspace) =>
+{
+    var ws = await resolver.ResolveAsync(workspace);
+    var result = await mediator.Send(new ImportFromGitHubCommand(ws.Id, label, limit, dryRun));
+    if (json)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(result, jsonOpts));
+        return;
+    }
+    var prefix = dryRun ? "[dry-run] " : string.Empty;
+    Console.WriteLine($"{prefix}Imported {result.Imported.Count}, skipped {result.SkippedAlreadyPresent.Count} (already present), failed {result.Failed.Count}.");
+    foreach (var c in result.Imported)
+        Console.WriteLine($"  {(dryRun ? "would import" : "imported")}  #{c.GitHubIssueNumber}  {c.Title}");
+    foreach (var n in result.SkippedAlreadyPresent)
+        Console.WriteLine($"  {(dryRun ? "would skip" : "skipped")}   #{n}");
+    foreach (var f in result.Failed)
+        Console.WriteLine($"  failed    #{f.IssueNumber}  {f.Error}");
+}, importLabelOpt, importLimitOpt, importDryRunOpt, jsonOpt, workspaceOpt);
+
 // ── card close ────────────────────────────────────────────────────────────────
 
 var cardCloseIdArg = new Argument<string>("card-id", "Card short ID or prefix");
@@ -643,6 +675,7 @@ cardCmd.AddCommand(cardEditCmd);
 cardCmd.AddCommand(cardClaimCmd);
 cardCmd.AddCommand(cardListCmd);
 cardCmd.AddCommand(cardPushCmd);
+cardCmd.AddCommand(cardImportFromGitHubCmd);
 cardCmd.AddCommand(cardCloseCmd);
 cardCmd.AddCommand(cardReopenCmd);
 root.AddCommand(cardCmd);

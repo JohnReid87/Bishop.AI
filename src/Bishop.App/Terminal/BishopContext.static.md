@@ -58,6 +58,24 @@ or out of the `Done` lane also close / reopen the linked issue.
 Push is **on-demand** — call it explicitly for the cards that need to be
 visible on GitHub; everything else stays local.
 
+## Importing issues from GitHub
+
+To pull an existing GitHub issue backlog into the `To Do` lane, run:
+
+```
+bishop card import-from-github [--label <name>] [--limit <N>] [--dry-run] [--json]
+```
+
+- Only open issues are imported. Closed-issue mirroring is out of scope.
+- Issues already present (matched by `GitHubIssueNumber`) are skipped silently — re-runs are safe.
+- GitHub labels are mapped to workspace tags by name (case-insensitive); labels that have no matching workspace tag are ignored and no new tags are created.
+- Cards are appended to the bottom of `To Do`, sorted oldest-issue-first.
+- `--label <name>` filters to issues carrying that GitHub label.
+- `--limit <N>` caps the number of issues fetched (default 100).
+- `--dry-run` prints what would be imported without writing anything.
+- `--json` emits an object with `Imported`, `SkippedAlreadyPresent`, and `Failed` arrays.
+- Requires `bishop workspace set-github <owner/repo>` and `gh auth login`.
+
 ## Commit-reference convention
 
 When a commit implements work tracked by a card, end the Conventional Commits
@@ -166,6 +184,7 @@ they resolve from the current working directory.
 - `bishop card edit <id> [--title <t>] [--description <d> | --description-file <path>] [--tag <name>...] [--clear-tags]`
 - `bishop card claim [--lane <name>] [--tag <name>] [--json]` — pop the top card of a lane into "Doing"; with `--tag`, picks the first card carrying that tag
 - `bishop card push <id>` — create a GitHub issue for the card
+- `bishop card import-from-github [--label <name>] [--limit <N>] [--dry-run] [--json]` — import open GitHub issues as cards
 - `bishop card close <id>` / `bishop card reopen <id>`
 
 ### Lane
