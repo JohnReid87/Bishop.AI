@@ -309,7 +309,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "Accum", TagNames: ["test"]), default);
 
-        var claude = ClaudeAlwaysSucceeds(new ClaudeRunTotals(0.05m, 1000, 250));
+        var claude = ClaudeAlwaysSucceeds(new ClaudeRunTotals(1000, 250));
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
 
         // Act
@@ -317,7 +317,6 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
-        saved.TotalCostUsd.Should().Be(0.05m);
         saved.TotalInputTokens.Should().Be(1000);
         saved.TotalOutputTokens.Should().Be(250);
         saved.ClaudeRunCount.Should().Be(1);
@@ -339,7 +338,6 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
-        saved.TotalCostUsd.Should().Be(0m);
         saved.TotalInputTokens.Should().Be(0);
         saved.TotalOutputTokens.Should().Be(0);
         saved.ClaudeRunCount.Should().Be(1);
@@ -362,7 +360,6 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Assert
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
         saved.ClaudeRunCount.Should().Be(0);
-        saved.TotalCostUsd.Should().Be(0m);
     }
 
     [Fact]
@@ -374,7 +371,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "Summarised", TagNames: ["test"]), default);
 
-        var claude = ClaudeAlwaysSucceeds(new ClaudeRunTotals(0.0234m, 12300, 4100), toolUseCount: 14);
+        var claude = ClaudeAlwaysSucceeds(new ClaudeRunTotals(12300, 4100), toolUseCount: 14);
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
 
         var output = new StringWriter();
@@ -398,7 +395,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         var exitIdx = Array.IndexOf(lines, "exit 0");
         exitIdx.Should().BeGreaterThan(-1);
         var summary = lines[exitIdx + 1];
-        summary.Should().StartWith($"card #{card.Number}: $0.0234, 14 tool uses, 12.3k↑ 4.1k↓ in ");
+        summary.Should().StartWith($"card #{card.Number}: 14 tool uses, 12.3k↑ 4.1k↓ in ");
     }
 
     [Fact]
@@ -434,7 +431,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         var exitIdx = Array.IndexOf(lines, "exit 7");
         exitIdx.Should().BeGreaterThan(-1);
         var summary = lines[exitIdx + 1];
-        summary.Should().StartWith($"card #{card.Number}: $0.0000, 0 tool uses, 0↑ 0↓ in ");
+        summary.Should().StartWith($"card #{card.Number}: 0 tool uses, 0↑ 0↓ in ");
     }
 
     [Fact]

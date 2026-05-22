@@ -67,8 +67,8 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public Visibility ClaudeTotalsVisibility =>
         string.IsNullOrEmpty(ClaudeTotalsText) ? Visibility.Collapsed : Visibility.Visible;
 
-    public void SetClaudeTotals(decimal costUsd, int inputTokens, int outputTokens, int runCount, decimal? usdToGbpRate) =>
-        ClaudeTotalsText = ClaudeTotalsFormatter.Format(costUsd, inputTokens, outputTokens, runCount, usdToGbpRate);
+    public void SetClaudeTotals(int inputTokens, int outputTokens, int runCount) =>
+        ClaudeTotalsText = ClaudeTotalsFormatter.Format(inputTokens, outputTokens, runCount);
 
     public string NumberDisplay => $"#{Number}";
 

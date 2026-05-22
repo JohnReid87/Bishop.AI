@@ -8,119 +8,78 @@ public sealed class ClaudeTotalsFormatterTests
     [Fact]
     public void Format_Returns_Null_When_All_Totals_Are_Zero()
     {
-        ClaudeTotalsFormatter.Format(0m, 0, 0, 0, null).Should().BeNull();
+        ClaudeTotalsFormatter.Format(0, 0, 0).Should().BeNull();
     }
 
     [Fact]
-    public void Format_Without_FxRate_Renders_UsdOnly()
+    public void Format_Renders_Tokens_And_RunCount()
     {
-        var line = ClaudeTotalsFormatter.Format(0.12m, 8100, 2400, 3, null);
+        var line = ClaudeTotalsFormatter.Format(8100, 2400, 3);
 
-        line.Should().Be("Claude: $0.12 (3 runs, 8.1k in / 2.4k out)");
-    }
-
-    [Fact]
-    public void Format_With_FxRate_Renders_GbpAlongsideUsd()
-    {
-        var line = ClaudeTotalsFormatter.Format(0.12m, 8100, 2400, 3, 0.75m);
-
-        line.Should().Be("Claude: $0.12 (£0.09) (3 runs, 8.1k in / 2.4k out)");
+        line.Should().Be("Claude: 3 runs, 8.1k in / 2.4k out");
     }
 
     [Fact]
     public void Format_Singular_Run_Uses_Run_Not_Runs()
     {
-        var line = ClaudeTotalsFormatter.Format(0.05m, 500, 200, 1, null);
+        var line = ClaudeTotalsFormatter.Format(500, 200, 1);
 
-        line.Should().Be("Claude: $0.05 (1 run, 500 in / 200 out)");
+        line.Should().Be("Claude: 1 run, 500 in / 200 out");
     }
 
     [Fact]
     public void Format_Tokens_Below_1k_Render_As_Raw_Integer()
     {
-        var line = ClaudeTotalsFormatter.Format(0.01m, 999, 1, 1, null);
+        var line = ClaudeTotalsFormatter.Format(999, 1, 1);
 
-        line.Should().Be("Claude: $0.01 (1 run, 999 in / 1 out)");
+        line.Should().Be("Claude: 1 run, 999 in / 1 out");
     }
 
     [Fact]
     public void Format_Tokens_At_Or_Above_1k_Render_With_K_Suffix_OneDecimal()
     {
-        var line = ClaudeTotalsFormatter.Format(0.01m, 1000, 12345, 1, null);
+        var line = ClaudeTotalsFormatter.Format(1000, 12345, 1);
 
-        line.Should().Be("Claude: $0.01 (1 run, 1.0k in / 12.3k out)");
+        line.Should().Be("Claude: 1 run, 1.0k in / 12.3k out");
     }
 
     [Fact]
-    public void Format_Renders_Even_When_Only_RunCount_Is_NonZero()
+    public void Format_Returns_Non_Null_When_Only_RunCount_Is_NonZero()
     {
-        var line = ClaudeTotalsFormatter.Format(0m, 0, 0, 1, null);
+        var line = ClaudeTotalsFormatter.Format(0, 0, 1);
 
-        line.Should().Be("Claude: $0.00 (1 run, 0 in / 0 out)");
-    }
-
-    // ── Visible / hidden contract ─────────────────────────────────────────────
-    // The CardDetailDialog binds row visibility to (Format result is not null).
-    // These two cases pin down that contract.
-
-    [Fact]
-    public void Format_Returns_Non_Null_When_Only_CostUsd_Is_NonZero()
-    {
-        // Early-return guard fires only when ALL four are zero; a non-zero costUsd must produce output.
-        var line = ClaudeTotalsFormatter.Format(0.01m, 0, 0, 0, null);
-
-        line.Should().Be("Claude: $0.01 (0 runs, 0 in / 0 out)");
-    }
-
-    [Fact]
-    public void Format_Visible_State_With_FxRate_Matches_Cli_ByteForByte()
-    {
-        var line = ClaudeTotalsFormatter.Format(0.12m, 8100, 2400, 3, 0.75m);
-
-        line.Should().Be("Claude: $0.12 (£0.09) (3 runs, 8.1k in / 2.4k out)");
-    }
-
-    // ── Negative inputs — documenting current behaviour ───────────────────────
-
-    [Fact]
-    public void Format_Negative_CostUsd_Renders_Negative_Dollar_Amount()
-    {
-        var line = ClaudeTotalsFormatter.Format(-0.12m, 8100, 2400, 3, null);
-
-        line.Should().Be("Claude: $-0.12 (3 runs, 8.1k in / 2.4k out)");
+        line.Should().Be("Claude: 1 run, 0 in / 0 out");
     }
 
     [Fact]
     public void Format_Negative_InputTokens_Renders_Negative_Token_Count()
     {
-        var line = ClaudeTotalsFormatter.Format(0.01m, -500, 200, 1, null);
+        var line = ClaudeTotalsFormatter.Format(-500, 200, 1);
 
-        line.Should().Be("Claude: $0.01 (1 run, -500 in / 200 out)");
+        line.Should().Be("Claude: 1 run, -500 in / 200 out");
     }
 
     [Fact]
     public void Format_Negative_OutputTokens_Renders_Negative_Token_Count()
     {
-        var line = ClaudeTotalsFormatter.Format(0.01m, 500, -200, 1, null);
+        var line = ClaudeTotalsFormatter.Format(500, -200, 1);
 
-        line.Should().Be("Claude: $0.01 (1 run, 500 in / -200 out)");
+        line.Should().Be("Claude: 1 run, 500 in / -200 out");
     }
 
     [Fact]
     public void Format_Negative_RunCount_Renders_Negative_Run_Count()
     {
-        var line = ClaudeTotalsFormatter.Format(0.01m, 500, 200, -1, null);
+        var line = ClaudeTotalsFormatter.Format(500, 200, -1);
 
-        line.Should().Be("Claude: $0.01 (-1 runs, 500 in / 200 out)");
+        line.Should().Be("Claude: -1 runs, 500 in / 200 out");
     }
-
-    // ── Very large token counts ───────────────────────────────────────────────
 
     [Fact]
     public void Format_VeryLargeTokenCounts_Render_With_K_Suffix()
     {
-        var line = ClaudeTotalsFormatter.Format(1.00m, 5_000_000, 1_000_000, 10, null);
+        var line = ClaudeTotalsFormatter.Format(5_000_000, 1_000_000, 10);
 
-        line.Should().Be("Claude: $1.00 (10 runs, 5000.0k in / 1000.0k out)");
+        line.Should().Be("Claude: 10 runs, 5000.0k in / 1000.0k out");
     }
 }

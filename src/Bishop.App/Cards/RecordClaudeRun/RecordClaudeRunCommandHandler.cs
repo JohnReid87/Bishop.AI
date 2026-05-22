@@ -17,7 +17,6 @@ public sealed class RecordClaudeRunCommandHandler : IRequestHandler<RecordClaude
             .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
-        card.TotalCostUsd += request.CostUsd;
         card.TotalInputTokens += request.InputTokens;
         card.TotalOutputTokens += request.OutputTokens;
         card.ClaudeRunCount += 1;

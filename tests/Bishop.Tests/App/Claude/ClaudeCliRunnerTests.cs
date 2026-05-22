@@ -145,7 +145,7 @@ public sealed class ClaudeCliRunnerTests
 
         result.ExitCode.Should().Be(0);
         result.ToolUseCount.Should().Be(1);
-        result.Totals.Should().Be(new ClaudeRunTotals(0.05m, 1200, 340));
+        result.Totals.Should().Be(new ClaudeRunTotals(1200, 340));
     }
 
     [Fact]

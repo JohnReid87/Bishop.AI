@@ -5,31 +5,18 @@ namespace Bishop.App.Claude;
 
 public static class ClaudeTotalsFormatter
 {
-    public static string? Format(
-        decimal costUsd,
-        int inputTokens,
-        int outputTokens,
-        int runCount,
-        decimal? usdToGbpRate)
+    public static string? Format(int inputTokens, int outputTokens, int runCount)
     {
-        if (costUsd == 0m && inputTokens == 0 && outputTokens == 0 && runCount == 0)
+        if (inputTokens == 0 && outputTokens == 0 && runCount == 0)
             return null;
 
-        var sb = new StringBuilder("Claude: $");
-        sb.Append(costUsd.ToString("0.00", CultureInfo.InvariantCulture));
-        if (usdToGbpRate is not null)
-        {
-            sb.Append(" (£");
-            sb.Append((costUsd * usdToGbpRate.Value).ToString("0.00", CultureInfo.InvariantCulture));
-            sb.Append(')');
-        }
-        sb.Append(" (");
+        var sb = new StringBuilder("Claude: ");
         sb.Append(runCount.ToString(CultureInfo.InvariantCulture));
         sb.Append(runCount == 1 ? " run, " : " runs, ");
         sb.Append(RunFormatting.FormatTokens(inputTokens));
         sb.Append(" in / ");
         sb.Append(RunFormatting.FormatTokens(outputTokens));
-        sb.Append(" out)");
+        sb.Append(" out");
         return sb.ToString();
     }
 }

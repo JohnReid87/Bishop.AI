@@ -1,5 +1,4 @@
 using Bishop.App.Cards.GetCard;
-using Bishop.App.FxRates;
 using Bishop.App.Git;
 using Bishop.App.Settings;
 using Bishop.App.Skills.LaunchSkill;
@@ -63,20 +62,10 @@ public sealed partial class CardDetailDialog : ContentDialog
             var card = await mediator.Send(new GetCardQuery(ViewModel.CardId));
             if (card is null) return;
 
-            decimal? fxRate = null;
-            if (card.TotalCostUsd > 0m)
-            {
-                using var scope = App.Services.CreateScope();
-                var fx = scope.ServiceProvider.GetRequiredService<IFxRateProvider>();
-                fxRate = await fx.GetUsdToGbpAsync(_workspaceId);
-            }
-
             ViewModel.SetClaudeTotals(
-                card.TotalCostUsd,
                 card.TotalInputTokens,
                 card.TotalOutputTokens,
-                card.ClaudeRunCount,
-                fxRate);
+                card.ClaudeRunCount);
 
             var commitResult = await mediator.Send(new GetCardCommitQuery(ViewModel.Number, _workspacePath));
             if (commitResult is GetCardCommitResult.Found found)

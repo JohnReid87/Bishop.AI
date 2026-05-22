@@ -15,7 +15,6 @@ public sealed class Card : IAuditable
     public DateTimeOffset? GitHubPushedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public decimal TotalCostUsd { get; set; }
     public int TotalInputTokens { get; set; }
     public int TotalOutputTokens { get; set; }
     public int ClaudeRunCount { get; set; }

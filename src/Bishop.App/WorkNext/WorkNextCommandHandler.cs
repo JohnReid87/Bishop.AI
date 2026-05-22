@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.Core;
 using Bishop.App.Cards.RecordClaudeRun;
@@ -62,9 +61,9 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
             if (runResult.ExitCode != 0)
                 return new WorkNextResult(processed, WorkNextStopReason.ClaudeFailed, FailedCardNumber: card.Number);
 
-            var totals = runResult.Totals ?? new ClaudeRunTotals(0m, 0, 0);
+            var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
             await _sender.Send(
-                new RecordClaudeRunCommand(card.Id, totals.CostUsd, totals.InputTokens, totals.OutputTokens),
+                new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens),
                 cancellationToken);
 
             processed++;
@@ -76,12 +75,11 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
 
     private static string FormatCardSummary(int cardNumber, ClaudeRunResult runResult, TimeSpan elapsed)
     {
-        var totals = runResult.Totals ?? new ClaudeRunTotals(0m, 0, 0);
-        var cost = totals.CostUsd.ToString("0.0000", CultureInfo.InvariantCulture);
+        var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
         var toolUses = runResult.ToolUseCount == 1 ? "1 tool use" : $"{runResult.ToolUseCount} tool uses";
         var inTokens = RunFormatting.FormatTokens(totals.InputTokens);
         var outTokens = RunFormatting.FormatTokens(totals.OutputTokens);
         var duration = RunFormatting.FormatDuration(elapsed);
-        return $"card #{cardNumber}: ${cost}, {toolUses}, {inTokens}↑ {outTokens}↓ in {duration}";
+        return $"card #{cardNumber}: {toolUses}, {inTokens}↑ {outTokens}↓ in {duration}";
     }
 }

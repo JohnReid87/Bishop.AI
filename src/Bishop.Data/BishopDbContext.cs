@@ -11,7 +11,6 @@ public sealed class BishopDbContext : DbContext
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<CardTag> CardTags => Set<CardTag>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
-    public DbSet<FxRate> FxRates => Set<FxRate>();
 
     public BishopDbContext(DbContextOptions<BishopDbContext> options) : base(options) { }
 

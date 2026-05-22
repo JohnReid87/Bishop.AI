@@ -129,7 +129,7 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
-    public void Format_Result_Includes_Duration_ToolUseCount_And_Cost()
+    public void Format_Result_Includes_Duration_And_ToolUseCount()
     {
         var sut = new StreamJsonFormatter();
         sut.Format("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"a"}}]}}""");
@@ -137,11 +137,11 @@ public sealed class StreamJsonFormatterTests
 
         var result = sut.Format("""{"type":"result","duration_ms":12500,"total_cost_usd":0.0345,"num_turns":3}""");
 
-        result.Should().Be("done in 12.5s, 2 tool uses, $0.0345");
+        result.Should().Be("done in 12.5s, 2 tool uses");
     }
 
     [Fact]
-    public void Format_Result_Without_Cost_Omits_Cost_Segment()
+    public void Format_Result_With_Duration_And_ToolUseCount()
     {
         var sut = new StreamJsonFormatter();
         sut.Format("""{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"a"}}]}}""");
@@ -158,7 +158,7 @@ public sealed class StreamJsonFormatterTests
 
         var result = sut.Format("""{"type":"result","total_cost_usd":0.01}""");
 
-        result.Should().Be("done, 0 tool uses, $0.01");
+        result.Should().Be("done, 0 tool uses");
     }
 
     [Fact]
@@ -248,33 +248,33 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
-    public void Totals_PopulatesFromAccumulatedAssistantUsage_AndResultCost()
+    public void Totals_PopulatesFromAccumulatedAssistantUsage()
     {
         var sut = new StreamJsonFormatter();
         sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":5000,"output_tokens":1500},"content":[{"type":"text","text":"hi"}]}}""");
         sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":3100,"output_tokens":900},"content":[{"type":"text","text":"bye"}]}}""");
         sut.Format("""{"type":"result","total_cost_usd":0.12}""");
 
-        sut.Totals.Should().Be(new ClaudeRunTotals(0.12m, 8100, 2400));
+        sut.Totals.Should().Be(new ClaudeRunTotals(8100, 2400));
     }
 
     [Fact]
-    public void Totals_PopulatesFromResultEvent_CostOnly_WhenNoAssistantUsage()
+    public void Totals_StaysNull_WhenResultHasCostOnlyAndNoAssistantUsage()
     {
         var sut = new StreamJsonFormatter();
         sut.Format("""{"type":"result","total_cost_usd":0.05}""");
 
-        sut.Totals.Should().Be(new ClaudeRunTotals(0.05m, 0, 0));
+        sut.Totals.Should().BeNull();
     }
 
     [Fact]
-    public void Totals_PopulatesFromAccumulatedAssistantUsage_WhenResultCostMissing()
+    public void Totals_PopulatesFromAccumulatedAssistantUsage_WhenResultHasNoCost()
     {
         var sut = new StreamJsonFormatter();
         sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":5000,"output_tokens":1200},"content":[{"type":"text","text":"hi"}]}}""");
         sut.Format("""{"type":"result","duration_ms":900}""");
 
-        sut.Totals.Should().Be(new ClaudeRunTotals(0m, 5000, 1200));
+        sut.Totals.Should().Be(new ClaudeRunTotals(5000, 1200));
     }
 
     [Fact]

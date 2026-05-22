@@ -1,7 +1,6 @@
 using Bishop.App;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Claude;
-using Bishop.App.FxRates;
 using Bishop.Core;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.CloseCard;
@@ -254,15 +253,6 @@ async Task<(Guid cardId, int cardNumber, Bishop.Core.Workspace ws)?> resolveCard
     return (matches[0].Id, matches[0].Number, ws);
 }
 
-// ── fx rate lookup ────────────────────────────────────────────────────────────
-
-async Task<decimal?> ReadUsdToGbpRateAsync(IServiceProvider services, Guid workspaceId)
-{
-    using var scope = services.CreateScope();
-    var provider = scope.ServiceProvider.GetRequiredService<IFxRateProvider>();
-    return await provider.GetUsdToGbpAsync(workspaceId);
-}
-
 // ── card view ─────────────────────────────────────────────────────────────────
 
 var cardViewIdArg = new Argument<string>("card-id", "Card short ID or prefix");
@@ -309,7 +299,6 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             gitHubPushedAt = card.GitHubPushedAt,
             createdAt = card.CreatedAt,
             updatedAt = card.UpdatedAt,
-            totalCostUsd = card.TotalCostUsd,
             totalInputTokens = card.TotalInputTokens,
             totalOutputTokens = card.TotalOutputTokens,
             claudeRunCount = card.ClaudeRunCount,
@@ -326,15 +315,10 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             Console.WriteLine("Status: closed");
         if (tags.Count > 0)
             Console.WriteLine($"Tags: {string.Join(", ", tags)}");
-        decimal? fxRate = null;
-        if (card.TotalCostUsd > 0m)
-            fxRate = await ReadUsdToGbpRateAsync(host.Services, ws.Id);
         var claudeLine = ClaudeTotalsFormatter.Format(
-            card.TotalCostUsd,
             card.TotalInputTokens,
             card.TotalOutputTokens,
-            card.ClaudeRunCount,
-            fxRate);
+            card.ClaudeRunCount);
         if (claudeLine is not null)
             Console.WriteLine(claudeLine);
         if (!string.IsNullOrEmpty(card.Description))
@@ -868,31 +852,6 @@ workNextCmd.SetHandler(async (string? workspace, string? tag, int max, string? m
     }
 }, workspaceOpt, workNextTagOpt, workNextMaxOpt, workNextModelOpt);
 root.AddCommand(workNextCmd);
-
-// ── fx refresh ────────────────────────────────────────────────────────────────
-
-var fxRefreshCmd = new Command("refresh", "Force a USD→GBP FX rate fetch and update the cached value");
-fxRefreshCmd.AddOption(workspaceOpt);
-fxRefreshCmd.SetHandler(async (string? workspace) =>
-{
-    var ws = await resolver.ResolveAsync(workspace);
-    using var scope = host.Services.CreateScope();
-    var provider = scope.ServiceProvider.GetRequiredService<IFxRateProvider>();
-    var rate = await provider.RefreshUsdToGbpAsync(ws.Id);
-
-    if (rate is null)
-    {
-        Console.Error.WriteLine("Failed to fetch FX rate. Cached value (if any) left as-is.");
-        Environment.ExitCode = 1;
-        return;
-    }
-
-    Console.WriteLine($"Refreshed USD→GBP rate: {rate.Value.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture)}");
-}, workspaceOpt);
-
-var fxCmd = new Command("fx", "Foreign-exchange rate utilities");
-fxCmd.AddCommand(fxRefreshCmd);
-root.AddCommand(fxCmd);
 
 // ── run ───────────────────────────────────────────────────────────────────────
 

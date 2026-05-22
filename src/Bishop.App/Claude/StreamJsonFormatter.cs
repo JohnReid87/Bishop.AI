@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
@@ -180,24 +179,14 @@ public sealed class StreamJsonFormatter
             duration = RunFormatting.FormatDuration(TimeSpan.FromMilliseconds(durMs));
         }
 
-        decimal? cost = null;
-        if (root.TryGetProperty("total_cost_usd", out var costProp)
-            && costProp.ValueKind == JsonValueKind.Number
-            && costProp.TryGetDecimal(out var c))
-        {
-            cost = c;
-        }
-
-        if (cost is not null || RunningInputTokens > 0 || RunningOutputTokens > 0)
-            Totals = new ClaudeRunTotals(cost ?? 0m, RunningInputTokens, RunningOutputTokens);
+        if (RunningInputTokens > 0 || RunningOutputTokens > 0)
+            Totals = new ClaudeRunTotals(RunningInputTokens, RunningOutputTokens);
 
         var parts = new List<string>
         {
             duration is null ? "done" : $"done in {duration}",
             $"{_toolUseCount} tool {(_toolUseCount == 1 ? "use" : "uses")}",
         };
-        if (cost is not null)
-            parts.Add($"${cost.Value.ToString("0.####", CultureInfo.InvariantCulture)}");
 
         return string.Join(", ", parts);
     }

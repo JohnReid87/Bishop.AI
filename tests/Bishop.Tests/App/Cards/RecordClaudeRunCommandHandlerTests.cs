@@ -45,11 +45,10 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
         var sut = new RecordClaudeRunCommandHandler(_factory);
 
         // Act
-        await sut.Handle(new RecordClaudeRunCommand(card.Id, 0.12m, 8100, 2400), default);
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 8100, 2400), default);
 
         // Assert
         var saved = await _db.Cards.AsNoTracking().SingleAsync(c => c.Id == card.Id);
-        saved.TotalCostUsd.Should().Be(0.12m);
         saved.TotalInputTokens.Should().Be(8100);
         saved.TotalOutputTokens.Should().Be(2400);
         saved.ClaudeRunCount.Should().Be(1);
@@ -63,12 +62,11 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
         var sut = new RecordClaudeRunCommandHandler(_factory);
 
         // Act
-        await sut.Handle(new RecordClaudeRunCommand(card.Id, 0.10m, 500, 200), default);
-        await sut.Handle(new RecordClaudeRunCommand(card.Id, 0.05m, 300, 150), default);
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 500, 200), default);
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 300, 150), default);
 
         // Assert
         var saved = await _db.Cards.AsNoTracking().SingleAsync(c => c.Id == card.Id);
-        saved.TotalCostUsd.Should().Be(0.15m);
         saved.TotalInputTokens.Should().Be(800);
         saved.TotalOutputTokens.Should().Be(350);
         saved.ClaudeRunCount.Should().Be(2);
@@ -79,7 +77,7 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
     {
         var sut = new RecordClaudeRunCommandHandler(_factory);
 
-        var act = () => sut.Handle(new RecordClaudeRunCommand(Guid.NewGuid(), 0m, 0, 0), default);
+        var act = () => sut.Handle(new RecordClaudeRunCommand(Guid.NewGuid(), 0, 0), default);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
