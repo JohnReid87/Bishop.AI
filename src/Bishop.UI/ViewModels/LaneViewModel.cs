@@ -37,7 +37,7 @@ public sealed partial class LaneViewModel : ObservableObject
     public bool CanStopWorkNext => IsWorkNextRunning && !IsWorkNextStopping;
     public bool IsPlayVisible => IsToDoLane && !IsWorkNextRunning;
     public bool IsStopVisible => IsToDoLane && IsWorkNextRunning;
-    public string StopWorkNextTooltip => IsWorkNextStopping ? "Stopping after current card…" : "Stop work-next";
+    public string StopWorkNextTooltip => IsWorkNextStopping ? "Stopping Ralph…" : "Stop Ralphing";
 
     [ObservableProperty]
     public partial bool IsDropTarget { get; set; }
