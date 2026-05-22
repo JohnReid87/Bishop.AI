@@ -78,9 +78,21 @@ Run `bishop workspace current --json`.
 4. Explore the codebase areas relevant to the card **via the Explore subagent**
    before writing any code.
    - Use the `Agent` tool with `subagent_type: "Explore"`.
-   - Brief it with: the card title + description, relevant CONTEXT.md sections,
-     and the specific questions you need answered ("where is X defined", "which
-     files would need to change to add Y", "what existing patterns handle Z").
+   - The `Agent` tool's own `description` parameter is a **3-to-5-word task
+     label** — it identifies the agent invocation in logs (e.g. `"Explore test
+     patterns"`, `"Find card handler"`). It is **not** the card description.
+     The card title + description belongs in `prompt`. Example:
+     ```
+     Agent(
+       subagent_type="Explore",
+       description="Explore card handler files",
+       prompt="Card: <title>\n<description>\n\nQuestions: where is X defined, ..."
+     )
+     ```
+   - Brief the prompt with: the card title + description, relevant CONTEXT.md
+     sections, and the specific questions you need answered ("where is X
+     defined", "which files would need to change to add Y", "what existing
+     patterns handle Z").
    - Ask it to return file paths + line numbers + short excerpts, NOT to dump
      whole files. Keep large file contents out of the main context.
    - Only fall back to direct Read/Grep when the Explore agent's findings need
@@ -110,8 +122,13 @@ Run `bishop workspace current --json`.
 
 7. Validate the changes. **Any non-zero exit here aborts the skill — no commit,
    no Done move, card stays in "Doing".**
-   - Run `dotnet build`. If it fails, exit non-zero and surface the build error.
-   - Run `dotnet test`. If any test fails, exit non-zero and surface the failure.
+   - Run `dotnet build`. If it exits non-zero, run `dotnet clean` once, then
+     re-run `dotnet build`. If the retry still fails, exit non-zero and surface
+     the build error. Do **not** improvise any `Remove-Item` or manual file
+     deletion to clear the cache — the `dotnet clean` path is the only
+     permitted cleanup.
+   - Run `dotnet test`. If any test fails, exit non-zero and surface the
+     failure. Do not retry `dotnet test` — test failures are real signals.
 
 8. **Derive the commit message.** Use the same tag → prefix mapping as
    `/bish-work-on-card`:
@@ -139,7 +156,7 @@ Run `bishop workspace current --json`.
 
    On a successful commit:
    ```
-   bishop card move <number> --to-lane "Done" --no-close
+   bishop card move <number> --to-lane "Done" --to-position 0 --no-close
    ```
    The `--no-close` flag (card #72) leaves the card with `IsClosed=false` so
    a human can review before closing.
@@ -180,5 +197,8 @@ Run `bishop workspace current --json`.
   non-zero with a clear message rather than improvising.
 - If `bishop card move` fails because the lane doesn't exist, surface the
   error — do not pick an alternative lane name.
+- **No improvised file cleanup.** Do not run `Remove-Item`, `rm`, `del`, or
+  any ad-hoc file/directory deletion to clear build artefacts. The only
+  permitted cache-clear path is `dotnet clean` as documented in step 7.
 
 </guardrails>
