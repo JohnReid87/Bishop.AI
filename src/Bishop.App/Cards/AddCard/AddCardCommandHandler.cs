@@ -15,17 +15,19 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
-        var existing = await db.Cards
-            .Where(c => c.LaneId == request.LaneId)
-            .ToListAsync(cancellationToken);
-
         int newPosition;
         if (request.Position == CardInsertPosition.Bottom)
         {
-            newPosition = existing.Count > 0 ? existing.Max(c => c.Position) + 1 : 1;
+            var maxPosition = await db.Cards
+                .Where(c => c.LaneId == request.LaneId)
+                .MaxAsync(c => (int?)c.Position, cancellationToken);
+            newPosition = (maxPosition ?? 0) + 1;
         }
         else
         {
+            var existing = await db.Cards
+                .Where(c => c.LaneId == request.LaneId)
+                .ToListAsync(cancellationToken);
             foreach (var c in existing)
                 c.Position++;
             newPosition = 1;
