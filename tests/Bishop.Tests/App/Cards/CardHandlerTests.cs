@@ -293,6 +293,52 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task MoveCard_WithExpectedSourceLaneId_MatchingCurrentLane_Succeeds()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todoId = lanes.Single(l => l.Name == SystemLaneNames.ToDo).Id;
+        var doingId = lanes.Single(l => l.Name == SystemLaneNames.Doing).Id;
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(todoId, "A"), default);
+        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
+
+        // Act
+        await handler.Handle(
+            new MoveCardCommand(card.Id, doingId, 1, ExpectedSourceLaneId: todoId),
+            default);
+
+        // Assert
+        var moved = await _db.Cards.FindAsync(card.Id);
+        moved!.LaneId.Should().Be(doingId);
+    }
+
+    [Fact]
+    public async Task MoveCard_WithExpectedSourceLaneId_MismatchedLane_Throws()
+    {
+        // Arrange — simulate the optimistic-concurrency case: caller believed the card
+        // was still in To Do, but it has already been moved to Doing by another writer.
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todoId = lanes.Single(l => l.Name == SystemLaneNames.ToDo).Id;
+        var doingId = lanes.Single(l => l.Name == SystemLaneNames.Doing).Id;
+        var doneId = lanes.Single(l => l.Name == SystemLaneNames.Done).Id;
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(doingId, "Already moved"), default);
+        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
+
+        // Act
+        var act = async () => await handler.Handle(
+            new MoveCardCommand(card.Id, doneId, 1, ExpectedSourceLaneId: todoId),
+            default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage($"Card {card.Id} was expected in lane {todoId} but is now in lane {doingId}.");
+        var unchanged = await _db.Cards.FindAsync(card.Id);
+        unchanged!.LaneId.Should().Be(doingId, "the handler must not mutate when the guard fails");
+    }
+
+    [Fact]
     public async Task EditCard_UpdatesTitle()
     {
         // Arrange

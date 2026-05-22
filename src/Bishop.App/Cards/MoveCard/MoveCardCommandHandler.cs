@@ -29,6 +29,10 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
             card = await db.Cards.FindAsync([request.CardId], cancellationToken)
                 ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
+            if (request.ExpectedSourceLaneId is { } expectedLaneId && card.LaneId != expectedLaneId)
+                throw new InvalidOperationException(
+                    $"Card {request.CardId} was expected in lane {expectedLaneId} but is now in lane {card.LaneId}.");
+
             var sourceLaneId = card.LaneId;
             var movingAcrossLanes = sourceLaneId != request.ToLaneId;
 
