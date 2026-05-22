@@ -49,20 +49,60 @@ public sealed partial class WorkspaceDetailPage : Page
     private bool _isDraggingNotes;
     private double _dragStartPageY;
     private double _dragStartNoteHeight;
+    private bool _isDraggingKanban;
+    private double _dragStartPageX;
+    private double _dragStartPanelWidth;
+    private CardViewModel? _skillViewerCard;
     private IReadOnlyList<InstalledSkill> _cardSkills = [];
     private IReadOnlyList<InstalledSkill> _workspaceSkills = [];
 
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
+    public SkillViewerViewModel SkillViewer { get; }
 
     public WorkspaceDetailPage()
     {
         Board = App.Services.GetRequiredService<WorkspaceBoardViewModel>();
         Notes = App.Services.GetRequiredService<WorkspaceNotesViewModel>();
+        SkillViewer = App.Services.GetRequiredService<SkillViewerViewModel>();
         _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         InitializeComponent();
+        InitSkillViewerModelMenu();
+        SkillViewer.PropertyChanged += OnSkillViewerPropertyChanged;
         Board.Lanes.CollectionChanged += (_, _) => ApplyWorkNextStateToToDoLane();
+    }
+
+    private void OnSkillViewerPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SkillViewerViewModel.IsOpen)) return;
+        if (App.MainWindow is not { } window) return;
+
+        if (SkillViewer.IsOpen)
+        {
+            window.SetExpandedForViewer(true);
+            var wa = Microsoft.UI.Windowing.DisplayArea
+                .GetFromWindowId(window.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Primary)
+                .WorkArea;
+            SkillViewer.SetAutoPanelWidth(wa.Width / 2.0);
+        }
+        else
+        {
+            window.SetExpandedForViewer(false);
+        }
+    }
+
+    private void InitSkillViewerModelMenu()
+    {
+        var flyout = new MenuFlyout();
+        foreach (var (id, label) in WorkNextOptionsDialogViewModel.Models)
+        {
+            var capturedId = id;
+            var item = new MenuFlyoutItem { Text = label };
+            item.Click += async (_, _) => await SkillViewer.SetModelAsync(capturedId);
+            flyout.Items.Add(item);
+        }
+        SkillViewerModelButton.Flyout = flyout;
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -157,6 +197,8 @@ public sealed partial class WorkspaceDetailPage : Page
         UpdatePathStatus();
         await LoadSkillsAsync();
         SetupWorkNextWatcher(vm.Path);
+        _skillViewerCard = null;
+        _ = SkillViewer.LoadAsync(vm.Id);
         _ = Board.LoadAsync(vm.Id);
         _ = Notes.LoadAsync(vm.Id, vm.Path);
     }
@@ -222,12 +264,18 @@ public sealed partial class WorkspaceDetailPage : Page
             var settingKey = $"skill.{skill.Name}.last_model";
             var savedModel = await appSettings.GetAsync(settingKey) ?? WorkNextOptionsDialogViewModel.DefaultModelId;
 
-            panel.Children.Add(MakeSkillRow(skill.Name, savedModel, async chosenModel =>
-            {
-                await appSettings.SetAsync(settingKey, chosenModel);
-                flyout.Hide();
-                await LaunchSkillAsync(capturedSkill, rendered, workspacePath, card: null, chosenModel);
-            }));
+            panel.Children.Add(MakeSkillRow(skill.Name, savedModel,
+                onLaunch: async chosenModel =>
+                {
+                    await appSettings.SetAsync(settingKey, chosenModel);
+                    flyout.Hide();
+                    await LaunchSkillAsync(capturedSkill, rendered, workspacePath, card: null, chosenModel);
+                },
+                onView: async () =>
+                {
+                    flyout.Hide();
+                    await OpenSkillViewerAsync(capturedSkill, card: null);
+                }));
             if (i < _workspaceSkills.Count - 1)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
         }
@@ -506,12 +554,18 @@ public sealed partial class WorkspaceDetailPage : Page
             var settingKey = $"skill.{skill.Name}.last_model";
             var savedModel = await appSettings.GetAsync(settingKey) ?? WorkNextOptionsDialogViewModel.DefaultModelId;
 
-            panel.Children.Add(MakeSkillRow(skill.Name, savedModel, async chosenModel =>
-            {
-                await appSettings.SetAsync(settingKey, chosenModel);
-                flyout.Hide();
-                await LaunchSkillAsync(capturedSkill, rendered, workspacePath, card, chosenModel);
-            }));
+            panel.Children.Add(MakeSkillRow(skill.Name, savedModel,
+                onLaunch: async chosenModel =>
+                {
+                    await appSettings.SetAsync(settingKey, chosenModel);
+                    flyout.Hide();
+                    await LaunchSkillAsync(capturedSkill, rendered, workspacePath, card, chosenModel);
+                },
+                onView: async () =>
+                {
+                    flyout.Hide();
+                    await OpenSkillViewerAsync(capturedSkill, card);
+                }));
             if (i < _cardSkills.Count - 1)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
         }
@@ -572,7 +626,7 @@ public sealed partial class WorkspaceDetailPage : Page
         await mediator.Send(new LaunchSkillCommand(workspacePath, rendered, ComputeSnap(), modelId));
     }
 
-    private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch)
+    private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch, Func<Task>? onView = null)
     {
         var currentModelId = selectedModelId;
         var currentLabel = WorkNextOptionsDialogViewModel.Models.FirstOrDefault(m => m.Id == selectedModelId)?.Label ?? "Sonnet 4.6";
@@ -611,6 +665,25 @@ public sealed partial class WorkspaceDetailPage : Page
         }
         modelBtn.Flyout = modelFlyout;
 
+        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        row.Children.Add(nameText);
+        row.Children.Add(modelBtn);
+
+        if (onView is not null)
+        {
+            var viewBtn = new Button
+            {
+                Content = new FontIcon { Glyph = "", FontSize = 12 },
+                Padding = new Thickness(4, 2, 4, 2),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 4, 0),
+                FontSize = 12,
+            };
+            ToolTipService.SetToolTip(viewBtn, "View SKILL.md");
+            viewBtn.Click += async (_, _) => await onView();
+            row.Children.Add(viewBtn);
+        }
+
         var launchBtn = new Button
         {
             Content = "▶",
@@ -619,12 +692,60 @@ public sealed partial class WorkspaceDetailPage : Page
             FontSize = 12,
         };
         launchBtn.Click += async (_, _) => await onLaunch(currentModelId);
-
-        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        row.Children.Add(nameText);
-        row.Children.Add(modelBtn);
         row.Children.Add(launchBtn);
+
         return row;
+    }
+
+    private async Task OpenSkillViewerAsync(InstalledSkill skill, CardViewModel? card)
+    {
+        _skillViewerCard = card;
+        await SkillViewer.OpenAsync(skill);
+    }
+
+    private async void SkillViewerLaunch_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null || SkillViewer.Skill is null || SkillViewer.Skill.Command is null) return;
+        var card = _skillViewerCard;
+        var rendered = RenderCommand(SkillViewer.Skill.Command, card, _item.Path);
+        await LaunchSkillAsync(SkillViewer.Skill, rendered, _item.Path, card, SkillViewer.ModelId);
+    }
+
+    private void SkillViewer_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Escape) return;
+        e.Handled = true;
+        SkillViewer.IsOpen = false;
+    }
+
+    private void KanbanSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingKanban = true;
+        _dragStartPageX = e.GetCurrentPoint(this).Position.X;
+        _dragStartPanelWidth = SkillViewer.PanelWidth;
+        ((UIElement)sender).CapturePointer(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void KanbanSplitter_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isDraggingKanban) return;
+        var delta = _dragStartPageX - e.GetCurrentPoint(this).Position.X;
+        SkillViewer.PanelWidth = Math.Max(SkillViewerViewModel.MinPanelWidth,
+            Math.Min(SkillViewerViewModel.MaxPanelWidth, _dragStartPanelWidth + delta));
+        e.Handled = true;
+    }
+
+    private void KanbanSplitter_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingKanban = false;
+        ((UIElement)sender).ReleasePointerCapture(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void KanbanSplitter_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingKanban = false;
     }
 
     private static TerminalSnap ComputeSnap() => SnapHelper.ComputeSnap();

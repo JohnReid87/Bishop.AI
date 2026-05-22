@@ -29,7 +29,7 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
                 continue;
 
             var content = File.ReadAllText(skillFile);
-            var fm = ParseFrontmatter(content);
+            var (fm, body) = ParseFrontmatterAndBody(content);
 
             if (!fm.TryGetValue("name", out var name) || string.IsNullOrWhiteSpace(name))
                 continue;
@@ -48,7 +48,9 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
                 string.IsNullOrWhiteSpace(command) ? null : command,
                 string.Equals(stage, "true", StringComparison.OrdinalIgnoreCase),
                 string.IsNullOrWhiteSpace(stagePrompt) ? null : stagePrompt,
-                ParseStagePrefill(stagePrefill)));
+                ParseStagePrefill(stagePrefill),
+                body,
+                skillFile));
         }
 
         return Task.FromResult<IReadOnlyList<InstalledSkill>>(skills);
@@ -76,18 +78,22 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
         return value;
     }
 
-    private static Dictionary<string, string> ParseFrontmatter(string content)
+    private static (Dictionary<string, string> Frontmatter, string Body) ParseFrontmatterAndBody(string content)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var lines = content.ReplaceLineEndings("\n").Split('\n');
 
         if (lines.Length < 2 || lines[0].Trim() != "---")
-            return result;
+            return (result, string.Empty);
 
+        var closingIndex = -1;
         for (var i = 1; i < lines.Length; i++)
         {
             if (lines[i].Trim() == "---")
+            {
+                closingIndex = i;
                 break;
+            }
 
             var colonIdx = lines[i].IndexOf(':');
             if (colonIdx <= 0)
@@ -98,6 +104,10 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
             result[key] = value;
         }
 
-        return result;
+        var body = closingIndex >= 0 && closingIndex < lines.Length - 1
+            ? string.Join("\n", lines.Skip(closingIndex + 1)).TrimStart('\n')
+            : string.Empty;
+
+        return (result, body);
     }
 }

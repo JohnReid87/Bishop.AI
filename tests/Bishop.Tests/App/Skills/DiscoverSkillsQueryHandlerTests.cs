@@ -103,6 +103,37 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
         skill.Stage.Should().BeFalse();
         skill.StagePrompt.Should().BeNull();
         skill.StagePrefill.Should().BeNull();
+        skill.MarkdownBody.Should().BeEmpty();
+        skill.SourcePath.Should().Be(Path.Combine(_skillsRoot, "my-skill", "SKILL.md"));
+    }
+
+    [Fact]
+    public async Task Handle_SkillMdWithBody_ReturnsRawBodyAfterFrontmatter()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            "---\nname: my-skill\n---\n# Heading\n\nSome **body** text.\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].MarkdownBody.Should().Be("# Heading\n\nSome **body** text.\n");
+    }
+
+    [Fact]
+    public async Task Handle_SkillMdWithNoBodyAfterFrontmatter_ReturnsEmptyBody()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\n---");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].MarkdownBody.Should().BeEmpty();
     }
 
     [Fact]

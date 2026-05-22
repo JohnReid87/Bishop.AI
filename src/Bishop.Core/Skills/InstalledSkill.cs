@@ -7,4 +7,6 @@ public sealed record InstalledSkill(
     string? Command,
     bool Stage = false,
     string? StagePrompt = null,
-    string? StagePrefill = null);
+    string? StagePrefill = null,
+    string MarkdownBody = "",
+    string SourcePath = "");

@@ -235,6 +235,29 @@ public sealed partial class MainWindow : Window
             await ViewModel.DeleteWorkspaceAsync(item);
     }
 
+    private WindowGeometry? _preExpansionGeometry;
+
+    public void SetExpandedForViewer(bool expanded)
+    {
+        if (expanded)
+        {
+            if (_preExpansionGeometry is null)
+            {
+                var pos = AppWindow.Position;
+                var size = AppWindow.Size;
+                _preExpansionGeometry = new WindowGeometry(pos.X, pos.Y, size.Width, size.Height);
+            }
+            var wa = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+            AppWindow.MoveAndResize(new RectInt32(wa.X, wa.Y, wa.Width, wa.Height));
+        }
+        else if (_preExpansionGeometry is not null)
+        {
+            var g = _preExpansionGeometry;
+            AppWindow.MoveAndResize(new RectInt32(g.X, g.Y, g.Width, g.Height));
+            _preExpansionGeometry = null;
+        }
+    }
+
     private void ApplyWindowGeometry()
     {
         var saved = LoadWindowGeometry();
@@ -267,11 +290,19 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            var pos = AppWindow.Position;
-            var size = AppWindow.Size;
+            WindowGeometry geometry;
+            if (_preExpansionGeometry is not null)
+            {
+                geometry = _preExpansionGeometry;
+            }
+            else
+            {
+                var pos = AppWindow.Position;
+                var size = AppWindow.Size;
+                geometry = new WindowGeometry(pos.X, pos.Y, size.Width, size.Height);
+            }
             Directory.CreateDirectory(Path.GetDirectoryName(WindowGeometryFilePath)!);
-            File.WriteAllText(WindowGeometryFilePath, JsonSerializer.Serialize(
-                new WindowGeometry(pos.X, pos.Y, size.Width, size.Height)));
+            File.WriteAllText(WindowGeometryFilePath, JsonSerializer.Serialize(geometry));
         }
         catch (Exception ex) { Debug.WriteLine($"[Bishop] SaveWindowGeometry: {ex.Message}"); }
     }
