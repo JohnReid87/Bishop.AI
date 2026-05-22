@@ -7,16 +7,17 @@ namespace Bishop.App.Lanes.MoveLane;
 
 public sealed class MoveLaneCommandHandler : IRequestHandler<MoveLaneCommand, Lane>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public MoveLaneCommandHandler(BishopDbContext db) => _db = db;
+    public MoveLaneCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Lane> Handle(MoveLaneCommand request, CancellationToken cancellationToken)
     {
-        var lane = await _db.Lanes.FindAsync([request.LaneId], cancellationToken)
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var lane = await db.Lanes.FindAsync([request.LaneId], cancellationToken)
             ?? throw new InvalidOperationException($"Lane {request.LaneId} not found.");
 
-        var otherLanes = await _db.Lanes
+        var otherLanes = await db.Lanes
             .Where(l => l.WorkspaceId == lane.WorkspaceId && l.Id != lane.Id)
             .OrderBy(l => l.Position)
             .ToListAsync(cancellationToken);
@@ -27,7 +28,7 @@ public sealed class MoveLaneCommandHandler : IRequestHandler<MoveLaneCommand, La
         for (var i = 0; i < otherLanes.Count; i++)
             otherLanes[i].Position = i + 1;
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return lane;
     }
 }

@@ -7,13 +7,14 @@ namespace Bishop.App.Tags.AddTag;
 
 public sealed class AddTagCommandHandler : IRequestHandler<AddTagCommand, Tag>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public AddTagCommandHandler(BishopDbContext db) => _db = db;
+    public AddTagCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Tag> Handle(AddTagCommand request, CancellationToken cancellationToken)
     {
-        var existing = await _db.Tags
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var existing = await db.Tags
             .FirstOrDefaultAsync(
                 t => t.WorkspaceId == request.WorkspaceId && t.Name == request.Name,
                 cancellationToken);
@@ -21,8 +22,8 @@ public sealed class AddTagCommandHandler : IRequestHandler<AddTagCommand, Tag>
             throw new InvalidOperationException($"Tag '{request.Name}' already exists in this workspace.");
 
         var tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = request.WorkspaceId, Name = request.Name, Colour = request.Colour ?? BrandTagPalette.DefaultColour };
-        _db.Tags.Add(tag);
-        await _db.SaveChangesAsync(cancellationToken);
+        db.Tags.Add(tag);
+        await db.SaveChangesAsync(cancellationToken);
         return tag;
     }
 }

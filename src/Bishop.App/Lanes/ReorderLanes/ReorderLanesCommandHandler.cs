@@ -6,13 +6,14 @@ namespace Bishop.App.Lanes.ReorderLanes;
 
 public sealed class ReorderLanesCommandHandler : IRequestHandler<ReorderLanesCommand, Unit>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public ReorderLanesCommandHandler(BishopDbContext db) => _db = db;
+    public ReorderLanesCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Unit> Handle(ReorderLanesCommand request, CancellationToken cancellationToken)
     {
-        var lanes = await _db.Lanes
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var lanes = await db.Lanes
             .Where(l => l.WorkspaceId == request.WorkspaceId)
             .ToListAsync(cancellationToken);
 
@@ -26,7 +27,7 @@ public sealed class ReorderLanesCommandHandler : IRequestHandler<ReorderLanesCom
                 lane.Position = position;
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return Unit.Value;
     }
 }

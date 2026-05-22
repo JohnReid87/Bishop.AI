@@ -17,11 +17,13 @@ namespace Bishop.Tests.App.Cards;
 public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
     private readonly SqliteConnection _connection;
 
     public ClaimCardCommandHandlerTests(DbFixture fixture)
     {
         _db = fixture.Db;
+        _factory = fixture.Factory;
         _connection = fixture.Connection;
     }
 
@@ -30,9 +32,9 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
     private async Task<(Workspace workspace, IReadOnlyList<Lane> lanes)> CreateWorkspaceWithLanesAsync()
     {
         var name = U("Test");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_db)
+        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         return (workspace, lanes);
     }
@@ -41,10 +43,10 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
     {
         var sender = Substitute.For<ISender>();
         sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new MoveCardCommandHandler(_db, sender)
+            .Returns(call => new MoveCardCommandHandler(_factory, sender)
                 .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<GetCardQuery>(), Arg.Any<CancellationToken>())
-            .Returns(call => new GetCardQueryHandler(_db)
+            .Returns(call => new GetCardQueryHandler(_factory)
                 .Handle(call.ArgAt<GetCardQuery>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }
@@ -56,10 +58,10 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
         var doing = lanes.Single(l => l.Name == "Doing");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         await add.Handle(new AddCardCommand(todo.Id, "First"), default);
         var second = await add.Handle(new AddCardCommand(todo.Id, "Second"), default);
-        var handler = new ClaimCardCommandHandler(_db, CreateSender());
+        var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act — Second was added last so insert-at-top puts it at position 1
         var claimed = await handler.Handle(
@@ -79,7 +81,7 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
         var doing = lanes.Single(l => l.Name == "Doing");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
 
         // Inserted in this order — with insert-at-top, final lane order top→bottom is:
         // Plain-3 (pos 1), Tagged-test (pos 2), Plain-1 (pos 3)
@@ -88,7 +90,7 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
             new AddCardCommand(todo.Id, "Tagged-test", TagNames: ["test"]),
             default);
         await add.Handle(new AddCardCommand(todo.Id, "Plain-3"), default);
-        var handler = new ClaimCardCommandHandler(_db, CreateSender());
+        var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act
         var claimed = await handler.Handle(
@@ -109,10 +111,10 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
         var doing = lanes.Single(l => l.Name == "Doing");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         await add.Handle(new AddCardCommand(todo.Id, "Plain-1"), default);
         await add.Handle(new AddCardCommand(todo.Id, "Tagged-bug", TagNames: ["bug"]), default);
-        var handler = new ClaimCardCommandHandler(_db, CreateSender());
+        var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act
         var claimed = await handler.Handle(
@@ -132,7 +134,7 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-        var handler = new ClaimCardCommandHandler(_db, CreateSender());
+        var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act
         var claimed = await handler.Handle(
@@ -148,7 +150,7 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-        var handler = new ClaimCardCommandHandler(_db, CreateSender());
+        var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act
         var claimed = await handler.Handle(
@@ -164,7 +166,7 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-        var handler = new ClaimCardCommandHandler(_db, CreateSender());
+        var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act
         var act = async () => await handler.Handle(

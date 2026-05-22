@@ -7,13 +7,14 @@ namespace Bishop.App.Cards.GetCard;
 
 public sealed class GetCardQueryHandler : IRequestHandler<GetCardQuery, Card?>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public GetCardQueryHandler(BishopDbContext db) => _db = db;
+    public GetCardQueryHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Card?> Handle(GetCardQuery request, CancellationToken cancellationToken)
     {
-        return await _db.Cards
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Cards
             .AsNoTracking()
             .Include(c => c.Lane)
             .Include(c => c.CardTags)

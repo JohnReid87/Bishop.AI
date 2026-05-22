@@ -4,10 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Settings;
 
-public sealed class AppSettingsService(BishopDbContext db) : IAppSettings
+public sealed class AppSettingsService(IDbContextFactory<BishopDbContext> dbFactory) : IAppSettings
 {
     public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var setting = await db.AppSettings
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
@@ -16,6 +17,7 @@ public sealed class AppSettingsService(BishopDbContext db) : IAppSettings
 
     public async Task SetAsync(string key, string value, CancellationToken cancellationToken = default)
     {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var setting = await db.AppSettings
             .FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
 

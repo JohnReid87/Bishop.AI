@@ -7,13 +7,14 @@ namespace Bishop.App.Workspaces.ListWorkspaces;
 
 public sealed class ListWorkspacesQueryHandler : IRequestHandler<ListWorkspacesQuery, IReadOnlyList<Workspace>>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public ListWorkspacesQueryHandler(BishopDbContext db) => _db = db;
+    public ListWorkspacesQueryHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<IReadOnlyList<Workspace>> Handle(ListWorkspacesQuery request, CancellationToken cancellationToken)
     {
-        return await _db.Workspaces
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Workspaces
             .AsNoTracking()
             .Include(w => w.Lanes.OrderBy(l => l.Position))
             .Include(w => w.Tags.OrderBy(t => t.Name))

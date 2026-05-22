@@ -7,12 +7,12 @@ namespace Bishop.App;
 
 internal sealed class DatabaseInitializer : IHostedService
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IDefaultTagSeeder _tagSeeder;
 
-    public DatabaseInitializer(BishopDbContext db, IDefaultTagSeeder tagSeeder)
+    public DatabaseInitializer(IDbContextFactory<BishopDbContext> dbFactory, IDefaultTagSeeder tagSeeder)
     {
-        _db = db;
+        _dbFactory = dbFactory;
         _tagSeeder = tagSeeder;
     }
 
@@ -24,29 +24,31 @@ internal sealed class DatabaseInitializer : IHostedService
 
     private async Task EnsureSchemaAsync(CancellationToken cancellationToken)
     {
-        if (IsStampCurrent())
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        if (IsStampCurrent(db))
             return;
 
-        var pending = await _db.Database.GetPendingMigrationsAsync(cancellationToken);
+        var pending = await db.Database.GetPendingMigrationsAsync(cancellationToken);
         if (pending.Any())
-            await _db.Database.MigrateAsync(cancellationToken);
-        await _db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
-        await WriteStampAsync(cancellationToken);
+            await db.Database.MigrateAsync(cancellationToken);
+        await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
+        await WriteStampAsync(db, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    private bool IsStampCurrent()
+    private static bool IsStampCurrent(BishopDbContext db)
     {
         var stampFile = StampFilePath();
         if (!File.Exists(stampFile)) return false;
-        var latest = _db.Database.GetMigrations().LastOrDefault();
+        var latest = db.Database.GetMigrations().LastOrDefault();
         return latest is not null && File.ReadAllText(stampFile).Trim() == latest;
     }
 
-    private async Task WriteStampAsync(CancellationToken cancellationToken)
+    private static async Task WriteStampAsync(BishopDbContext db, CancellationToken cancellationToken)
     {
-        var applied = await _db.Database.GetAppliedMigrationsAsync(cancellationToken);
+        var applied = await db.Database.GetAppliedMigrationsAsync(cancellationToken);
         var latest = applied.LastOrDefault();
         if (latest is null) return;
         await File.WriteAllTextAsync(StampFilePath(), latest, cancellationToken);

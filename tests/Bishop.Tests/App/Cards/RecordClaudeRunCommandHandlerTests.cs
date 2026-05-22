@@ -13,11 +13,13 @@ namespace Bishop.Tests.App.Cards;
 public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
     private readonly SqliteConnection _connection;
 
     public RecordClaudeRunCommandHandlerTests(DbFixture fixture)
     {
         _db = fixture.Db;
+        _factory = fixture.Factory;
         _connection = fixture.Connection;
     }
 
@@ -26,12 +28,12 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
     private async Task<Card> CreateCardAsync()
     {
         var name = U("Test");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_db)
+        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         var todo = lanes.Single(l => l.Name == "To Do");
-        return await new AddCardCommandHandler(_db)
+        return await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(todo.Id, "Title"), default);
     }
 
@@ -40,7 +42,7 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
     {
         // Arrange
         var card = await CreateCardAsync();
-        var sut = new RecordClaudeRunCommandHandler(_db);
+        var sut = new RecordClaudeRunCommandHandler(_factory);
 
         // Act
         await sut.Handle(new RecordClaudeRunCommand(card.Id, 0.12m, 8100, 2400), default);
@@ -58,7 +60,7 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
     {
         // Arrange
         var card = await CreateCardAsync();
-        var sut = new RecordClaudeRunCommandHandler(_db);
+        var sut = new RecordClaudeRunCommandHandler(_factory);
 
         // Act
         await sut.Handle(new RecordClaudeRunCommand(card.Id, 0.10m, 500, 200), default);
@@ -75,7 +77,7 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
     [Fact]
     public async Task Handle_Throws_WhenCardDoesNotExist()
     {
-        var sut = new RecordClaudeRunCommandHandler(_db);
+        var sut = new RecordClaudeRunCommandHandler(_factory);
 
         var act = () => sut.Handle(new RecordClaudeRunCommand(Guid.NewGuid(), 0m, 0, 0), default);
 

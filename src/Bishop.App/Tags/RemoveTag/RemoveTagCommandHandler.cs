@@ -6,20 +6,21 @@ namespace Bishop.App.Tags.RemoveTag;
 
 public sealed class RemoveTagCommandHandler : IRequestHandler<RemoveTagCommand, Unit>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public RemoveTagCommandHandler(BishopDbContext db) => _db = db;
+    public RemoveTagCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Unit> Handle(RemoveTagCommand request, CancellationToken cancellationToken)
     {
-        var tag = await _db.Tags
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var tag = await db.Tags
             .FirstOrDefaultAsync(
                 t => t.WorkspaceId == request.WorkspaceId && t.Name == request.Name,
                 cancellationToken)
             ?? throw new InvalidOperationException($"Tag '{request.Name}' not found in this workspace.");
 
-        _db.Tags.Remove(tag);
-        await _db.SaveChangesAsync(cancellationToken);
+        db.Tags.Remove(tag);
+        await db.SaveChangesAsync(cancellationToken);
         return Unit.Value;
     }
 }

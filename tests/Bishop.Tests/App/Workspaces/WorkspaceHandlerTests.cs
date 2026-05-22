@@ -23,10 +23,12 @@ namespace Bishop.Tests.App.Workspaces;
 public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
 
     public WorkspaceHandlerTests(DbFixture fixture)
     {
         _db = fixture.Db;
+        _factory = fixture.Factory;
     }
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
@@ -37,9 +39,9 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         {
             var g = Substitute.For<IGitCli>();
             g.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((string?)null);
-            return new InitWorkspaceCommandHandler(_db, g);
+            return new InitWorkspaceCommandHandler(_factory, g);
         }
-        return new InitWorkspaceCommandHandler(_db, git);
+        return new InitWorkspaceCommandHandler(_factory, git);
     }
 
     [Fact]
@@ -47,7 +49,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("MyRepo");
-        var handler = new CreateWorkspaceCommandHandler(_db);
+        var handler = new CreateWorkspaceCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(new CreateWorkspaceCommand(name, $@"C:\code\{name}"), default);
@@ -66,10 +68,10 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var betaName = U("Beta");
         var alphaName = U("Alpha");
-        var create = new CreateWorkspaceCommandHandler(_db);
+        var create = new CreateWorkspaceCommandHandler(_factory);
         var beta = await create.Handle(new CreateWorkspaceCommand(betaName, $@"C:\{betaName}"), default);
         var alpha = await create.Handle(new CreateWorkspaceCommand(alphaName, $@"C:\{alphaName}"), default);
-        var handler = new ListWorkspacesQueryHandler(_db);
+        var handler = new ListWorkspacesQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new ListWorkspacesQuery(), default);
@@ -86,9 +88,9 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("MyRepo");
-        var created = await new CreateWorkspaceCommandHandler(_db)
+        var created = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\code\{name}"), default);
-        var handler = new GetWorkspaceQueryHandler(_db);
+        var handler = new GetWorkspaceQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new GetWorkspaceQuery(created.Id), default);
@@ -102,7 +104,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task GetWorkspace_ReturnsNullForUnknownId()
     {
         // Arrange
-        var handler = new GetWorkspaceQueryHandler(_db);
+        var handler = new GetWorkspaceQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new GetWorkspaceQuery(Guid.NewGuid()), default);
@@ -116,9 +118,9 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("WithLanes");
-        var created = await new CreateWorkspaceCommandHandler(_db)
+        var created = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var handler = new GetWorkspaceQueryHandler(_db);
+        var handler = new GetWorkspaceQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new GetWorkspaceQuery(created.Id), default);
@@ -136,9 +138,9 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var oldName = U("Old");
         var newName = U("New");
-        var created = await new CreateWorkspaceCommandHandler(_db)
+        var created = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(oldName, $@"C:\{oldName}"), default);
-        var handler = new UpdateWorkspaceCommandHandler(_db);
+        var handler = new UpdateWorkspaceCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(
@@ -155,15 +157,15 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("ToDelete");
-        var created = await new CreateWorkspaceCommandHandler(_db)
+        var created = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
 
         // Act
-        await new DeleteWorkspaceCommandHandler(_db)
+        await new DeleteWorkspaceCommandHandler(_factory)
             .Handle(new DeleteWorkspaceCommand(created.Id), default);
 
         // Assert
-        var remaining = await new ListWorkspacesQueryHandler(_db)
+        var remaining = await new ListWorkspacesQueryHandler(_factory)
             .Handle(new ListWorkspacesQuery(), default);
         remaining.Should().NotContain(w => w.Id == created.Id);
     }
@@ -252,7 +254,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange: create workspace with only "To Do" and "Done" (remove "Doing")
         var tag = Guid.NewGuid().ToString("N")[..8];
         var path = $@"C:\projects\partial-{tag}";
-        var ws = await new CreateWorkspaceCommandHandler(_db)
+        var ws = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand($"Partial-{tag}", path), default);
         var doingLane = await _db.Lanes.FirstAsync(l => l.WorkspaceId == ws.Id && l.Name == "Doing");
         _db.Lanes.Remove(doingLane);
@@ -451,9 +453,9 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("Repo");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\code\{name}"), default);
-        var handler = new SetWorkspaceGitHubRepoCommandHandler(_db);
+        var handler = new SetWorkspaceGitHubRepoCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(
@@ -477,9 +479,9 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("Repo");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\code\{name}"), default);
-        var handler = new SetWorkspaceGitHubRepoCommandHandler(_db);
+        var handler = new SetWorkspaceGitHubRepoCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(
@@ -501,9 +503,9 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("Repo");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\code\{name}"), default);
-        var handler = new SetWorkspaceGitHubRepoCommandHandler(_db);
+        var handler = new SetWorkspaceGitHubRepoCommandHandler(_factory);
 
         // Act
         var act = () => handler.Handle(new SetWorkspaceGitHubRepoCommand(workspace.Id, input!), default);
@@ -517,7 +519,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task SetWorkspaceGitHubRepo_WorkspaceNotFound_Throws()
     {
         // Arrange
-        var handler = new SetWorkspaceGitHubRepoCommandHandler(_db);
+        var handler = new SetWorkspaceGitHubRepoCommandHandler(_factory);
 
         // Act
         var act = () => handler.Handle(
@@ -535,11 +537,11 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("Repo");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\code\{name}"), default);
-        await new SetWorkspaceGitHubRepoCommandHandler(_db)
+        await new SetWorkspaceGitHubRepoCommandHandler(_factory)
             .Handle(new SetWorkspaceGitHubRepoCommand(workspace.Id, "owner/repo"), default);
-        var handler = new UnsetWorkspaceGitHubRepoCommandHandler(_db);
+        var handler = new UnsetWorkspaceGitHubRepoCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(new UnsetWorkspaceGitHubRepoCommand(workspace.Id), default);
@@ -553,7 +555,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task UnsetWorkspaceGitHubRepo_WorkspaceNotFound_Throws()
     {
         // Arrange
-        var handler = new UnsetWorkspaceGitHubRepoCommandHandler(_db);
+        var handler = new UnsetWorkspaceGitHubRepoCommandHandler(_factory);
 
         // Act
         var act = () => handler.Handle(new UnsetWorkspaceGitHubRepoCommand(Guid.NewGuid()), default);
@@ -569,10 +571,10 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task ReorderWorkspaces_UpdatesPositionsInOrder()
     {
         // Arrange
-        var create = new CreateWorkspaceCommandHandler(_db);
+        var create = new CreateWorkspaceCommandHandler(_factory);
         var ws1 = await create.Handle(new CreateWorkspaceCommand(U("First"), $@"C:\{U()}"), default);
         var ws2 = await create.Handle(new CreateWorkspaceCommand(U("Second"), $@"C:\{U()}"), default);
-        var handler = new ReorderWorkspacesCommandHandler(_db);
+        var handler = new ReorderWorkspacesCommandHandler(_factory);
 
         // Act
         await handler.Handle(new ReorderWorkspacesCommand([ws2.Id, ws1.Id]), default);
@@ -588,11 +590,11 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task ReorderWorkspaces_WorkspaceNotInList_KeepsItsPosition()
     {
         // Arrange
-        var create = new CreateWorkspaceCommandHandler(_db);
+        var create = new CreateWorkspaceCommandHandler(_factory);
         var ws1 = await create.Handle(new CreateWorkspaceCommand(U("Keep"), $@"C:\{U()}"), default);
         var ws2 = await create.Handle(new CreateWorkspaceCommand(U("Move"), $@"C:\{U()}"), default);
         var originalWs1Position = ws1.Position;
-        var handler = new ReorderWorkspacesCommandHandler(_db);
+        var handler = new ReorderWorkspacesCommandHandler(_factory);
 
         // Act — only reorder ws2; ws1 is absent from the list
         await handler.Handle(new ReorderWorkspacesCommand([ws2.Id]), default);

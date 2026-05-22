@@ -1,18 +1,21 @@
 using Bishop.App.Settings;
 using Bishop.Data;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.Tests.App.Settings;
 
 public sealed class AppSettingsServiceTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
     private readonly AppSettingsService _sut;
 
     public AppSettingsServiceTests(DbFixture fixture)
     {
         _db = fixture.Db;
-        _sut = new AppSettingsService(_db);
+        _factory = fixture.Factory;
+        _sut = new AppSettingsService(_factory);
     }
 
     [Fact]

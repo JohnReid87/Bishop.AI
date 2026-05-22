@@ -7,13 +7,14 @@ namespace Bishop.App.Tags.ListTagsByWorkspace;
 
 public sealed class ListTagsByWorkspaceQueryHandler : IRequestHandler<ListTagsByWorkspaceQuery, IReadOnlyList<Tag>>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public ListTagsByWorkspaceQueryHandler(BishopDbContext db) => _db = db;
+    public ListTagsByWorkspaceQueryHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<IReadOnlyList<Tag>> Handle(ListTagsByWorkspaceQuery request, CancellationToken cancellationToken)
     {
-        return await _db.Tags
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Tags
             .AsNoTracking()
             .Where(t => t.WorkspaceId == request.WorkspaceId)
             .OrderBy(t => t.Name)

@@ -2,16 +2,19 @@ using Bishop.App.Terminal;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.Tests.App.Terminal;
 
 public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
 
     public WorkspaceContextSeederTests(DbFixture fixture)
     {
         _db = fixture.Db;
+        _factory = fixture.Factory;
     }
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
@@ -395,7 +398,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var name = U("Alpha");
             await SeedRegisteredWorkspaceAsync(temp, name: name);
 
-            var sut = new WorkspaceContextSeeder(_db);
+            var sut = new WorkspaceContextSeeder(_factory);
             await sut.SeedAsync(temp);
 
             var bishopContent = File.ReadAllText(Path.Combine(temp, "BISHOP_CONTEXT.md"));
@@ -419,7 +422,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     [Fact]
     public async Task SeedAsync_DoesNothing_WhenPathIsWhitespaceOnly()
     {
-        var sut = new WorkspaceContextSeeder(_db);
+        var sut = new WorkspaceContextSeeder(_factory);
 
         await sut.SeedAsync("   ");
         // Covers the IsNullOrWhiteSpace early-return guard — no exception, no files written.
@@ -438,7 +441,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     [Fact]
     public async Task SeedAsync_DoesNothing_WhenPathDoesNotExist()
     {
-        var sut = new WorkspaceContextSeeder(_db);
+        var sut = new WorkspaceContextSeeder(_factory);
 
         await sut.SeedAsync(@"C:\definitely-not-a-real-path-" + Guid.NewGuid().ToString("N"));
         // No exception, no files written, no DB query needed beyond a no-op.
@@ -450,7 +453,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         var temp = CreateTempDir();
         try
         {
-            var sut = new WorkspaceContextSeeder(_db);
+            var sut = new WorkspaceContextSeeder(_factory);
 
             await sut.SeedAsync(temp);
 
@@ -475,7 +478,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var original = "# Zeta Project\r\n\r\nProject-specific Claude Code instructions.\r\n";
             File.WriteAllText(claudePath, original);
 
-            var sut = new WorkspaceContextSeeder(_db);
+            var sut = new WorkspaceContextSeeder(_factory);
             await sut.SeedAsync(temp);
 
             var updated = File.ReadAllText(claudePath);
@@ -498,7 +501,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             await SeedRegisteredWorkspaceAsync(temp, name: U("Eta"));
             var claudePath = Path.Combine(temp, "CLAUDE.md");
 
-            var sut = new WorkspaceContextSeeder(_db);
+            var sut = new WorkspaceContextSeeder(_factory);
             await sut.SeedAsync(temp);
             var firstPass = File.ReadAllText(claudePath);
 
@@ -524,7 +527,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var original = "# Beta Project\r\n\r\nHand-written intro about this workspace.\r\n";
             File.WriteAllText(contextPath, original);
 
-            var sut = new WorkspaceContextSeeder(_db);
+            var sut = new WorkspaceContextSeeder(_factory);
             await sut.SeedAsync(temp);
 
             var updated = File.ReadAllText(contextPath);
@@ -547,7 +550,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             await SeedRegisteredWorkspaceAsync(temp, name: U("Gamma"));
             var contextPath = Path.Combine(temp, "CONTEXT.md");
 
-            var sut = new WorkspaceContextSeeder(_db);
+            var sut = new WorkspaceContextSeeder(_factory);
             await sut.SeedAsync(temp);
             var firstPass = File.ReadAllText(contextPath);
 
@@ -570,7 +573,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         {
             var workspace = await SeedRegisteredWorkspaceAsync(temp, name: U("Delta"));
 
-            var sut = new WorkspaceContextSeeder(_db);
+            var sut = new WorkspaceContextSeeder(_factory);
             await sut.SeedAsync(temp);
             var firstPass = File.ReadAllText(Path.Combine(temp, "BISHOP_CONTEXT.md"));
             firstPass.Should().NotContain("`newtag`");

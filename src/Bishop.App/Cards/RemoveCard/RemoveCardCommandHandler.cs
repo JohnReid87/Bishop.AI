@@ -1,21 +1,23 @@
 using Bishop.Data;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.RemoveCard;
 
 public sealed class RemoveCardCommandHandler : IRequestHandler<RemoveCardCommand, Unit>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public RemoveCardCommandHandler(BishopDbContext db) => _db = db;
+    public RemoveCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Unit> Handle(RemoveCardCommand request, CancellationToken cancellationToken)
     {
-        var card = await _db.Cards.FindAsync([request.CardId], cancellationToken)
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var card = await db.Cards.FindAsync([request.CardId], cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
-        _db.Cards.Remove(card);
-        await _db.SaveChangesAsync(cancellationToken);
+        db.Cards.Remove(card);
+        await db.SaveChangesAsync(cancellationToken);
         return Unit.Value;
     }
 }

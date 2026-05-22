@@ -7,13 +7,14 @@ namespace Bishop.App.Cards.ListCardsByWorkspace;
 
 public sealed class ListCardsByWorkspaceQueryHandler : IRequestHandler<ListCardsByWorkspaceQuery, IReadOnlyList<Card>>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public ListCardsByWorkspaceQueryHandler(BishopDbContext db) => _db = db;
+    public ListCardsByWorkspaceQueryHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<IReadOnlyList<Card>> Handle(ListCardsByWorkspaceQuery request, CancellationToken cancellationToken)
     {
-        return await _db.Cards
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Cards
             .AsNoTracking()
             .Include(c => c.CardTags)
             .ThenInclude(ct => ct.Tag)

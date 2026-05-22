@@ -6,13 +6,14 @@ namespace Bishop.App.Cards.RecordClaudeRun;
 
 public sealed class RecordClaudeRunCommandHandler : IRequestHandler<RecordClaudeRunCommand>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public RecordClaudeRunCommandHandler(BishopDbContext db) => _db = db;
+    public RecordClaudeRunCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task Handle(RecordClaudeRunCommand request, CancellationToken cancellationToken)
     {
-        var card = await _db.Cards
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var card = await db.Cards
             .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
@@ -21,6 +22,6 @@ public sealed class RecordClaudeRunCommandHandler : IRequestHandler<RecordClaude
         card.TotalOutputTokens += request.OutputTokens;
         card.ClaudeRunCount += 1;
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
     }
 }

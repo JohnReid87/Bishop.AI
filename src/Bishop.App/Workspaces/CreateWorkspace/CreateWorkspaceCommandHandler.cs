@@ -8,9 +8,9 @@ namespace Bishop.App.Workspaces.CreateWorkspace;
 
 public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorkspaceCommand, Workspace>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public CreateWorkspaceCommandHandler(BishopDbContext db) => _db = db;
+    public CreateWorkspaceCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Workspace> Handle(CreateWorkspaceCommand request, CancellationToken cancellationToken)
     {
@@ -28,7 +28,9 @@ public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorksp
                 await proc.WaitForExitAsync(cancellationToken);
         }
 
-        var position = await _db.Workspaces.CountAsync(cancellationToken) + 1;
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var position = await db.Workspaces.CountAsync(cancellationToken) + 1;
         var workspace = new Workspace
         {
             Id = Guid.NewGuid(),
@@ -36,12 +38,12 @@ public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorksp
             Path = request.Path,
             Position = position,
         };
-        _db.Workspaces.Add(workspace);
+        db.Workspaces.Add(workspace);
 
         var laneNames = SystemLaneNames.All;
         for (var i = 0; i < laneNames.Count; i++)
         {
-            _db.Lanes.Add(new Lane
+            db.Lanes.Add(new Lane
             {
                 Id = Guid.NewGuid(),
                 WorkspaceId = workspace.Id,
@@ -51,7 +53,7 @@ public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorksp
             });
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return workspace;
     }
 }

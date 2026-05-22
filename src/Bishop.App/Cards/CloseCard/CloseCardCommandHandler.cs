@@ -8,25 +8,26 @@ namespace Bishop.App.Cards.CloseCard;
 
 public sealed class CloseCardCommandHandler : IRequestHandler<CloseCardCommand, Card>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGhCli _ghCli;
 
-    public CloseCardCommandHandler(BishopDbContext db, IGhCli ghCli)
+    public CloseCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, IGhCli ghCli)
     {
-        _db = db;
+        _dbFactory = dbFactory;
         _ghCli = ghCli;
     }
 
     public async Task<Card> Handle(CloseCardCommand request, CancellationToken cancellationToken)
     {
-        var card = await _db.Cards
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var card = await db.Cards
             .Include(c => c.Lane)
                 .ThenInclude(l => l.Workspace)
             .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
         card.IsClosed = true;
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
 
         if (card.GitHubIssueNumber.HasValue && card.Lane.Workspace.GitHubRepo is { } repo)
             await _ghCli.RunAsync(["issue", "close", card.GitHubIssueNumber.ToString()!, "--repo", repo], cancellationToken);

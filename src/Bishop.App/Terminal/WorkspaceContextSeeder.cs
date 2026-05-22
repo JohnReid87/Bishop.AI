@@ -14,9 +14,9 @@ public sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
     internal const string PointerLine = "> See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.";
     internal const string PointerMarker = "BISHOP_CONTEXT.md";
 
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public WorkspaceContextSeeder(BishopDbContext db) => _db = db;
+    public WorkspaceContextSeeder(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task SeedAsync(string workspacePath, CancellationToken cancellationToken = default)
     {
@@ -24,7 +24,8 @@ public sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
             return;
 
         var fullPath = Path.GetFullPath(workspacePath);
-        var workspace = await ResolveWorkspaceAsync(fullPath, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var workspace = await ResolveWorkspaceAsync(db, fullPath, cancellationToken);
         if (workspace is null) return;
 
         var bishopFile = Path.Combine(fullPath, BishopContextFileName);
@@ -43,9 +44,9 @@ public sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
             File.WriteAllText(claudeFile, mergedClaude);
     }
 
-    private async Task<Workspace?> ResolveWorkspaceAsync(string fullPath, CancellationToken cancellationToken)
+    private static async Task<Workspace?> ResolveWorkspaceAsync(BishopDbContext db, string fullPath, CancellationToken cancellationToken)
     {
-        var workspaces = await _db.Workspaces
+        var workspaces = await db.Workspaces
             .AsNoTracking()
             .Include(w => w.Lanes.OrderBy(l => l.Position))
             .Include(w => w.Tags.OrderBy(t => t.Name))

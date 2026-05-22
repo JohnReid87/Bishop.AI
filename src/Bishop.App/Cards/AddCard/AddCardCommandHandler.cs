@@ -7,13 +7,15 @@ namespace Bishop.App.Cards.AddCard;
 
 public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public AddCardCommandHandler(BishopDbContext db) => _db = db;
+    public AddCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Card> Handle(AddCardCommand request, CancellationToken cancellationToken)
     {
-        var existing = await _db.Cards
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var existing = await db.Cards
             .Where(c => c.LaneId == request.LaneId)
             .ToListAsync(cancellationToken);
 
@@ -29,8 +31,8 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
             newPosition = 1;
         }
 
-        var lane = await _db.Lanes.FindAsync([request.LaneId], cancellationToken);
-        var workspace = await _db.Workspaces.FindAsync([lane!.WorkspaceId], cancellationToken);
+        var lane = await db.Lanes.FindAsync([request.LaneId], cancellationToken);
+        var workspace = await db.Workspaces.FindAsync([lane!.WorkspaceId], cancellationToken);
         var number = workspace!.NextCardNumber++;
 
         var card = new Card
@@ -42,26 +44,26 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
             Number = number,
             Position = newPosition,
         };
-        _db.Cards.Add(card);
+        db.Cards.Add(card);
 
         if (request.TagNames is { Count: > 0 })
         {
             var workspaceId = lane.WorkspaceId;
             foreach (var tagName in request.TagNames.Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                var tag = await _db.Tags.FirstOrDefaultAsync(
+                var tag = await db.Tags.FirstOrDefaultAsync(
                     t => t.WorkspaceId == workspaceId && t.Name == tagName,
                     cancellationToken);
                 if (tag is null)
                 {
                     tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspaceId, Name = tagName };
-                    _db.Tags.Add(tag);
+                    db.Tags.Add(tag);
                 }
-                _db.CardTags.Add(new CardTag { CardId = card.Id, TagId = tag.Id });
+                db.CardTags.Add(new CardTag { CardId = card.Id, TagId = tag.Id });
             }
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return card;
     }
 }

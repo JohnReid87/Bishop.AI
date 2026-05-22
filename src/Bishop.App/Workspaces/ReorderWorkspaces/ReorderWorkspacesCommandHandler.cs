@@ -6,13 +6,14 @@ namespace Bishop.App.Workspaces.ReorderWorkspaces;
 
 public sealed class ReorderWorkspacesCommandHandler : IRequestHandler<ReorderWorkspacesCommand, Unit>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public ReorderWorkspacesCommandHandler(BishopDbContext db) => _db = db;
+    public ReorderWorkspacesCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Unit> Handle(ReorderWorkspacesCommand request, CancellationToken cancellationToken)
     {
-        var workspaces = await _db.Workspaces.ToListAsync(cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var workspaces = await db.Workspaces.ToListAsync(cancellationToken);
         var positionMap = request.OrderedIds
             .Select((id, index) => (id, position: index + 1))
             .ToDictionary(x => x.id, x => x.position);
@@ -23,7 +24,7 @@ public sealed class ReorderWorkspacesCommandHandler : IRequestHandler<ReorderWor
                 workspace.Position = position;
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return Unit.Value;
     }
 }

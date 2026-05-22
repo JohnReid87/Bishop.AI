@@ -10,17 +10,19 @@ namespace Bishop.Tests.App.Tags;
 public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
 
     public DefaultTagSeederTests(DbFixture fixture)
     {
         _db = fixture.Db;
+        _factory = fixture.Factory;
     }
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
 
     private async Task<Workspace> CreateWorkspaceAsync(string path)
     {
-        return await new CreateWorkspaceCommandHandler(_db)
+        return await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(U(), path), default);
     }
 
@@ -30,7 +32,7 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
         // Arrange
         var path = $@"C:\projects\seed-{U()}";
         var workspace = await CreateWorkspaceAsync(path);
-        var seeder = new DefaultTagSeeder(_db);
+        var seeder = new DefaultTagSeeder(_factory);
 
         // Act
         await seeder.EnsureAsync(path, default);
@@ -62,13 +64,15 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
             });
         }
         await _db.SaveChangesAsync();
-        var seeder = new DefaultTagSeeder(_db);
+        _db.ChangeTracker.Clear();
+        var seeder = new DefaultTagSeeder(_factory);
 
         // Act
         await seeder.EnsureAsync(path, default);
 
         // Assert
         var tags = await _db.Tags
+            .AsNoTracking()
             .Where(t => t.WorkspaceId == workspace.Id)
             .ToDictionaryAsync(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
         foreach (var (name, expected) in BrandTagPalette.DefaultColours)
@@ -89,7 +93,7 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
             Colour = "#ff5555",
         });
         await _db.SaveChangesAsync();
-        var seeder = new DefaultTagSeeder(_db);
+        var seeder = new DefaultTagSeeder(_factory);
 
         // Act
         await seeder.EnsureAsync(path, default);
@@ -114,13 +118,15 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
             Colour = "#888888",
         });
         await _db.SaveChangesAsync();
-        var seeder = new DefaultTagSeeder(_db);
+        _db.ChangeTracker.Clear();
+        var seeder = new DefaultTagSeeder(_factory);
 
         // Act
         await seeder.EnsureAsync(path, default);
 
         // Assert
         var tags = await _db.Tags
+            .AsNoTracking()
             .Where(t => t.WorkspaceId == workspace.Id)
             .ToDictionaryAsync(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
         tags.Should().HaveCount(BrandTagPalette.DefaultColours.Count);
@@ -148,7 +154,7 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
             .Where(t => t.WorkspaceId == workspace.Id)
             .Select(t => t.Id)
             .ToListAsync();
-        var seeder = new DefaultTagSeeder(_db);
+        var seeder = new DefaultTagSeeder(_factory);
 
         // Act
         await seeder.EnsureAsync(path, default);
@@ -165,7 +171,7 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
     public async Task EnsureAsync_UnknownPath_DoesNothing()
     {
         // Arrange
-        var seeder = new DefaultTagSeeder(_db);
+        var seeder = new DefaultTagSeeder(_factory);
         var tagsBefore = await _db.Tags.CountAsync();
 
         // Act
@@ -196,7 +202,8 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
             }
         }
         await _db.SaveChangesAsync();
-        var seeder = new DefaultTagSeeder(_db);
+        _db.ChangeTracker.Clear();
+        var seeder = new DefaultTagSeeder(_factory);
 
         // Act
         await seeder.EnsureAllAsync(default);
@@ -205,6 +212,7 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
         foreach (var workspaceId in new[] { wsA.Id, wsB.Id })
         {
             var tags = await _db.Tags
+                .AsNoTracking()
                 .Where(t => t.WorkspaceId == workspaceId)
                 .ToDictionaryAsync(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
             foreach (var (name, expected) in BrandTagPalette.DefaultColours)
@@ -218,7 +226,7 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
         // Arrange
         var path = $@"C:\Projects\Case-{U()}";
         var workspace = await CreateWorkspaceAsync(path);
-        var seeder = new DefaultTagSeeder(_db);
+        var seeder = new DefaultTagSeeder(_factory);
 
         // Act
         await seeder.EnsureAsync(path.ToLowerInvariant(), default);

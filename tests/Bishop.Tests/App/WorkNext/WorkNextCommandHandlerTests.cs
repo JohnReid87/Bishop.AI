@@ -23,11 +23,13 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
     private const string WorkspacePath = @"C:\fake\workspace";
 
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
     private readonly SqliteConnection _connection;
 
     public WorkNextCommandHandlerTests(DbFixture fixture)
     {
         _db = fixture.Db;
+        _factory = fixture.Factory;
         _connection = fixture.Connection;
     }
 
@@ -36,9 +38,9 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
     private async Task<(Workspace workspace, IReadOnlyList<Lane> lanes)> CreateWorkspaceWithLanesAsync()
     {
         var name = U("Test");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_db)
+        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         return (workspace, lanes);
     }
@@ -47,16 +49,16 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
     {
         var sender = Substitute.For<ISender>();
         sender.Send(Arg.Any<ClaimCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new ClaimCardCommandHandler(_db, sender)
+            .Returns(call => new ClaimCardCommandHandler(_factory, sender)
                 .Handle(call.ArgAt<ClaimCardCommand>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new MoveCardCommandHandler(_db, sender)
+            .Returns(call => new MoveCardCommandHandler(_factory, sender)
                 .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<GetCardQuery>(), Arg.Any<CancellationToken>())
-            .Returns(call => new GetCardQueryHandler(_db)
+            .Returns(call => new GetCardQueryHandler(_factory)
                 .Handle(call.ArgAt<GetCardQuery>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<RecordClaudeRunCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new RecordClaudeRunCommandHandler(_db)
+            .Returns(call => new RecordClaudeRunCommandHandler(_factory)
                 .Handle(call.ArgAt<RecordClaudeRunCommand>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }
@@ -109,7 +111,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         await add.Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
         await add.Handle(new AddCardCommand(todo.Id, "T2", TagNames: ["test"]), default);
         await add.Handle(new AddCardCommand(todo.Id, "Plain"), default);
@@ -134,7 +136,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         await add.Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
         await add.Handle(new AddCardCommand(todo.Id, "T2", TagNames: ["test"]), default);
         await add.Handle(new AddCardCommand(todo.Id, "T3", TagNames: ["test"]), default);
@@ -159,7 +161,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var first = await add.Handle(new AddCardCommand(todo.Id, "T2", TagNames: ["test"]), default);
         // Inserted second → ends up at top (position 1) under insert-at-top semantics
         var second = await add.Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
@@ -185,7 +187,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         await add.Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
 
         var git = Substitute.For<IGitCli>();
@@ -212,7 +214,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
 
         var claude = ClaudeAlwaysSucceeds();
@@ -237,7 +239,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "Pretty Title", TagNames: ["test"]), default);
 
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
@@ -270,7 +272,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "Broken", TagNames: ["test"]), default);
 
         var claude = ClaudeReturnsExitCode(7);
@@ -304,7 +306,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "Accum", TagNames: ["test"]), default);
 
         var claude = ClaudeAlwaysSucceeds(new ClaudeRunTotals(0.05m, 1000, 250));
@@ -327,7 +329,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "NoTotals", TagNames: ["test"]), default);
 
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds(totals: null));
@@ -349,7 +351,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "Fails", TagNames: ["test"]), default);
 
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeReturnsExitCode(7));
@@ -369,7 +371,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "Summarised", TagNames: ["test"]), default);
 
         var claude = ClaudeAlwaysSucceeds(new ClaudeRunTotals(0.0234m, 12300, 4100), toolUseCount: 14);
@@ -405,7 +407,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var card = await add.Handle(new AddCardCommand(todo.Id, "Broken", TagNames: ["test"]), default);
 
         var claude = ClaudeReturnsExitCode(7);
@@ -468,7 +470,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        await new AddCardCommandHandler(_db).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
 
         var git = Substitute.For<IGitCli>();
         git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -493,7 +495,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        await new AddCardCommandHandler(_db).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
 
         var git = Substitute.For<IGitCli>();
         git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -518,7 +520,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        await new AddCardCommandHandler(_db).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
 
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -556,7 +558,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        await new AddCardCommandHandler(_db).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
 
         var claude = ClaudeAlwaysSucceeds();
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
@@ -580,7 +582,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var card = await new AddCardCommandHandler(_db).Handle(
+        var card = await new AddCardCommandHandler(_factory).Handle(
             new AddCardCommand(todo.Id, "My Card", TagNames: ["test"]), default);
 
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
@@ -612,7 +614,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        var card = await new AddCardCommandHandler(_db).Handle(
+        var card = await new AddCardCommandHandler(_factory).Handle(
             new AddCardCommand(todo.Id, "My Card", TagNames: ["test"]), default);
 
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());

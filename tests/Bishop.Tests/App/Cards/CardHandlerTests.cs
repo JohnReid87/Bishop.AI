@@ -20,11 +20,13 @@ namespace Bishop.Tests.App.Cards;
 public sealed class CardHandlerTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
     private readonly SqliteConnection _connection;
 
     public CardHandlerTests(DbFixture fixture)
     {
         _db = fixture.Db;
+        _factory = fixture.Factory;
         _connection = fixture.Connection;
     }
 
@@ -33,9 +35,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     private async Task<(Workspace workspace, IReadOnlyList<Lane> lanes)> CreateWorkspaceWithLanesAsync()
     {
         var name = U("Test");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_db)
+        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         return (workspace, lanes);
     }
@@ -46,7 +48,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var todoLane = lanes[0];
-        var handler = new AddCardCommandHandler(_db);
+        var handler = new AddCardCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(new AddCardCommand(todoLane.Id, "My Task", "Some details"), default);
@@ -67,7 +69,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var laneId = lanes[0].Id;
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
 
         // Act
         await add.Handle(new AddCardCommand(laneId, "First"), default);
@@ -88,11 +90,11 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var card = await new AddCardCommandHandler(_db)
+        var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "ToRemove"), default);
 
         // Act
-        await new RemoveCardCommandHandler(_db)
+        await new RemoveCardCommandHandler(_factory)
             .Handle(new RemoveCardCommand(card.Id), default);
 
         // Assert
@@ -105,11 +107,11 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         await add.Handle(new AddCardCommand(lanes[0].Id, "Todo-1"), default);
         await add.Handle(new AddCardCommand(lanes[0].Id, "Todo-2"), default);
         await add.Handle(new AddCardCommand(lanes[1].Id, "Doing-1"), default);
-        var handler = new ListCardsByWorkspaceQueryHandler(_db);
+        var handler = new ListCardsByWorkspaceQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new ListCardsByWorkspaceQuery(workspace.Id), default);
@@ -127,11 +129,11 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var laneId = lanes[0].Id;
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var a = await add.Handle(new AddCardCommand(laneId, "A"), default);
         var b = await add.Handle(new AddCardCommand(laneId, "B"), default);
         var c = await add.Handle(new AddCardCommand(laneId, "C"), default);
-        var handler = new MoveCardCommandHandler(_db, Substitute.For<ISender>());
+        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
 
         // Act — with insert-at-top, initial order is C(1), B(2), A(3); move A to position 1 → A, C, B
         await handler.Handle(new MoveCardCommand(a.Id, laneId, 1), default);
@@ -152,11 +154,11 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var todoId = lanes[0].Id;
         var doingId = lanes[1].Id;
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var a = await add.Handle(new AddCardCommand(todoId, "A"), default);
         var b = await add.Handle(new AddCardCommand(todoId, "B"), default);
         await add.Handle(new AddCardCommand(doingId, "X"), default);
-        var handler = new MoveCardCommandHandler(_db, Substitute.For<ISender>());
+        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
 
         // Act — move A from To Do to Doing at position 1 → Doing: A(1), X(2); To Do: B(1)
         await handler.Handle(new MoveCardCommand(a.Id, doingId, 1), default);
@@ -182,7 +184,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var laneId = lanes[0].Id;
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
 
         // Act
         var first = await add.Handle(new AddCardCommand(laneId, "First"), default);
@@ -201,9 +203,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var laneId = lanes[0].Id;
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var first = await add.Handle(new AddCardCommand(laneId, "First"), default);
-        await new RemoveCardCommandHandler(_db).Handle(new RemoveCardCommand(first.Id), default);
+        await new RemoveCardCommandHandler(_factory).Handle(new RemoveCardCommand(first.Id), default);
 
         // Act
         var second = await add.Handle(new AddCardCommand(laneId, "Second"), default);
@@ -218,11 +220,11 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanesA) = await CreateWorkspaceWithLanesAsync();
         var nameB = U("Other");
-        var workspaceB = await new CreateWorkspaceCommandHandler(_db)
+        var workspaceB = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(nameB, $@"C:\{nameB}"), default);
-        var lanesB = await new ListLanesByWorkspaceQueryHandler(_db)
+        var lanesB = await new ListLanesByWorkspaceQueryHandler(_factory)
             .Handle(new ListLanesByWorkspaceQuery(workspaceB.Id), default);
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
 
         // Act
         var a1 = await add.Handle(new AddCardCommand(lanesA[0].Id, "A1"), default);
@@ -256,7 +258,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
             "INSERT INTO Lanes (Id, WorkspaceId, Name, Position) VALUES ({0}, {1}, 'To Do', 1)",
             laneId.ToString().ToLowerInvariant(),
             workspaceId.ToString().ToUpperInvariant());
-        var handler = new AddCardCommandHandler(_db);
+        var handler = new AddCardCommandHandler(_factory);
 
         // Act
         var act = async () => await handler.Handle(
@@ -272,11 +274,11 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var laneId = lanes[0].Id;
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var a = await add.Handle(new AddCardCommand(laneId, "A"), default);
         var b = await add.Handle(new AddCardCommand(laneId, "B"), default);
         var c = await add.Handle(new AddCardCommand(laneId, "C"), default);
-        var handler = new MoveCardCommandHandler(_db, Substitute.For<ISender>());
+        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
 
         // Act — with insert-at-top, initial order is C(1), B(2), A(3); move C to position 3 (end) → B, A, C
         await handler.Handle(new MoveCardCommand(c.Id, laneId, 3), default);
@@ -295,9 +297,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var card = await new AddCardCommandHandler(_db)
+        var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Original"), default);
-        var handler = new UpdateCardCommandHandler(_db);
+        var handler = new UpdateCardCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(
@@ -314,9 +316,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var card = await new AddCardCommandHandler(_db)
+        var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Task", "Old desc"), default);
-        var handler = new UpdateCardCommandHandler(_db);
+        var handler = new UpdateCardCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(
@@ -332,9 +334,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var card = await new AddCardCommandHandler(_db)
+        var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Task", TagNames: ["bug", "urgent"]), default);
-        var handler = new UpdateCardCommandHandler(_db);
+        var handler = new UpdateCardCommandHandler(_factory);
 
         // Act
         await handler.Handle(
@@ -355,9 +357,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var card = await new AddCardCommandHandler(_db)
+        var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Task", TagNames: ["bug"]), default);
-        var handler = new UpdateCardCommandHandler(_db);
+        var handler = new UpdateCardCommandHandler(_factory);
 
         // Act
         await handler.Handle(
@@ -374,9 +376,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var card = await new AddCardCommandHandler(_db)
+        var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
-        var handler = new UpdateCardCommandHandler(_db);
+        var handler = new UpdateCardCommandHandler(_factory);
 
         // Act
         var act = async () => await handler.Handle(
@@ -395,9 +397,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
 
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var card = await new AddCardCommandHandler(_db)
+        var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Original title"), default);
-        var handler = new GetCardQueryHandler(_db);
+        var handler = new GetCardQueryHandler(_factory);
         var initial = await handler.Handle(new GetCardQuery(card.Id), default);
         initial!.Title.Should().Be("Original title");
 
@@ -424,9 +426,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
-        var added = await new AddCardCommandHandler(_db)
+        var added = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Find me"), default);
-        var handler = new GetCardByNumberQueryHandler(_db);
+        var handler = new GetCardByNumberQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new GetCardByNumberQuery(added.Number, workspace.Id), default);
@@ -443,7 +445,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-        var handler = new GetCardByNumberQueryHandler(_db);
+        var handler = new GetCardByNumberQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new GetCardByNumberQuery(9999, workspace.Id), default);
@@ -457,9 +459,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var added = await new AddCardCommandHandler(_db)
+        var added = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
-        var handler = new GetCardByNumberQueryHandler(_db);
+        var handler = new GetCardByNumberQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new GetCardByNumberQuery(added.Number, Guid.NewGuid()), default);
@@ -476,9 +478,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
 
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
-        var card = await new AddCardCommandHandler(_db)
+        var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Move me"), default);
-        var handler = new ListCardsByWorkspaceQueryHandler(_db);
+        var handler = new ListCardsByWorkspaceQueryHandler(_factory);
         var initial = await handler.Handle(new ListCardsByWorkspaceQuery(workspace.Id), default);
         initial.Single().LaneId.Should().Be(lanes[0].Id);
 
@@ -504,7 +506,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var laneId = lanes[0].Id;
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         await add.Handle(new AddCardCommand(laneId, "First"), default);
         await add.Handle(new AddCardCommand(laneId, "Second"), default);
 
@@ -527,7 +529,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var laneId = lanes[0].Id;
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
         var existing = await add.Handle(new AddCardCommand(laneId, "Existing"), default);
 
         // Act
@@ -544,7 +546,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var laneId = lanes[0].Id;
-        var add = new AddCardCommandHandler(_db);
+        var add = new AddCardCommandHandler(_factory);
 
         // Act
         var card = await add.Handle(new AddCardCommand(laneId, "Only", Position: CardInsertPosition.Bottom), default);

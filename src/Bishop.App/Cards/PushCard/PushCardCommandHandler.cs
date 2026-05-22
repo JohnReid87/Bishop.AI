@@ -8,18 +8,19 @@ namespace Bishop.App.Cards.PushCard;
 
 public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Card>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGhCli _ghCli;
 
-    public PushCardCommandHandler(BishopDbContext db, IGhCli ghCli)
+    public PushCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, IGhCli ghCli)
     {
-        _db = db;
+        _dbFactory = dbFactory;
         _ghCli = ghCli;
     }
 
     public async Task<Card> Handle(PushCardCommand request, CancellationToken cancellationToken)
     {
-        var card = await _db.Cards
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var card = await db.Cards
             .Include(c => c.Lane)
                 .ThenInclude(l => l.Workspace)
             .Include(c => c.CardTags)
@@ -71,7 +72,7 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
 
         card.GitHubIssueNumber = issueNumber;
         card.GitHubPushedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return card;
     }
 }

@@ -11,7 +11,7 @@ public sealed class FxRateCacheServiceTests : IClassFixture<DbFixture>
 
     public FxRateCacheServiceTests(DbFixture fixture) => _fixture = fixture;
 
-    private FxRateCacheService NewSut() => new(_fixture.Db);
+    private FxRateCacheService NewSut() => new(_fixture.Factory);
 
     private async Task<Guid> SeedWorkspaceAsync()
     {

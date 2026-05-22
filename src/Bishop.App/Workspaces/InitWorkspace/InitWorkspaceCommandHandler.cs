@@ -8,12 +8,12 @@ namespace Bishop.App.Workspaces.InitWorkspace;
 
 public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceCommand, InitWorkspaceResult>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGitCli _git;
 
-    public InitWorkspaceCommandHandler(BishopDbContext db, IGitCli git)
+    public InitWorkspaceCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, IGitCli git)
     {
-        _db = db;
+        _dbFactory = dbFactory;
         _git = git;
     }
 
@@ -21,7 +21,9 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
     {
         var normalizedPath = Path.GetFullPath(request.Path);
 
-        var allWorkspaces = await _db.Workspaces
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var allWorkspaces = await db.Workspaces
             .Include(w => w.Lanes)
             .Include(w => w.Tags)
             .ToListAsync(cancellationToken);
@@ -43,11 +45,11 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
                 Path = normalizedPath,
                 Position = allWorkspaces.Count + 1,
             };
-            _db.Workspaces.Add(workspace);
+            db.Workspaces.Add(workspace);
 
             for (var i = 0; i < SystemLaneNames.All.Count; i++)
             {
-                _db.Lanes.Add(new Lane
+                db.Lanes.Add(new Lane
                 {
                     Id = Guid.NewGuid(),
                     WorkspaceId = workspace.Id,
@@ -57,7 +59,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
                 });
             }
 
-            await _db.SaveChangesAsync(cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
             created = true;
             lanesAdded = SystemLaneNames.All;
         }
@@ -77,7 +79,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
 
                 foreach (var laneName in missing)
                 {
-                    _db.Lanes.Add(new Lane
+                    db.Lanes.Add(new Lane
                     {
                         Id = Guid.NewGuid(),
                         WorkspaceId = existing.Id,
@@ -87,21 +89,21 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
                     });
                 }
 
-                await _db.SaveChangesAsync(cancellationToken);
+                await db.SaveChangesAsync(cancellationToken);
             }
 
             created = false;
             lanesAdded = missing;
         }
 
-        var tagsAdded = await SeedTagsAsync(workspace, request.SeedTags, cancellationToken);
-        var gitHubLinked = await DetectGitHubAsync(workspace, normalizedPath, request.DetectGitHub, cancellationToken);
+        var tagsAdded = await SeedTagsAsync(db, workspace, request.SeedTags, cancellationToken);
+        var gitHubLinked = await DetectGitHubAsync(db, workspace, normalizedPath, request.DetectGitHub, cancellationToken);
 
         return new InitWorkspaceResult(workspace, created, lanesAdded, tagsAdded, gitHubLinked);
     }
 
-    private async Task<IReadOnlyList<string>> SeedTagsAsync(
-        Workspace workspace, bool seed, CancellationToken cancellationToken)
+    private static async Task<IReadOnlyList<string>> SeedTagsAsync(
+        BishopDbContext db, Workspace workspace, bool seed, CancellationToken cancellationToken)
     {
         if (!seed)
             return [];
@@ -116,7 +118,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
 
         foreach (var tagName in toAdd)
         {
-            _db.Tags.Add(new Tag
+            db.Tags.Add(new Tag
             {
                 Id = Guid.NewGuid(),
                 WorkspaceId = workspace.Id,
@@ -125,12 +127,12 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
             });
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return toAdd;
     }
 
     private async Task<bool> DetectGitHubAsync(
-        Workspace workspace, string workspacePath, bool detect, CancellationToken cancellationToken)
+        BishopDbContext db, Workspace workspace, string workspacePath, bool detect, CancellationToken cancellationToken)
     {
         if (!detect || !string.IsNullOrWhiteSpace(workspace.GitHubRepo))
             return false;
@@ -144,7 +146,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
             return false;
 
         workspace.GitHubRepo = slug;
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return true;
     }
 

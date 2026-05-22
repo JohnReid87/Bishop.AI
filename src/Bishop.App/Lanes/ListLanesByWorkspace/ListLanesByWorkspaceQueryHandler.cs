@@ -7,13 +7,14 @@ namespace Bishop.App.Lanes.ListLanesByWorkspace;
 
 public sealed class ListLanesByWorkspaceQueryHandler : IRequestHandler<ListLanesByWorkspaceQuery, IReadOnlyList<Lane>>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public ListLanesByWorkspaceQueryHandler(BishopDbContext db) => _db = db;
+    public ListLanesByWorkspaceQueryHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<IReadOnlyList<Lane>> Handle(ListLanesByWorkspaceQuery request, CancellationToken cancellationToken)
     {
-        return await _db.Lanes
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Lanes
             .AsNoTracking()
             .Where(l => l.WorkspaceId == request.WorkspaceId)
             .OrderBy(l => l.Position)

@@ -39,22 +39,39 @@ public sealed class DatabaseInitializerTests : IDisposable
                 File.Delete(path);
     }
 
-    private BishopDbContext CreateDbContext() =>
-        new(new DbContextOptionsBuilder<BishopDbContext>()
+    private DbContextOptions<BishopDbContext> StandardOptions() =>
+        new DbContextOptionsBuilder<BishopDbContext>()
             .UseSqlite($"Data Source={_tempDbPath}")
-            .Options);
+            .Options;
 
-    private BishopDbContext CreateDbContextWithNoMigrations() =>
-        new(new DbContextOptionsBuilder<BishopDbContext>()
+    private DbContextOptions<BishopDbContext> NoMigrationsOptions() =>
+        new DbContextOptionsBuilder<BishopDbContext>()
             .UseSqlite($"Data Source={_tempDbPath}",
                 opts => opts.MigrationsAssembly(typeof(DatabaseInitializerTests).Assembly.GetName().Name!))
-            .Options);
+            .Options;
 
-    private BishopDbContext CreateDbContextWithWalThrowingInterceptor() =>
-        new(new DbContextOptionsBuilder<BishopDbContext>()
+    private DbContextOptions<BishopDbContext> WalThrowingOptions() =>
+        new DbContextOptionsBuilder<BishopDbContext>()
             .UseSqlite($"Data Source={_tempDbPath}")
             .AddInterceptors(new WalPragmaThrowingInterceptor())
-            .Options);
+            .Options;
+
+    private BishopDbContext CreateDbContext() => new(StandardOptions());
+
+    private IDbContextFactory<BishopDbContext> CreateFactory() => new TestDbContextFactory(StandardOptions());
+
+    private IDbContextFactory<BishopDbContext> CreateFactoryWithNoMigrations() => new TestDbContextFactory(NoMigrationsOptions());
+
+    private IDbContextFactory<BishopDbContext> CreateFactoryWithWalThrowingInterceptor() => new TestDbContextFactory(WalThrowingOptions());
+
+    private sealed class TestDbContextFactory : IDbContextFactory<BishopDbContext>
+    {
+        private readonly DbContextOptions<BishopDbContext> _options;
+
+        public TestDbContextFactory(DbContextOptions<BishopDbContext> options) => _options = options;
+
+        public BishopDbContext CreateDbContext() => new(_options);
+    }
 
     private sealed class WalPragmaThrowingInterceptor : DbCommandInterceptor
     {
@@ -96,8 +113,7 @@ public sealed class DatabaseInitializerTests : IDisposable
     public Task StopAsync_CompletesSuccessfullySynchronously()
     {
         // Arrange
-        using var db = CreateDbContext();
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var task = sut.StopAsync(default);
@@ -114,7 +130,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
         File.WriteAllText(_stampPath, latestMigration);
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);
@@ -131,7 +147,7 @@ public sealed class DatabaseInitializerTests : IDisposable
             File.Delete(_stampPath);
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);
@@ -152,7 +168,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         File.WriteAllText(_stampPath, "20000101000000_OldMigration");
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);
@@ -170,8 +186,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         if (File.Exists(_stampPath))
             File.Delete(_stampPath);
         await File.WriteAllTextAsync(_tempDbPath, "not-a-valid-sqlite-database");
-        using var db = CreateDbContext();
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -187,8 +202,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         // exercising the early-return guard in WriteStampAsync
         if (File.Exists(_stampPath))
             File.Delete(_stampPath);
-        using var db = CreateDbContextWithNoMigrations();
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactoryWithNoMigrations(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);
@@ -203,8 +217,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         // Arrange — create stamp then lock it exclusively so File.ReadAllText throws IOException
         File.WriteAllText(_stampPath, "any_migration");
         await using var lockStream = new FileStream(_stampPath, FileMode.Open, FileAccess.Read, FileShare.None);
-        using var db = CreateDbContext();
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -219,8 +232,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         // Arrange — stale stamp so IsStampCurrent returns false; read-only so WriteStampAsync fails
         File.WriteAllText(_stampPath, "20000101000000_StaleStamp");
         File.SetAttributes(_stampPath, FileAttributes.ReadOnly);
-        using var db = CreateDbContext();
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -242,8 +254,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         // Arrange — delete stamp so IsStampCurrent returns false; interceptor throws on PRAGMA WAL
         if (File.Exists(_stampPath))
             File.Delete(_stampPath);
-        using var db = CreateDbContextWithWalThrowingInterceptor();
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactoryWithWalThrowingInterceptor(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -258,9 +269,8 @@ public sealed class DatabaseInitializerTests : IDisposable
         // Arrange
         if (File.Exists(_stampPath))
             File.Delete(_stampPath);
-        using var db = CreateDbContext();
         var tagSeeder = Substitute.For<IDefaultTagSeeder>();
-        var sut = new DatabaseInitializer(db, tagSeeder);
+        var sut = new DatabaseInitializer(CreateFactory(), tagSeeder);
 
         // Act
         await sut.StartAsync(default);
@@ -276,8 +286,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         // even if a stamp file exists, because the guard requires a non-null latest migration
         const string existingStamp = "20240101000000_OldMigration";
         File.WriteAllText(_stampPath, existingStamp);
-        using var db = CreateDbContextWithNoMigrations();
-        var sut = new DatabaseInitializer(db, Substitute.For<IDefaultTagSeeder>());
+        var sut = new DatabaseInitializer(CreateFactoryWithNoMigrations(), Substitute.For<IDefaultTagSeeder>());
 
         // Act
         await sut.StartAsync(default);

@@ -21,7 +21,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(PingQueryHandler).Assembly));
-        services.AddDbContext<BishopDbContext>(options =>
+        services.AddDbContextFactory<BishopDbContext>(options =>
             options.UseSqlite(dbConnectionString));
         services.AddHostedService<DatabaseInitializer>();
         services.AddSingleton<IGitCli, GitCli>();

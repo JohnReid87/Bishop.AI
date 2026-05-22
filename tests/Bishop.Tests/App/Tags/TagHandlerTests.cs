@@ -5,16 +5,19 @@ using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.Tests.App.Tags;
 
 public sealed class TagHandlerTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
 
     public TagHandlerTests(DbFixture fixture)
     {
         _db = fixture.Db;
+        _factory = fixture.Factory;
     }
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
@@ -22,7 +25,7 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
     private async Task<Workspace> CreateWorkspaceAsync()
     {
         var name = U("ws");
-        return await new CreateWorkspaceCommandHandler(_db)
+        return await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
     }
 
@@ -33,7 +36,7 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var workspace = await CreateWorkspaceAsync();
-        var handler = new AddTagCommandHandler(_db);
+        var handler = new AddTagCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(new AddTagCommand(workspace.Id, "bug", "#FF0000"), default);
@@ -50,7 +53,7 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var workspace = await CreateWorkspaceAsync();
-        var handler = new AddTagCommandHandler(_db);
+        var handler = new AddTagCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(new AddTagCommand(workspace.Id, "feature"), default);
@@ -64,7 +67,7 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var workspace = await CreateWorkspaceAsync();
-        var handler = new AddTagCommandHandler(_db);
+        var handler = new AddTagCommandHandler(_factory);
         await handler.Handle(new AddTagCommand(workspace.Id, "duplicate"), default);
 
         // Act
@@ -81,7 +84,7 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var workspaceA = await CreateWorkspaceAsync();
         var workspaceB = await CreateWorkspaceAsync();
-        var handler = new AddTagCommandHandler(_db);
+        var handler = new AddTagCommandHandler(_factory);
         await handler.Handle(new AddTagCommand(workspaceA.Id, "shared"), default);
 
         // Act
@@ -98,7 +101,7 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var workspace = await CreateWorkspaceAsync();
-        var handler = new ListTagsByWorkspaceQueryHandler(_db);
+        var handler = new ListTagsByWorkspaceQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new ListTagsByWorkspaceQuery(workspace.Id), default);
@@ -112,11 +115,11 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var workspace = await CreateWorkspaceAsync();
-        var add = new AddTagCommandHandler(_db);
+        var add = new AddTagCommandHandler(_factory);
         await add.Handle(new AddTagCommand(workspace.Id, "zebra"), default);
         await add.Handle(new AddTagCommand(workspace.Id, "alpha"), default);
         await add.Handle(new AddTagCommand(workspace.Id, "middle"), default);
-        var handler = new ListTagsByWorkspaceQueryHandler(_db);
+        var handler = new ListTagsByWorkspaceQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new ListTagsByWorkspaceQuery(workspace.Id), default);
@@ -131,10 +134,10 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var workspaceA = await CreateWorkspaceAsync();
         var workspaceB = await CreateWorkspaceAsync();
-        var add = new AddTagCommandHandler(_db);
+        var add = new AddTagCommandHandler(_factory);
         await add.Handle(new AddTagCommand(workspaceA.Id, "a-tag"), default);
         await add.Handle(new AddTagCommand(workspaceB.Id, "b-tag"), default);
-        var handler = new ListTagsByWorkspaceQueryHandler(_db);
+        var handler = new ListTagsByWorkspaceQueryHandler(_factory);
 
         // Act
         var result = await handler.Handle(new ListTagsByWorkspaceQuery(workspaceA.Id), default);
@@ -151,9 +154,9 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var workspace = await CreateWorkspaceAsync();
-        var tag = await new AddTagCommandHandler(_db)
+        var tag = await new AddTagCommandHandler(_factory)
             .Handle(new AddTagCommand(workspace.Id, "to-remove"), default);
-        var handler = new RemoveTagCommandHandler(_db);
+        var handler = new RemoveTagCommandHandler(_factory);
 
         // Act
         await handler.Handle(new RemoveTagCommand(workspace.Id, "to-remove"), default);
@@ -168,7 +171,7 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var workspace = await CreateWorkspaceAsync();
-        var handler = new RemoveTagCommandHandler(_db);
+        var handler = new RemoveTagCommandHandler(_factory);
 
         // Act
         var act = async () => await handler.Handle(new RemoveTagCommand(workspace.Id, "nonexistent"), default);
@@ -184,9 +187,9 @@ public sealed class TagHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var workspaceA = await CreateWorkspaceAsync();
         var workspaceB = await CreateWorkspaceAsync();
-        await new AddTagCommandHandler(_db)
+        await new AddTagCommandHandler(_factory)
             .Handle(new AddTagCommand(workspaceA.Id, "cross-ws"), default);
-        var handler = new RemoveTagCommandHandler(_db);
+        var handler = new RemoveTagCommandHandler(_factory);
 
         // Act
         var act = async () => await handler.Handle(new RemoveTagCommand(workspaceB.Id, "cross-ws"), default);

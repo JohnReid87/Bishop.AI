@@ -1,18 +1,20 @@
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 
 public sealed class SetWorkspaceGitHubRepoCommandHandler : IRequestHandler<SetWorkspaceGitHubRepoCommand, Workspace>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public SetWorkspaceGitHubRepoCommandHandler(BishopDbContext db) => _db = db;
+    public SetWorkspaceGitHubRepoCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Workspace> Handle(SetWorkspaceGitHubRepoCommand request, CancellationToken cancellationToken)
     {
-        var workspace = await _db.Workspaces.FindAsync([request.WorkspaceId], cancellationToken)
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var workspace = await db.Workspaces.FindAsync([request.WorkspaceId], cancellationToken)
             ?? throw new InvalidOperationException($"Workspace {request.WorkspaceId} not found.");
 
         if (string.IsNullOrWhiteSpace(request.Repo))
@@ -23,7 +25,7 @@ public sealed class SetWorkspaceGitHubRepoCommandHandler : IRequestHandler<SetWo
             throw new InvalidOperationException($"Invalid GitHub repo '{request.Repo}': expected owner/repo format.");
 
         workspace.GitHubRepo = normalized;
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return workspace;
     }
 

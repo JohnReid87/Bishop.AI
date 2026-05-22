@@ -17,11 +17,13 @@ namespace Bishop.Tests.App.Lanes;
 public sealed class LaneHandlerTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _factory;
     private readonly SqliteConnection _connection;
 
     public LaneHandlerTests(DbFixture fixture)
     {
         _db = fixture.Db;
+        _factory = fixture.Factory;
         _connection = fixture.Connection;
     }
 
@@ -30,9 +32,9 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     private async Task<(Workspace workspace, IReadOnlyList<Lane> lanes)> CreateWorkspaceWithLanesAsync()
     {
         var name = U("Test");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_db)
+        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         return (workspace, lanes);
     }
@@ -42,9 +44,9 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("Seeded");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var handler = new ListLanesByWorkspaceQueryHandler(_db);
+        var handler = new ListLanesByWorkspaceQueryHandler(_factory);
 
         // Act
         var lanes = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
@@ -60,9 +62,9 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var name = U("Sys");
-        var workspace = await new CreateWorkspaceCommandHandler(_db)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var handler = new ListLanesByWorkspaceQueryHandler(_db);
+        var handler = new ListLanesByWorkspaceQueryHandler(_factory);
 
         // Act
         var lanes = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
@@ -77,7 +79,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         // Reorder of system lanes must not be blocked
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var done = lanes[2];
-        var handler = new MoveLaneCommandHandler(_db);
+        var handler = new MoveLaneCommandHandler(_factory);
 
         // Act — move "Done" (pos 3) to position 1
         var act = async () => await handler.Handle(new MoveLaneCommand(done.Id, 1), default);
@@ -92,11 +94,11 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var n1 = U("WS1");
         var n2 = U("WS2");
-        var ws1 = await new CreateWorkspaceCommandHandler(_db)
+        var ws1 = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(n1, $@"C:\{n1}"), default);
-        var ws2 = await new CreateWorkspaceCommandHandler(_db)
+        var ws2 = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(n2, $@"C:\{n2}"), default);
-        var handler = new ListLanesByWorkspaceQueryHandler(_db);
+        var handler = new ListLanesByWorkspaceQueryHandler(_factory);
 
         // Act
         var lanes = await handler.Handle(new ListLanesByWorkspaceQuery(ws1.Id), default);
@@ -111,7 +113,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-        var handler = new AddLaneCommandHandler(_db);
+        var handler = new AddLaneCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(new AddLaneCommand(workspace.Id, "Backlog"), default);
@@ -128,7 +130,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-        var handler = new AddLaneCommandHandler(_db);
+        var handler = new AddLaneCommandHandler(_factory);
 
         // Act
         var fourth = await handler.Handle(new AddLaneCommand(workspace.Id, "Review"), default);
@@ -144,8 +146,8 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-        var custom = await new AddLaneCommandHandler(_db).Handle(new AddLaneCommand(workspace.Id, "Review"), default);
-        var handler = new RenameLaneCommandHandler(_db);
+        var custom = await new AddLaneCommandHandler(_factory).Handle(new AddLaneCommand(workspace.Id, "Review"), default);
+        var handler = new RenameLaneCommandHandler(_factory);
 
         // Act
         var result = await handler.Handle(new RenameLaneCommand(custom.Id, "Inbox"), default);
@@ -163,7 +165,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes[0];
-        var handler = new RenameLaneCommandHandler(_db);
+        var handler = new RenameLaneCommandHandler(_factory);
 
         // Act
         var act = async () => await handler.Handle(new RenameLaneCommand(todo.Id, "Inbox"), default);
@@ -179,7 +181,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var done = lanes[2];
-        var handler = new MoveLaneCommandHandler(_db);
+        var handler = new MoveLaneCommandHandler(_factory);
 
         // Act — move "Done" (pos 3) to position 1 → Done, To Do, Doing
         await handler.Handle(new MoveLaneCommand(done.Id, 1), default);
@@ -199,7 +201,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes[0];
-        var handler = new MoveLaneCommandHandler(_db);
+        var handler = new MoveLaneCommandHandler(_factory);
 
         // Act — move "To Do" (pos 1) to position 3 → Doing, Done, To Do
         await handler.Handle(new MoveLaneCommand(todo.Id, 3), default);
@@ -218,8 +220,8 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange — add a custom (non-system) lane to remove
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-        var custom = await new AddLaneCommandHandler(_db).Handle(new AddLaneCommand(workspace.Id, "Review"), default);
-        var handler = new RemoveLaneCommandHandler(_db);
+        var custom = await new AddLaneCommandHandler(_factory).Handle(new AddLaneCommand(workspace.Id, "Review"), default);
+        var handler = new RemoveLaneCommandHandler(_factory);
 
         // Act
         await handler.Handle(new RemoveLaneCommand(custom.Id), default);
@@ -240,7 +242,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var doing = lanes[1];
-        var handler = new RemoveLaneCommandHandler(_db);
+        var handler = new RemoveLaneCommandHandler(_factory);
 
         // Act
         var act = async () => await handler.Handle(new RemoveLaneCommand(doing.Id), default);
@@ -255,10 +257,10 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange — use a custom (non-system) lane so the non-empty guard fires
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
-        var custom = await new AddLaneCommandHandler(_db).Handle(new AddLaneCommand(workspace.Id, "Review"), default);
-        await new AddCardCommandHandler(_db)
+        var custom = await new AddLaneCommandHandler(_factory).Handle(new AddLaneCommand(workspace.Id, "Review"), default);
+        await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(custom.Id, "A task"), default);
-        var handler = new RemoveLaneCommandHandler(_db);
+        var handler = new RemoveLaneCommandHandler(_factory);
 
         // Act
         var act = async () => await handler.Handle(new RemoveLaneCommand(custom.Id), default);
@@ -276,7 +278,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         var todo = lanes[0];  // pos 1
         var doing = lanes[1]; // pos 2
         var done = lanes[2];  // pos 3
-        var handler = new ReorderLanesCommandHandler(_db);
+        var handler = new ReorderLanesCommandHandler(_factory);
 
         // Act — reverse order: Done, To Do, Doing
         await handler.Handle(
@@ -300,7 +302,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         var todo = lanes[0];  // pos 1
         var doing = lanes[1]; // pos 2
         var done = lanes[2];  // pos 3
-        var handler = new ReorderLanesCommandHandler(_db);
+        var handler = new ReorderLanesCommandHandler(_factory);
 
         // Act — supply only Done and To Do; Doing is omitted from the list
         await handler.Handle(
@@ -322,7 +324,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var (ws1, lanes1) = await CreateWorkspaceWithLanesAsync();
         var (ws2, _) = await CreateWorkspaceWithLanesAsync();
-        var handler = new ReorderLanesCommandHandler(_db);
+        var handler = new ReorderLanesCommandHandler(_factory);
 
         // Act — reorder ws1 lanes only
         await handler.Handle(
@@ -345,7 +347,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
 
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
-        var handler = new ListLanesByWorkspaceQueryHandler(_db);
+        var handler = new ListLanesByWorkspaceQueryHandler(_factory);
         var initial = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         initial[0].Name.Should().Be("To Do");
 

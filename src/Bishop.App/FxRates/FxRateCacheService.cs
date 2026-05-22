@@ -6,22 +6,26 @@ namespace Bishop.App.FxRates;
 
 public sealed class FxRateCacheService : IFxRateCache
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public FxRateCacheService(BishopDbContext db) => _db = db;
+    public FxRateCacheService(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
-    public Task<FxRate?> GetAsync(Guid workspaceId, CancellationToken cancellationToken = default)
-        => _db.FxRates.AsNoTracking()
+    public async Task<FxRate?> GetAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.FxRates.AsNoTracking()
             .FirstOrDefaultAsync(r => r.WorkspaceId == workspaceId, cancellationToken);
+    }
 
     public async Task UpsertAsync(Guid workspaceId, decimal rate, DateTimeOffset fetchedAt, CancellationToken cancellationToken = default)
     {
-        var existing = await _db.FxRates
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var existing = await db.FxRates
             .FirstOrDefaultAsync(r => r.WorkspaceId == workspaceId, cancellationToken);
 
         if (existing is null)
         {
-            _db.FxRates.Add(new FxRate
+            db.FxRates.Add(new FxRate
             {
                 WorkspaceId = workspaceId,
                 UsdToGbp = rate,
@@ -33,6 +37,6 @@ public sealed class FxRateCacheService : IFxRateCache
             existing.UsdToGbp = rate;
             existing.FetchedAtUtc = fetchedAt;
         }
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
     }
 }

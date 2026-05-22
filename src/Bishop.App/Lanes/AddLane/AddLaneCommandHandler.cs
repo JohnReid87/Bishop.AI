@@ -7,13 +7,14 @@ namespace Bishop.App.Lanes.AddLane;
 
 public sealed class AddLaneCommandHandler : IRequestHandler<AddLaneCommand, Lane>
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public AddLaneCommandHandler(BishopDbContext db) => _db = db;
+    public AddLaneCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Lane> Handle(AddLaneCommand request, CancellationToken cancellationToken)
     {
-        var position = await _db.Lanes.CountAsync(l => l.WorkspaceId == request.WorkspaceId, cancellationToken) + 1;
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var position = await db.Lanes.CountAsync(l => l.WorkspaceId == request.WorkspaceId, cancellationToken) + 1;
         var lane = new Lane
         {
             Id = Guid.NewGuid(),
@@ -21,8 +22,8 @@ public sealed class AddLaneCommandHandler : IRequestHandler<AddLaneCommand, Lane
             Name = request.Name,
             Position = position,
         };
-        _db.Lanes.Add(lane);
-        await _db.SaveChangesAsync(cancellationToken);
+        db.Lanes.Add(lane);
+        await db.SaveChangesAsync(cancellationToken);
         return lane;
     }
 }

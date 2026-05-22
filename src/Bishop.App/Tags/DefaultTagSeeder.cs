@@ -6,9 +6,9 @@ namespace Bishop.App.Tags;
 
 public sealed class DefaultTagSeeder : IDefaultTagSeeder
 {
-    private readonly BishopDbContext _db;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public DefaultTagSeeder(BishopDbContext db) => _db = db;
+    public DefaultTagSeeder(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task EnsureAsync(string workspacePath, CancellationToken cancellationToken = default)
     {
@@ -17,7 +17,8 @@ public sealed class DefaultTagSeeder : IDefaultTagSeeder
 
         var fullPath = Path.GetFullPath(workspacePath);
 
-        var workspaces = await _db.Workspaces
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var workspaces = await db.Workspaces
             .Include(w => w.Tags)
             .ToListAsync(cancellationToken);
 
@@ -26,25 +27,26 @@ public sealed class DefaultTagSeeder : IDefaultTagSeeder
         if (workspace is null)
             return;
 
-        if (ApplyBrandColours(workspace))
-            await _db.SaveChangesAsync(cancellationToken);
+        if (ApplyBrandColours(db, workspace))
+            await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task EnsureAllAsync(CancellationToken cancellationToken = default)
     {
-        var workspaces = await _db.Workspaces
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var workspaces = await db.Workspaces
             .Include(w => w.Tags)
             .ToListAsync(cancellationToken);
 
         var changed = false;
         foreach (var workspace in workspaces)
-            changed |= ApplyBrandColours(workspace);
+            changed |= ApplyBrandColours(db, workspace);
 
         if (changed)
-            await _db.SaveChangesAsync(cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
     }
 
-    private bool ApplyBrandColours(Workspace workspace)
+    private static bool ApplyBrandColours(BishopDbContext db, Workspace workspace)
     {
         var byName = workspace.Tags.ToDictionary(t => t.Name, StringComparer.OrdinalIgnoreCase);
         var changed = false;
@@ -61,7 +63,7 @@ public sealed class DefaultTagSeeder : IDefaultTagSeeder
             }
             else
             {
-                _db.Tags.Add(new Tag
+                db.Tags.Add(new Tag
                 {
                     Id = Guid.NewGuid(),
                     WorkspaceId = workspace.Id,
