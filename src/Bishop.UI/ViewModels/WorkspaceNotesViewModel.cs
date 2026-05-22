@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
+using System.Diagnostics;
 using System.Text.Json;
 using Windows.UI.Text;
 
@@ -124,25 +125,21 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     {
         _dispatcherQueue.TryEnqueue(async () =>
         {
-            try
-            {
-                var fileContent = await ReadNotesAsync();
-                if (fileContent == _lastSavedContent) return;
+            var fileContent = await ReadNotesAsync();
+            if (fileContent == _lastSavedContent) return;
 
-                var isDirty = NotesContent != _lastSavedContent;
-                if (!isDirty)
-                {
-                    _lastSavedContent = fileContent;
-                    _isLoadingFromFile = true;
-                    NotesContent = fileContent;
-                    _isLoadingFromFile = false;
-                }
-                else
-                {
-                    IsExternalChangeBarVisible = true;
-                }
+            var isDirty = NotesContent != _lastSavedContent;
+            if (!isDirty)
+            {
+                _lastSavedContent = fileContent;
+                _isLoadingFromFile = true;
+                NotesContent = fileContent;
+                _isLoadingFromFile = false;
             }
-            catch { }
+            else
+            {
+                IsExternalChangeBarVisible = true;
+            }
         });
     }
 
@@ -204,7 +201,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
             PanelHeight = prefs.PanelHeight > 0 ? prefs.PanelHeight : 200;
             _isLoadingPrefs = false;
         }
-        catch { }
+        catch (Exception ex) { Debug.WriteLine($"[Bishop] LoadPrefsAsync: {ex.Message}"); }
     }
 
     private async Task SavePrefsAsync()
@@ -222,7 +219,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
             Directory.CreateDirectory(Path.GetDirectoryName(PrefsFilePath)!);
             await File.WriteAllTextAsync(PrefsFilePath, JsonSerializer.Serialize(all));
         }
-        catch { }
+        catch (Exception ex) { Debug.WriteLine($"[Bishop] SavePrefsAsync: {ex.Message}"); }
     }
 
     private async Task<string> ReadNotesAsync()

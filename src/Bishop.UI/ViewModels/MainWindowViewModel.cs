@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using MediatR;
 using Microsoft.UI.Xaml;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 
@@ -120,7 +121,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 IsPaneOpen = prefs.IsPaneOpen;
             return prefs;
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Bishop] LoadNavPrefsAsync: {ex.Message}");
+            return null;
+        }
     }
 
     private async Task SaveNavPrefsAsync()
@@ -130,7 +135,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Directory.CreateDirectory(Path.GetDirectoryName(NavPrefsFilePath)!);
             await File.WriteAllTextAsync(NavPrefsFilePath, JsonSerializer.Serialize(new NavPrefs(IsPaneOpen, SelectedWorkspace?.Id)));
         }
-        catch { }
+        catch (Exception ex) { Debug.WriteLine($"[Bishop] SaveNavPrefsAsync: {ex.Message}"); }
     }
 
     private static string NavPrefsFilePath => Path.Combine(

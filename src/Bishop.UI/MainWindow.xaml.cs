@@ -5,6 +5,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using Windows.ApplicationModel.DataTransfer;
@@ -265,7 +266,7 @@ public sealed partial class MainWindow : Window
             File.WriteAllText(WindowGeometryFilePath, JsonSerializer.Serialize(
                 new WindowGeometry(pos.X, pos.Y, size.Width, size.Height)));
         }
-        catch { }
+        catch (Exception ex) { Debug.WriteLine($"[Bishop] SaveWindowGeometry: {ex.Message}"); }
     }
 
     private static WindowGeometry? LoadWindowGeometry()
@@ -275,7 +276,11 @@ public sealed partial class MainWindow : Window
         {
             return JsonSerializer.Deserialize<WindowGeometry>(File.ReadAllText(WindowGeometryFilePath));
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Bishop] LoadWindowGeometry: {ex.Message}");
+            return null;
+        }
     }
 
     private static string WindowGeometryFilePath => Path.Combine(
