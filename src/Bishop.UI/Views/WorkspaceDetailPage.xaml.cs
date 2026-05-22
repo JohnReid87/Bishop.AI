@@ -16,6 +16,7 @@ using Bishop.App.Workspaces.LaunchPlainTerminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
+using Bishop.App.WorkNext;
 using Bishop.App.WorkNext.LaunchWorkNext;
 using Bishop.Core.Skills;
 using Bishop.UI.ViewModels;
@@ -38,6 +39,8 @@ namespace Bishop.UI.Views;
 public sealed partial class WorkspaceDetailPage : Page
 {
     private readonly DbChangeWatcher _dbWatcher;
+    private WorkNextStateWatcher? _workNextWatcher;
+    private WorkNextState _workNextState = new(false, false);
     private WorkspaceItemViewModel? _item;
     private CardViewModel? _draggedCard;
     private LaneViewModel? _dragSourceLane;
@@ -59,6 +62,7 @@ public sealed partial class WorkspaceDetailPage : Page
         Notes = App.Services.GetRequiredService<WorkspaceNotesViewModel>();
         _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         InitializeComponent();
+        Board.Lanes.CollectionChanged += (_, _) => ApplyWorkNextStateToToDoLane();
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -87,7 +91,43 @@ public sealed partial class WorkspaceDetailPage : Page
             App.MainWindow.Activated -= OnWindowActivated;
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
+        DisposeWorkNextWatcher();
         _ = Notes.FlushAsync();
+    }
+
+    private void DisposeWorkNextWatcher()
+    {
+        if (_workNextWatcher is null) return;
+        _workNextWatcher.StateChanged -= OnWorkNextStateChanged;
+        _workNextWatcher.Dispose();
+        _workNextWatcher = null;
+        _workNextState = new WorkNextState(false, false);
+    }
+
+    private void SetupWorkNextWatcher(string workspacePath)
+    {
+        DisposeWorkNextWatcher();
+        _workNextWatcher = new WorkNextStateWatcher(workspacePath);
+        _workNextWatcher.StateChanged += OnWorkNextStateChanged;
+        _workNextState = _workNextWatcher.CurrentState;
+        ApplyWorkNextStateToToDoLane();
+    }
+
+    private void OnWorkNextStateChanged(object? sender, WorkNextState state)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _workNextState = state;
+            ApplyWorkNextStateToToDoLane();
+        });
+    }
+
+    private void ApplyWorkNextStateToToDoLane()
+    {
+        var todoLane = Board.Lanes.FirstOrDefault(l => l.IsToDoLane);
+        if (todoLane is null) return;
+        todoLane.IsWorkNextRunning = _workNextState.IsRunning;
+        todoLane.IsWorkNextStopping = _workNextState.IsStopping;
     }
 
     private void OnDatabaseChanged(object? sender, EventArgs e)
@@ -116,6 +156,7 @@ public sealed partial class WorkspaceDetailPage : Page
         ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
         UpdatePathStatus();
         await LoadSkillsAsync();
+        SetupWorkNextWatcher(vm.Path);
         _ = Board.LoadAsync(vm.Id);
         _ = Notes.LoadAsync(vm.Id, vm.Path);
     }
@@ -741,6 +782,14 @@ public sealed partial class WorkspaceDetailPage : Page
             dialog.ViewModel.MaxValue,
             ComputeSnap(),
             chosenModel));
+    }
+
+    private void WorkNextStop_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
+        if (_workNextWatcher is null) return;
+        _workNextWatcher.RequestStop();
+        lane.IsWorkNextStopping = true;
     }
 
     private async void AddLane_Click(object sender, RoutedEventArgs e)

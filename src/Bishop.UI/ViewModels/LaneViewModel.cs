@@ -28,6 +28,16 @@ public sealed partial class LaneViewModel : ObservableObject
     public string WorkNextTooltip => CanWorkNext ? "Ralph it" : "No cards in To Do";
 
     [ObservableProperty]
+    public partial bool IsWorkNextRunning { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsWorkNextStopping { get; set; }
+
+    public bool CanPlayWorkNext => CanWorkNext && !IsWorkNextRunning;
+    public bool CanStopWorkNext => IsWorkNextRunning && !IsWorkNextStopping;
+    public string StopWorkNextTooltip => IsWorkNextStopping ? "Stopping after current card…" : "Stop work-next";
+
+    [ObservableProperty]
     public partial bool IsDropTarget { get; set; }
 
     [ObservableProperty]
@@ -79,8 +89,21 @@ public sealed partial class LaneViewModel : ObservableObject
     private void OnCardsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         OnPropertyChanged(nameof(CanWorkNext));
+        OnPropertyChanged(nameof(CanPlayWorkNext));
         OnPropertyChanged(nameof(WorkNextTooltip));
         RebuildFilteredCards();
+    }
+
+    partial void OnIsWorkNextRunningChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanPlayWorkNext));
+        OnPropertyChanged(nameof(CanStopWorkNext));
+    }
+
+    partial void OnIsWorkNextStoppingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanStopWorkNext));
+        OnPropertyChanged(nameof(StopWorkNextTooltip));
     }
 
     private void OnFilteredCardsChanged(object? sender, NotifyCollectionChangedEventArgs e)

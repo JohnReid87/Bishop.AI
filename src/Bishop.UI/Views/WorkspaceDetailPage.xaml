@@ -202,10 +202,18 @@
                                         <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                 Click="WorkNext_Click"
                                                 Visibility="{x:Bind IsToDoLane, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                IsEnabled="{x:Bind CanWorkNext, Mode=OneWay}"
+                                                IsEnabled="{x:Bind CanPlayWorkNext, Mode=OneWay}"
                                                 ToolTipService.ToolTip="{x:Bind WorkNextTooltip, Mode=OneWay}"
                                                 Margin="0,0,4,0">
                                             <FontIcon Glyph="&#xE768;" FontSize="12"/>
+                                        </Button>
+                                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                Click="WorkNextStop_Click"
+                                                Visibility="{x:Bind IsToDoLane, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                IsEnabled="{x:Bind CanStopWorkNext, Mode=OneWay}"
+                                                ToolTipService.ToolTip="{x:Bind StopWorkNextTooltip, Mode=OneWay}"
+                                                Margin="0,0,4,0">
+                                            <FontIcon Glyph="&#xE71A;" FontSize="12"/>
                                         </Button>
                                         <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                 Command="{x:Bind BeginAddCardCommand}"
