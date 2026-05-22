@@ -8,6 +8,7 @@ using Bishop.App.Settings;
 using Bishop.App.Lanes.RemoveLane;
 using Bishop.App.Lanes.RenameLane;
 using Bishop.App.Lanes.ReorderLanes;
+using Bishop.App.Skills;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
@@ -258,7 +259,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
         foreach (var (skill, i) in _workspaceSkills.Select((s, i) => (s, i)))
         {
-            var rendered = RenderCommand(skill.Command!, null, _item.Path);
+            var rendered = SkillCommandRenderer.Render(skill.Command!, null, null, null, _item.Path);
             var workspacePath = _item.Path;
             var capturedSkill = skill;
             var settingKey = $"skill.{skill.Name}.last_model";
@@ -548,7 +549,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
         foreach (var (skill, i) in _cardSkills.Select((s, i) => (s, i)))
         {
-            var rendered = RenderCommand(skill.Command!, card, _item.Path);
+            var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, _item.Path);
             var workspacePath = _item.Path;
             var capturedSkill = skill;
             var settingKey = $"skill.{skill.Name}.last_model";
@@ -611,7 +612,7 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             var prefill = skill.StagePrefill is null
                 ? null
-                : RenderCommand(skill.StagePrefill, card, workspacePath).Trim();
+                : SkillCommandRenderer.Render(skill.StagePrefill, card?.Number, card?.Title, card?.Description, workspacePath).Trim();
             var initialText = string.IsNullOrEmpty(prefill) ? null : prefill;
             var dialog = new SkillStageDialog(skill.Name, skill.StagePrompt, initialText) { XamlRoot = XamlRoot };
             if (await dialog.ShowAsync() != ContentDialogResult.Primary)
@@ -707,7 +708,7 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         if (_item is null || SkillViewer.Skill is null || SkillViewer.Skill.Command is null) return;
         var card = _skillViewerCard;
-        var rendered = RenderCommand(SkillViewer.Skill.Command, card, _item.Path);
+        var rendered = SkillCommandRenderer.Render(SkillViewer.Skill.Command, card?.Number, card?.Title, card?.Description, _item.Path);
         await LaunchSkillAsync(SkillViewer.Skill, rendered, _item.Path, card, SkillViewer.ModelId);
     }
 
@@ -749,13 +750,6 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private static TerminalSnap ComputeSnap() => SnapHelper.ComputeSnap();
-
-    private static string RenderCommand(string template, CardViewModel? card, string workspacePath) =>
-        template
-            .Replace("{{workspace_path}}", workspacePath)
-            .Replace("{{card_number}}", card?.Number.ToString() ?? string.Empty)
-            .Replace("{{card_title}}", card?.Title ?? string.Empty)
-            .Replace("{{card_description}}", card?.Description ?? string.Empty);
 
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
     {

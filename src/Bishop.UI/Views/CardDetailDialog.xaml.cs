@@ -1,6 +1,7 @@
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Git;
 using Bishop.App.Settings;
+using Bishop.App.Skills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
 using Bishop.Core;
@@ -285,7 +286,7 @@ public sealed partial class CardDetailDialog : ContentDialog
 
         foreach (var (skill, i) in _cardSkills.Select((s, i) => (s, i)))
         {
-            var rendered = RenderCommand(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath);
+            var rendered = SkillCommandRenderer.Render(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath);
             var settingKey = $"skill.{skill.Name}.last_model";
             var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
 
@@ -365,13 +366,6 @@ public sealed partial class CardDetailDialog : ContentDialog
         row.Children.Add(launchBtn);
         return row;
     }
-
-    private static string RenderCommand(string template, int cardNumber, string cardTitle, string cardDescription, string workspacePath) =>
-        template
-            .Replace("{{workspace_path}}", workspacePath)
-            .Replace("{{card_number}}", cardNumber.ToString())
-            .Replace("{{card_title}}", cardTitle)
-            .Replace("{{card_description}}", cardDescription);
 
     private static TerminalSnap ComputeSnap() => SnapHelper.ComputeSnap();
 }
