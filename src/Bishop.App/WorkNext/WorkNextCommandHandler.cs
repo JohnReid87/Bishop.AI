@@ -47,8 +47,8 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
 
             var startStamp = DateTimeOffset.Now.ToString("HH:mm:ss");
             var startLine = request.Model is not null
-                ? $"[{startStamp}] == Card #{card.Number}: {card.Title}  [{request.Model}] =="
-                : $"[{startStamp}] == Card #{card.Number}: {card.Title} ==";
+                ? $"== [{startStamp}] Card #{card.Number}: {card.Title}  [{request.Model}] =="
+                : $"== [{startStamp}] Card #{card.Number}: {card.Title} ==";
             Console.Out.WriteLine(startLine);
 
             var prompt = $"/bish-auto-card #{card.Number}";
