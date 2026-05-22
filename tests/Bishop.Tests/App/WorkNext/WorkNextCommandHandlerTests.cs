@@ -18,9 +18,12 @@ using NSubstitute;
 
 namespace Bishop.Tests.App.WorkNext;
 
-public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
+public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDisposable
 {
-    private const string WorkspacePath = @"C:\fake\workspace";
+    private readonly string WorkspacePath;
+    private readonly string BishopDir;
+    private readonly string RunningFile;
+    private readonly string StopFile;
 
     private readonly BishopDbContext _db;
     private readonly IDbContextFactory<BishopDbContext> _factory;
@@ -31,6 +34,24 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         _db = fixture.Db;
         _factory = fixture.Factory;
         _connection = fixture.Connection;
+
+        WorkspacePath = Path.Combine(Path.GetTempPath(), "bishop-worknext-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(WorkspacePath);
+        BishopDir = Path.Combine(WorkspacePath, ".bishop");
+        RunningFile = Path.Combine(BishopDir, "worknext.running");
+        StopFile = Path.Combine(BishopDir, "worknext.stop");
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(WorkspacePath))
+                Directory.Delete(WorkspacePath, recursive: true);
+        }
+        catch
+        {
+        }
     }
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
@@ -635,5 +656,280 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>
         // Assert — start line ends with the title and ==, with no model bracket between them.
         var lines = output.ToString().Split(Environment.NewLine);
         lines.Should().ContainSingle(l => l.EndsWith($"Card #{card.Number}: My Card =="));
+    }
+
+    [Fact]
+    public async Task StopFileDroppedMidRun_ExitsWithCancelledAfterCurrentCard()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_factory);
+        await add.Handle(new AddCardCommand(todo.Id, "T2", TagNames: ["test"]), default);
+        await add.Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                // Drop a stop file mid-run, after the first card finishes.
+                File.WriteAllText(StopFile, "");
+                return Task.FromResult(new ClaudeRunResult(0, null, 0));
+            });
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        var result = await handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10),
+            default);
+
+        // Assert
+        result.StopReason.Should().Be(WorkNextStopReason.Cancelled);
+        result.CardsProcessed.Should().Be(1);
+        File.Exists(StopFile).Should().BeFalse();
+        await claude.Received(1).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PreExistingStopFile_IsDeletedOnEntry_AndDoesNotPreCancelRun()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_factory);
+        await add.Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        Directory.CreateDirectory(BishopDir);
+        File.WriteAllText(StopFile, "");
+
+        var claude = ClaudeAlwaysSucceeds();
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        var result = await handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1),
+            default);
+
+        // Assert
+        result.StopReason.Should().Be(WorkNextStopReason.CapReached);
+        result.CardsProcessed.Should().Be(1);
+        File.Exists(StopFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Heartbeat_ExistsDuringRun_AndIsDeletedOnExit()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        var heartbeatExistedDuringRun = false;
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                heartbeatExistedDuringRun = File.Exists(RunningFile);
+                return Task.FromResult(new ClaudeRunResult(0, null, 0));
+            });
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        await handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1),
+            default);
+
+        // Assert
+        heartbeatExistedDuringRun.Should().BeTrue();
+        File.Exists(RunningFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Heartbeat_ContainsCurrentPidAndUtcStartTimestamp()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        string? captured = null;
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                captured = File.ReadAllText(RunningFile);
+                return Task.FromResult(new ClaudeRunResult(0, null, 0));
+            });
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        var before = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1),
+            default);
+        var after = DateTimeOffset.UtcNow.AddSeconds(1);
+
+        // Assert
+        captured.Should().NotBeNullOrEmpty();
+        var lines = captured!.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        lines.Should().HaveCountGreaterThanOrEqualTo(2);
+        int.Parse(lines[0]).Should().Be(Environment.ProcessId);
+        var parsed = DateTimeOffset.Parse(lines[1], System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind);
+        parsed.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
+        parsed.Offset.Should().Be(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task Heartbeat_DeletedOnExit_EmptyLane()
+    {
+        // Arrange
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10), default);
+
+        // Assert
+        File.Exists(RunningFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Heartbeat_DeletedOnExit_CapReached()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1), default);
+
+        // Assert
+        result.StopReason.Should().Be(WorkNextStopReason.CapReached);
+        File.Exists(RunningFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Heartbeat_DeletedOnExit_ClaudeFailed()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeReturnsExitCode(7));
+
+        // Act
+        var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10), default);
+
+        // Assert
+        result.StopReason.Should().Be(WorkNextStopReason.ClaudeFailed);
+        File.Exists(RunningFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Heartbeat_DeletedOnExit_DirtyWorkingTree()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.Dirty(["src/foo.cs"]));
+        var handler = new WorkNextCommandHandler(git, CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10), default);
+
+        // Assert
+        result.StopReason.Should().Be(WorkNextStopReason.DirtyWorkingTree);
+        File.Exists(RunningFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Heartbeat_DeletedOnExit_NotAGitRepo()
+    {
+        // Arrange
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.NotAGitRepo());
+        var handler = new WorkNextCommandHandler(git, CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10), default);
+
+        // Assert
+        result.StopReason.Should().Be(WorkNextStopReason.NotAGitRepo);
+        File.Exists(RunningFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Heartbeat_DeletedOnExit_GitNotFound()
+    {
+        // Arrange
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.GitNotFound());
+        var handler = new WorkNextCommandHandler(git, CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10), default);
+
+        // Assert
+        result.StopReason.Should().Be(WorkNextStopReason.GitNotFound);
+        File.Exists(RunningFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Heartbeat_DeletedOnExit_Cancelled()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T2", TagNames: ["test"]), default);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                File.WriteAllText(StopFile, "");
+                return Task.FromResult(new ClaudeRunResult(0, null, 0));
+            });
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10), default);
+
+        // Assert
+        result.StopReason.Should().Be(WorkNextStopReason.Cancelled);
+        File.Exists(RunningFile).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Heartbeat_DeletedOnExit_UnhandledException()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(todo.Id, "T1", TagNames: ["test"]), default);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ClaudeRunResult>(new InvalidOperationException("boom")));
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        Func<Task> act = () => handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10),
+            default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        File.Exists(RunningFile).Should().BeFalse();
     }
 }

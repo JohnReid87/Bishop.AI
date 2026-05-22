@@ -23,54 +23,80 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
 
     public async Task<WorkNextResult> Handle(WorkNextCommand request, CancellationToken cancellationToken)
     {
-        var processed = 0;
+        var bishopDir = Path.Combine(request.WorkspacePath, ".bishop");
+        var runningFile = Path.Combine(bishopDir, "worknext.running");
+        var stopFile = Path.Combine(bishopDir, "worknext.stop");
 
-        while (true)
+        Directory.CreateDirectory(bishopDir);
+
+        if (File.Exists(stopFile))
+            File.Delete(stopFile);
+
+        var heartbeat = $"{Environment.ProcessId}{Environment.NewLine}{DateTimeOffset.UtcNow:O}{Environment.NewLine}";
+        File.WriteAllText(runningFile, heartbeat);
+
+        try
         {
-            var status = await _git.GetWorkingTreeStatusAsync(request.WorkspacePath, cancellationToken);
-            switch (status)
+            var processed = 0;
+
+            while (true)
             {
-                case GetWorkingTreeStatusResult.Dirty dirty:
-                    return new WorkNextResult(processed, WorkNextStopReason.DirtyWorkingTree, DirtyPaths: dirty.Paths);
-                case GetWorkingTreeStatusResult.NotAGitRepo:
-                    return new WorkNextResult(processed, WorkNextStopReason.NotAGitRepo);
-                case GetWorkingTreeStatusResult.GitNotFound:
-                    return new WorkNextResult(processed, WorkNextStopReason.GitNotFound);
+                if (File.Exists(stopFile))
+                {
+                    File.Delete(stopFile);
+                    return new WorkNextResult(processed, WorkNextStopReason.Cancelled);
+                }
+
+                var status = await _git.GetWorkingTreeStatusAsync(request.WorkspacePath, cancellationToken);
+                switch (status)
+                {
+                    case GetWorkingTreeStatusResult.Dirty dirty:
+                        return new WorkNextResult(processed, WorkNextStopReason.DirtyWorkingTree, DirtyPaths: dirty.Paths);
+                    case GetWorkingTreeStatusResult.NotAGitRepo:
+                        return new WorkNextResult(processed, WorkNextStopReason.NotAGitRepo);
+                    case GetWorkingTreeStatusResult.GitNotFound:
+                        return new WorkNextResult(processed, WorkNextStopReason.GitNotFound);
+                }
+
+                var card = await _sender.Send(
+                    new ClaimCardCommand(request.WorkspaceId, SystemLaneNames.ToDo, request.Tag),
+                    cancellationToken);
+
+                if (card is null)
+                    return new WorkNextResult(processed, WorkNextStopReason.EmptyLane);
+
+                var startStamp = DateTimeOffset.Now.ToString("HH:mm:ss");
+                var startLine = request.Model is not null
+                    ? $"== [{startStamp}] Card #{card.Number}: {card.Title}  [{request.Model}] =="
+                    : $"== [{startStamp}] Card #{card.Number}: {card.Title} ==";
+                Console.Out.WriteLine(startLine);
+
+                var prompt = $"/bish-auto-card #{card.Number}";
+                var stopwatch = Stopwatch.StartNew();
+                var runResult = await _claude.RunPromptAsync(request.WorkspacePath, prompt, request.Model, cancellationToken);
+                stopwatch.Stop();
+
+                Console.Out.WriteLine($"exit {runResult.ExitCode}");
+                Console.Out.WriteLine(FormatCardSummary(card.Number, runResult, stopwatch.Elapsed));
+
+                if (runResult.ExitCode != 0)
+                    return new WorkNextResult(processed, WorkNextStopReason.ClaudeFailed, FailedCardNumber: card.Number);
+
+                var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
+                await _sender.Send(
+                    new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens),
+                    cancellationToken);
+
+                processed++;
+
+                if (request.MaxIterations > 0 && processed >= request.MaxIterations)
+                    return new WorkNextResult(processed, WorkNextStopReason.CapReached);
             }
-
-            var card = await _sender.Send(
-                new ClaimCardCommand(request.WorkspaceId, SystemLaneNames.ToDo, request.Tag),
-                cancellationToken);
-
-            if (card is null)
-                return new WorkNextResult(processed, WorkNextStopReason.EmptyLane);
-
-            var startStamp = DateTimeOffset.Now.ToString("HH:mm:ss");
-            var startLine = request.Model is not null
-                ? $"== [{startStamp}] Card #{card.Number}: {card.Title}  [{request.Model}] =="
-                : $"== [{startStamp}] Card #{card.Number}: {card.Title} ==";
-            Console.Out.WriteLine(startLine);
-
-            var prompt = $"/bish-auto-card #{card.Number}";
-            var stopwatch = Stopwatch.StartNew();
-            var runResult = await _claude.RunPromptAsync(request.WorkspacePath, prompt, request.Model, cancellationToken);
-            stopwatch.Stop();
-
-            Console.Out.WriteLine($"exit {runResult.ExitCode}");
-            Console.Out.WriteLine(FormatCardSummary(card.Number, runResult, stopwatch.Elapsed));
-
-            if (runResult.ExitCode != 0)
-                return new WorkNextResult(processed, WorkNextStopReason.ClaudeFailed, FailedCardNumber: card.Number);
-
-            var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
-            await _sender.Send(
-                new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens),
-                cancellationToken);
-
-            processed++;
-
-            if (request.MaxIterations > 0 && processed >= request.MaxIterations)
-                return new WorkNextResult(processed, WorkNextStopReason.CapReached);
+        }
+        finally
+        {
+            if (File.Exists(runningFile))
+                File.Delete(runningFile);
         }
     }
 

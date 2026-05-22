@@ -8,6 +8,7 @@ public enum WorkNextStopReason
     ClaudeFailed,
     NotAGitRepo,
     GitNotFound,
+    Cancelled,
 }
 
 public sealed record WorkNextResult(

@@ -831,6 +831,7 @@ workNextCmd.SetHandler(async (string? workspace, string? tag, int max, string? m
     {
         case WorkNextStopReason.EmptyLane:
         case WorkNextStopReason.CapReached:
+        case WorkNextStopReason.Cancelled:
             break;
         case WorkNextStopReason.DirtyWorkingTree:
             Console.Error.WriteLine($"Working tree at '{ws.Path}' is dirty:");
