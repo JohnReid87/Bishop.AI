@@ -44,6 +44,11 @@ public sealed partial class MainWindow : Window
         AppWindow.TitleBar.ButtonHoverForegroundColor = Colors.White;
         AppWindow.TitleBar.ButtonPressedBackgroundColor = Color.FromArgb(255, 40, 40, 50);
         AppWindow.TitleBar.ButtonPressedForegroundColor = Colors.White;
+
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Brand", "bishop-ai.ico");
+        if (File.Exists(iconPath))
+            AppWindow.SetIcon(iconPath);
+
         SetTitleBar(AppTitleBar);
     }
 

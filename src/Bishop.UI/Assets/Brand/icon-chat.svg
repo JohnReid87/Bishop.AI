@@ -1,0 +1,6 @@
+<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <title>chat icon</title>
+  <rect x="0" y="0" width="80" height="80" rx="16" fill="#141914" stroke="#2a2a2a" stroke-width="1"/>
+  <path d="M 20 28 L 60 28 Q 64 28 64 32 L 64 52 Q 64 56 60 56 L 35 56 L 25 64 L 25 56 L 20 56 Q 16 56 16 52 L 16 32 Q 16 28 20 28 Z" fill="none" stroke="#e8e8e8" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="40" cy="42" r="3" fill="#00ff41"/>
+</svg>

@@ -22,12 +22,29 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>Assets\Brand\bishop-ai.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Remove="Assets\bishop-ai.ico" />
+    <Content Include="Assets\Brand\bishop-ai.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Remove="Assets\Brand\01-logo-mark.svg" />
     <Content Remove="Assets\Brand\02-wordmark-horizontal.svg" />
+    <Content Remove="Assets\Brand\03-wordmark-type-only.svg" />
+    <Content Remove="Assets\Brand\04-wordmark-terminal.svg" />
+    <Content Remove="Assets\Brand\05-app-icon-dark.svg" />
+    <Content Remove="Assets\Brand\06-app-icon-light.svg" />
+    <Content Remove="Assets\Brand\07-app-icon-circular.svg" />
+    <Content Remove="Assets\Brand\08-app-icon-mono.svg" />
+    <Content Remove="Assets\Brand\09-favicon-32.svg" />
+    <Content Remove="Assets\Brand\icon-branch.svg" />
+    <Content Remove="Assets\Brand\icon-chat.svg" />
+    <Content Remove="Assets\Brand\icon-code.svg" />
+    <Content Remove="Assets\Brand\icon-run.svg" />
+    <Content Remove="Assets\Brand\icon-settings.svg" />
+    <Content Remove="Assets\Brand\icon-terminal.svg" />
+    <Content Remove="Assets\Brand\status-indicators.svg" />
   </ItemGroup>
 
   <ItemGroup>

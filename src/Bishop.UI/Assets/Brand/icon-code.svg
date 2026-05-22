@@ -1,0 +1,7 @@
+<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <title>code icon</title>
+  <rect x="0" y="0" width="80" height="80" rx="16" fill="#141914" stroke="#2a2a2a" stroke-width="1"/>
+  <text x="20" y="50" fill="#e8e8e8" font-family="ui-monospace,monospace" font-size="22" font-weight="500">&lt;</text>
+  <text x="35" y="50" fill="#00ff41" font-family="ui-monospace,monospace" font-size="22" font-weight="500">/</text>
+  <text x="48" y="50" fill="#e8e8e8" font-family="ui-monospace,monospace" font-size="22" font-weight="500">&gt;</text>
+</svg>

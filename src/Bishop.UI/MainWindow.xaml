@@ -13,11 +13,12 @@
         <!-- Custom title bar drag region -->
         <Grid x:Name="AppTitleBar" Grid.Row="0"
               Background="{StaticResource AppSurfaceBrush}">
-            <TextBlock Text="BISHOP.AI"
-                       VerticalAlignment="Center"
+            <TextBlock VerticalAlignment="Center"
                        Margin="12,0,0,0"
                        FontSize="12"
-                       Opacity="0.5"/>
+                       FontFamily="Cascadia Mono, Consolas, Courier New">
+                <Run Text="bishop" Foreground="{StaticResource AppTextPrimaryBrush}"/><Run Text=".ai" Foreground="{StaticResource AppAccentBrush}"/>
+            </TextBlock>
         </Grid>
 
         <NavigationView
