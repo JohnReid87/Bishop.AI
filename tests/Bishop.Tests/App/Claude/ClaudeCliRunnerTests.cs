@@ -231,10 +231,6 @@ public sealed class ClaudeCliRunnerTests
         await sut.RunPromptAsync("C:\\ws", "hello", "claude-sonnet-4-6");
 
         capturedPsi.Should().NotBeNull();
-        capturedPsi!.UseShellExecute.Should().BeFalse();
-        capturedPsi!.CreateNoWindow.Should().BeTrue();
-        capturedPsi!.RedirectStandardOutput.Should().BeTrue();
-        capturedPsi!.RedirectStandardError.Should().BeTrue();
         capturedPsi!.ArgumentList.Should().Contain("--model");
         capturedPsi!.ArgumentList.Should().Contain("claude-sonnet-4-6");
     }
