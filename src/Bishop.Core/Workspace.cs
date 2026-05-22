@@ -1,6 +1,6 @@
 namespace Bishop.Core;
 
-public sealed class Workspace
+public sealed class Workspace : IAuditable
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

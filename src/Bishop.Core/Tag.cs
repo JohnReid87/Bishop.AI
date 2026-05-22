@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Bishop.Core;
 
-public sealed class Tag
+public sealed class Tag : IAuditable
 {
     public Guid Id { get; set; }
     public Guid WorkspaceId { get; set; }

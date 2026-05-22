@@ -35,21 +35,7 @@ public sealed class BishopDbContext : DbContext
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
-        foreach (var entry in ChangeTracker.Entries<Workspace>())
-        {
-            if (entry.State == EntityState.Added)
-                entry.Entity.CreatedAt = entry.Entity.UpdatedAt = now;
-            else if (entry.State == EntityState.Modified)
-                entry.Entity.UpdatedAt = now;
-        }
-        foreach (var entry in ChangeTracker.Entries<Card>())
-        {
-            if (entry.State == EntityState.Added)
-                entry.Entity.CreatedAt = entry.Entity.UpdatedAt = now;
-            else if (entry.State == EntityState.Modified)
-                entry.Entity.UpdatedAt = now;
-        }
-        foreach (var entry in ChangeTracker.Entries<Tag>())
+        foreach (var entry in ChangeTracker.Entries<IAuditable>())
         {
             if (entry.State == EntityState.Added)
                 entry.Entity.CreatedAt = entry.Entity.UpdatedAt = now;

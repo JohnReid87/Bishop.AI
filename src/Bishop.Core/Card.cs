@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Bishop.Core;
 
-public sealed class Card
+public sealed class Card : IAuditable
 {
     public Guid Id { get; set; }
     public Guid LaneId { get; set; }
