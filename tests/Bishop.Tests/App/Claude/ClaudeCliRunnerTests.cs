@@ -61,6 +61,18 @@ public sealed class ClaudeCliRunnerTests
     }
 
     [Fact]
+    public async Task RunPromptAsync_DoesNotThrow_WhenProcessExitsNonZero()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        var sut = new ClaudeCliRunner(resolver, _ => CmdProcess("/c exit 1"));
+
+        var result = await sut.RunPromptAsync("C:\\ws", "hello");
+
+        result.ExitCode.Should().Be(1);
+    }
+
+    [Fact]
     public async Task RunPromptAsync_Throws_WhenProcessStartThrowsWin32Exception()
     {
         var resolver = Substitute.For<IClaudeExecutableResolver>();
@@ -149,6 +161,36 @@ public sealed class ClaudeCliRunnerTests
     }
 
     [Fact]
+    public async Task RunPromptAsync_DoesNotCrash_AndCompletes_WhenStdoutContainsMalformedJson()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        Func<ProcessStartInfo, Process?> starter = _ =>
+        {
+            var psi = new ProcessStartInfo("cmd.exe")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                Arguments = "/c more",
+            };
+            var proc = Process.Start(psi)!;
+            proc.StandardInput.WriteLine("not-valid-json");
+            proc.StandardInput.WriteLine("{broken");
+            proc.StandardInput.WriteLine("{\"type\":\"result\",\"total_cost_usd\":0.01}");
+            proc.StandardInput.Close();
+            return proc;
+        };
+        var sut = new ClaudeCliRunner(resolver, starter);
+
+        var result = await sut.RunPromptAsync("C:\\ws", "hello");
+
+        result.ExitCode.Should().Be(0);
+    }
+
+    [Fact]
     public async Task RunPromptAsync_ConsumesStderr_WithoutFailing()
     {
         var resolver = Substitute.For<IClaudeExecutableResolver>();
@@ -189,7 +231,12 @@ public sealed class ClaudeCliRunnerTests
         await sut.RunPromptAsync("C:\\ws", "hello", "claude-sonnet-4-6");
 
         capturedPsi.Should().NotBeNull();
-        capturedPsi!.ArgumentList.Should().ContainInOrder("--model", "claude-sonnet-4-6");
+        capturedPsi!.UseShellExecute.Should().BeFalse();
+        capturedPsi!.CreateNoWindow.Should().BeTrue();
+        capturedPsi!.RedirectStandardOutput.Should().BeTrue();
+        capturedPsi!.RedirectStandardError.Should().BeTrue();
+        capturedPsi!.ArgumentList.Should().Contain("--model");
+        capturedPsi!.ArgumentList.Should().Contain("claude-sonnet-4-6");
     }
 
     [Fact]
