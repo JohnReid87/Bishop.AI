@@ -431,3 +431,5 @@ FodyWeavers.xsd
 
 # Bishop runtime files (BISHOP_CONTEXT.md, BISHOP_NOTES.md, worknext.running, etc.)
 .bishop/
+# Legacy root-level notes file for workspaces that haven't migrated yet
+BISHOP_NOTES.md
