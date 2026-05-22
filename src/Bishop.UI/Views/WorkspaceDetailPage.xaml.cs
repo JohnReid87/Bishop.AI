@@ -608,7 +608,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath, CardViewModel? card, string? modelId = null)
     {
-        if (skill.Stage && card is null)
+        if (SkillStaging.ShouldShowStageDialog(skill, card is not null))
         {
             var prefill = skill.StagePrefill is null
                 ? null
