@@ -117,4 +117,19 @@ public sealed class FxRateProviderTests
         await _cache.DidNotReceive().UpsertAsync(
             Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task GetUsdToGbpAsync_FetchesAndCaches_WhenConstructedWithDefaultClock()
+    {
+        var workspaceId = Guid.NewGuid();
+        _cache.GetAsync(workspaceId, Arg.Any<CancellationToken>()).Returns((FxRate?)null);
+        _client.FetchUsdToGbpAsync(Arg.Any<CancellationToken>()).Returns(0.80m);
+        var sut = new FxRateProvider(_client, _cache);
+
+        var rate = await sut.GetUsdToGbpAsync(workspaceId);
+
+        rate.Should().Be(0.80m);
+        await _cache.Received(1).UpsertAsync(
+            workspaceId, 0.80m, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+    }
 }
