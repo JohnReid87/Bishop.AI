@@ -1,6 +1,9 @@
 {
   "_comment": "Permission scope for bish-auto-card (bishop work-next). See ~/.claude/skills/bish-auto-card/SKILL.md for the canonical tool list this maps to.",
   "permissions": {
+    "deny": [
+      "Bash(git push:*)"
+    ],
     "allow": [
       "Bash(bishop:*)",
       "Bash(git status:*)",
