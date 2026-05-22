@@ -50,7 +50,7 @@ var jsonOpts = new JsonSerializerOptions
 var builder = Host.CreateEmptyApplicationBuilder(null);
 builder.Logging.ClearProviders();
 builder.Logging.SetMinimumLevel(LogLevel.Warning);
-builder.Services.AddBishopApp(BishopDbConnectionString.Resolve());
+builder.Services.AddBishopApp(BishopDbConnectionString.Resolve(), BishopStampPath.Resolve());
 using var host = builder.Build();
 
 await host.StartAsync();

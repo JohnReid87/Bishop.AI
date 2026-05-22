@@ -31,7 +31,7 @@ public partial class App : Application
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
-                services.AddBishopApp(connStr);
+                services.AddBishopApp(connStr, BishopStampPath.Resolve());
                 services.AddSingleton(_ => new DbChangeWatcher(dbPath));
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<WorkspaceBoardViewModel>();

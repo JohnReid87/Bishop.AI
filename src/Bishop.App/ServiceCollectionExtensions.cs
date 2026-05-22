@@ -16,13 +16,16 @@ namespace Bishop.App;
 [ExcludeFromCodeCoverage]
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddBishopApp(this IServiceCollection services, string dbConnectionString)
+    public static IServiceCollection AddBishopApp(this IServiceCollection services, string dbConnectionString, string stampPath)
     {
         services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(PingQueryHandler).Assembly));
         services.AddDbContextFactory<BishopDbContext>(options =>
             options.UseSqlite(dbConnectionString));
-        services.AddHostedService<DatabaseInitializer>();
+        services.AddHostedService(sp => new DatabaseInitializer(
+            sp.GetRequiredService<IDbContextFactory<BishopDbContext>>(),
+            sp.GetRequiredService<IDefaultTagSeeder>(),
+            stampPath));
         services.AddSingleton<IGitCli, GitCli>();
         services.AddSingleton<IGhCli, GhCli>();
         services.AddSingleton<IClaudeExecutableResolver, ClaudeExecutableResolver>();

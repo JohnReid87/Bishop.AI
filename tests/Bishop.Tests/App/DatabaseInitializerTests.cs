@@ -14,24 +14,20 @@ public sealed class DatabaseInitializerTests : IDisposable
 {
     private readonly string _tempDbPath;
     private readonly string _stampPath;
-    private readonly string? _originalStamp;
 
     public DatabaseInitializerTests()
     {
         _tempDbPath = Path.Combine(Path.GetTempPath(), $"bishop_test_{Guid.NewGuid():N}.db");
-        _stampPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Bishop.AI",
-            "migration_stamp");
-        _originalStamp = File.Exists(_stampPath) ? File.ReadAllText(_stampPath) : null;
+        _stampPath = Path.Combine(Path.GetTempPath(), $"bishop_stamp_{Guid.NewGuid():N}");
     }
 
     public void Dispose()
     {
-        if (_originalStamp is not null)
-            File.WriteAllText(_stampPath, _originalStamp);
-        else if (File.Exists(_stampPath))
+        if (File.Exists(_stampPath))
+        {
+            File.SetAttributes(_stampPath, FileAttributes.Normal);
             File.Delete(_stampPath);
+        }
 
         SqliteConnection.ClearAllPools();
         foreach (var path in new[] { _tempDbPath, _tempDbPath + "-shm", _tempDbPath + "-wal" })
@@ -70,6 +66,9 @@ public sealed class DatabaseInitializerTests : IDisposable
                 .UseSqlite($"Data Source={_tempDbPath}")
                 .AddInterceptors(new MigrationDdlThrowingInterceptor())
                 .Options);
+
+    private DatabaseInitializer CreateSut(IDbContextFactory<BishopDbContext>? factory = null, IDefaultTagSeeder? seeder = null) =>
+        new(factory ?? CreateFactory(), seeder ?? Substitute.For<IDefaultTagSeeder>(), _stampPath);
 
     private sealed class TestDbContextFactory : IDbContextFactory<BishopDbContext>
     {
@@ -157,7 +156,7 @@ public sealed class DatabaseInitializerTests : IDisposable
     public Task StopAsync_CompletesSuccessfullySynchronously()
     {
         // Arrange
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act
         var task = sut.StopAsync(default);
@@ -174,7 +173,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
         File.WriteAllText(_stampPath, latestMigration);
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act
         await sut.StartAsync(default);
@@ -187,11 +186,9 @@ public sealed class DatabaseInitializerTests : IDisposable
     public async Task StartAsync_WhenStampIsMissing_RunsMigrationsAndWritesStamp()
     {
         // Arrange
-        if (File.Exists(_stampPath))
-            File.Delete(_stampPath);
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act
         await sut.StartAsync(default);
@@ -212,7 +209,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         File.WriteAllText(_stampPath, "20000101000000_OldMigration");
         using var db = CreateDbContext();
         var latestMigration = db.Database.GetMigrations().Last();
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act
         await sut.StartAsync(default);
@@ -227,10 +224,8 @@ public sealed class DatabaseInitializerTests : IDisposable
     public async Task StartAsync_WhenDatabaseIsCorrupt_Throws()
     {
         // Arrange
-        if (File.Exists(_stampPath))
-            File.Delete(_stampPath);
         await File.WriteAllTextAsync(_tempDbPath, "not-a-valid-sqlite-database");
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -242,17 +237,15 @@ public sealed class DatabaseInitializerTests : IDisposable
     [Fact]
     public async Task StartAsync_WhenNoAppliedMigrations_DoesNotWriteStamp()
     {
-        // Arrange — context with no migrations so GetAppliedMigrationsAsync returns empty,
-        // exercising the early-return guard in WriteStampAsync
-        if (File.Exists(_stampPath))
-            File.Delete(_stampPath);
-        var sut = new DatabaseInitializer(CreateFactoryWithNoMigrations(), Substitute.For<IDefaultTagSeeder>());
+        // Arrange — context with no migrations so GetAppliedMigrations returns empty,
+        // exercising the early-return guard in WriteStamp
+        var sut = CreateSut(CreateFactoryWithNoMigrations());
 
         // Act
         await sut.StartAsync(default);
 
         // Assert
-        File.Exists(_stampPath).Should().BeFalse("WriteStampAsync should return early when no migrations have been applied");
+        File.Exists(_stampPath).Should().BeFalse("WriteStamp should return early when no migrations have been applied");
     }
 
     [Fact]
@@ -261,7 +254,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         // Arrange — create stamp then lock it exclusively so File.ReadAllText throws IOException
         File.WriteAllText(_stampPath, "any_migration");
         await using var lockStream = new FileStream(_stampPath, FileMode.Open, FileAccess.Read, FileShare.None);
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -273,10 +266,10 @@ public sealed class DatabaseInitializerTests : IDisposable
     [Fact]
     public async Task StartAsync_WhenStampFileIsReadOnly_ThrowsOnWrite()
     {
-        // Arrange — stale stamp so IsStampCurrent returns false; read-only so WriteStampAsync fails
+        // Arrange — stale stamp so IsStampCurrent returns false; read-only so WriteStamp fails
         File.WriteAllText(_stampPath, "20000101000000_StaleStamp");
         File.SetAttributes(_stampPath, FileAttributes.ReadOnly);
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -295,10 +288,8 @@ public sealed class DatabaseInitializerTests : IDisposable
     [Fact]
     public async Task StartAsync_WhenWalPragmaFails_Throws()
     {
-        // Arrange — delete stamp so IsStampCurrent returns false; interceptor throws on PRAGMA WAL
-        if (File.Exists(_stampPath))
-            File.Delete(_stampPath);
-        var sut = new DatabaseInitializer(CreateFactoryWithWalThrowingInterceptor(), Substitute.For<IDefaultTagSeeder>());
+        // Arrange — interceptor throws on PRAGMA WAL
+        var sut = CreateSut(CreateFactoryWithWalThrowingInterceptor());
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -311,10 +302,8 @@ public sealed class DatabaseInitializerTests : IDisposable
     public async Task StartAsync_InvokesTagSeederAfterSchemaIsReady()
     {
         // Arrange
-        if (File.Exists(_stampPath))
-            File.Delete(_stampPath);
         var tagSeeder = Substitute.For<IDefaultTagSeeder>();
-        var sut = new DatabaseInitializer(CreateFactory(), tagSeeder);
+        var sut = CreateSut(seeder: tagSeeder);
 
         // Act
         await sut.StartAsync(default);
@@ -330,26 +319,24 @@ public sealed class DatabaseInitializerTests : IDisposable
         // even if a stamp file exists, because the guard requires a non-null latest migration
         const string existingStamp = "20240101000000_OldMigration";
         File.WriteAllText(_stampPath, existingStamp);
-        var sut = new DatabaseInitializer(CreateFactoryWithNoMigrations(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut(CreateFactoryWithNoMigrations());
 
         // Act
         await sut.StartAsync(default);
 
         // Assert — DB file was created (proving StartAsync passed IsStampCurrent's early-return),
-        // and stamp is unchanged (WriteStampAsync returned early with no applied migrations)
+        // and stamp is unchanged (WriteStamp returned early with no applied migrations)
         File.Exists(_tempDbPath).Should().BeTrue(
             "the DB connection must have been opened, proving IsStampCurrent returned false");
         File.ReadAllText(_stampPath).Should().Be(existingStamp,
-            "WriteStampAsync should not overwrite the stamp when no migrations have been applied");
+            "WriteStamp should not overwrite the stamp when no migrations have been applied");
     }
 
     [Fact]
     public async Task StartAsync_CalledConcurrently_BothSucceedAndSchemaIsValid()
     {
         // Arrange
-        if (File.Exists(_stampPath))
-            File.Delete(_stampPath);
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act — fire both without awaiting to maximise the concurrency window
         var task1 = sut.StartAsync(default);
@@ -363,13 +350,11 @@ public sealed class DatabaseInitializerTests : IDisposable
     }
 
     [Fact]
-    public async Task StartAsync_WhenMigrateAsyncThrows_PropagatesException()
+    public async Task StartAsync_WhenMigrateThrows_PropagatesException()
     {
         // Arrange — interceptor throws when migration DDL (CREATE TABLE) is executed,
-        // while allowing the preceding GetPendingMigrationsAsync SELECT to succeed
-        if (File.Exists(_stampPath))
-            File.Delete(_stampPath);
-        var sut = new DatabaseInitializer(CreateFactoryWithMigrationDdlThrowingInterceptor(), Substitute.For<IDefaultTagSeeder>());
+        // while allowing the preceding GetPendingMigrations SELECT to succeed
+        var sut = CreateSut(CreateFactoryWithMigrationDdlThrowingInterceptor());
 
         // Act
         var act = () => sut.StartAsync(default);
@@ -382,9 +367,7 @@ public sealed class DatabaseInitializerTests : IDisposable
     public async Task StartAsync_WhenStampIsMissing_WorkspacesTableIsPresent()
     {
         // Arrange
-        if (File.Exists(_stampPath))
-            File.Delete(_stampPath);
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act
         await sut.StartAsync(default);
@@ -398,7 +381,7 @@ public sealed class DatabaseInitializerTests : IDisposable
     public Task StopAsync_BeforeStartAsync_DoesNotCreateDatabaseFile()
     {
         // Arrange
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act
         var task = sut.StopAsync(default);
@@ -413,9 +396,7 @@ public sealed class DatabaseInitializerTests : IDisposable
     public async Task StopAsync_DuringStartAsync_CompletesImmediately()
     {
         // Arrange
-        if (File.Exists(_stampPath))
-            File.Delete(_stampPath);
-        var sut = new DatabaseInitializer(CreateFactory(), Substitute.For<IDefaultTagSeeder>());
+        var sut = CreateSut();
 
         // Act — fire both; StopAsync must not block on StartAsync
         var startTask = sut.StartAsync(default);
@@ -424,5 +405,61 @@ public sealed class DatabaseInitializerTests : IDisposable
         // Assert
         stopTask.IsCompletedSuccessfully.Should().BeTrue("StopAsync always returns Task.CompletedTask regardless of StartAsync state");
         await startTask;
+    }
+
+    [Fact]
+    public async Task StartAsync_BlocksWhileNamedMutexIsHeldByAnotherThread_AndCompletesAfterRelease()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var mutexName = DatabaseInitializer.BuildMutexName(_stampPath);
+        var mutexAcquired = new ManualResetEventSlim(false);
+        var releaseMutex = new ManualResetEventSlim(false);
+        var holderFailure = (Exception?)null;
+
+        // Background thread holds the named Mutex. We use a dedicated Thread (not Task)
+        // so the acquire and release are guaranteed to happen on the same OS thread —
+        // Mutex has thread-affinity and ReleaseMutex from a different thread throws.
+        var holder = new Thread(() =>
+        {
+            try
+            {
+                using var mutex = new Mutex(initiallyOwned: false, mutexName);
+                mutex.WaitOne();
+                try
+                {
+                    mutexAcquired.Set();
+                    releaseMutex.Wait(TimeSpan.FromSeconds(30));
+                }
+                finally
+                {
+                    mutex.ReleaseMutex();
+                }
+            }
+            catch (Exception ex)
+            {
+                holderFailure = ex;
+                mutexAcquired.Set();
+            }
+        })
+        { IsBackground = true };
+
+        holder.Start();
+        mutexAcquired.Wait(TimeSpan.FromSeconds(5)).Should().BeTrue("the holder thread must acquire the mutex first");
+        holderFailure.Should().BeNull();
+
+        // Act — StartAsync should block on the mutex until the holder releases it.
+        var startTask = Task.Run(() => sut.StartAsync(default));
+        var stillBlocked = await Task.WhenAny(startTask, Task.Delay(200)) != startTask;
+        stillBlocked.Should().BeTrue("StartAsync must block while the named mutex is held by another thread");
+
+        releaseMutex.Set();
+        holder.Join(TimeSpan.FromSeconds(5)).Should().BeTrue("holder thread should exit after release signal");
+
+        // Assert
+        var completed = await Task.WhenAny(startTask, Task.Delay(TimeSpan.FromSeconds(30))) == startTask;
+        completed.Should().BeTrue("StartAsync should complete shortly after the mutex is released");
+        await startTask;
+        File.Exists(_stampPath).Should().BeTrue("the stamp must have been written once StartAsync completed");
     }
 }
