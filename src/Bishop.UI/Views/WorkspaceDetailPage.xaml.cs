@@ -54,8 +54,8 @@ public sealed partial class WorkspaceDetailPage : Page
     private double _dragStartPageX;
     private double _dragStartPanelWidth;
     private CardViewModel? _skillViewerCard;
-    private IReadOnlyList<InstalledSkill> _cardSkills = [];
-    private IReadOnlyList<InstalledSkill> _workspaceSkills = [];
+    private SkillMenuItem[] _cardSkills = [];
+    private SkillMenuItem[] _workspaceSkills = [];
 
 
     public WorkspaceBoardViewModel Board { get; }
@@ -208,10 +208,10 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         var mediator = App.Services.GetRequiredService<IMediator>();
         var skills = await mediator.Send(new DiscoverSkillsQuery());
-        _cardSkills = skills.Where(s => s.Scope.Contains("card") && s.Command is not null).ToList();
-        _workspaceSkills = skills.Where(s => s.Scope.Contains("workspace") && s.Command is not null).ToList();
-        CardViewModel.CardSkillsButtonVisibility = _cardSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        WorkspaceSkillsButton.Visibility = _workspaceSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _cardSkills = SkillMenuBuilder.Build(skills, "card");
+        _workspaceSkills = SkillMenuBuilder.Build(skills, "workspace");
+        CardViewModel.CardSkillsButtonVisibility = _cardSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        WorkspaceSkillsButton.Visibility = _workspaceSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdatePathStatus()
@@ -251,33 +251,33 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private async void WorkspaceSkillsButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_item is null || _workspaceSkills.Count == 0) return;
+        if (_item is null || _workspaceSkills.Length == 0) return;
         var appSettings = App.Services.GetRequiredService<IAppSettings>();
 
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
         var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
 
-        foreach (var (skill, i) in _workspaceSkills.Select((s, i) => (s, i)))
+        foreach (var item in _workspaceSkills)
         {
+            var skill = item.Skill;
             var rendered = SkillCommandRenderer.Render(skill.Command!, null, null, null, _item.Path);
             var workspacePath = _item.Path;
-            var capturedSkill = skill;
             var settingKey = $"skill.{skill.Name}.last_model";
             var savedModel = await appSettings.GetAsync(settingKey) ?? WorkNextOptionsDialogViewModel.DefaultModelId;
 
-            panel.Children.Add(MakeSkillRow(skill.Name, savedModel,
+            panel.Children.Add(MakeSkillRow(item.Name, savedModel,
                 onLaunch: async chosenModel =>
                 {
                     await appSettings.SetAsync(settingKey, chosenModel);
                     flyout.Hide();
-                    await LaunchSkillAsync(capturedSkill, rendered, workspacePath, card: null, chosenModel);
+                    await LaunchSkillAsync(skill, rendered, workspacePath, card: null, chosenModel);
                 },
                 onView: async () =>
                 {
                     flyout.Hide();
-                    await OpenSkillViewerAsync(capturedSkill, card: null);
+                    await OpenSkillViewerAsync(skill, card: null);
                 }));
-            if (i < _workspaceSkills.Count - 1)
+            if (item.HasSeparatorAfter)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
         }
 
@@ -540,34 +540,34 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private async void CardSkillsButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_item is null || _cardSkills.Count == 0) return;
+        if (_item is null || _cardSkills.Length == 0) return;
         if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
         var appSettings = App.Services.GetRequiredService<IAppSettings>();
 
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
         var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
 
-        foreach (var (skill, i) in _cardSkills.Select((s, i) => (s, i)))
+        foreach (var item in _cardSkills)
         {
+            var skill = item.Skill;
             var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, _item.Path);
             var workspacePath = _item.Path;
-            var capturedSkill = skill;
             var settingKey = $"skill.{skill.Name}.last_model";
             var savedModel = await appSettings.GetAsync(settingKey) ?? WorkNextOptionsDialogViewModel.DefaultModelId;
 
-            panel.Children.Add(MakeSkillRow(skill.Name, savedModel,
+            panel.Children.Add(MakeSkillRow(item.Name, savedModel,
                 onLaunch: async chosenModel =>
                 {
                     await appSettings.SetAsync(settingKey, chosenModel);
                     flyout.Hide();
-                    await LaunchSkillAsync(capturedSkill, rendered, workspacePath, card, chosenModel);
+                    await LaunchSkillAsync(skill, rendered, workspacePath, card, chosenModel);
                 },
                 onView: async () =>
                 {
                     flyout.Hide();
-                    await OpenSkillViewerAsync(capturedSkill, card);
+                    await OpenSkillViewerAsync(skill, card);
                 }));
-            if (i < _cardSkills.Count - 1)
+            if (item.HasSeparatorAfter)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
         }
 

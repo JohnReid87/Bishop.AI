@@ -7,7 +7,7 @@ using Bishop.App.Claude;
 using Bishop.App.Git;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.Core;
-using Bishop.Core.Skills;
+using Bishop.App.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
@@ -141,7 +141,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public Visibility DeleteConfirmVisibility =>
         ShowDeleteConfirm ? Visibility.Visible : Visibility.Collapsed;
 
-    public CardDetailDialogViewModel(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, Guid workspaceId, string? gitHubRepo, IMediator mediator)
+    public CardDetailDialogViewModel(CardViewModel card, SkillMenuItem[] cardSkills, Guid workspaceId, string? gitHubRepo, IMediator mediator)
     {
         _mediator = mediator;
         _workspaceId = workspaceId;
@@ -155,7 +155,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         GitHubIssueNumber = card.GitHubIssueNumber;
         foreach (var t in card.Tags)
             Tags.Add(t);
-        SkillsButtonVisibility = cardSkills.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SkillsButtonVisibility = cardSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public Task<IReadOnlyList<Tag>> GetWorkspaceTagsAsync() =>

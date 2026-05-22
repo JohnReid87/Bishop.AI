@@ -5,7 +5,6 @@ using Bishop.App.Skills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Terminal;
 using Bishop.Core;
-using Bishop.Core.Skills;
 using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +23,7 @@ namespace Bishop.UI.Views;
 
 public sealed partial class CardDetailDialog : ContentDialog
 {
-    private readonly IReadOnlyList<InstalledSkill> _cardSkills;
+    private readonly SkillMenuItem[] _cardSkills;
     private readonly string _workspacePath;
     private readonly Guid _workspaceId;
 
@@ -38,7 +37,7 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     public CardDetailDialogViewModel ViewModel { get; }
 
-    public CardDetailDialog(CardViewModel card, IReadOnlyList<InstalledSkill> cardSkills, string workspacePath, Guid workspaceId, string? gitHubRepo)
+    public CardDetailDialog(CardViewModel card, SkillMenuItem[] cardSkills, string workspacePath, Guid workspaceId, string? gitHubRepo)
     {
         var mediator = App.Services.GetRequiredService<IMediator>();
         _cardSkills = cardSkills;
@@ -278,25 +277,26 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     private async void SkillButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_cardSkills.Count == 0) return;
+        if (_cardSkills.Length == 0) return;
         var appSettings = App.Services.GetRequiredService<IAppSettings>();
 
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
         var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
 
-        foreach (var (skill, i) in _cardSkills.Select((s, i) => (s, i)))
+        foreach (var item in _cardSkills)
         {
+            var skill = item.Skill;
             var rendered = SkillCommandRenderer.Render(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath);
             var settingKey = $"skill.{skill.Name}.last_model";
             var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
 
-            panel.Children.Add(MakeSkillRow(skill.Name, savedModel, async chosenModel =>
+            panel.Children.Add(MakeSkillRow(item.Name, savedModel, async chosenModel =>
             {
                 await appSettings.SetAsync(settingKey, chosenModel);
                 flyout.Hide();
                 await LaunchSkillAsync(rendered, chosenModel);
             }));
-            if (i < _cardSkills.Count - 1)
+            if (item.HasSeparatorAfter)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
         }
 
