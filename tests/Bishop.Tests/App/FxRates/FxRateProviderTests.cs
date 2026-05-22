@@ -1,221 +1,120 @@
-using System.Net;
-using System.Text;
 using Bishop.App.FxRates;
 using Bishop.Core;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace Bishop.Tests.App.FxRates;
 
-public sealed class FxRateProviderTests : IClassFixture<DbFixture>
+public sealed class FxRateProviderTests
 {
-    private readonly DbFixture _fixture;
+    private readonly IFxRateClient _client = Substitute.For<IFxRateClient>();
+    private readonly IFxRateCache _cache = Substitute.For<IFxRateCache>();
 
-    public FxRateProviderTests(DbFixture fixture)
+    private FxRateProvider NewSut(Func<DateTimeOffset> now) => new(_client, _cache, now);
+
+    private static DateTimeOffset At(int hour) =>
+        new(2026, 5, 21, hour, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public async Task GetUsdToGbpAsync_ReturnsCachedRate_WhenCacheIsFreshToday()
     {
-        _fixture = fixture;
+        var workspaceId = Guid.NewGuid();
+        var cached = new FxRate { WorkspaceId = workspaceId, UsdToGbp = 0.77m, FetchedAtUtc = At(4) };
+        _cache.GetAsync(workspaceId, Arg.Any<CancellationToken>()).Returns(cached);
+        var sut = NewSut(() => At(23));
+
+        var rate = await sut.GetUsdToGbpAsync(workspaceId);
+
+        rate.Should().Be(0.77m);
+        await _client.DidNotReceive().FetchUsdToGbpAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task GetUsdToGbpAsync_FetchesAndCaches_OnFirstCall()
+    public async Task GetUsdToGbpAsync_FetchesAndCaches_WhenCacheIsStale()
     {
-        var workspaceId = await SeedWorkspaceAsync();
-        var handler = new RecordingHandler(_ => OkJson("""{"rates":{"GBP":0.78}}"""));
-        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 10, 0, 0, TimeSpan.Zero));
+        var workspaceId = Guid.NewGuid();
+        var stale = new FxRate { WorkspaceId = workspaceId, UsdToGbp = 0.70m, FetchedAtUtc = At(10).AddDays(-1) };
+        _cache.GetAsync(workspaceId, Arg.Any<CancellationToken>()).Returns(stale);
+        _client.FetchUsdToGbpAsync(Arg.Any<CancellationToken>()).Returns(0.78m);
+        var now = At(10);
+        var sut = NewSut(() => now);
 
         var rate = await sut.GetUsdToGbpAsync(workspaceId);
 
         rate.Should().Be(0.78m);
-        handler.CallCount.Should().Be(1);
-        var cached = await _fixture.Db.FxRates.AsNoTracking().SingleAsync(r => r.WorkspaceId == workspaceId);
-        cached.UsdToGbp.Should().Be(0.78m);
-        cached.FetchedAtUtc.UtcDateTime.Date.Should().Be(new DateTime(2026, 5, 21));
+        await _cache.Received(1).UpsertAsync(workspaceId, 0.78m, now.ToUniversalTime(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task GetUsdToGbpAsync_ReturnsCachedRate_WhenFetchFails()
+    public async Task GetUsdToGbpAsync_FetchesAndCaches_WhenNothingCached()
     {
-        var workspaceId = await SeedWorkspaceAsync();
-        _fixture.Db.FxRates.Add(new FxRate
-        {
-            WorkspaceId = workspaceId,
-            UsdToGbp = 0.75m,
-            FetchedAtUtc = new DateTimeOffset(2026, 5, 20, 10, 0, 0, TimeSpan.Zero)
-        });
-        await _fixture.Db.SaveChangesAsync();
-        _fixture.Db.ChangeTracker.Clear();
+        var workspaceId = Guid.NewGuid();
+        _cache.GetAsync(workspaceId, Arg.Any<CancellationToken>()).Returns((FxRate?)null);
+        _client.FetchUsdToGbpAsync(Arg.Any<CancellationToken>()).Returns(0.78m);
+        var now = At(10);
+        var sut = NewSut(() => now);
 
-        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
-        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 10, 0, 0, TimeSpan.Zero));
+        var rate = await sut.GetUsdToGbpAsync(workspaceId);
+
+        rate.Should().Be(0.78m);
+        await _cache.Received(1).UpsertAsync(workspaceId, 0.78m, now.ToUniversalTime(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetUsdToGbpAsync_ReturnsStaleCacheRate_WhenFetchFails()
+    {
+        var workspaceId = Guid.NewGuid();
+        var stale = new FxRate { WorkspaceId = workspaceId, UsdToGbp = 0.75m, FetchedAtUtc = At(10).AddDays(-1) };
+        _cache.GetAsync(workspaceId, Arg.Any<CancellationToken>()).Returns(stale);
+        _client.FetchUsdToGbpAsync(Arg.Any<CancellationToken>()).Returns((decimal?)null);
+        var sut = NewSut(() => At(10));
 
         var rate = await sut.GetUsdToGbpAsync(workspaceId);
 
         rate.Should().Be(0.75m);
-        handler.CallCount.Should().Be(1);
-        var cached = await _fixture.Db.FxRates.AsNoTracking().SingleAsync(r => r.WorkspaceId == workspaceId);
-        cached.UsdToGbp.Should().Be(0.75m);
-        cached.FetchedAtUtc.UtcDateTime.Date.Should().Be(new DateTime(2026, 5, 20));
+        await _cache.DidNotReceive().UpsertAsync(
+            Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GetUsdToGbpAsync_ReturnsNull_WhenFetchFailsAndNothingCached()
     {
-        var workspaceId = await SeedWorkspaceAsync();
-        var handler = new RecordingHandler(_ => throw new HttpRequestException("network down"));
-        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 10, 0, 0, TimeSpan.Zero));
+        var workspaceId = Guid.NewGuid();
+        _cache.GetAsync(workspaceId, Arg.Any<CancellationToken>()).Returns((FxRate?)null);
+        _client.FetchUsdToGbpAsync(Arg.Any<CancellationToken>()).Returns((decimal?)null);
+        var sut = NewSut(() => At(10));
 
         var rate = await sut.GetUsdToGbpAsync(workspaceId);
 
         rate.Should().BeNull();
-        handler.CallCount.Should().Be(1);
-        (await _fixture.Db.FxRates.AsNoTracking().AnyAsync(r => r.WorkspaceId == workspaceId))
-            .Should().BeFalse();
     }
 
     [Fact]
-    public async Task GetUsdToGbpAsync_DoesNotCallHttp_WhenCacheFromToday()
+    public async Task RefreshUsdToGbpAsync_FetchesAndCaches_IgnoringCache()
     {
-        var workspaceId = await SeedWorkspaceAsync();
-        _fixture.Db.FxRates.Add(new FxRate
-        {
-            WorkspaceId = workspaceId,
-            UsdToGbp = 0.77m,
-            FetchedAtUtc = new DateTimeOffset(2026, 5, 21, 4, 0, 0, TimeSpan.Zero)
-        });
-        await _fixture.Db.SaveChangesAsync();
-        _fixture.Db.ChangeTracker.Clear();
-
-        var handler = new RecordingHandler(_ => throw new InvalidOperationException("should not be called"));
-        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 23, 59, 0, TimeSpan.Zero));
-
-        var rate = await sut.GetUsdToGbpAsync(workspaceId);
-
-        rate.Should().Be(0.77m);
-        handler.CallCount.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task RefreshUsdToGbpAsync_FetchesAndUpserts_EvenWhenCacheIsFresh()
-    {
-        var workspaceId = await SeedWorkspaceAsync();
-        _fixture.Db.FxRates.Add(new FxRate
-        {
-            WorkspaceId = workspaceId,
-            UsdToGbp = 0.70m,
-            FetchedAtUtc = new DateTimeOffset(2026, 5, 21, 4, 0, 0, TimeSpan.Zero)
-        });
-        await _fixture.Db.SaveChangesAsync();
-        _fixture.Db.ChangeTracker.Clear();
-
-        var handler = new RecordingHandler(_ => OkJson("""{"rates":{"GBP":0.79}}"""));
-        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 23, 59, 0, TimeSpan.Zero));
+        var workspaceId = Guid.NewGuid();
+        _client.FetchUsdToGbpAsync(Arg.Any<CancellationToken>()).Returns(0.79m);
+        var now = At(23);
+        var sut = NewSut(() => now);
 
         var rate = await sut.RefreshUsdToGbpAsync(workspaceId);
 
         rate.Should().Be(0.79m);
-        handler.CallCount.Should().Be(1);
-        var cached = await _fixture.Db.FxRates.AsNoTracking().SingleAsync(r => r.WorkspaceId == workspaceId);
-        cached.UsdToGbp.Should().Be(0.79m);
-        cached.FetchedAtUtc.UtcDateTime.Should().Be(new DateTime(2026, 5, 21, 23, 59, 0));
+        await _cache.Received(1).UpsertAsync(workspaceId, 0.79m, now.ToUniversalTime(), Arg.Any<CancellationToken>());
+        await _cache.DidNotReceive().GetAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task RefreshUsdToGbpAsync_ReturnsNullAndLeavesCacheUntouched_WhenFetchFails()
+    public async Task RefreshUsdToGbpAsync_ReturnsNull_WhenFetchFails()
     {
-        var workspaceId = await SeedWorkspaceAsync();
-        _fixture.Db.FxRates.Add(new FxRate
-        {
-            WorkspaceId = workspaceId,
-            UsdToGbp = 0.75m,
-            FetchedAtUtc = new DateTimeOffset(2026, 5, 20, 10, 0, 0, TimeSpan.Zero)
-        });
-        await _fixture.Db.SaveChangesAsync();
-        _fixture.Db.ChangeTracker.Clear();
-
-        var handler = new RecordingHandler(_ => throw new HttpRequestException("network down"));
-        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 10, 0, 0, TimeSpan.Zero));
+        var workspaceId = Guid.NewGuid();
+        _client.FetchUsdToGbpAsync(Arg.Any<CancellationToken>()).Returns((decimal?)null);
+        var sut = NewSut(() => At(10));
 
         var rate = await sut.RefreshUsdToGbpAsync(workspaceId);
 
         rate.Should().BeNull();
-        handler.CallCount.Should().Be(1);
-        var cached = await _fixture.Db.FxRates.AsNoTracking().SingleAsync(r => r.WorkspaceId == workspaceId);
-        cached.UsdToGbp.Should().Be(0.75m);
-        cached.FetchedAtUtc.UtcDateTime.Date.Should().Be(new DateTime(2026, 5, 20));
-    }
-
-    [Fact]
-    public async Task GetUsdToGbpAsync_ReturnsNull_WhenJsonResponseMissingRatesStructure()
-    {
-        var workspaceId = await SeedWorkspaceAsync();
-        var handler = new RecordingHandler(_ => OkJson("""{"message":"no data"}"""));
-        var sut = NewSut(handler, () => new DateTimeOffset(2026, 5, 21, 10, 0, 0, TimeSpan.Zero));
-
-        var rate = await sut.GetUsdToGbpAsync(workspaceId);
-
-        rate.Should().BeNull();
-        handler.CallCount.Should().Be(1);
-        (await _fixture.Db.FxRates.AsNoTracking().AnyAsync(r => r.WorkspaceId == workspaceId))
-            .Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task GetUsdToGbpAsync_FetchesRate_WhenCreatedWithTwoArgumentConstructor()
-    {
-        var workspaceId = await SeedWorkspaceAsync();
-        var handler = new RecordingHandler(_ => OkJson("""{"rates":{"GBP":0.80}}"""));
-        var client = new HttpClient(handler) { BaseAddress = new Uri("https://api.exchangerate.host/") };
-        var sut = new FxRateProvider(client, _fixture.Db);
-
-        var rate = await sut.GetUsdToGbpAsync(workspaceId);
-
-        rate.Should().Be(0.80m);
-    }
-
-    private FxRateProvider NewSut(RecordingHandler handler, Func<DateTimeOffset> now)
-    {
-        var client = new HttpClient(handler)
-        {
-            BaseAddress = new Uri("https://api.exchangerate.host/")
-        };
-        return new FxRateProvider(client, _fixture.Db, now);
-    }
-
-    private async Task<Guid> SeedWorkspaceAsync()
-    {
-        var ws = new Workspace
-        {
-            Id = Guid.NewGuid(),
-            Name = $"ws-{Guid.NewGuid():N}",
-            Path = $"C:\\tmp\\{Guid.NewGuid():N}",
-            Position = 1
-        };
-        _fixture.Db.Workspaces.Add(ws);
-        await _fixture.Db.SaveChangesAsync();
-        _fixture.Db.ChangeTracker.Clear();
-        return ws.Id;
-    }
-
-    private static HttpResponseMessage OkJson(string body) => new(HttpStatusCode.OK)
-    {
-        Content = new StringContent(body, Encoding.UTF8, "application/json")
-    };
-
-    private sealed class RecordingHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, HttpResponseMessage> _respond;
-
-        public RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> respond)
-        {
-            _respond = respond;
-        }
-
-        public int CallCount { get; private set; }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            CallCount++;
-            return Task.FromResult(_respond(request));
-        }
+        await _cache.DidNotReceive().UpsertAsync(
+            Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
     }
 }

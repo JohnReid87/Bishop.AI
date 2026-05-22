@@ -29,11 +29,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IClaudeExecutableResolver, ClaudeExecutableResolver>();
         services.AddSingleton<IClaudeCliRunner, ClaudeCliRunner>();
         services.AddScoped<IAppSettings, AppSettingsService>();
-        services.AddHttpClient<IFxRateProvider, FxRateProvider>(client =>
+        services.AddHttpClient<IFxRateClient, HttpFxRateClient>(client =>
         {
             client.BaseAddress = new Uri("https://api.exchangerate.host/");
             client.Timeout = TimeSpan.FromSeconds(10);
         });
+        services.AddScoped<IFxRateCache, FxRateCacheService>();
+        services.AddScoped<IFxRateProvider, FxRateProvider>();
 #pragma warning disable CA1416 // Bishop.AI is Windows-only; TerminalLauncher requires Windows APIs
         services.AddSingleton<ITerminalLauncher, TerminalLauncher>();
 #pragma warning restore CA1416
