@@ -28,6 +28,11 @@ public sealed partial class LaneViewModel : ObservableObject
     public string WorkNextTooltip => CanWorkNext ? "Ralph it" : "No cards in To Do";
 
     [ObservableProperty]
+    public partial bool HasGitHubRepo { get; set; }
+
+    public bool IsImportVisible => IsToDoLane && HasGitHubRepo;
+
+    [ObservableProperty]
     public partial bool IsWorkNextRunning { get; set; }
 
     [ObservableProperty]
@@ -103,6 +108,8 @@ public sealed partial class LaneViewModel : ObservableObject
         OnPropertyChanged(nameof(IsPlayVisible));
         OnPropertyChanged(nameof(IsStopVisible));
     }
+
+    partial void OnHasGitHubRepoChanged(bool value) => OnPropertyChanged(nameof(IsImportVisible));
 
     partial void OnIsWorkNextStoppingChanged(bool value)
     {

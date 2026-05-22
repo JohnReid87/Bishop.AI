@@ -1,4 +1,6 @@
 using Bishop.App.Cards.CloseCard;
+using Bishop.App.Cards.ImportFromGitHub;
+using Bishop.App.GitHub;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Git;
@@ -72,6 +74,7 @@ public sealed partial class WorkspaceDetailPage : Page
         InitSkillViewerModelMenu();
         SkillViewer.PropertyChanged += OnSkillViewerPropertyChanged;
         Board.Lanes.CollectionChanged += (_, _) => ApplyWorkNextStateToToDoLane();
+        Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToToDoLane();
     }
 
     private void OnSkillViewerPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -171,6 +174,13 @@ public sealed partial class WorkspaceDetailPage : Page
         todoLane.IsWorkNextStopping = _workNextState.IsStopping;
     }
 
+    private void ApplyGitHubRepoToToDoLane()
+    {
+        var todoLane = Board.Lanes.FirstOrDefault(l => l.IsToDoLane);
+        if (todoLane is null) return;
+        todoLane.HasGitHubRepo = !string.IsNullOrEmpty(_item?.GitHubRepo);
+    }
+
     private void OnDatabaseChanged(object? sender, EventArgs e)
     {
         DispatcherQueue.TryEnqueue(async () =>
@@ -188,6 +198,8 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         if (e.PropertyName is nameof(WorkspaceItemViewModel.IsPathMissing))
             UpdatePathStatus();
+        if (e.PropertyName is nameof(WorkspaceItemViewModel.GitHubRepo))
+            ApplyGitHubRepoToToDoLane();
     }
 
     private async void UpdateView(WorkspaceItemViewModel vm)
@@ -196,6 +208,7 @@ public sealed partial class WorkspaceDetailPage : Page
         WorkspacePathText.Text = vm.Path;
         ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
         UpdatePathStatus();
+        ApplyGitHubRepoToToDoLane();
         await LoadSkillsAsync();
         SetupWorkNextWatcher(vm.Path);
         _skillViewerCard = null;
@@ -904,6 +917,17 @@ public sealed partial class WorkspaceDetailPage : Page
         if (_workNextWatcher is null) return;
         _workNextWatcher.RequestStop();
         lane.IsWorkNextStopping = true;
+    }
+
+    private async void ImportFromGitHub_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item?.GitHubRepo is not { } repo) return;
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        var ghCli = App.Services.GetRequiredService<IGhCli>();
+        var dialog = new ImportFromGitHubDialog(_item.Id, repo, mediator, ghCli) { XamlRoot = XamlRoot };
+        await dialog.ShowAsync();
+        if (dialog.ViewModel.WasImported)
+            await Board.RefreshCommand.ExecuteAsync(null);
     }
 
     private async void AddLane_Click(object sender, RoutedEventArgs e)
