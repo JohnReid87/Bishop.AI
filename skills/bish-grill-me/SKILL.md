@@ -3,9 +3,9 @@ name: bish-grill-me
 description: Interview the user relentlessly about a plan or design targeting the current Bishop workspace, then push the agreed cards directly to the board after confirmation. Use when working inside a Bishop workspace and the user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
 allowed-tools: Read, Glob, Grep, Write, Agent, AskUserQuestion, Bash(bishop:*)
 bishop.scope: card,workspace
-bishop.command: /bish-grill-me
+bishop.command: /bish-grill-me {{card_number}}
 bishop.stage: true
-bishop.stage_prefill: "{{card_title}}\n\n{{card_description}}"
+bishop.stage_prompt: "What do you want me to grill you on?"
 ---
 
 **Orientation:** if `BISHOP_CONTEXT.md` exists in the workspace root, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.
@@ -25,6 +25,29 @@ Run `bishop workspace current --json`.
   - `name` — the workspace name (shown to the user as confirmation)
   - `tags[].name` — available tag names (offer as choices during the interview)
   - `lanes[].name` — available lane names (offer as choices during the interview)
+
+---
+
+**Resolve the grill seed from `$ARGUMENTS`.** Three paths:
+
+1. **`$ARGUMENTS` is a card Number** (matches `^#?\d+$`, e.g. `42` or `#42`):
+   - Strip a leading `#` if present.
+   - Run `bishop card view <number> --json`.
+   - If the command exits non-zero, STOP and surface stderr as-is. Do not guess.
+   - Parse the JSON and capture `number`, `title`, `description`, `tags`, `laneName`.
+   - Remember the `number` as the **source card** — you will reuse it at the end of the flow.
+   - Use `title` + `description` (and tags / lane for context) as the seed for the grill.
+   - Echo back so the user can confirm before the interview begins:
+
+     > **Grilling card #N:** \<title\> *(lane: \<laneName\>, tags: \<comma-joined\>)*
+
+2. **`$ARGUMENTS` is non-empty free text** (the workspace-launch / staging-dialog path):
+   - Use the text verbatim as the seed for the grill.
+   - There is no source card; skip the closing card-action prompt later.
+
+3. **`$ARGUMENTS` is empty** (skill was launched without arguments and the stage dialog was dismissed):
+   - Ask in chat: "What should I grill you on?" and wait for the user's reply before proceeding.
+   - There is no source card.
 
 ---
 
@@ -127,3 +150,18 @@ After all cards are created, print a brief summary:
 | <short ID from output> | ... | ... | ... |
 
 Do NOT push automatically. Wait for the user to say "push".
+
+---
+
+**Closing card-action prompt.** After the summary table, if a **source card** was captured at the start (Path 1 above), ask the user what to do with it:
+
+> Source card **#N** — \<title\> — is still in lane `<laneName>`. What now?
+> (`close` / `done` / `leave`)
+
+- `close` → `bishop card close <number>` (marks closed; if the card has a linked GitHub issue, the CLI closes that too).
+- `done` → `bishop card move <number> --to-lane "Done" --to-position 0` (the CLI auto-closes on entry to the system `Done` lane).
+- `leave` → no-op; the card stays where it is.
+
+If there is no source card (Paths 2 and 3), skip this prompt entirely.
+
+ARGUMENTS: $ARGUMENTS
