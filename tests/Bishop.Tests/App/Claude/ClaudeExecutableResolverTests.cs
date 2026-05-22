@@ -187,6 +187,22 @@ public sealed class ClaudeExecutableResolverTests
     }
 
     [Fact]
+    public void Resolve_ReturnsCachedPath_WithoutReprobing()
+    {
+        var exe = Path.Combine("C:\\bin", "claude.exe");
+        var env = MakeEnv(path: Join("C:\\bin"), pathExt: ".EXE");
+        var fileExists = true;
+        var sut = new ClaudeExecutableResolver(env, p => fileExists && PathEquals(p, exe), isWindows: true);
+
+        var first = sut.Resolve();
+        fileExists = false; // subsequent probes would throw if re-probing occurred
+        var second = sut.Resolve();
+
+        second.Should().Be(first);
+        PathEquals(second, exe).Should().BeTrue();
+    }
+
+    [Fact]
     public void Resolve_Throws_WhenPathIsNull()
     {
         var env = MakeEnv(path: null, pathExt: ".EXE");
@@ -196,6 +212,7 @@ public sealed class ClaudeExecutableResolverTests
 
         var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
         ex.Directories.Should().BeEmpty();
+        ex.Candidates.Should().Equal("claude.EXE");
     }
 
     [Fact]
@@ -208,6 +225,7 @@ public sealed class ClaudeExecutableResolverTests
 
         var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
         ex.Directories.Should().BeEmpty();
+        ex.Candidates.Should().Equal("claude.EXE");
     }
 
     [Fact]
