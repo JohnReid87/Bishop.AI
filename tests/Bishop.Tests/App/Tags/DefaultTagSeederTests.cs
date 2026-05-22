@@ -235,4 +235,54 @@ public sealed class DefaultTagSeederTests : IClassFixture<DbFixture>
         var count = await _db.Tags.CountAsync(t => t.WorkspaceId == workspace.Id);
         count.Should().Be(BrandTagPalette.DefaultColours.Count);
     }
+
+    [Fact]
+    public async Task EnsureAsync_NullPath_DoesNothing()
+    {
+        var seeder = new DefaultTagSeeder(_factory);
+        var tagsBefore = await _db.Tags.CountAsync();
+
+        await seeder.EnsureAsync(null!, default);
+
+        var tagsAfter = await _db.Tags.CountAsync();
+        tagsAfter.Should().Be(tagsBefore);
+    }
+
+    [Fact]
+    public async Task EnsureAsync_EmptyPath_DoesNothing()
+    {
+        var seeder = new DefaultTagSeeder(_factory);
+        var tagsBefore = await _db.Tags.CountAsync();
+
+        await seeder.EnsureAsync(string.Empty, default);
+
+        var tagsAfter = await _db.Tags.CountAsync();
+        tagsAfter.Should().Be(tagsBefore);
+    }
+
+    [Fact]
+    public async Task EnsureAsync_WhiteSpacePath_DoesNothing()
+    {
+        var seeder = new DefaultTagSeeder(_factory);
+        var tagsBefore = await _db.Tags.CountAsync();
+
+        await seeder.EnsureAsync("   ", default);
+
+        var tagsAfter = await _db.Tags.CountAsync();
+        tagsAfter.Should().Be(tagsBefore);
+    }
+
+    [Fact]
+    public async Task EnsureAsync_ValidPathWithNoMatchingWorkspace_DoesNothing()
+    {
+        // Exercises the workspace-is-null early return: path is well-formed but
+        // no workspace row in the DB has that path.
+        var seeder = new DefaultTagSeeder(_factory);
+        var tagsBefore = await _db.Tags.CountAsync();
+
+        await seeder.EnsureAsync($@"C:\projects\no-match-{U()}", default);
+
+        var tagsAfter = await _db.Tags.CountAsync();
+        tagsAfter.Should().Be(tagsBefore);
+    }
 }
