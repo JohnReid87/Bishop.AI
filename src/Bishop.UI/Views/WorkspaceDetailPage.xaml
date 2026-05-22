@@ -195,7 +195,7 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0"
-                                               Text="{x:Bind Name, Mode=OneWay}"
+                                               Text="{x:Bind DisplayName, Mode=OneWay}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}"
                                                Padding="12,10,12,8"/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal">

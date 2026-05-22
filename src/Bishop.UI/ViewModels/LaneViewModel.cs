@@ -20,6 +20,8 @@ public sealed partial class LaneViewModel : ObservableObject
     public ObservableCollection<CardViewModel> Cards { get; } = [];
     public ObservableCollection<CardViewModel> FilteredCards { get; } = [];
 
+    public string DisplayName => $"{Name} ({FilteredCards.Count})";
+
     public bool IsToDoLane => IsSystem && Name == "To Do";
     public bool CanWorkNext => IsToDoLane && Cards.Count > 0;
     public string WorkNextTooltip => CanWorkNext ? "Ralph it" : "No cards in To Do";
@@ -44,6 +46,7 @@ public sealed partial class LaneViewModel : ObservableObject
         _mediator = mediator;
         _refreshBoard = refreshBoard;
         Cards.CollectionChanged += OnCardsChanged;
+        FilteredCards.CollectionChanged += OnFilteredCardsChanged;
     }
 
     public void ApplyFilter(string searchText)
@@ -77,6 +80,11 @@ public sealed partial class LaneViewModel : ObservableObject
         OnPropertyChanged(nameof(CanWorkNext));
         OnPropertyChanged(nameof(WorkNextTooltip));
         RebuildFilteredCards();
+    }
+
+    private void OnFilteredCardsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(DisplayName));
     }
 
     [RelayCommand]
