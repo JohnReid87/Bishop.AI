@@ -210,7 +210,7 @@
                                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                                         <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                 Click="WorkNext_Click"
-                                                Visibility="{x:Bind IsToDoLane, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                Visibility="{x:Bind IsPlayVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                                 IsEnabled="{x:Bind CanPlayWorkNext, Mode=OneWay}"
                                                 ToolTipService.ToolTip="{x:Bind WorkNextTooltip, Mode=OneWay}"
                                                 Margin="0,0,4,0">
@@ -218,7 +218,7 @@
                                         </Button>
                                         <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                 Click="WorkNextStop_Click"
-                                                Visibility="{x:Bind IsToDoLane, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                Visibility="{x:Bind IsStopVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                                 IsEnabled="{x:Bind CanStopWorkNext, Mode=OneWay}"
                                                 ToolTipService.ToolTip="{x:Bind StopWorkNextTooltip, Mode=OneWay}"
                                                 Margin="0,0,4,0">

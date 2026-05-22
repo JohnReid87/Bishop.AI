@@ -35,6 +35,8 @@ public sealed partial class LaneViewModel : ObservableObject
 
     public bool CanPlayWorkNext => CanWorkNext && !IsWorkNextRunning;
     public bool CanStopWorkNext => IsWorkNextRunning && !IsWorkNextStopping;
+    public bool IsPlayVisible => IsToDoLane && !IsWorkNextRunning;
+    public bool IsStopVisible => IsToDoLane && IsWorkNextRunning;
     public string StopWorkNextTooltip => IsWorkNextStopping ? "Stopping after current card…" : "Stop work-next";
 
     [ObservableProperty]
@@ -98,6 +100,8 @@ public sealed partial class LaneViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(CanPlayWorkNext));
         OnPropertyChanged(nameof(CanStopWorkNext));
+        OnPropertyChanged(nameof(IsPlayVisible));
+        OnPropertyChanged(nameof(IsStopVisible));
     }
 
     partial void OnIsWorkNextStoppingChanged(bool value)
