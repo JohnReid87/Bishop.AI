@@ -7,7 +7,7 @@ bishop.command: /bish-audit-docs
 bishop.stage: false
 ---
 
-**Orientation:** if `BISHOP_CONTEXT.md` exists in the workspace root, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.
+**Orientation:** if `.bishop/BISHOP_CONTEXT.md` exists in the workspace, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.
 
 ---
 
@@ -45,8 +45,8 @@ containing these segments:
 
 Also exclude these filenames anywhere in the tree:
 
-- `BISHOP_CONTEXT.md` (auto-generated on workspace launch)
-- `BISHOP_NOTES.md` (agent scratchpad)
+- `.bishop/BISHOP_CONTEXT.md` (auto-generated on workspace launch)
+- `.bishop/BISHOP_NOTES.md` (agent scratchpad)
 
 Present the candidates via `AskUserQuestion` as a **multi-select** list so the
 user can narrow the audit scope. Pre-select the obvious top-level docs

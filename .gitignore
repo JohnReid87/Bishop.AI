@@ -429,8 +429,5 @@ FodyWeavers.xsd
 *.msp
 /.claude/settings.local.json
 
-# Per-workspace notepad (created by Bishop.AI when this repo is a registered workspace)
-BISHOP_NOTES.md
-
-# Bishop runtime files (worknext.running, worknext.stop, etc.)
+# Bishop runtime files (BISHOP_CONTEXT.md, BISHOP_NOTES.md, worknext.running, etc.)
 .bishop/

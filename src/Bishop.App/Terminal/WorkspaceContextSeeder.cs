@@ -8,11 +8,13 @@ namespace Bishop.App.Terminal;
 
 internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 {
+    internal const string BishopFolder = ".bishop";
     internal const string BishopContextFileName = "BISHOP_CONTEXT.md";
     internal const string ContextFileName = "CONTEXT.md";
     internal const string ClaudeMdFileName = "CLAUDE.md";
-    internal const string PointerLine = "> See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.";
-    internal const string PointerMarker = "BISHOP_CONTEXT.md";
+    internal const string PointerLine = "> See [.bishop/BISHOP_CONTEXT.md](./.bishop/BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.";
+    internal const string PointerMarker = ".bishop/BISHOP_CONTEXT.md";
+    internal const string LegacyPointerLine = "> See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.";
 
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
@@ -28,7 +30,11 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         var workspace = await ResolveWorkspaceAsync(db, fullPath, cancellationToken);
         if (workspace is null) return;
 
-        var bishopFile = Path.Combine(fullPath, BishopContextFileName);
+        var bishopDir = Path.Combine(fullPath, BishopFolder);
+        MigrateLegacyFiles(fullPath, bishopDir);
+        Directory.CreateDirectory(bishopDir);
+
+        var bishopFile = Path.Combine(bishopDir, BishopContextFileName);
         File.WriteAllText(bishopFile, BuildBishopContext(workspace));
 
         var contextFile = Path.Combine(fullPath, ContextFileName);
@@ -42,6 +48,25 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         var mergedClaude = EnsureClaudeMd(existingClaude, workspace);
         if (!string.Equals(existingClaude, mergedClaude, StringComparison.Ordinal))
             File.WriteAllText(claudeFile, mergedClaude);
+    }
+
+    private static void MigrateLegacyFiles(string fullPath, string bishopDir)
+    {
+        var legacyContext = Path.Combine(fullPath, BishopContextFileName);
+        var newContext = Path.Combine(bishopDir, BishopContextFileName);
+        if (File.Exists(legacyContext) && !File.Exists(newContext))
+        {
+            Directory.CreateDirectory(bishopDir);
+            File.Move(legacyContext, newContext);
+        }
+
+        var legacyNotes = Path.Combine(fullPath, "BISHOP_NOTES.md");
+        var newNotes = Path.Combine(bishopDir, "BISHOP_NOTES.md");
+        if (File.Exists(legacyNotes) && !File.Exists(newNotes))
+        {
+            Directory.CreateDirectory(bishopDir);
+            File.Move(legacyNotes, newNotes);
+        }
     }
 
     private static async Task<Workspace?> ResolveWorkspaceAsync(BishopDbContext db, string fullPath, CancellationToken cancellationToken)
@@ -128,8 +153,9 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         if (existing is null)
             return BuildContextMdStub(workspace);
 
-        if (existing.Contains(PointerMarker, StringComparison.Ordinal))
-            return existing;
+        var rewritten = existing.Replace(LegacyPointerLine, PointerLine, StringComparison.Ordinal);
+        if (rewritten.Contains(PointerMarker, StringComparison.Ordinal))
+            return rewritten;
 
         var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var lines = existing.Split('\n').ToList();
@@ -174,8 +200,9 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         if (existing is null)
             return BuildClaudeMdStub(workspace);
 
-        if (existing.Contains(PointerMarker, StringComparison.Ordinal))
-            return existing;
+        var rewritten = existing.Replace(LegacyPointerLine, PointerLine, StringComparison.Ordinal);
+        if (rewritten.Contains(PointerMarker, StringComparison.Ordinal))
+            return rewritten;
 
         var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var lines = existing.Split('\n').ToList();

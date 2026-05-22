@@ -1,6 +1,6 @@
 # Bishop.AI — Project Context
 
-> See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.
+> See [.bishop/BISHOP_CONTEXT.md](./.bishop/BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.
 
 
 This file documents what is *shipped today* — domain, tech stack, architecture, conventions. For where the project is headed and which features have been explicitly cut or deferred, see [DIRECTION.md](DIRECTION.md).

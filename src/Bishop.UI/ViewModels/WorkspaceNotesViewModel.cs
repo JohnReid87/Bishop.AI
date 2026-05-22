@@ -96,7 +96,10 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
 
         var content = await ReadNotesAsync();
         if (!File.Exists(NotesFilePath) && Directory.Exists(workspacePath))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(NotesFilePath)!);
             await File.WriteAllTextAsync(NotesFilePath, string.Empty);
+        }
         _lastSavedContent = content;
         SaveStatusIsEditing = false;
         SaveStatusIsError = false;
@@ -111,7 +114,9 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
 
         if (!Directory.Exists(workspacePath)) return;
 
-        _watcher = new FileSystemWatcher(workspacePath, "BISHOP_NOTES.md")
+        var notesDir = Path.Combine(workspacePath, ".bishop");
+        Directory.CreateDirectory(notesDir);
+        _watcher = new FileSystemWatcher(notesDir, "BISHOP_NOTES.md")
         {
             NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName,
             EnableRaisingEvents = true,
@@ -259,7 +264,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         }
     }
 
-    private string NotesFilePath => Path.Combine(_workspacePath, "BISHOP_NOTES.md");
+    private string NotesFilePath => Path.Combine(_workspacePath, ".bishop", "BISHOP_NOTES.md");
 
     private static string PrefsFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

@@ -282,7 +282,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     public void EnsureContextMd_ReturnsExistingUnchanged_WhenPointerAlreadyPresent()
     {
         var workspace = MakeWorkspace();
-        var existing = "# Existing\r\n\r\n> See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) for stuff.\r\n\r\nbody\r\n";
+        var existing = "# Existing\r\n\r\n> See [.bishop/BISHOP_CONTEXT.md](./.bishop/BISHOP_CONTEXT.md) for stuff.\r\n\r\nbody\r\n";
 
         var output = WorkspaceContextSeeder.EnsureContextMd(existing, workspace);
 
@@ -374,7 +374,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     public void EnsureClaudeMd_ReturnsExistingUnchanged_WhenPointerAlreadyPresent()
     {
         var workspace = MakeWorkspace();
-        var existing = "# Existing\r\n\r\n> See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) for stuff.\r\n\r\nbody\r\n";
+        var existing = "# Existing\r\n\r\n> See [.bishop/BISHOP_CONTEXT.md](./.bishop/BISHOP_CONTEXT.md) for stuff.\r\n\r\nbody\r\n";
 
         var output = WorkspaceContextSeeder.EnsureClaudeMd(existing, workspace);
 
@@ -463,17 +463,17 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var sut = new WorkspaceContextSeeder(_factory);
             await sut.SeedAsync(temp);
 
-            var bishopContent = File.ReadAllText(Path.Combine(temp, "BISHOP_CONTEXT.md"));
+            var bishopContent = File.ReadAllText(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md"));
             bishopContent.Should().Contain($"# BISHOP_CONTEXT — {name}");
             bishopContent.Should().Contain("## Card model");
             bishopContent.Should().Contain("## CLI quick reference");
 
             var contextContent = File.ReadAllText(Path.Combine(temp, "CONTEXT.md"));
-            contextContent.Should().Contain("BISHOP_CONTEXT.md");
+            contextContent.Should().Contain(".bishop/BISHOP_CONTEXT.md");
 
             var claudeContent = File.ReadAllText(Path.Combine(temp, "CLAUDE.md"));
             claudeContent.Should().Contain($"# {name}");
-            claudeContent.Should().Contain("BISHOP_CONTEXT.md");
+            claudeContent.Should().Contain(".bishop/BISHOP_CONTEXT.md");
         }
         finally
         {
@@ -519,7 +519,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
             await sut.SeedAsync(temp);
 
-            File.Exists(Path.Combine(temp, "BISHOP_CONTEXT.md")).Should().BeFalse();
+            File.Exists(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md")).Should().BeFalse();
             File.Exists(Path.Combine(temp, "CONTEXT.md")).Should().BeFalse();
             File.Exists(Path.Combine(temp, "CLAUDE.md")).Should().BeFalse();
         }
@@ -537,7 +537,9 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         try
         {
             await SeedRegisteredWorkspaceAsync(temp, name: U("Kappa"));
-            var bishopFile = Path.Combine(temp, WorkspaceContextSeeder.BishopContextFileName);
+            var bishopDir = Path.Combine(temp, WorkspaceContextSeeder.BishopFolder);
+            Directory.CreateDirectory(bishopDir);
+            var bishopFile = Path.Combine(bishopDir, WorkspaceContextSeeder.BishopContextFileName);
             lockStream = File.Open(bishopFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
 
             var sut = new WorkspaceContextSeeder(_factory);
@@ -614,7 +616,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
             var updated = File.ReadAllText(claudePath);
             updated.Should().Contain("Project-specific Claude Code instructions.");
-            updated.Should().Contain("BISHOP_CONTEXT.md");
+            updated.Should().Contain(".bishop/BISHOP_CONTEXT.md");
             updated.Should().Contain("# Zeta Project");
         }
         finally
@@ -663,7 +665,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
             var updated = File.ReadAllText(contextPath);
             updated.Should().Contain("Hand-written intro about this workspace.");
-            updated.Should().Contain("BISHOP_CONTEXT.md");
+            updated.Should().Contain(".bishop/BISHOP_CONTEXT.md");
             updated.Should().Contain("# Beta Project");
         }
         finally
@@ -706,16 +708,157 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
             var sut = new WorkspaceContextSeeder(_factory);
             await sut.SeedAsync(temp);
-            var firstPass = File.ReadAllText(Path.Combine(temp, "BISHOP_CONTEXT.md"));
+            var firstPass = File.ReadAllText(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md"));
             firstPass.Should().NotContain("`newtag`");
 
             _db.Tags.Add(new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "newtag", Colour = "#888888" });
             await _db.SaveChangesAsync();
 
             await sut.SeedAsync(temp);
-            var secondPass = File.ReadAllText(Path.Combine(temp, "BISHOP_CONTEXT.md"));
+            var secondPass = File.ReadAllText(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md"));
 
             secondPass.Should().Contain("- `newtag`");
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    // ── EnsureContextMd / EnsureClaudeMd — legacy pointer rewrite ─────────────
+
+    [Fact]
+    public void EnsureContextMd_RewritesLegacyPointerLine_WhenOldPathPresent()
+    {
+        var workspace = MakeWorkspace();
+        var existing = $"# Project\n\n{WorkspaceContextSeeder.LegacyPointerLine}\n\nBody.\n";
+
+        var output = WorkspaceContextSeeder.EnsureContextMd(existing, workspace);
+
+        output.Should().Contain(WorkspaceContextSeeder.PointerLine);
+        output.Should().NotContain(WorkspaceContextSeeder.LegacyPointerLine);
+    }
+
+    [Fact]
+    public void EnsureClaudeMd_RewritesLegacyPointerLine_WhenOldPathPresent()
+    {
+        var workspace = MakeWorkspace();
+        var existing = $"# Project\n\n{WorkspaceContextSeeder.LegacyPointerLine}\n";
+
+        var output = WorkspaceContextSeeder.EnsureClaudeMd(existing, workspace);
+
+        output.Should().Contain(WorkspaceContextSeeder.PointerLine);
+        output.Should().NotContain(WorkspaceContextSeeder.LegacyPointerLine);
+    }
+
+    // ── SeedAsync — migration ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SeedAsync_MigratesLegacyBishopContextMd_WhenRootFileExists()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Migrate"));
+            var legacyFile = Path.Combine(temp, "BISHOP_CONTEXT.md");
+            File.WriteAllText(legacyFile, "old content");
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(temp);
+
+            File.Exists(legacyFile).Should().BeFalse("legacy root file must be removed");
+            File.Exists(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md")).Should().BeTrue("file must be in .bishop/");
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_MigratesLegacyBishopNotesMd_WhenRootFileExists()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Migrate"));
+            var legacyNotes = Path.Combine(temp, "BISHOP_NOTES.md");
+            File.WriteAllText(legacyNotes, "my notes");
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(temp);
+
+            File.Exists(legacyNotes).Should().BeFalse("legacy root notes file must be removed");
+            File.Exists(Path.Combine(temp, ".bishop", "BISHOP_NOTES.md")).Should().BeTrue("notes must be in .bishop/");
+            File.ReadAllText(Path.Combine(temp, ".bishop", "BISHOP_NOTES.md")).Should().Be("my notes", "content must be preserved");
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_Migration_IsIdempotent_WhenFilesAlreadyInSubfolder()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Idempotent"));
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(temp);
+
+            // Second run must not throw and must leave .bishop/ files in place
+            await sut.SeedAsync(temp);
+
+            File.Exists(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md")).Should().BeTrue();
+            File.Exists(Path.Combine(temp, "BISHOP_CONTEXT.md")).Should().BeFalse();
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_RewritesLegacyPointerLine_InContextMd()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Rewrite"));
+            var contextPath = Path.Combine(temp, "CONTEXT.md");
+            File.WriteAllText(contextPath, $"# Project\r\n\r\n{WorkspaceContextSeeder.LegacyPointerLine}\r\n\r\nBody.\r\n");
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(temp);
+
+            var updated = File.ReadAllText(contextPath);
+            updated.Should().Contain(WorkspaceContextSeeder.PointerLine);
+            updated.Should().NotContain(WorkspaceContextSeeder.LegacyPointerLine);
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_RewritesLegacyPointerLine_InClaudeMd()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Rewrite"));
+            var claudePath = Path.Combine(temp, "CLAUDE.md");
+            File.WriteAllText(claudePath, $"# Project\r\n\r\n{WorkspaceContextSeeder.LegacyPointerLine}\r\n");
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(temp);
+
+            var updated = File.ReadAllText(claudePath);
+            updated.Should().Contain(WorkspaceContextSeeder.PointerLine);
+            updated.Should().NotContain(WorkspaceContextSeeder.LegacyPointerLine);
         }
         finally
         {

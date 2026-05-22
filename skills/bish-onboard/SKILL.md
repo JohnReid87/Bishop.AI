@@ -56,16 +56,16 @@ Bishop bundles its `bish-*` skills with `bishop.exe`. They install to `~/.claude
 
 ### Step 4 — CLAUDE.md pointer
 
-Bishop's `WorkspaceContextSeeder` writes a one-line CLAUDE.md pointer to `BISHOP_CONTEXT.md` on every workspace launch. If the user is onboarding from a fresh Claude Code session that was *not* launched via the Bishop UI, the seeder has not yet run.
+Bishop's `WorkspaceContextSeeder` writes a one-line CLAUDE.md pointer to `.bishop/BISHOP_CONTEXT.md` on every workspace launch. If the user is onboarding from a fresh Claude Code session that was *not* launched via the Bishop UI, the seeder has not yet run.
 
-1. Check whether `CLAUDE.md` exists at the workspace root and, if so, whether it already contains the string `BISHOP_CONTEXT.md` (the pointer marker used by the seeder).
+1. Check whether `CLAUDE.md` exists at the workspace root and, if so, whether it already contains the string `.bishop/BISHOP_CONTEXT.md` (the pointer marker used by the seeder).
 2. If the pointer is already present → record `CLAUDE.md: pointer already present` and continue.
 3. Otherwise, prepare the change:
    - If `CLAUDE.md` does not exist, the file to write is:
      ```
      # <workspace-name>
 
-     > See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.
+     > See [.bishop/BISHOP_CONTEXT.md](./.bishop/BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.
      ```
    - If `CLAUDE.md` exists but lacks the pointer, insert the pointer line (with a blank line above and below it) immediately after the first `# ` heading. If there is no `# ` heading, insert at the top of the file.
 4. Show the user the proposed diff (the new file, or the inserted lines plus their immediate context) and ask:
@@ -76,7 +76,7 @@ Bishop's `WorkspaceContextSeeder` writes a one-line CLAUDE.md pointer to `BISHOP
    - On `y` → write the file using `Write` (new file) or `Edit` (insertion). Record `CLAUDE.md: pointer added`.
    - On `n` → record `CLAUDE.md: skipped`.
 
-Do not reformat or rewrite anything else in `CLAUDE.md`. The marker check uses the literal string `BISHOP_CONTEXT.md` so re-running the skill on an already-pointed file is a no-op.
+Do not reformat or rewrite anything else in `CLAUDE.md`. The marker check uses the literal string `.bishop/BISHOP_CONTEXT.md` so re-running the skill on an already-pointed file is a no-op.
 
 ---
 
@@ -103,7 +103,7 @@ If any step was skipped or errored, report the user's reason rather than claimin
 
 <guardrails>
 
-- Do NOT overwrite an existing `CLAUDE.md` without showing the diff first. Do NOT overwrite one that already contains the marker `BISHOP_CONTEXT.md` — the skill is meant to be idempotent on re-run.
+- Do NOT overwrite an existing `CLAUDE.md` without showing the diff first. Do NOT overwrite one that already contains the marker `.bishop/BISHOP_CONTEXT.md` — the skill is meant to be idempotent on re-run.
 - Do NOT call `bishop workspace init` with non-default flags unless the user asks. Defaults match the supported onboarding flow.
 - Do NOT push cards to GitHub during onboarding. Onboarding only sets up local state; pushing is the user's call later.
 - If any CLI step fails, STOP and surface the stderr as-is rather than improvising a recovery. The summary in step 6 should still be printed for whatever steps did complete.
