@@ -3,13 +3,11 @@ using Bishop.App.Git;
 using Bishop.App.Settings;
 using Bishop.App.Skills;
 using Bishop.App.Skills.LaunchSkill;
-using Bishop.App.Terminal;
 using Bishop.Core;
 using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Input;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -26,14 +24,6 @@ public sealed partial class CardDetailDialog : ContentDialog
     private readonly SkillMenuItem[] _cardSkills;
     private readonly string _workspacePath;
     private readonly Guid _workspaceId;
-
-    private static readonly (string Id, string Label)[] Models =
-    [
-        ("claude-opus-4-7",           "Opus 4.7"),
-        ("claude-sonnet-4-6",         "Sonnet 4.6"),
-        ("claude-haiku-4-5-20251001", "Haiku 4.5"),
-    ];
-    private const string DefaultModel = "claude-sonnet-4-6";
 
     public CardDetailDialogViewModel ViewModel { get; }
 
@@ -288,7 +278,7 @@ public sealed partial class CardDetailDialog : ContentDialog
             var skill = item.Skill;
             var rendered = SkillCommandRenderer.Render(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath);
             var settingKey = $"skill.{skill.Name}.last_model";
-            var savedModel = await appSettings.GetAsync(settingKey) ?? DefaultModel;
+            var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
 
             panel.Children.Add(MakeSkillRow(item.Name, savedModel, async chosenModel =>
             {
@@ -309,13 +299,13 @@ public sealed partial class CardDetailDialog : ContentDialog
         // Card-context launch: skip the stage dialog. The rendered command already
         // has {{card_number}} substituted, so any stage_prompt would be redundant.
         var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new LaunchSkillCommand(_workspacePath, rendered, ComputeSnap(), modelId));
+        await mediator.Send(new LaunchSkillCommand(_workspacePath, rendered, SnapHelper.ComputeSnap(), modelId));
     }
 
     private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch)
     {
         var currentModelId = selectedModelId;
-        var currentLabel = Models.FirstOrDefault(m => m.Id == selectedModelId).Label ?? "Sonnet 4.6";
+        var currentLabel = WorkNextOptionsDialogViewModel.Models.FirstOrDefault(m => m.Id == selectedModelId)?.Label ?? "Sonnet 4.6";
 
         var nameText = new TextBlock
         {
@@ -337,11 +327,11 @@ public sealed partial class CardDetailDialog : ContentDialog
         };
 
         var modelFlyout = new MenuFlyout();
-        foreach (var (id, label) in Models)
+        foreach (var option in WorkNextOptionsDialogViewModel.Models)
         {
-            var capturedId = id;
-            var capturedLabel = label;
-            var mi = new MenuFlyoutItem { Text = label };
+            var capturedId = option.Id;
+            var capturedLabel = option.Label;
+            var mi = new MenuFlyoutItem { Text = option.Label };
             mi.Click += (_, _) =>
             {
                 currentModelId = capturedId;
@@ -367,5 +357,4 @@ public sealed partial class CardDetailDialog : ContentDialog
         return row;
     }
 
-    private static TerminalSnap ComputeSnap() => SnapHelper.ComputeSnap();
 }

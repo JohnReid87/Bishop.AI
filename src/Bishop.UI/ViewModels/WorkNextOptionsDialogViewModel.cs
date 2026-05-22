@@ -1,3 +1,4 @@
+using Bishop.App.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
@@ -6,7 +7,7 @@ namespace Bishop.UI.ViewModels;
 public sealed partial class WorkNextOptionsDialogViewModel : ObservableObject
 {
     public const string AnyTagSentinel = "Any";
-    public const string DefaultModelId = "claude-sonnet-4-6";
+    public const string DefaultModelId = SkillModelOptions.DefaultModelId;
 
     public static readonly ModelOption[] Models =
     [

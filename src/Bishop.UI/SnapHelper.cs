@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Bishop.App.Skills;
 using Bishop.App.Terminal;
 using Microsoft.UI.Windowing;
 
@@ -23,17 +24,19 @@ internal static class SnapHelper
         var wa = display.WorkArea;
 
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow!);
-        if (DwmGetWindowAttribute(hWnd, DWMWA_EXTENDED_FRAME_BOUNDS, out var visible, Marshal.SizeOf<RECT>()) == 0)
+        int physX = 0, physY = 0, physW = 0, physH = 0;
+        var physAvailable = DwmGetWindowAttribute(hWnd, DWMWA_EXTENDED_FRAME_BOUNDS, out var visible, Marshal.SizeOf<RECT>()) == 0;
+        if (physAvailable)
         {
-            return TerminalSnap.RemainderFill(
-                visible.Left, visible.Top,
-                visible.Right - visible.Left, visible.Bottom - visible.Top,
-                wa.X, wa.Y, wa.Width, wa.Height);
+            physX = visible.Left; physY = visible.Top;
+            physW = visible.Right - visible.Left; physH = visible.Bottom - visible.Top;
         }
 
-        // DWM call failed; fall back to logical bounds
         var pos = appWindow.Position;
         var size = appWindow.Size;
-        return TerminalSnap.RemainderFill(pos.X, pos.Y, size.Width, size.Height, wa.X, wa.Y, wa.Width, wa.Height);
+        return SnapComputer.Compute(
+            physX, physY, physW, physH, physAvailable,
+            pos.X, pos.Y, size.Width, size.Height,
+            wa.X, wa.Y, wa.Width, wa.Height);
     }
 }

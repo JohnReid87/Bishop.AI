@@ -237,7 +237,7 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         if (_item is null) return;
         var mediator = App.Services.GetRequiredService<IMediator>();
-        var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path, ComputeSnap()));
+        var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path, SnapHelper.ComputeSnap()));
         FallbackWarningBar.IsOpen = !launchedWithTerminal;
         UpdateNotificationPanel();
     }
@@ -246,7 +246,7 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         if (_item is null) return;
         var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new LaunchPlainTerminalCommand(_item.Path, ComputeSnap()));
+        await mediator.Send(new LaunchPlainTerminalCommand(_item.Path, SnapHelper.ComputeSnap()));
     }
 
     private async void WorkspaceSkillsButton_Click(object sender, RoutedEventArgs e)
@@ -263,7 +263,7 @@ public sealed partial class WorkspaceDetailPage : Page
             var rendered = SkillCommandRenderer.Render(skill.Command!, null, null, null, _item.Path);
             var workspacePath = _item.Path;
             var settingKey = $"skill.{skill.Name}.last_model";
-            var savedModel = await appSettings.GetAsync(settingKey) ?? WorkNextOptionsDialogViewModel.DefaultModelId;
+            var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
 
             panel.Children.Add(MakeSkillRow(item.Name, savedModel,
                 onLaunch: async chosenModel =>
@@ -553,7 +553,7 @@ public sealed partial class WorkspaceDetailPage : Page
             var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, _item.Path);
             var workspacePath = _item.Path;
             var settingKey = $"skill.{skill.Name}.last_model";
-            var savedModel = await appSettings.GetAsync(settingKey) ?? WorkNextOptionsDialogViewModel.DefaultModelId;
+            var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
 
             panel.Children.Add(MakeSkillRow(item.Name, savedModel,
                 onLaunch: async chosenModel =>
@@ -624,7 +624,7 @@ public sealed partial class WorkspaceDetailPage : Page
         }
 
         var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new LaunchSkillCommand(workspacePath, rendered, ComputeSnap(), modelId));
+        await mediator.Send(new LaunchSkillCommand(workspacePath, rendered, SnapHelper.ComputeSnap(), modelId));
     }
 
     private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch, Func<Task>? onView = null)
@@ -749,7 +749,6 @@ public sealed partial class WorkspaceDetailPage : Page
         _isDraggingKanban = false;
     }
 
-    private static TerminalSnap ComputeSnap() => SnapHelper.ComputeSnap();
 
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
     {
@@ -884,7 +883,7 @@ public sealed partial class WorkspaceDetailPage : Page
         var mediator = App.Services.GetRequiredService<IMediator>();
         var appSettings = App.Services.GetRequiredService<IAppSettings>();
         var tags = await mediator.Send(new ListTagsByWorkspaceQuery(_item.Id));
-        var lastModel = await appSettings.GetAsync("workNext.last_model") ?? WorkNextOptionsDialogViewModel.DefaultModelId;
+        var lastModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync("workNext.last_model"));
 
         var dialog = new WorkNextOptionsDialog(tags.Select(t => t.Name), lastModel) { XamlRoot = XamlRoot };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
@@ -895,7 +894,7 @@ public sealed partial class WorkspaceDetailPage : Page
             _item.Path,
             dialog.ViewModel.SelectedTagOrNull,
             dialog.ViewModel.MaxValue,
-            ComputeSnap(),
+            SnapHelper.ComputeSnap(),
             chosenModel));
     }
 
