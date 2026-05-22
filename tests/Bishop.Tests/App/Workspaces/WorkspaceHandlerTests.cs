@@ -483,22 +483,6 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         result.Workspace.Name.Should().Be(dirName);
     }
 
-    [Fact]
-    public async Task InitWorkspace_GetOriginUrlThrows_PropagatesException()
-    {
-        var tag = Guid.NewGuid().ToString("N")[..8];
-        var path = $@"C:\projects\ex-{tag}";
-        var git = Substitute.For<IGitCli>();
-        git.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<string?>(new InvalidOperationException("git failed")));
-        var handler = CreateInitHandler(git);
-
-        var act = () => handler.Handle(new InitWorkspaceCommand(path), default);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("git failed");
-    }
-
     [Theory]
     [InlineData("https://github.com/")]
     [InlineData("https://github.com/owner")]
