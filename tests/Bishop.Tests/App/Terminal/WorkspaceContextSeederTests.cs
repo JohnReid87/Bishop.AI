@@ -552,6 +552,52 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task SeedAsync_PropagatesException_WhenContextFileIsLocked()
+    {
+        var temp = CreateTempDir();
+        FileStream? lockStream = null;
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Kappa"));
+            var contextFile = Path.Combine(temp, WorkspaceContextSeeder.ContextFileName);
+            lockStream = File.Open(contextFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            Func<Task> act = () => sut.SeedAsync(temp);
+
+            await act.Should().ThrowAsync<IOException>();
+        }
+        finally
+        {
+            lockStream?.Dispose();
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_PropagatesException_WhenClaudeMdFileIsLocked()
+    {
+        var temp = CreateTempDir();
+        FileStream? lockStream = null;
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Kappa"));
+            var claudeFile = Path.Combine(temp, WorkspaceContextSeeder.ClaudeMdFileName);
+            lockStream = File.Open(claudeFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            Func<Task> act = () => sut.SeedAsync(temp);
+
+            await act.Should().ThrowAsync<IOException>();
+        }
+        finally
+        {
+            lockStream?.Dispose();
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
     public async Task SeedAsync_PreservesUserClaudeMd_AndInjectsPointer()
     {
         var temp = CreateTempDir();
