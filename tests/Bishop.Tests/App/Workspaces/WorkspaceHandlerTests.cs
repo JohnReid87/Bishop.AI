@@ -15,7 +15,9 @@ using Bishop.App.Workspaces.UpdateWorkspace;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using NSubstitute;
 
 namespace Bishop.Tests.App.Workspaces;
@@ -540,6 +542,69 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task InitWorkspace_SaveChangesThrows_PropagatesException()
+    {
+        // Arrange: fresh SQLite with schema; contexts from this factory throw on every save.
+        var dbName = Guid.NewGuid().ToString("N");
+        var connStr = $"Data Source={dbName};Mode=Memory;Cache=Shared";
+        await using var conn = new SqliteConnection(connStr);
+        conn.Open();
+        var baseOpts = new DbContextOptionsBuilder<BishopDbContext>().UseSqlite(connStr).Options;
+        await using (var schemaCtx = new BishopDbContext(baseOpts))
+            schemaCtx.Database.EnsureCreated();
+
+        var throwOpts = new DbContextOptionsBuilder<BishopDbContext>()
+            .UseSqlite(connStr)
+            .AddInterceptors(new ThrowingSaveChangesInterceptor())
+            .Options;
+        var handler = new InitWorkspaceCommandHandler(
+            new DirectDbContextFactory(throwOpts), Substitute.For<IGitCli>());
+
+        // Act
+        var act = () => handler.Handle(new InitWorkspaceCommand(@"C:\new-ws-save-fail"), default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Simulated DB failure");
+    }
+
+    [Fact]
+    public async Task InitWorkspace_ExistingWorkspace_GetOriginUrlThrows_PropagatesException()
+    {
+        // Arrange: first run (no detection) creates the workspace.
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\ex-exist-{tag}";
+        await CreateInitHandler().Handle(new InitWorkspaceCommand(path, DetectGitHub: false), default);
+
+        // Second run: git throws inside DetectGitHubAsync.
+        var git = Substitute.For<IGitCli>();
+        git.GetOriginUrlAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string?>(new InvalidOperationException("git failed on rerun")));
+
+        // Act
+        var act = () => CreateInitHandler(git).Handle(new InitWorkspaceCommand(path), default);
+
+        // Assert — exception propagates end-to-end through DetectGitHubAsync.
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("git failed on rerun");
+    }
+
+    [Fact]
+    public async Task InitWorkspace_GitOriginReturnsNull_SkipsGitHubDetection()
+    {
+        // CreateInitHandler() stubs GetOriginUrlAsync to return null by default.
+        // No exception is raised and the result contains no GitHub link.
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\null-git-{tag}";
+        var handler = CreateInitHandler();
+
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        result.GitHubLinked.Should().BeFalse();
+        result.Workspace.GitHubRepo.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
     public async Task SetWorkspaceGitHubRepo_PlainOwnerRepo_PersistsAndReturnsWorkspace()
     {
         // Arrange
@@ -787,5 +852,21 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         launcher.Received(1).Launch(@"C:\workspace", null, snap);
+    }
+
+    private sealed class ThrowingSaveChangesInterceptor : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Simulated DB failure");
+    }
+
+    private sealed class DirectDbContextFactory : IDbContextFactory<BishopDbContext>
+    {
+        private readonly DbContextOptions<BishopDbContext> _options;
+        public DirectDbContextFactory(DbContextOptions<BishopDbContext> options) => _options = options;
+        public BishopDbContext CreateDbContext() => new(_options);
     }
 }
