@@ -200,6 +200,20 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_ScopeWithWhitespaceOnlySegments_DropsWhitespaceSegments()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.scope: card, ,workspace\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Scope.Should().BeEquivalentTo(["card", "workspace"]);
+    }
+
+    [Fact]
     public async Task Handle_StagePrefillQuotedWithNewlineEscapes_ConvertsToNewlines()
     {
         // Arrange
@@ -241,6 +255,34 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
 
         // Assert
         result[0].StagePrefill.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_StagePrefillSingleDoubleQuote_ReturnedAsLiteral()
+    {
+        // Arrange — length-1 quoted value does not meet the >= 2 threshold so the unquoting branch is skipped
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.stage_prefill: \"\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].StagePrefill.Should().Be("\"");
+    }
+
+    [Fact]
+    public async Task Handle_StagePrefillTwoDoubleQuotes_UnquotedToEmptyString()
+    {
+        // Arrange — "" meets both the length and quote checks; unquoted slice [1..^1] is empty
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.stage_prefill: \"\"\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].StagePrefill.Should().BeEmpty();
     }
 
     [Fact]
