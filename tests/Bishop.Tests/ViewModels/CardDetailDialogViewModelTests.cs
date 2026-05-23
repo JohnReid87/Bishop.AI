@@ -1,6 +1,11 @@
+using Bishop.App.Cards.CloseCard;
+using Bishop.App.Cards.PushCard;
+using Bishop.App.Cards.RemoveCard;
+using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git;
 using Bishop.App.Skills;
+using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.Core;
 using Bishop.ViewModels;
 using FluentAssertions;
@@ -119,7 +124,7 @@ public class CardDetailDialogViewModelTests
         vm.SetClaudeTotals(1000, 500, 3);
 
         vm.HasClaudeTotals.Should().BeTrue();
-        vm.ClaudeTotalsText.Should().NotBeNullOrEmpty();
+        vm.ClaudeTotalsText.Should().Be("Claude: 3 runs, 1.0k in / 500 out");
     }
 
     [Fact]
@@ -196,15 +201,21 @@ public class CardDetailDialogViewModelTests
     public async Task CommitTitleAsync_UpdatesTitleOnSuccess()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
+        var card = NewCard();
+        var vm = NewVm(card: card, mediator: mediator);
+        mediator.Send(
+            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.Title == "New Title"),
+            Arg.Any<CancellationToken>())
             .Returns(new Card { Id = Guid.NewGuid(), Title = "New Title", LaneName = "To Do" });
-        var vm = NewVm(mediator: mediator);
 
         await vm.CommitTitleAsync("New Title");
 
         vm.Title.Should().Be("New Title");
         vm.Updated.Should().BeTrue();
         vm.EditError.Should().BeNull();
+        await mediator.Received(1).Send(
+            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.Title == "New Title"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -237,14 +248,20 @@ public class CardDetailDialogViewModelTests
     public async Task CommitDescriptionAsync_UpdatesDescriptionOnSuccess()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
+        var card = NewCard();
+        var vm = NewVm(card: card, mediator: mediator);
+        mediator.Send(
+            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.Description == "New description"),
+            Arg.Any<CancellationToken>())
             .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do" });
-        var vm = NewVm(mediator: mediator);
 
         await vm.CommitDescriptionAsync("New description");
 
         vm.Description.Should().Be("New description");
         vm.Updated.Should().BeTrue();
+        await mediator.Received(1).Send(
+            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.Description == "New description"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -330,6 +347,122 @@ public class CardDetailDialogViewModelTests
 
         vm.TagName.Should().BeNull();
         vm.EditError.Should().Be("Failed to add tag.");
+    }
+
+    [Fact]
+    public async Task ToggleClosedAsync_ClosesCardWhenOpen()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<CloseCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do" });
+        var vm = NewVm(mediator: mediator);
+
+        await vm.ToggleClosedCommand.ExecuteAsync(null);
+
+        vm.IsClosed.Should().BeTrue();
+        vm.Updated.Should().BeTrue();
+        vm.EditError.Should().BeNull();
+        await mediator.Received(1).Send(
+            Arg.Is<CloseCardCommand>(c => c.CardId == vm.CardId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ToggleClosedAsync_ReopensCardWhenClosed()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ReopenCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do" });
+        var vm = NewVm(mediator: mediator);
+        vm.IsClosed = true;
+
+        await vm.ToggleClosedCommand.ExecuteAsync(null);
+
+        vm.IsClosed.Should().BeFalse();
+        vm.Updated.Should().BeTrue();
+        vm.EditError.Should().BeNull();
+        await mediator.Received(1).Send(
+            Arg.Is<ReopenCardCommand>(c => c.CardId == vm.CardId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ToggleClosedAsync_SetsEditErrorOnFailure()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<CloseCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Card>(new Exception("error")));
+        var vm = NewVm(mediator: mediator);
+
+        await vm.ToggleClosedCommand.ExecuteAsync(null);
+
+        vm.IsClosed.Should().BeFalse();
+        vm.Updated.Should().BeFalse();
+        vm.EditError.Should().Be("Failed to update closed state.");
+    }
+
+    [Fact]
+    public async Task PushToGitHubAsync_SetsGitHubIssueNumberOnSuccess()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<PushCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do", GitHubIssueNumber = 42 });
+        var vm = NewVm(mediator: mediator, gitHubRepo: "owner/repo");
+
+        await vm.PushToGitHubCommand.ExecuteAsync(null);
+
+        vm.GitHubIssueNumber.Should().Be(42);
+        vm.Updated.Should().BeTrue();
+        vm.PushError.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PushToGitHubAsync_PopulatesPushErrorOnFailure()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<PushCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Card>(new Exception("Push failed")));
+        var vm = NewVm(mediator: mediator, gitHubRepo: "owner/repo");
+
+        await vm.PushToGitHubCommand.ExecuteAsync(null);
+
+        vm.GitHubIssueNumber.Should().BeNull();
+        vm.Updated.Should().BeFalse();
+        vm.PushError.Should().Be("Push failed");
+    }
+
+    [Fact]
+    public async Task ConfirmDeleteAsync_SetsDeletedAndSendsRemoveCommand()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<RemoveCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Unit.Value);
+        var vm = NewVm(mediator: mediator);
+
+        await vm.ConfirmDeleteCommand.ExecuteAsync(null);
+
+        vm.Deleted.Should().BeTrue();
+        await mediator.Received(1).Send(
+            Arg.Is<RemoveCardCommand>(c => c.CardId == vm.CardId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetWorkspaceTagsAsync_DelegatesToMediatorWithWorkspaceId()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var workspaceId = Guid.NewGuid();
+        IReadOnlyList<TagInfo> tags = [];
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(tags);
+        var vm = new CardDetailDialogViewModel(NewCard(), [], workspaceId, null, mediator);
+
+        var result = await vm.GetWorkspaceTagsAsync();
+
+        result.Should().BeSameAs(tags);
+        await mediator.Received(1).Send(
+            Arg.Is<ListTagsByWorkspaceQuery>(q => q.WorkspaceId == workspaceId),
+            Arg.Any<CancellationToken>());
     }
 
     private static CardViewModel NewCard(string? description = "D", int? gitHubIssueNumber = null) => new()
