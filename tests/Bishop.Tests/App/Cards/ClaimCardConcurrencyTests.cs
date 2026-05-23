@@ -1,7 +1,6 @@
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.GetCard;
-using Bishop.App.Cards.MoveCard;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
@@ -42,11 +41,12 @@ public sealed class ClaimCardConcurrencyTests : IDisposable
     {
         var sender = Substitute.For<ISender>();
         sender.Send(Arg.Any<GetCardQuery>(), Arg.Any<CancellationToken>())
-            .Returns(call => new GetCardQueryHandler(_factory)
-                .Handle(call.ArgAt<GetCardQuery>(0), call.ArgAt<CancellationToken>(1)));
-        sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new MoveCardCommandHandler(_factory, sender)
-                .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
+            .Returns(call =>
+            {
+                var query = call.ArgAt<GetCardQuery>(0);
+                using var db = _factory.CreateDbContext();
+                return Task.FromResult<Card?>(db.Cards.Find(query.CardId));
+            });
         return sender;
     }
 
