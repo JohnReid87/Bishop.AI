@@ -37,6 +37,22 @@ Run `bishop workspace current --json`.
 
   > **Workspace:** <name>
 
+  Also capture `workspace.Path` from the parsed JSON as the **workspace
+  boundary** (`$WORKSPACE_PATH`). Every `Edit`, `Write`, and `NotebookEdit`
+  call during this run must target a path that resolves (after absolute-path
+  normalization) under `$WORKSPACE_PATH`. This is audited before every commit
+  (step 8).
+
+---
+
+**Workspace-path boundary — enforced throughout this run**
+
+Every `Edit`, `Write`, and `NotebookEdit` call must target an absolute path
+that starts with `$WORKSPACE_PATH`. Before issuing any file-edit tool call,
+verify the target path resolves under the workspace root. Any path outside the
+workspace is a violation — see the pre-commit audit (step 8) for the exact
+remediation sequence.
+
 ---
 
 **For the card:**
@@ -131,7 +147,44 @@ Run `bishop workspace current --json`.
    - Run `dotnet test`. If any test fails, exit non-zero and surface the
      failure. Do not retry `dotnet test` — test failures are real signals.
 
-8. **Draft Agent notes and derive the commit message.** No prompt.
+8. **Pre-commit workspace-path audit.** Before committing, review every
+   `Edit`, `Write`, and `NotebookEdit` tool call made during this session
+   and collect the absolute target path of each.
+
+   For each path, normalize it (resolve to an absolute path) and verify it
+   starts with `$WORKSPACE_PATH`.
+
+   **Clean run** (all paths under `$WORKSPACE_PATH`): proceed to step 9.
+
+   **Violation** (any path is outside `$WORKSPACE_PATH`): take these steps in
+   order and then exit non-zero:
+   1. Print the offending absolute paths to chat.
+   2. Revert all in-workspace changes:
+      ```
+      git restore .
+      git clean -fd
+      ```
+      (This removes both tracked-file modifications and any untracked files
+      auto-card wrote inside the workspace.)
+   3. Append a note to the card's description via `bishop card edit`:
+      ```
+      bishop card edit <number> --append-description-file -
+      ```
+      Pipe the following block as stdin (substituting real values):
+      ```
+      ### Out-of-workspace edits (needs inspection)
+      Auto-card aborted; the following files outside `<$WORKSPACE_PATH>` were
+      modified and could not be reverted automatically:
+      - `<absolute path 1>`
+      - `<absolute path 2>`
+      ```
+   4. Move the card back to "To Do":
+      ```
+      bishop card move <number> --to-lane "To Do" --to-position 0
+      ```
+   5. Exit non-zero. Do NOT commit. Do NOT move the card to Done.
+
+9. **Draft Agent notes and derive the commit message.** No prompt.
 
    Silently compose an `### Agent notes` block from the session context.
    Use this template, **omitting any section that has no relevant content** —
@@ -167,7 +220,7 @@ Run `bishop workspace current --json`.
    Take the **first** tag from `tags` (the same field captured in step 1).
    Format: `<prefix>: <title> (card N)`.
 
-9. **Commit and update the card, in that order.** No prompt.
+10. **Commit and update the card, in that order.** No prompt.
    ```
    git add -A
    git commit -m "<derived message>"
@@ -189,10 +242,10 @@ Run `bishop workspace current --json`.
    already landed and the user can update/move the card manually after
    inspecting.
 
-10. **Never push.** Pushing is out of scope. The parent loop or the user
+11. **Never push.** Pushing is out of scope. The parent loop or the user
     decides when to push after review.
 
-11. On full success, output a concise completion line so the parent log has
+12. On full success, output a concise completion line so the parent log has
     a clear marker:
 
     > **Done — Card #N:** <title> — committed as `<prefix>: <title> (card N)`,
@@ -208,9 +261,10 @@ Run `bishop workspace current --json`.
 - **Non-zero exit on any deviation.** Failed build, failed test, failed commit,
   closed-card guard, missing lane, missing card — all exit non-zero. The
   parent loop stops on non-zero exits per the `bishop work-next` contract.
-- **Card stays in "Doing" on failure.** Only on a clean build + tests + commit
-  does the card move to "Done". The `--no-close` flag preserves the human
-  review gate.
+- **Card stays in "Doing" on failure.** Only on a clean build + tests + path
+  audit + commit does the card move to "Done". Exception: a workspace-boundary
+  violation (step 8) moves the card back to "To Do" so the inspection note is
+  visible. The `--no-close` flag preserves the human review gate on success.
 - **No multi-card mode.** Exactly one Number per invocation. Exit non-zero if
   zero or more than one is supplied.
 - **No claim path.** This skill never claims a card. If the supplied card is
@@ -225,5 +279,9 @@ Run `bishop workspace current --json`.
 - **No improvised file cleanup.** Do not run `Remove-Item`, `rm`, `del`, or
   any ad-hoc file/directory deletion to clear build artefacts. The only
   permitted cache-clear path is `dotnet clean` as documented in step 7.
+- **Workspace-path boundary.** Every `Edit`, `Write`, and `NotebookEdit` call
+  must target a path under `$WORKSPACE_PATH`. Any out-of-workspace edit
+  triggers the step 8 remediation: revert in-workspace changes, append an
+  inspection note to the card, move the card back to "To Do", exit non-zero.
 
 </guardrails>
