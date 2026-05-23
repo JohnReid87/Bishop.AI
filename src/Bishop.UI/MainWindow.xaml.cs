@@ -24,12 +24,14 @@ public sealed partial class MainWindow : Window
     public MainWindowViewModel ViewModel { get; }
 
     private readonly BishopSettingsViewModel _settingsVm;
+    private readonly WorkspaceManagerViewModel _workspaceManagerVm;
 
-    public MainWindow(MainWindowViewModel viewModel, BishopSettingsViewModel settingsVm)
+    public MainWindow(MainWindowViewModel viewModel, BishopSettingsViewModel settingsVm, WorkspaceManagerViewModel workspaceManagerVm)
     {
         InitializeComponent();
         ViewModel = viewModel;
         _settingsVm = settingsVm;
+        _workspaceManagerVm = workspaceManagerVm;
 
         SetupTitleBar();
         ApplyWindowGeometry();
@@ -253,6 +255,28 @@ public sealed partial class MainWindow : Window
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Top };
         var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4), MinWidth = 220 };
 
+        var manageBtn = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)),
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(8, 6, 8, 6),
+            Content = new TextBlock { Text = "Manage workspaces", FontSize = 12 },
+        };
+        manageBtn.Click += async (_, _) =>
+        {
+            flyout.Hide();
+            await ShowManageWorkspacesDialogAsync();
+        };
+        panel.Children.Add(manageBtn);
+        panel.Children.Add(new Border
+        {
+            Height = 1,
+            Margin = new Thickness(4, 2, 4, 2),
+            Background = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255)),
+        });
+
         if (_settingsVm.MetaSkills.Count == 0)
         {
             panel.Children.Add(new TextBlock
@@ -308,6 +332,13 @@ public sealed partial class MainWindow : Window
 
         flyout.Content = panel;
         flyout.ShowAt((FrameworkElement)sender);
+    }
+
+    private async Task ShowManageWorkspacesDialogAsync()
+    {
+        await _workspaceManagerVm.LoadAsync();
+        var dialog = new ManageWorkspacesDialog(_workspaceManagerVm) { XamlRoot = Content.XamlRoot };
+        await dialog.ShowAsync();
     }
 
     private WindowGeometry? _preExpansionGeometry;

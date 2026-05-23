@@ -1,0 +1,46 @@
+using Bishop.App.Workspaces.ListWorkspaces;
+using Bishop.App.Workspaces.PurgeWorkspace;
+using Bishop.App.Workspaces.RemoveWorkspace;
+using CommunityToolkit.Mvvm.ComponentModel;
+using MediatR;
+using System.Collections.ObjectModel;
+
+namespace Bishop.ViewModels;
+
+public sealed partial class WorkspaceManagerViewModel : ObservableObject
+{
+    private readonly IMediator _mediator;
+
+    public ObservableCollection<WorkspaceManagerItemViewModel> Workspaces { get; } = [];
+
+    public WorkspaceManagerViewModel(IMediator mediator) => _mediator = mediator;
+
+    public async Task LoadAsync()
+    {
+        var workspaces = await _mediator.Send(new ListWorkspacesQuery(IncludeRemoved: true));
+        Workspaces.Clear();
+        foreach (var w in workspaces)
+        {
+            Workspaces.Add(new WorkspaceManagerItemViewModel
+            {
+                Id = w.Id,
+                Name = w.Name,
+                Path = w.Path,
+                IsRemoved = w.IsRemoved,
+                RemovedAt = w.RemovedAt,
+            });
+        }
+    }
+
+    public async Task RemoveAsync(Guid id)
+    {
+        await _mediator.Send(new RemoveWorkspaceCommand(id));
+        await LoadAsync();
+    }
+
+    public async Task PurgeAsync(Guid id)
+    {
+        await _mediator.Send(new PurgeWorkspaceCommand(id));
+        await LoadAsync();
+    }
+}

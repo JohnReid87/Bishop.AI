@@ -41,6 +41,7 @@ public partial class App : Application
                 services.AddTransient<WorkspaceNotesViewModel>();
                 services.AddTransient<SkillViewerViewModel>();
                 services.AddTransient<BishopSettingsViewModel>();
+                services.AddTransient<WorkspaceManagerViewModel>();
             })
             .Build();
 
@@ -52,7 +53,8 @@ public partial class App : Application
 
         MainWindow = new MainWindow(
             _host.Services.GetRequiredService<MainWindowViewModel>(),
-            _host.Services.GetRequiredService<BishopSettingsViewModel>());
+            _host.Services.GetRequiredService<BishopSettingsViewModel>(),
+            _host.Services.GetRequiredService<WorkspaceManagerViewModel>());
         MainWindow.Activate();
     }
 
