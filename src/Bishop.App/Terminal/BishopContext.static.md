@@ -217,3 +217,156 @@ they resolve from the current working directory.
 
 Prefer `--json` output for any command an agent will parse. Pipe multi-line
 descriptions via `--description-file -` (stdin) to avoid quote escaping.
+
+## Skill conventions
+
+The sections below are shared scaffolding that skills under `skills/`
+reference instead of restating. Each header carries an inline label:
+
+- **STABLE** — behaviour contract. Skills depend on the exact wording.
+  Do not paraphrase, reorder, or skip steps when applying the section.
+  Edits require auditing every skill that points at it.
+- **TUNABLE** — voice / copy guidance. Paraphrase to fit context as
+  needed; edits do not require a family-wide audit.
+
+For the reasoning behind extracting these sections (and the boundary
+between what belongs here versus inside each skill), see
+[`docs/SKILL_FAMILY.md`](../docs/SKILL_FAMILY.md).
+
+## Card Push Procedure (STABLE)
+
+Push a card from a skill by piping its body through stdin via a
+single-quoted heredoc. Use `--description-file -` so multi-line
+markdown is not mangled by quote escaping, and `--bottom` so cards
+land in agreed order rather than reverse-stacked at the top of the
+lane.
+
+```bash
+bishop card add --lane "<lane>" --title "<title>" --tag <tag> --description-file - --bottom << 'BODY'
+### Why
+<motivation, 1–3 sentences>
+
+### Acceptance
+- <verifiable criterion>
+BODY
+```
+
+- `<lane>` is normally `"To Do"`; `bish-grill-me` allows `"Backlog"`
+  or `"Ideas"` when the user asks for a parking spot.
+- `<tag>` is a single workspace-scoped tag name (e.g. `arch`,
+  `security`, `test`, `bug`, `docs`, `feature`, `refactor`, `chore`).
+  Cards carry at most one tag.
+- Single-quoted heredoc (`<< 'BODY'`) prevents shell expansion inside
+  the body. Do not switch to a double-quoted heredoc.
+- Skills that need extra body sections (`### Risk`, `### Repro`,
+  `### Issues`, `### Related`, …) add them between `### Why` and
+  `### Acceptance` following the H3 convention in `## Card model`.
+- The card body convention itself (required / optional sections) is
+  documented in `## Card model > ### Card body convention` above.
+
+## Task List Preview Format (STABLE)
+
+When a skill has gathered multiple cards and is about to push them,
+print a preview that the user confirms or edits *before* any
+`bishop card add` runs. Use H3 headings for each card, a single
+`Tag` / `Lane` metadata line, H4 subsections for the body, and a
+`---` separator between cards.
+
+```markdown
+> **Target workspace:** <name>
+
+### 1. <concise card title>
+**Tag:** <tag>  ·  **Lane:** <lane>
+
+#### Why
+<body>
+
+#### Acceptance
+- <criterion>
+
+---
+
+### 2. <concise card title>
+**Tag:** <tag>  ·  **Lane:** <lane>
+
+#### Why
+<body>
+
+#### Acceptance
+- <criterion>
+```
+
+- Numbering restarts at `1` per preview.
+- Use the same H4 subsections that will appear in the pushed card
+  body (`#### Why`, `#### Acceptance`, plus any optional sections
+  the card needs). The H4 → H3 demotion happens on push.
+- Cards push in the order they appear in the preview; the first
+  card lands at the bottom of `<lane>` and subsequent cards stack
+  below it, preserving order.
+
+## Source Card Closing Prompt (STABLE)
+
+When a skill was invoked against a *source* card (e.g. a `bish-grill-me`
+or `bish-triage` run that turned the source card's idea into child
+cards), prompt the user about the source card's fate after the
+children have been pushed. Use exactly this prompt and option set:
+
+```
+> Source card **#N** — <title> — is still in lane `<laneName>`. What now?
+> (`close` / `done` / `leave`)
+```
+
+CLI mapping for each option:
+
+- `close` → `bishop card close <number>` — marks the card closed.
+  If the card has a linked GitHub issue, the CLI closes that too.
+- `done` → `bishop card move <number> --to-lane "Done" --to-position 0`
+  — moving into the system `Done` lane auto-closes the card (and its
+  linked GitHub issue, if any).
+- `leave` → no-op; the card stays in its current lane.
+
+Only offer this prompt when the skill actually consumed a source
+card. Skills that produce cards from a free-form interview with no
+source card (e.g. `bish-grill-me` on a fresh idea) skip the prompt.
+
+## Card Granularity Rules (TUNABLE)
+
+Use these heuristics when deciding whether a candidate task should
+be one card, folded into another, or split.
+
+- One card ≈ one PR's worth of work.
+- Fold one-line or sub-30-minute changes into the nearest related
+  card rather than filing them standalone.
+- Merge cards that touch the same file or module for the same
+  reason.
+- Split only when the pieces have independent acceptance criteria,
+  or when they could ship in separate PRs without one blocking the
+  other.
+
+## Per-finding Walk Pattern (TUNABLE)
+
+Review skills (`bish-arch`, `bish-security`, `bish-tests`,
+`bish-coverage`, `bish-audit-docs`) walk findings one at a time
+rather than batching. For each finding:
+
+1. Print the full body — location(s), what, why-it-matters,
+   suggested action, plus your own recommended verdict (e.g.
+   "Recommended: card it — this is a clear DIP violation worth
+   fixing before the next API host is added").
+
+2. Use `AskUserQuestion` with these options (the recommended one
+   first, suffixed `" (Recommended)"`):
+
+   - **Card it (new)** — file this finding as a new card using the
+     skill's body template.
+   - **Cluster with #N: \<title\>** — fold this finding into a card
+     already agreed earlier in the session. Append its location and
+     a one-line summary to that card's `### Related` section. Only
+     offer when at least one prior in-session card exists.
+   - **Dismiss — context** — user explains why this isn't an issue
+     in this codebase.
+   - **Defer** — note it but don't card it now.
+
+3. Wait for the user's choice before moving on. Do not present a
+   batched list of findings; the walk is one-at-a-time so the user
+   can steer mid-stream.

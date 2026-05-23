@@ -215,6 +215,91 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public void BuildBishopContext_IncludesSkillConventionsIntro_WithStableAndTunableLabels()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("## Skill conventions");
+        output.Should().Contain("**STABLE**");
+        output.Should().Contain("**TUNABLE**");
+        output.Should().Contain("docs/SKILL_FAMILY.md");
+    }
+
+    [Fact]
+    public void BuildBishopContext_IncludesFiveCanonicalSkillSections_WithCorrectLabels()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("## Card Push Procedure (STABLE)");
+        output.Should().Contain("## Task List Preview Format (STABLE)");
+        output.Should().Contain("## Source Card Closing Prompt (STABLE)");
+        output.Should().Contain("## Card Granularity Rules (TUNABLE)");
+        output.Should().Contain("## Per-finding Walk Pattern (TUNABLE)");
+    }
+
+    [Fact]
+    public void BuildBishopContext_CardPushProcedure_DocumentsHeredocAndFlags()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("## Card Push Procedure (STABLE)");
+        output.Should().Contain("--description-file -");
+        output.Should().Contain("--bottom");
+        output.Should().Contain("<< 'BODY'");
+    }
+
+    [Fact]
+    public void BuildBishopContext_TaskListPreviewFormat_DocumentsH3CardsAndTagLaneLine()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("## Task List Preview Format (STABLE)");
+        output.Should().Contain("**Tag:**");
+        output.Should().Contain("**Lane:**");
+        output.Should().Contain("#### Why");
+        output.Should().Contain("#### Acceptance");
+    }
+
+    [Fact]
+    public void BuildBishopContext_SourceCardClosingPrompt_DocumentsAllThreeOptions()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("## Source Card Closing Prompt (STABLE)");
+        output.Should().Contain("`close`");
+        output.Should().Contain("`done`");
+        output.Should().Contain("`leave`");
+        output.Should().Contain("bishop card close <number>");
+        output.Should().Contain("bishop card move <number> --to-lane \"Done\"");
+    }
+
+    [Fact]
+    public void BuildBishopContext_SkillConventions_AppearAfterCliQuickReference()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        var cliIdx = output.IndexOf("## CLI quick reference", StringComparison.Ordinal);
+        var conventionsIdx = output.IndexOf("## Skill conventions", StringComparison.Ordinal);
+        var pushIdx = output.IndexOf("## Card Push Procedure (STABLE)", StringComparison.Ordinal);
+
+        cliIdx.Should().BeGreaterThan(0);
+        conventionsIdx.Should().BeGreaterThan(cliIdx);
+        pushIdx.Should().BeGreaterThan(conventionsIdx);
+    }
+
+    [Fact]
     public void BuildBishopContext_OrdersWorkflowBeforeCardModel()
     {
         var workspace = MakeWorkspace();
