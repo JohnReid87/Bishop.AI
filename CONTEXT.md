@@ -58,7 +58,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop card push <card-id> [-w]` — create a GitHub issue for the card in the workspace's linked repo and store the issue number on the card
 - `bishop card close <card-id> [-w]` — mark a card as closed; also closes the linked GitHub issue via `gh` if the card has been pushed
 - `bishop card reopen <card-id> [-w]` — reopen a closed card; also reopens the linked GitHub issue via `gh` if the card has been pushed
-- `bishop lane list|add|rename|move|remove [-w]` — lane CRUD; `remove` refuses non-empty lanes
+- `bishop lane list [-w]` — lanes are fixed (Backlog / To Do / Doing / Done); no user-mutable lane CRUD
 - `bishop tag list|add [--colour <hex>]|remove [-w]` — `add` accepts an optional `--colour` flag (6-char hex with or without `#`; defaults to `#888888`)
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
 
@@ -68,7 +68,7 @@ Card identifiers accept either a workspace-scoped Number (`42`, `#42`) or the fi
 Bishop.UI is the interactive surface; the CLI remains the automation surface for skills. UI affordances by entity:
 
 - **Workspaces:** left-hand list with drag-to-reorder; add-workspace dialog (create new folder or attach existing); per-workspace "Claude" button (Windows Terminal + `claude` at the workspace path) and a plain "Terminal" button (Windows Terminal at the workspace path, no Claude); per-workspace "Commits" button that opens a flyout of recent git commits (click to open in GitHub when a repo is linked, otherwise copies the full SHA); per-workspace notes panel below the kanban (persisted text + drag-to-resize; expanded state stored per workspace).
-- **Lanes:** add / rename / delete / reorder via inline board UI. `remove` refuses non-empty lanes, matching the CLI.
+- **Lanes:** fixed system set (Backlog / To Do / Doing / Done). No add / rename / delete / reorder affordances — the workflow is intentionally locked down.
 - **Cards:** view detail dialog; edit title/description/tags; delete; drag-and-drop between lanes and within a lane (writes position immediately).
 - **Tags:** create / remove / recolour via the card edit dialog.
 - **Skills:** launcher buttons on each card and on the workspace header — see [Skill integration](#skill-integration).

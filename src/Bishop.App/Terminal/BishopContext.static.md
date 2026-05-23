@@ -208,8 +208,8 @@ they resolve from the current working directory.
 
 ### Lane
 
-- `bishop lane list`
-- `bishop lane add` / `bishop lane rename` / `bishop lane move`
+- `bishop lane list` — lanes are fixed (Backlog / To Do / Doing / Done); no
+  user-mutable lane CRUD
 
 ### Tag
 

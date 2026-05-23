@@ -135,9 +135,9 @@ not by aesthetic preference:
 - **`surface: #141414`** — the default. All in-app surfaces (cards,
   lanes, board chrome, popovers, flyouts, notes panels) use this.
 - **`dialog-surface: #14141A`** — modal dialog content roots only
-  (`AddLaneDialog`, `AddWorkspaceDialog`, `CardDetailDialog`,
-  `SkillStageDialog`, `WorkNextOptionsDialog`). The subtle blue lift
-  separates the dialog layer from the board behind it.
+  (`AddWorkspaceDialog`, `CardDetailDialog`, `SkillStageDialog`,
+  `WorkNextOptionsDialog`). The subtle blue lift separates the dialog
+  layer from the board behind it.
 - **`icon-surface: #141914`** — SVG icon-tile backgrounds in
   `src/Bishop.UI/Assets/Brand/` (app icon, favicon, chat / code /
   terminal / run / branch / settings glyphs). The subtle green lift

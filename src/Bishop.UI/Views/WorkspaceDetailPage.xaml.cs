@@ -5,12 +5,8 @@ using Bishop.App.GitHub;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Git;
-using Bishop.App.Lanes.AddLane;
 using Bishop.UI.Services;
 using Bishop.App.Settings;
-using Bishop.App.Lanes.RemoveLane;
-using Bishop.App.Lanes.RenameLane;
-using Bishop.App.Lanes.ReorderLanes;
 using Bishop.App.Skills;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
@@ -48,7 +44,6 @@ public sealed partial class WorkspaceDetailPage : Page
     private WorkspaceItemViewModel? _item;
     private CardViewModel? _draggedCard;
     private LaneViewModel? _dragSourceLane;
-    private LaneViewModel? _draggedLane;
     private LaneViewModel? _currentDropTargetLane;
     private bool _isDraggingNotes;
     private double _dragStartPageY;
@@ -241,7 +236,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private void UpdateNotificationPanel() =>
         NotificationPanel.Visibility =
-            PathWarningBar.IsOpen || FallbackWarningBar.IsOpen || LaneErrorBar.IsOpen || CopiedBar.IsOpen
+            PathWarningBar.IsOpen || FallbackWarningBar.IsOpen || CopiedBar.IsOpen
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
@@ -970,132 +965,6 @@ public sealed partial class WorkspaceDetailPage : Page
         await dialog.ShowAsync();
         if (dialog.ViewModel.WasImported)
             await Board.RefreshCommand.ExecuteAsync(null);
-    }
-
-    private async void AddLane_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item is null) return;
-        var dialog = new AddLaneDialog { XamlRoot = XamlRoot };
-        var result = await dialog.ShowAsync();
-        if (result != ContentDialogResult.Primary) return;
-
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new AddLaneCommand(_item.Id, dialog.ViewModel.Name));
-        await Board.RefreshCommand.ExecuteAsync(null);
-    }
-
-    private void LaneHeader_RightTapped(object sender, RightTappedRoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is LaneViewModel { IsSystem: true }) return;
-        FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
-    }
-
-    private async void RenameLane_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
-
-        var nameBox = new TextBox { Text = lane.Name, SelectionStart = lane.Name.Length };
-        var renameDialog = new ContentDialog
-        {
-            Title = "Rename Lane",
-            Content = nameBox,
-            PrimaryButtonText = "Rename",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = XamlRoot,
-        };
-        renameDialog.Resources["ContentDialogBackground"] = Application.Current.Resources["AppSurfaceBrush"];
-
-        if (await renameDialog.ShowAsync() == ContentDialogResult.Primary)
-        {
-            var mediator = App.Services.GetRequiredService<IMediator>();
-            try
-            {
-                await mediator.Send(new RenameLaneCommand(lane.Id, nameBox.Text));
-                await Board.RefreshCommand.ExecuteAsync(null);
-            }
-            catch (InvalidOperationException ex)
-            {
-                LaneErrorBar.Title = "Cannot rename lane";
-                LaneErrorBar.Message = ex.Message;
-                LaneErrorBar.IsOpen = true;
-                UpdateNotificationPanel();
-            }
-        }
-    }
-
-    private async void DeleteLane_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
-
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        try
-        {
-            await mediator.Send(new RemoveLaneCommand(lane.Id));
-            await Board.RefreshCommand.ExecuteAsync(null);
-        }
-        catch (InvalidOperationException ex)
-        {
-            LaneErrorBar.Title = "Cannot delete lane";
-            LaneErrorBar.Message = ex.Message;
-            LaneErrorBar.IsOpen = true;
-            UpdateNotificationPanel();
-        }
-    }
-
-    private void LaneHeader_DragStarting(UIElement sender, DragStartingEventArgs e)
-    {
-        _draggedLane = (sender as FrameworkElement)?.DataContext as LaneViewModel;
-        if (_draggedLane is null) return;
-        e.Data.RequestedOperation = DataPackageOperation.Move;
-        e.Data.SetText(_draggedLane.Id.ToString());
-    }
-
-    private void LaneHeader_DropCompleted(UIElement sender, DropCompletedEventArgs e)
-    {
-        _draggedLane = null;
-    }
-
-    private void Lanes_DragOver(object sender, DragEventArgs e)
-    {
-        if (_draggedLane is null) return;
-        e.AcceptedOperation = DataPackageOperation.Move;
-        e.DragUIOverride.IsGlyphVisible = false;
-        e.DragUIOverride.Caption = string.Empty;
-    }
-
-    private async void Lanes_Drop(object sender, DragEventArgs e)
-    {
-        if (_draggedLane is null || _item is null) return;
-        if (sender is not ListView listView) return;
-
-        var draggedId = _draggedLane.Id;
-        var targetIndex = GetLaneDropIndex(listView, e);
-        _draggedLane = null;
-
-        var orderedIds = Board.Lanes
-            .Where(l => l.Id != draggedId)
-            .Select(l => l.Id)
-            .ToList();
-        targetIndex = Math.Clamp(targetIndex, 0, orderedIds.Count);
-        orderedIds.Insert(targetIndex, draggedId);
-
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new ReorderLanesCommand(_item.Id, orderedIds));
-        await Board.RefreshCommand.ExecuteAsync(null);
-    }
-
-    private static int GetLaneDropIndex(ListView listView, DragEventArgs e)
-    {
-        var dropPoint = e.GetPosition(listView);
-        for (var i = 0; i < listView.Items.Count; i++)
-        {
-            if (listView.ContainerFromIndex(i) is not ListViewItem item) continue;
-            var itemLeft = item.TransformToVisual(listView).TransformPoint(new Windows.Foundation.Point(0, 0)).X;
-            if (dropPoint.X < itemLeft + item.ActualWidth / 2)
-                return i;
-        }
-        return listView.Items.Count;
     }
 
     private void NotesSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)

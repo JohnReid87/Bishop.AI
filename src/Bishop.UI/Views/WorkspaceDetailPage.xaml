@@ -88,14 +88,6 @@
                         <TextBlock Text="Claude" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
-                <Button x:Name="AddLaneButton"
-                        Padding="8,4"
-                        Click="AddLane_Click">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE710;" FontSize="12" VerticalAlignment="Center"/>
-                        <TextBlock Text="Lane" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
                 <Button x:Name="WorkspaceSettingsButton"
                         ToolTipService.ToolTip="Workspace settings"
                         Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
@@ -146,11 +138,6 @@
                                          NavigateUri="https://aka.ms/terminal"/>
                     </InfoBar.ActionButton>
                 </InfoBar>
-                <InfoBar x:Name="LaneErrorBar"
-                         IsOpen="False"
-                         IsClosable="True"
-                         Severity="Error"
-                         Closed="InfoBar_Closed"/>
                 <InfoBar x:Name="CopiedBar"
                          IsOpen="False"
                          IsClosable="False"
@@ -166,10 +153,7 @@
                           Padding="8,4,8,12">
                 <ListView x:Name="LanesListView"
                           ItemsSource="{x:Bind Board.Lanes}"
-                          SelectionMode="None"
-                          AllowDrop="True"
-                          DragOver="Lanes_DragOver"
-                          Drop="Lanes_Drop">
+                          SelectionMode="None">
                     <ListView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <ItemsStackPanel Orientation="Horizontal"/>
@@ -194,11 +178,7 @@
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
 
-                                <Grid Grid.Row="0"
-                                      RightTapped="LaneHeader_RightTapped"
-                                      CanDrag="True"
-                                      DragStarting="LaneHeader_DragStarting"
-                                      DropCompleted="LaneHeader_DropCompleted">
+                                <Grid Grid.Row="0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
@@ -239,17 +219,6 @@
                                             <FontIcon Glyph="&#xE710;" FontSize="12"/>
                                         </Button>
                                     </StackPanel>
-                                    <FlyoutBase.AttachedFlyout>
-                                        <MenuFlyout>
-                                            <MenuFlyoutItem Text="Rename" Click="RenameLane_Click">
-                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8AC;"/></MenuFlyoutItem.Icon>
-                                            </MenuFlyoutItem>
-                                            <MenuFlyoutSeparator/>
-                                            <MenuFlyoutItem Text="Delete" Click="DeleteLane_Click">
-                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;"/></MenuFlyoutItem.Icon>
-                                            </MenuFlyoutItem>
-                                        </MenuFlyout>
-                                    </FlyoutBase.AttachedFlyout>
                                 </Grid>
 
                                 <ListView Grid.Row="1"
