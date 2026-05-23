@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 
-namespace Bishop.App.Claude;
+namespace Bishop.App.Services.Claude;
 
 public sealed class StreamJsonFormatter
 {

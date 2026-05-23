@@ -1,4 +1,4 @@
-namespace Bishop.App.GitHub;
+namespace Bishop.App.Services.GitHub;
 
 public interface IGhCli
 {

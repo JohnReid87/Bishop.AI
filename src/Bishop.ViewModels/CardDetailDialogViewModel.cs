@@ -3,7 +3,7 @@ using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
-using Bishop.App.Claude;
+using Bishop.App.Services.Claude;
 using Bishop.App.Git;
 using Bishop.App.Skills;
 using Bishop.App.Tags.ListTagsByWorkspace;

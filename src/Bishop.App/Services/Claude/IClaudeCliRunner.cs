@@ -1,4 +1,4 @@
-namespace Bishop.App.Claude;
+namespace Bishop.App.Services.Claude;
 
 public interface IClaudeCliRunner
 {

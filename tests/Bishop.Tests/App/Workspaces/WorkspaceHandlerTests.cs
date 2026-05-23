@@ -1,7 +1,7 @@
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Git;
 using Bishop.App.Lanes.ListLanesByWorkspace;
-using Bishop.App.Terminal;
+using Bishop.App.Services.Terminal;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.DeleteWorkspace;
 using Bishop.App.Workspaces.GetWorkspace;

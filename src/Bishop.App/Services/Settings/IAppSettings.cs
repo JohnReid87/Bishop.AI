@@ -1,4 +1,4 @@
-namespace Bishop.App.Settings;
+namespace Bishop.App.Services.Settings;
 
 public interface IAppSettings
 {

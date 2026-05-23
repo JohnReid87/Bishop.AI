@@ -1,4 +1,4 @@
-namespace Bishop.App.Terminal;
+namespace Bishop.App.Services.Terminal;
 
 public interface ITerminalLauncher
 {

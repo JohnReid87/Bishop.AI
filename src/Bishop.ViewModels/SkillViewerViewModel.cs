@@ -1,4 +1,4 @@
-using Bishop.App.Settings;
+using Bishop.App.Services.Settings;
 using Bishop.Core.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;

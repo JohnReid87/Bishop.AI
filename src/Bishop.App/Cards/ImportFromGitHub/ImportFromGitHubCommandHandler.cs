@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Bishop.App.GitHub;
+using Bishop.App.Services.GitHub;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;

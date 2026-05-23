@@ -1,5 +1,5 @@
 #pragma warning disable CA1416 // Windows-only; tests run on Windows
-using Bishop.App.Terminal;
+using Bishop.App.Services.Terminal;
 using FluentAssertions;
 using System.Diagnostics;
 using System.Reflection;

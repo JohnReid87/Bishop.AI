@@ -1,4 +1,4 @@
-using Bishop.App.Terminal;
+using Bishop.App.Services.Terminal;
 
 namespace Bishop.App.Skills;
 

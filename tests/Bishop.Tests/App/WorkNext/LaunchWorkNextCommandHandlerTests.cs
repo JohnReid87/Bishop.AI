@@ -1,4 +1,4 @@
-using Bishop.App.Terminal;
+using Bishop.App.Services.Terminal;
 using Bishop.App.WorkNext.LaunchWorkNext;
 using FluentAssertions;
 using NSubstitute;

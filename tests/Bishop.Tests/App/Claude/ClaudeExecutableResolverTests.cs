@@ -1,4 +1,4 @@
-using Bishop.App.Claude;
+using Bishop.App.Services.Claude;
 using FluentAssertions;
 
 namespace Bishop.Tests.App.Claude;

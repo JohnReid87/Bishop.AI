@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Bishop.App.GitHub;
+namespace Bishop.App.Services.GitHub;
 
 public sealed class GhCli : IGhCli
 {

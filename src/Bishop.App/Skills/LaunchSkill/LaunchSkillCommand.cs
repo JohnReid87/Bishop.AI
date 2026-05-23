@@ -1,4 +1,4 @@
-using Bishop.App.Terminal;
+using Bishop.App.Services.Terminal;
 using MediatR;
 
 namespace Bishop.App.Skills.LaunchSkill;

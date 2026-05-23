@@ -5,7 +5,7 @@ using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
-using Bishop.App.Claude;
+using Bishop.App.Services.Claude;
 using Bishop.App.Git;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.WorkNext;

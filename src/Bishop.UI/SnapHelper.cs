@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Bishop.App.Skills;
-using Bishop.App.Terminal;
+using Bishop.App.Services.Terminal;
 using Microsoft.UI.Windowing;
 
 namespace Bishop.UI;

@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using Bishop.App.Claude;
+using Bishop.App.Services.Claude;
 using FluentAssertions;
 using NSubstitute;
 

@@ -4,7 +4,7 @@ using Bishop.Core;
 using Bishop.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Bishop.App.Terminal;
+namespace Bishop.App.Services.Terminal;
 
 internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 {
@@ -121,7 +121,7 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
     {
         var assembly = typeof(WorkspaceContextSeeder).Assembly;
         using var stream = assembly.GetManifestResourceStream(
-            "Bishop.App.Terminal.BishopContext.static.md")!;
+            "Bishop.App.Services.Terminal.BishopContext.static.md")!;
         using var reader = new StreamReader(stream);
         var raw = reader.ReadToEnd();
         return raw.Replace("\r\n", "\n").Replace("\n", Environment.NewLine);

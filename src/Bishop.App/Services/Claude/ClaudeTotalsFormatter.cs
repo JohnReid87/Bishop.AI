@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Bishop.App.Claude;
+namespace Bishop.App.Services.Claude;
 
 public static class ClaudeTotalsFormatter
 {

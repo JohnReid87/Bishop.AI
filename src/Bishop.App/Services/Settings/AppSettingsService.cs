@@ -2,7 +2,7 @@ using Bishop.Core;
 using Bishop.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Bishop.App.Settings;
+namespace Bishop.App.Services.Settings;
 
 public sealed class AppSettingsService(IDbContextFactory<BishopDbContext> dbFactory) : IAppSettings
 {

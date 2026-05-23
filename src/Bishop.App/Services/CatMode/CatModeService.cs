@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace Bishop.App.CatMode;
+namespace Bishop.App.Services.CatMode;
 
 public sealed class CatModeService : ICatModeService
 {

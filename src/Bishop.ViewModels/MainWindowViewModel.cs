@@ -1,4 +1,4 @@
-using Bishop.App.CatMode;
+using Bishop.App.Services.CatMode;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.DeleteWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;

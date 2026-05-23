@@ -1,4 +1,4 @@
-namespace Bishop.App.Terminal;
+namespace Bishop.App.Services.Terminal;
 
 public readonly record struct TerminalSnap(int X, int Y, int Width, int Height)
 {

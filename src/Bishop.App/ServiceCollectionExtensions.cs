@@ -1,11 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
-using Bishop.App.CatMode;
-using Bishop.App.Claude;
+using Bishop.App.Services.CatMode;
+using Bishop.App.Services.Claude;
 using Bishop.App.Git;
-using Bishop.App.GitHub;
+using Bishop.App.Services.GitHub;
 using Bishop.App.Ping;
-using Bishop.App.Settings;
-using Bishop.App.Terminal;
+using Bishop.App.Services.Settings;
+using Bishop.App.Services.Terminal;
 using Bishop.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
 
-namespace Bishop.App.Terminal;
+namespace Bishop.App.Services.Terminal;
 
 [SupportedOSPlatform("windows")]
 public sealed class TerminalLauncher : ITerminalLauncher

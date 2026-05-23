@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using Bishop.App.CatMode;
+using Bishop.App.Services.CatMode;
 using FluentAssertions;
 
 namespace Bishop.Tests.App.CatMode;

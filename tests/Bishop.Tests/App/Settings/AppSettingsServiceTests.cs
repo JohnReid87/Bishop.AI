@@ -1,4 +1,4 @@
-using Bishop.App.Settings;
+using Bishop.App.Services.Settings;
 using Bishop.Data;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;

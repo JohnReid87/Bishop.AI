@@ -1,7 +1,7 @@
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.PushLane;
-using Bishop.App.GitHub;
+using Bishop.App.Services.GitHub;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;

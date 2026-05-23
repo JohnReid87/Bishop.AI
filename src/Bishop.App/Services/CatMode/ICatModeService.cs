@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace Bishop.App.CatMode;
+namespace Bishop.App.Services.CatMode;
 
 public interface ICatModeService : INotifyPropertyChanged
 {

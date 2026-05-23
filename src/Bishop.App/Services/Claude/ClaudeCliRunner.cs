@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using Spectre.Console;
 
-namespace Bishop.App.Claude;
+namespace Bishop.App.Services.Claude;
 
 public sealed class ClaudeCliRunner : IClaudeCliRunner
 {

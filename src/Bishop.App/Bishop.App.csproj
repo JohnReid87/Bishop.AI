@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Terminal\BishopContext.static.md" />
+    <EmbeddedResource Include="Services\Terminal\BishopContext.static.md" />
   </ItemGroup>
 
   <ItemGroup>

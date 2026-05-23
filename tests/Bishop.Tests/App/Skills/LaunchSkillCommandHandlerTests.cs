@@ -1,5 +1,5 @@
 using Bishop.App.Skills.LaunchSkill;
-using Bishop.App.Terminal;
+using Bishop.App.Services.Terminal;
 using FluentAssertions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;

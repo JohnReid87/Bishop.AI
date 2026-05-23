@@ -1,4 +1,4 @@
-using Bishop.App.Terminal;
+using Bishop.App.Services.Terminal;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
@@ -564,7 +564,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     {
         var assembly = typeof(WorkspaceContextSeeder).Assembly;
 
-        using var stream = assembly.GetManifestResourceStream("Bishop.App.Terminal.BishopContext.static.md");
+        using var stream = assembly.GetManifestResourceStream("Bishop.App.Services.Terminal.BishopContext.static.md");
 
         stream.Should().NotBeNull("the embedded BishopContext.static.md resource must exist in the assembly manifest");
     }

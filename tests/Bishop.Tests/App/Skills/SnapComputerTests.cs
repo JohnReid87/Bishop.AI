@@ -1,5 +1,5 @@
 using Bishop.App.Skills;
-using Bishop.App.Terminal;
+using Bishop.App.Services.Terminal;
 using FluentAssertions;
 
 namespace Bishop.Tests.App.Skills;
