@@ -15,6 +15,7 @@
             <converters:BoolNegationConverter x:Key="BoolNegationConverter"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
+            <converters:BoolToThicknessConverter x:Key="BoolToThicknessConverter"/>
             <converters:HexColorToBrushConverter x:Key="HexColorToBrushConverter"/>
             <converters:HexColorToContrastForegroundConverter x:Key="HexColorToContrastForegroundConverter"/>
         </ResourceDictionary>

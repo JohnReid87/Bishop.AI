@@ -7,6 +7,7 @@ using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Git;
 using Bishop.UI.Services;
+using Bishop.ViewModels;
 using Bishop.App.Settings;
 using Bishop.App.Skills;
 using Bishop.App.Skills.DiscoverSkills;
@@ -232,7 +233,7 @@ public sealed partial class WorkspaceDetailPage : Page
         var skills = await mediator.Send(new DiscoverSkillsQuery());
         _cardSkills = SkillMenuBuilder.Build(skills, "card");
         _workspaceSkills = SkillMenuBuilder.Build(skills, "workspace");
-        CardViewModel.CardSkillsButtonVisibility = _cardSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        CardViewModel.IsCardSkillsButtonVisible = _cardSkills.Length > 0;
         WorkspaceSkillsButton.Visibility = _workspaceSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 

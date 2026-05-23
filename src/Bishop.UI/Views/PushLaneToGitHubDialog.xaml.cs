@@ -1,5 +1,6 @@
 using Bishop.App.Cards.PushLane;
 using Bishop.UI.ViewModels;
+using Bishop.ViewModels;
 using MediatR;
 using Microsoft.UI.Xaml.Controls;
 

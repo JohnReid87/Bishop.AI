@@ -5,6 +5,7 @@ using Bishop.App.Skills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.Core;
 using Bishop.UI.ViewModels;
+using Bishop.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Input;

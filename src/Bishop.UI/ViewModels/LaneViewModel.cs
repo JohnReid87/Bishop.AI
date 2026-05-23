@@ -1,5 +1,6 @@
 using Bishop.App.Cards.AddCard;
 using Bishop.Core;
+using Bishop.ViewModels;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;

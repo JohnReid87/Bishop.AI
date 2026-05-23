@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Bishop.UI.Views"
     xmlns:vm="using:Bishop.UI.ViewModels"
+    xmlns:vmcore="using:Bishop.ViewModels"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
     <Grid>
         <Grid.RowDefinitions>
@@ -266,14 +267,14 @@
                                         </Style>
                                     </ListView.ItemContainerStyle>
                                     <ListView.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:CardViewModel">
+                                        <DataTemplate x:DataType="vmcore:CardViewModel">
                                             <Grid Margin="8,0,8,4"
                                                   Opacity="{x:Bind CardOpacity}">
                                                 <Border Background="{StaticResource AppCardBackgroundBrush}"
                                                         CornerRadius="4">
                                                 <StackPanel>
                                                     <!-- Card header: drag handle -->
-                                                    <local:SizeAllCursorGrid Padding="{x:Bind CardHeaderPadding}"
+                                                    <local:SizeAllCursorGrid Padding="{x:Bind IsDoneLane, Converter={StaticResource BoolToThicknessConverter}, ConverterParameter='10,2,4,2|10,4,4,4'}"
                                                                              Background="Transparent"
                                                                              BorderBrush="{StaticResource AppDividerBrush}"
                                                                              BorderThickness="0,0,0,1"
@@ -296,14 +297,14 @@
                                                             <Border Background="{x:Bind TagColour, Converter={StaticResource HexColorToBrushConverter}}"
                                                                     CornerRadius="3"
                                                                     Padding="5,1"
-                                                                    Visibility="{x:Bind TagChipVisibility}">
+                                                                    Visibility="{x:Bind IsTagVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                                                                 <TextBlock Text="{x:Bind TagName}"
                                                                            Style="{StaticResource CaptionTextBlockStyle}"
                                                                            Foreground="{x:Bind TagColour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
                                                                            VerticalAlignment="Center"/>
                                                             </Border>
                                                             <local:HandCursorButton Click="CardAddTagButton_Click"
-                                                                                   Visibility="{x:Bind AddTagButtonVisibility}"
+                                                                                   Visibility="{x:Bind IsAddTagButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                                                    Padding="5,1"
                                                                                    BorderThickness="0"
                                                                                    CornerRadius="3"
@@ -318,7 +319,7 @@
                                                             <local:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                                                    ToolTipService.ToolTip="Skills"
                                                                                    Click="CardSkillsButton_Click"
-                                                                                   Visibility="{x:Bind SkillsButtonVisibility}"
+                                                                                   Visibility="{x:Bind IsSkillsButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                                                    VerticalAlignment="Center">
                                                                 <FontIcon Glyph="&#xEBD2;" FontSize="12"/>
                                                             </local:HandCursorButton>
@@ -334,7 +335,7 @@
                                                     <local:HandCursorGrid>
                                                         <TextBlock Text="{x:Bind Title}"
                                                                    TextWrapping="Wrap"
-                                                                   Padding="{x:Bind CardTitlePadding}"
+                                                                   Padding="{x:Bind IsDoneLane, Converter={StaticResource BoolToThicknessConverter}, ConverterParameter='10,3,10,4|10,6,10,8'}"
                                                                    FontSize="{x:Bind CardTitleFontSize}"
                                                                    Tapped="CardTitle_Tapped"/>
                                                     </local:HandCursorGrid>
