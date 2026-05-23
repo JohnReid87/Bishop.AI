@@ -297,17 +297,17 @@
                                                         CornerRadius="4">
                                                 <StackPanel>
                                                     <!-- Card header: drag handle -->
-                                                    <local:HandCursorGrid Padding="{x:Bind CardHeaderPadding}"
-                                                                          Background="Transparent"
-                                                                          BorderBrush="{StaticResource AppDividerBrush}"
-                                                                          BorderThickness="0,0,0,1"
-                                                                          CanDrag="True"
-                                                                          DragStarting="Card_DragStarting"
-                                                                          DropCompleted="Card_DropCompleted">
-                                                        <local:HandCursorGrid.ColumnDefinitions>
+                                                    <local:SizeAllCursorGrid Padding="{x:Bind CardHeaderPadding}"
+                                                                             Background="Transparent"
+                                                                             BorderBrush="{StaticResource AppDividerBrush}"
+                                                                             BorderThickness="0,0,0,1"
+                                                                             CanDrag="True"
+                                                                             DragStarting="Card_DragStarting"
+                                                                             DropCompleted="Card_DropCompleted">
+                                                        <local:SizeAllCursorGrid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
-                                                        </local:HandCursorGrid.ColumnDefinitions>
+                                                        </local:SizeAllCursorGrid.ColumnDefinitions>
                                                         <StackPanel Grid.Column="0"
                                                                     Orientation="Horizontal"
                                                                     Spacing="6"
@@ -326,40 +326,42 @@
                                                                            Foreground="{x:Bind TagColour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
                                                                            VerticalAlignment="Center"/>
                                                             </Border>
-                                                            <Button Click="CardAddTagButton_Click"
-                                                                    Visibility="{x:Bind AddTagButtonVisibility}"
-                                                                    Padding="5,1"
-                                                                    BorderThickness="0"
-                                                                    CornerRadius="3"
-                                                                    Background="{StaticResource AppDividerBrush}">
+                                                            <local:HandCursorButton Click="CardAddTagButton_Click"
+                                                                                   Visibility="{x:Bind AddTagButtonVisibility}"
+                                                                                   Padding="5,1"
+                                                                                   BorderThickness="0"
+                                                                                   CornerRadius="3"
+                                                                                   Background="{StaticResource AppDividerBrush}">
                                                                 <TextBlock Text="+ tag"
                                                                            Style="{StaticResource CaptionTextBlockStyle}"
                                                                            VerticalAlignment="Center"/>
-                                                            </Button>
+                                                            </local:HandCursorButton>
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1"
                                                                     Orientation="Horizontal">
-                                                            <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                                    ToolTipService.ToolTip="Skills"
-                                                                    Click="CardSkillsButton_Click"
-                                                                    Visibility="{x:Bind SkillsButtonVisibility}"
-                                                                    VerticalAlignment="Center">
+                                                            <local:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                                                   ToolTipService.ToolTip="Skills"
+                                                                                   Click="CardSkillsButton_Click"
+                                                                                   Visibility="{x:Bind SkillsButtonVisibility}"
+                                                                                   VerticalAlignment="Center">
                                                                 <FontIcon Glyph="&#xEBD2;" FontSize="12"/>
-                                                            </Button>
-                                                            <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                                    ToolTipService.ToolTip="{x:Bind CloseReopenTooltip}"
-                                                                    Click="CardCloseButton_Click"
-                                                                    VerticalAlignment="Center">
+                                                            </local:HandCursorButton>
+                                                            <local:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                                                   ToolTipService.ToolTip="{x:Bind CloseReopenTooltip}"
+                                                                                   Click="CardCloseButton_Click"
+                                                                                   VerticalAlignment="Center">
                                                                 <FontIcon Glyph="{x:Bind CloseReopenGlyph}" FontSize="12"/>
-                                                            </Button>
+                                                            </local:HandCursorButton>
                                                         </StackPanel>
-                                                    </local:HandCursorGrid>
+                                                    </local:SizeAllCursorGrid>
                                                     <!-- Card title: tap to open detail -->
-                                                    <TextBlock Text="{x:Bind Title}"
-                                                               TextWrapping="Wrap"
-                                                               Padding="{x:Bind CardTitlePadding}"
-                                                               FontSize="{x:Bind CardTitleFontSize}"
-                                                               Tapped="CardTitle_Tapped"/>
+                                                    <local:HandCursorGrid>
+                                                        <TextBlock Text="{x:Bind Title}"
+                                                                   TextWrapping="Wrap"
+                                                                   Padding="{x:Bind CardTitlePadding}"
+                                                                   FontSize="{x:Bind CardTitleFontSize}"
+                                                                   Tapped="CardTitle_Tapped"/>
+                                                    </local:HandCursorGrid>
                                                 </StackPanel>
                                                 </Border>
                                             </Grid>
