@@ -84,6 +84,83 @@ public class WorkspaceNotesViewModelTests
         act.Should().NotThrow();
     }
 
+    [Fact]
+    public void NotesContent_WhenChanged_SetsEditingState()
+    {
+        var vm = NewVm();
+
+        vm.NotesContent = "hello";
+
+        vm.SaveStatusIsEditing.Should().BeTrue();
+        vm.SaveStatusIsError.Should().BeFalse();
+        vm.SaveStatusText.Should().Be("Editing…");
+    }
+
+    [Fact]
+    public async Task ToggleCommand_WhenCollapsed_Expands()
+    {
+        var vm = NewVm();
+        vm.IsExpanded = false;
+
+        await vm.ToggleCommand.ExecuteAsync(null);
+
+        vm.IsExpanded.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ToggleCommand_WhenExpanded_Collapses()
+    {
+        var vm = NewVm();
+        vm.IsExpanded = true;
+
+        await vm.ToggleCommand.ExecuteAsync(null);
+
+        vm.IsExpanded.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReloadCommand_HidesExternalChangeBar()
+    {
+        var vm = NewVm();
+        vm.IsExternalChangeBarVisible = true;
+
+        await vm.ReloadCommand.ExecuteAsync(null);
+
+        vm.IsExternalChangeBarVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReloadCommand_WithNoFile_LeavesContentEmpty()
+    {
+        var vm = NewVm();
+
+        await vm.ReloadCommand.ExecuteAsync(null);
+
+        vm.NotesContent.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FlushAsync_WithNoWorkspacePath_DoesNotThrow()
+    {
+        var vm = NewVm();
+
+        var act = async () => await vm.FlushAsync();
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task QuickSaveAsync_WhenSaveStatusIsError_KeepsExternalChangeBarVisible()
+    {
+        var vm = NewVm();
+        vm.SaveStatusIsError = true;
+        vm.IsExternalChangeBarVisible = true;
+
+        await vm.QuickSaveAsync();
+
+        vm.IsExternalChangeBarVisible.Should().BeTrue();
+    }
+
     private static WorkspaceNotesViewModel NewVm() =>
         new(new FakeUiDispatcher());
 
