@@ -14,13 +14,13 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 - **App layer:** MediatR for commands/queries.
 - **DI:** `Microsoft.Extensions.DependencyInjection` via the generic host.
 - **Data:** EF Core 9 + SQLite (WAL mode for concurrent UI + CLI access). DB file at `%AppData%\Bishop.AI\bishop.db` (override with the `BISHOP_DB` env var — set it to an absolute path; useful for tests and portable configs).
-- **Testing:** xUnit + FluentAssertions. Handlers, repos, and UI-layer logic extracted to `Bishop.App` are tested against in-memory or temp SQLite. No tests target `net10.0-windows`; visual rendering and `xaml.cs` orchestration are out of scope.
-- **Target framework:** `net10.0` for Core / Data / App / Cli / Tests; `net10.0-windows10.0.19041.0` for Bishop.UI.
+- **Testing:** xUnit + FluentAssertions. Handlers and repos in `Bishop.App` are tested against in-memory or temp SQLite; ViewModels in `Bishop.ViewModels` are testable against the `IUiDispatcher` abstraction. No tests target `net10.0-windows`; visual rendering and `xaml.cs` orchestration are out of scope.
+- **Target framework:** `net10.0` for Core / Data / App / ViewModels / Cli / Tests; `net10.0-windows10.0.19041.0` for Bishop.UI.
 
 ## Architecture
 
 ### Repository layout
-- `src/` — .NET projects (Core, Data, App, Cli, UI).
+- `src/` — .NET projects (Core, Data, App, ViewModels, Cli, UI).
 - `tests/Bishop.Tests/` — xUnit project.
 - `skills/` — vendored Claude Code skill files shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`. Grouped into four categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
   - **Review:** `bish-arch`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`
@@ -36,10 +36,11 @@ Layered, with strict one-way dependencies. Modify in this order when implementin
 1. **Bishop.Core** — entities (Workspace, Lane, Card, Tag, CardTag), domain primitives, enums. No external deps.
 2. **Bishop.Data** — `BishopDbContext`, EF Core configurations, migrations, repository interfaces + implementations. References Core.
 3. **Bishop.App** — MediatR `IRequest` types and handlers, application services (e.g. the terminal launcher), validators. References Core + Data.
-4. **Bishop.UI** and **Bishop.Cli** — presentation peers. UI is the WinUI 3 desktop app (Views, ViewModels, DI composition root). Cli is the `bishop` console executable. Both reference App; neither references Data directly.
-5. **Bishop.Tests** — xUnit project under `tests/Bishop.Tests`. References whichever layers it tests.
+4. **Bishop.ViewModels** — presentation-framework-agnostic ViewModels. Targets `net10.0`; references `Bishop.App` so VMs can take `IMediator`. **Must not** reference `Microsoft.UI.*`, `Windows.UI.*`, or `Microsoft.WindowsAppSDK` — compile-time absence is the layer enforcement. UI-thread marshalling goes through the `IUiDispatcher` abstraction defined here; visual mapping (e.g. `Visibility`) lives in XAML converters, not VMs.
+5. **Bishop.UI** and **Bishop.Cli** — presentation peers. UI is the WinUI 3 desktop app (Views, DI composition root, `WinUiDispatcher : IUiDispatcher`); it references App + ViewModels. Cli is the `bishop` console executable; references App. Neither references Data directly.
+6. **Bishop.Tests** — xUnit project under `tests/Bishop.Tests`. References whichever layers it tests.
 
-Dependency direction: **Core → Data → App → { UI, Cli }**. UI and Cli go through MediatR handlers in App for everything.
+Dependency direction: **Core → Data → App → { ViewModels → UI, Cli }**. UI and Cli go through MediatR handlers in App for everything.
 
 ### Kanban model
 A workspace owns a fixed set of four system lanes — "Backlog", "To Do", "Doing", "Done" — seeded on workspace creation; user-defined lanes are not supported. Cards belong to a workspace (via `WorkspaceId` FK) and carry their lane membership as a `LaneName` string + ordered `Position`. Tags are workspace-scoped (with optional colour); a card carries at most one tag as a nullable `TagName` string on the `Cards` table.
