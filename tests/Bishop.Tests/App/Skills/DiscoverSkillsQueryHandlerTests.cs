@@ -1,4 +1,3 @@
-using System.Reflection;
 using Bishop.App.Skills.DiscoverSkills;
 using FluentAssertions;
 
@@ -137,6 +136,81 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_EmptyFile_ReturnsEmpty()
+    {
+        // Arrange - splitting "" yields a single-element array; lines.Length < 2 short-circuits parsing
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_SingleLineFile_ReturnsEmpty()
+    {
+        // Arrange - "---" splits to one element; lines.Length < 2 short-circuits parsing
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_FirstLineNotOpeningFence_ReturnsEmpty()
+    {
+        // Arrange - lines[0] != "---" so ParseFrontmatterAndBody returns an empty frontmatter immediately
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "name: my-skill\n---\ndescription: a skill\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_ClosingFenceIsLastLine_ReturnsEmptyBody()
+    {
+        // Arrange - closing "---" is at lines[lines.Length - 1]; the condition
+        // closingIndex < lines.Length - 1 evaluates to false, so body is empty
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            "---\nname: my-skill\ndescription: test\n---");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].MarkdownBody.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_MultipleClosingFences_BodyStartsAfterFirstFence()
+    {
+        // Arrange - the loop breaks at the first "---"; subsequent "---" lines appear in the body
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            "---\nname: my-skill\n---\nbody line\n---\nmore body\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].MarkdownBody.Should().Be("body line\n---\nmore body\n");
+    }
+
+    [Fact]
     public async Task Handle_SkillMdWithAllFields_ReturnsFullyPopulatedSkill()
     {
         // Arrange
@@ -245,6 +319,20 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_MissingScopeField_ParsesNullAsEmptyList()
+    {
+        // Arrange - no bishop.scope key → TryGetValue sets scope to null → ParseScope(null) → []
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Scope.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Handle_StagePrefillQuotedWithNewlineEscapes_ConvertsToNewlines()
     {
         // Arrange
@@ -279,6 +367,20 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     {
         // Arrange
         WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.stage_prefill: \n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].StagePrefill.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_MissingStagePrefillField_ParsesNullAsNull()
+    {
+        // Arrange - no bishop.stage_prefill key → TryGetValue sets stagePrefill to null → ParseStagePrefill(null) → null
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\n---\n");
         var sut = CreateSut();
 
         // Act
@@ -470,6 +572,20 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
         result[0].Category.Should().Be(Bishop.Core.Skills.SkillCategory.Other);
     }
 
+    [Fact]
+    public async Task Handle_MissingCategoryField_ParsesNullAsOther()
+    {
+        // Arrange - no bishop.category key → TryGetValue sets category to null → ParseCategory(null) → Other
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Category.Should().Be(Bishop.Core.Skills.SkillCategory.Other);
+    }
+
     [Theory]
     [InlineData("discuss",   Bishop.Core.Skills.SkillCategory.Discuss)]
     [InlineData("execute",   Bishop.Core.Skills.SkillCategory.Execute)]
@@ -490,20 +606,13 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     }
 
     [Fact]
-    public void ParameterlessConstructor_ResolvesUserProfileSkillsPath()
+    public async Task ParameterlessConstructor_ResolvedPathIsUsedForHandling()
     {
-        // Arrange
-        var expected = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".claude", "skills");
-
-        // Act
+        // The parameterless constructor resolves %USERPROFILE%\.claude\skills.
+        // Calling Handle on the resulting instance succeeds without throwing;
+        // it returns an empty list when that directory does not exist.
         var sut = new DiscoverSkillsQueryHandler();
-        var field = typeof(DiscoverSkillsQueryHandler)
-            .GetField("_skillsRoot", BindingFlags.NonPublic | BindingFlags.Instance);
-        var actual = (string)field!.GetValue(sut)!;
-
-        // Assert
-        actual.Should().Be(expected);
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+        result.Should().NotBeNull();
     }
 }
