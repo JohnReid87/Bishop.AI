@@ -2,8 +2,8 @@
 name: bish-triage
 description: Interrogate a free-text bug description against the current Bishop workspace — walk a canonical bug checklist, validate the suspected cause against the repo via the Explore subagent, then push one structured `bug` card (or split into a `spike` + fix-stub pair when root cause is unconfirmed). Use when the user has a bug to file and wants it pinned down before it hits the board.
 allowed-tools: Read, Glob, Grep, Agent, AskUserQuestion, Bash(bishop:*)
-bishop.scope: workspace
-bishop.command: /bish-triage
+bishop.scope: card,workspace
+bishop.command: /bish-triage {{card_number}}
 bishop.stage: true
 bishop.stage_prompt: "Describe the bug — symptom, repro if known, and any stack trace."
 ---
@@ -28,15 +28,26 @@ Run `bishop workspace current --json`.
 
 ---
 
-**Resolve the triage seed from `$ARGUMENTS`.** Two paths only — there is **no card-Number path**:
+**Resolve the triage seed from `$ARGUMENTS`.** Three paths:
 
-1. **`$ARGUMENTS` is non-empty free text** (the workspace-launch / staging-dialog path):
+1. **`$ARGUMENTS` is a card Number** (matches `^#?\d+$`, e.g. `42` or `#42`):
+   - Strip a leading `#` if present.
+   - Run `bishop card view <number> --json`.
+   - If the command exits non-zero, STOP and surface stderr as-is. Do not guess.
+   - Parse the JSON and capture `number`, `title`, `description`, `tag`, `laneName`.
+   - Remember the `number` as the **source card** — you will reuse it at the end of the flow.
+   - Use `title` + `description` (verbatim, joined) as the bug-description seed for Phase 1.
+   - Echo back so the user can confirm before the interview begins:
+
+     > **Triaging card #N:** \<title\> *(lane: \<laneName\>, tag: \<tag\>)*
+
+2. **`$ARGUMENTS` is non-empty free text** (the workspace-launch / staging-dialog path):
    - Use the text verbatim as the seed for the triage.
+   - There is no source card; skip the closing card-action prompt later.
 
-2. **`$ARGUMENTS` is empty** (skill was launched without arguments and the stage dialog was dismissed):
+3. **`$ARGUMENTS` is empty** (skill was launched without arguments and the stage dialog was dismissed):
    - Ask in chat: "Describe the bug — symptom, repro if known, and any stack trace." and wait for the user's reply before proceeding.
-
-There is no source card. Do not ask any closing card-action question.
+   - There is no source card.
 
 ---
 
@@ -105,7 +116,7 @@ Before pushing, run:
 bishop card list --tag bug --json
 ```
 
-Parse the JSON. For each card whose `isClosed` is `false` (i.e. not in `Done` / not closed), compare its `title` against the proposed title. A duplicate is plausible when **two or more significant tokens overlap** (ignoring stop-words like `the`, `a`, `in`, `when`, `is`, `fix`, `bug`, `error`).
+Parse the JSON. If a source card was captured (Path 1) and it is `bug`-tagged, exclude it from the candidate pool (`c.number != sourceNumber`) so the source card is not flagged as a duplicate of itself. For each remaining card whose `isClosed` is `false` (i.e. not in `Done` / not closed), compare its `title` against the proposed title. A duplicate is plausible when **two or more significant tokens overlap** (ignoring stop-words like `the`, `a`, `in`, `when`, `is`, `fix`, `bug`, `error`).
 
 If any plausible duplicate is found, surface the top candidate and ask:
 
@@ -210,7 +221,7 @@ For the spike-split, push the **spike first** (`--tag spike`), capture its Numbe
 
 ## Summary table
 
-After the push(es), print exactly this table — no closing card-action prompt:
+After the push(es), print exactly this table:
 
 | Card | Title | Tag |
 |------|-------|-----|
@@ -219,5 +230,18 @@ After the push(es), print exactly this table — no closing card-action prompt:
 For a spike-split, the table has two rows: the spike first, then the fix-stub.
 
 ---
+
+**Closing card-action prompt.** After the summary table, if a **source card** was captured at the start (Path 1 above), ask the user what to do with it:
+
+> Source card **#N** — \<title\> — is still in lane `<laneName>`. What now?
+> (`close` / `done` / `leave`)
+
+- `close` → `bishop card close <number>` (marks closed; if the card has a linked GitHub issue, the CLI closes that too).
+- `done` → `bishop card move <number> --to-lane "Done" --to-position 0` (the CLI auto-closes on entry to the system `Done` lane).
+- `leave` → no-op; the card stays where it is.
+
+For the spike-split shape, the prompt fires once for the original source card (independent of the newly created spike + fix-stub pair).
+
+If there is no source card (Paths 2 and 3), skip this prompt entirely.
 
 ARGUMENTS: $ARGUMENTS
