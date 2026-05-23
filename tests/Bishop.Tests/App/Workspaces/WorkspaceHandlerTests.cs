@@ -9,6 +9,7 @@ using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.ReorderWorkspaces;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
+using Bishop.App.Workspaces.RemoveWorkspace;
 using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UpdateWorkspace;
 using Bishop.Core;
@@ -562,6 +563,47 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace", snap), default);
 
         launcher.Received(1).Launch(@"C:\workspace", null, snap);
+    }
+
+    [Fact]
+    public async Task RemoveWorkspace_SetsIsRemovedAndRemovedAt()
+    {
+        var name = U("ToRemove");
+        var created = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        var handler = new RemoveWorkspaceCommandHandler(_factory);
+
+        await handler.Handle(new RemoveWorkspaceCommand(created.Id), default);
+
+        var ws = await _db.Workspaces.FindAsync(created.Id);
+        ws!.IsRemoved.Should().BeTrue();
+        ws.RemovedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task RemoveWorkspace_WorkspaceNotFound_Throws()
+    {
+        var handler = new RemoveWorkspaceCommandHandler(_factory);
+
+        var act = () => handler.Handle(new RemoveWorkspaceCommand(Guid.NewGuid()), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [Fact]
+    public async Task RemoveWorkspace_RemovedWorkspaceExcludedFromList()
+    {
+        var name = U("Removed2");
+        var created = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        await new RemoveWorkspaceCommandHandler(_factory)
+            .Handle(new RemoveWorkspaceCommand(created.Id), default);
+
+        var result = await new ListWorkspacesQueryHandler(_factory)
+            .Handle(new ListWorkspacesQuery(), default);
+
+        result.Should().NotContain(w => w.Id == created.Id);
     }
 
     [Fact]
