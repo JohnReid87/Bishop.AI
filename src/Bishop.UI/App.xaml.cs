@@ -40,6 +40,7 @@ public partial class App : Application
                 services.AddTransient<WorkspaceBoardViewModel>();
                 services.AddTransient<WorkspaceNotesViewModel>();
                 services.AddTransient<SkillViewerViewModel>();
+                services.AddTransient<WorkspaceManagerViewModel>();
             })
             .Build();
 

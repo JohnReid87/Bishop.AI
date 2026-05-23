@@ -2,6 +2,7 @@
     x:Class="Bishop.UI.Views.SettingsDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Bishop.UI.Views"
     Title="Settings"
     CloseButtonText="Close">
     <ContentDialog.Resources>
@@ -46,10 +47,7 @@
 
         <TabViewItem Header="Workspaces" IsClosable="False">
             <TabViewItem.Content>
-                <TextBlock Text="Coming soon"
-                           Foreground="{StaticResource AppTextTertiaryBrush}"
-                           FontStyle="Italic"
-                           Padding="0,8,0,0"/>
+                <local:ManageWorkspacesControl Padding="0,8,0,0"/>
             </TabViewItem.Content>
         </TabViewItem>
 

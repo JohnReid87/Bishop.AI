@@ -1,17 +1,19 @@
 using Bishop.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Bishop.UI.Views;
 
-public sealed partial class ManageWorkspacesDialog : ContentDialog
+public sealed partial class ManageWorkspacesControl : UserControl
 {
     public WorkspaceManagerViewModel ViewModel { get; }
 
-    public ManageWorkspacesDialog(WorkspaceManagerViewModel viewModel)
+    public ManageWorkspacesControl()
     {
+        ViewModel = App.Services.GetRequiredService<WorkspaceManagerViewModel>();
         InitializeComponent();
-        ViewModel = viewModel;
+        Loaded += async (_, _) => await ViewModel.LoadAsync();
     }
 
     private async void RemoveButton_Click(object sender, RoutedEventArgs e)
