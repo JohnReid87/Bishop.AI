@@ -27,4 +27,58 @@ public sealed class ListTagsCliCommandTests
         exitCode.Should().Be(0);
         await mediator.Received(1).Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task InvokeAsync_SendsQueryWithCorrectWorkspaceId()
+    {
+        var ws = new Workspace { Id = Guid.NewGuid(), Name = "test-ws", Path = @"C:\test" };
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Workspace>)[ws]);
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<TagInfo>)[]);
+
+        var cmd = new ListTagsCliCommand(mediator);
+        await cmd.InvokeAsync(["--workspace", "test-ws"]);
+
+        await mediator.Received(1).Send(
+            Arg.Is<ListTagsByWorkspaceQuery>(q => q.WorkspaceId == ws.Id),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithJsonFlag_ExitsZeroAndSerializesTags()
+    {
+        var ws = new Workspace { Id = Guid.NewGuid(), Name = "test-ws", Path = @"C:\test" };
+        var tag = new TagInfo("feature", "#0000FF");
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Workspace>)[ws]);
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<TagInfo>)[tag]);
+
+        var cmd = new ListTagsCliCommand(mediator);
+        var exitCode = await cmd.InvokeAsync(["--workspace", "test-ws", "--json"]);
+
+        exitCode.Should().Be(0);
+        await mediator.Received(1).Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithoutJsonFlag_ExitsZeroAndIteratesTags()
+    {
+        var ws = new Workspace { Id = Guid.NewGuid(), Name = "test-ws", Path = @"C:\test" };
+        var tag = new TagInfo("feature", "#0000FF");
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Workspace>)[ws]);
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<TagInfo>)[tag]);
+
+        var cmd = new ListTagsCliCommand(mediator);
+        var exitCode = await cmd.InvokeAsync(["--workspace", "test-ws"]);
+
+        exitCode.Should().Be(0);
+        await mediator.Received(1).Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>());
+    }
 }
