@@ -9,6 +9,8 @@ bishop.stage_prompt: "What do you want me to grill you on?"
 bishop.category: discuss
 ---
 
+> Recommended model: Opus 4.7 — relentless interview requires sustained multi-step judgement.
+
 ## What this skill is
 
 A **relentless interview**. The soul of the skill is the quality bar of the

@@ -147,10 +147,11 @@ For each skill in `skills/`:
 8. **Heuristic content** — for review skills: are the heuristics still the dominant portion of the file? If extraction has eroded them, restore.
 9. **Procedural flow** — for setup/execute skills: is the procedure still readable top-to-bottom as imperative steps? Reordering for "purpose-first" is a bug here.
 10. **Frontmatter** — `name`, `description`, `allowed-tools`, `bishop.scope`, `bishop.command` all present and accurate? Stage flags (`bishop.stage`, `bishop.stage_prompt`) correct for the workspace-launch path?
+11. **Recommended model** — does the file carry a `> Recommended model:` line immediately after the frontmatter `---`, with an allowed value (`Sonnet 4.6` or `Opus 4.7`) and a one-line reason? If not, flag it. See §6 for placement and allowed values.
 
 Finally, run this family-wide check (not per-skill):
 
-11. **Bundled-skills-list drift** — every skill in `skills/bish-*/` must appear at least once in each of these four canonical bundled-skills lists, grouped by category rather than as a flat list:
+12. **Bundled-skills-list drift** — every skill in `skills/bish-*/` must appear at least once in each of these four canonical bundled-skills lists, grouped by category rather than as a flat list:
     - `README.md` — "Getting started → After MSI install" bullet group.
     - `CONTEXT.md` — both the `skills/` entry under "Repository layout" and the "Skill integration" paragraph.
     - `DIRECTION.md` — the "Skills live in this repo" decision block.

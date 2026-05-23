@@ -8,6 +8,8 @@ bishop.stage: false
 bishop.category: review
 ---
 
+> Recommended model: Opus 4.7 — architectural critique requires sustained multi-step judgement.
+
 **Before anything else — initialize from `bishop skill bootstrap`:**
 
 Run `bishop skill bootstrap --json`. If it exits non-zero, surface the stderr

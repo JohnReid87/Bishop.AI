@@ -8,6 +8,8 @@ bishop.stage: false
 bishop.category: discuss
 ---
 
+> Recommended model: Sonnet 4.6 — structured single-card discussion; extended reasoning not required.
+
 ## What this skill is
 
 A **single-card, non-mutating chat**. The soul of the skill is what it

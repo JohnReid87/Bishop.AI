@@ -5,15 +5,17 @@ allowed-tools: Read, Glob, Grep, AskUserQuestion, Bash(bishop:*)
 bishop.category: meta
 ---
 
+> Recommended model: Sonnet 4.6 — checklist-driven audit; extended reasoning not required.
+
 ## What this skill is
 
 A **Bishop-level meta-skill**. It operates on `skills/` in the Bishop.AI
 repository (or any directory the user nominates that already holds
 `bish-*` skill directories), not on a workspace's application code.
 
-The soul is the **audit checklist** — items 1–10 mirror the per-skill
+The soul is the **audit checklist** — items 1–11 mirror the per-skill
 conformance check `bish-write-skill` runs on a single new file, plus
-item 11, a family-wide check that ensures the bundled-skills lists in
+item 12, a family-wide check that ensures the bundled-skills lists in
 `README.md`, `CONTEXT.md`, `DIRECTION.md`, and
 `src/Bishop.App/Terminal/BishopContext.static.md` still track the
 actual contents of `skills/`. This skill applies the checklist at
@@ -23,7 +25,7 @@ cards.
 For the reasoning behind each checklist item, see
 [`docs/SKILL_FAMILY.md`](../../docs/SKILL_FAMILY.md) — especially §1
 (categories), §2 (per-category triage), §4 (extraction taxonomy), §5
-(STABLE vs TUNABLE), and §6 (the checklist this skill walks). If this
+(STABLE vs TUNABLE), and §7 (the checklist this skill walks). If this
 file and `SKILL_FAMILY.md` disagree, `SKILL_FAMILY.md` is the source
 of truth — flag the drift and STOP before walking the checklist.
 
@@ -37,7 +39,7 @@ pair for the family.
 
 Apply each item to every `skills/bish-*/SKILL.md` found under the
 working directory. The notes below are short reminders; expand each
-via §6 of `SKILL_FAMILY.md` when judging an edge case.
+via §7 of `SKILL_FAMILY.md` when judging an edge case.
 
 1. **Category** — frontmatter `bishop.category` is set and matches what
    the skill actually does (`discuss` for Conversational, `review`,
@@ -85,9 +87,16 @@ via §6 of `SKILL_FAMILY.md` when judging an edge case.
     `bishop.stage`, `bishop.stage_prompt` (when `stage: true`),
     `bishop.category` set per the skill's category and surface.
 
-Item 11 is a family-wide check, not per-skill:
+11. **Recommended model** — the file carries a `> Recommended model:`
+    line immediately after the frontmatter `---`, above the first heading
+    or body paragraph. The value must be one of the allowed values from
+    §6 of `SKILL_FAMILY.md` (`Sonnet 4.6` or `Opus 4.7`) and be
+    accompanied by a one-line reason clause. A missing line, an empty
+    reason, or an unrecognised value is a finding.
 
-11. **Bundled-skills-list drift** — every skill in `skills/bish-*/`
+Item 12 is a family-wide check, not per-skill:
+
+12. **Bundled-skills-list drift** — every skill in `skills/bish-*/`
     appears at least once in each of these four canonical
     bundled-skills lists, grouped by category rather than as a flat
     list:
@@ -126,8 +135,8 @@ Item 11 is a family-wide check, not per-skill:
    > `bish-*` skills).
 
 2. **Confirm against `SKILL_FAMILY.md`.** `Read`
-   [`docs/SKILL_FAMILY.md`](../../docs/SKILL_FAMILY.md). If §6 of
-   that file disagrees with the eleven-item checklist above, STOP
+   [`docs/SKILL_FAMILY.md`](../../docs/SKILL_FAMILY.md). If §7 of
+   that file disagrees with the twelve-item checklist above, STOP
    and tell the user the doc and this skill have drifted. Do not
    paper over the disagreement — the checklist is the contract and
    one of the two files needs an update first.
@@ -138,7 +147,7 @@ Item 11 is a family-wide check, not per-skill:
    - Determine its category from frontmatter (`bishop.category`). If
      the field is missing, that is itself a finding under item 1 and
      also item 10; infer category from content to continue the audit.
-   - Walk all ten checklist items against it. Items 8 and 9 are
+   - Walk all eleven checklist items against it. Items 8 and 9 are
      category-gated — skip when not applicable.
    - Use `Grep` for pattern-level checks: inline
      `bishop workspace current --json` invocations (item 3), restated
@@ -158,11 +167,12 @@ Item 11 is a family-wide check, not per-skill:
    Severity heuristic: item 7 paraphrases of STABLE sections and item
    3 inline detection in workspace-level skills are `high`; item 2
    miscategorisation is `high`; item 10 missing frontmatter keys are
-   `medium`; item 8 and item 9 dilution are `medium`; item 11
-   missing-skill and missing-category are `high`, item 11
+   `medium`; item 11 missing or invalid recommended-model line is
+   `medium`; item 8 and item 9 dilution are `medium`; item 12
+   missing-skill and missing-category are `high`, item 12
    stale-flat-list is `medium`; the rest depend on context.
 
-4. **Audit bundled-skills lists (item 11).** Family-wide, not
+4. **Audit bundled-skills lists (item 12).** Family-wide, not
    per-skill. `Read` each of these four docs and check the
    bundled-skills list inside:
 
@@ -177,7 +187,7 @@ Item 11 is a family-wide check, not per-skill:
 
    - Use `Grep` to count occurrences of every `bish-*` directory
      name enumerated in step 3. A skill referenced zero times in
-     the doc is a **missing-skill** finding (item 11, severity
+     the doc is a **missing-skill** finding (item 12, severity
      `high`).
    - Check that the doc carries headings or labels that group
      skills by the canonical four categories. Accept either the
@@ -186,10 +196,10 @@ Item 11 is a family-wide check, not per-skill:
      values (`discuss` / `review` / `setup` + `execute` / `meta`).
      A category with no representation at all in a doc that
      otherwise lists skills is a **missing-category** finding
-     (item 11, severity `high`).
+     (item 12, severity `high`).
    - If the doc renders skills as an ungrouped flat list (no
      category headings or labels at all), that is a
-     **stale-flat-list** finding (item 11, severity `medium`).
+     **stale-flat-list** finding (item 12, severity `medium`).
 
    Record findings using the same structured format as step 3. For
    missing-skill findings, set `skill` to the affected skill name
@@ -198,13 +208,13 @@ Item 11 is a family-wide check, not per-skill:
    `location` to the doc path plus the affected section heading.
 
 5. **Print a summary.** Group findings by `skill`, alphabetical
-   (item-11 family-wide findings cluster under `(family-wide)`). One
+   (item-12 family-wide findings cluster under `(family-wide)`). One
    line per finding:
 
    ```
    (family-wide)
-     [high]   item-11 — `bish-foo` missing from README.md
-     [medium] item-11 — BishopContext.static.md lists skills as a flat list
+     [high]   item-12 — `bish-foo` missing from README.md
+     [medium] item-12 — BishopContext.static.md lists skills as a flat list
    bish-grill-me
      [high]   item-3 — inline `bishop workspace current --json` preamble (lines 14-27)
      [medium] item-10 — missing `bishop.category` frontmatter key
@@ -238,7 +248,7 @@ Item 11 is a family-wide check, not per-skill:
      card per section across all affected skills, not per skill.
    - Item-10 frontmatter gaps across many skills → one card
      "Backfill missing frontmatter keys across the family".
-   - Multiple item-11 missing-skill / missing-category findings
+   - Multiple item-12 missing-skill / missing-category findings
      across docs → one card "Backfill bundled-skills lists across
      `README.md`, `CONTEXT.md`, `DIRECTION.md`, and
      `BishopContext.static.md`", not per doc.
@@ -249,7 +259,7 @@ Item 11 is a family-wide check, not per-skill:
    the finding is about drift in a documentation file
    (`SKILL_FAMILY.md`, `BISHOP_CONTEXT.md`, `README.md`, `CONTEXT.md`,
    `DIRECTION.md`, `BishopContext.static.md`) rather than in a
-   `SKILL.md` file. All item-11 findings take `--tag docs`.
+   `SKILL.md` file. All item-12 findings take `--tag docs`.
 
    Ask:
 
@@ -297,9 +307,9 @@ Item-<N> — <one-sentence statement of the violation>. Affected: `<skill-or-doc
   citation. An uncitable finding is not actionable and should be
   dropped rather than carded.
 - Do NOT extend the checklist on the fly. New audit items belong in
-  `SKILL_FAMILY.md` §6 first, then mirrored here. If a new pattern
+  `SKILL_FAMILY.md` §7 first, then mirrored here. If a new pattern
   needs checking, file a card for the doc + skill update and STOP.
-- If `docs/SKILL_FAMILY.md` and the checklist above disagree, STOP
+- If `docs/SKILL_FAMILY.md` §7 and the checklist above disagree, STOP
   and surface the disagreement. `SKILL_FAMILY.md` is the source of
   truth; the inline checklist may be stale.
 
