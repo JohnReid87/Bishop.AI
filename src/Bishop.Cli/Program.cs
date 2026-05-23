@@ -1,8 +1,6 @@
 using Bishop.App;
-using Bishop.Core;
-using Bishop.App.Lanes.ListLanesByWorkspace;
-using Bishop.App.Skills.GetSkillBootstrapInfo;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.WorkNext;
+using Bishop.Cli;
 using Bishop.Cli.Cards.Add;
 using Bishop.Cli.Cards.Claim;
 using Bishop.Cli.Cards.Close;
@@ -14,33 +12,24 @@ using Bishop.Cli.Cards.Push;
 using Bishop.Cli.Cards.Remove;
 using Bishop.Cli.Cards.Reopen;
 using Bishop.Cli.Cards.View;
+using Bishop.Cli.Lanes.List;
+using Bishop.Cli.Skills.Bootstrap;
+using Bishop.Cli.Tags.List;
 using Bishop.Cli.Workspaces.Current;
 using Bishop.Cli.Workspaces.Init;
 using Bishop.Cli.Workspaces.List;
 using Bishop.Cli.Workspaces.SetGitHub;
 using Bishop.Cli.Workspaces.UnsetGitHub;
-using Bishop.App.WorkNext;
-using Bishop.Cli;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.CommandLine;
 using System.CommandLine.Builder;
-using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 Console.InputEncoding = new System.Text.UTF8Encoding(false);
 Console.OutputEncoding = new System.Text.UTF8Encoding(false);
-
-var jsonOpts = new JsonSerializerOptions
-{
-    WriteIndented = true,
-    DefaultIgnoreCondition = JsonIgnoreCondition.Never,
-    ReferenceHandler = ReferenceHandler.IgnoreCycles
-};
 
 var builder = Host.CreateEmptyApplicationBuilder(null);
 builder.Logging.ClearProviders();
@@ -67,26 +56,10 @@ workspaceCmd.AddCommand(new UnsetGitHubCliCommand(mediator));
 root.AddCommand(workspaceCmd);
 
 
-// ── tag list ──────────────────────────────────────────────────────────────────
-
-var tagListCmd = new Command("list", "List tags in a workspace");
-tagListCmd.AddOption(CommonOptions.WorkspaceOption);
-tagListCmd.AddOption(CommonOptions.JsonOption);
-tagListCmd.SetHandler(async (string? workspace, bool json) =>
-{
-    var ws = await resolver.ResolveAsync(workspace);
-    var tags = await mediator.Send(new ListTagsByWorkspaceQuery(ws.Id));
-    if (json)
-        Console.WriteLine(JsonSerializer.Serialize(tags, jsonOpts));
-    else
-        foreach (var t in tags)
-            Console.WriteLine(t.Name);
-}, CommonOptions.WorkspaceOption, CommonOptions.JsonOption);
-
-// ── wire tag command ──────────────────────────────────────────────────────────
+// ── tag ───────────────────────────────────────────────────────────────────────
 
 var tagCmd = new Command("tag", "Manage workspace tags");
-tagCmd.AddCommand(tagListCmd);
+tagCmd.AddCommand(new ListTagsCliCommand(mediator));
 root.AddCommand(tagCmd);
 
 // ── wire card command ─────────────────────────────────────────────────────────
@@ -105,26 +78,10 @@ cardCmd.AddCommand(new CloseCardCliCommand(mediator, cardResolver));
 cardCmd.AddCommand(new ReopenCardCliCommand(mediator, cardResolver));
 root.AddCommand(cardCmd);
 
-// ── lane list ─────────────────────────────────────────────────────────────────
-
-var laneListCmd = new Command("list", "List lanes in a workspace");
-laneListCmd.AddOption(CommonOptions.WorkspaceOption);
-laneListCmd.AddOption(CommonOptions.JsonOption);
-laneListCmd.SetHandler(async (string? workspace, bool json) =>
-{
-    var ws = await resolver.ResolveAsync(workspace);
-    var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
-    if (json)
-        Console.WriteLine(JsonSerializer.Serialize(lanes, jsonOpts));
-    else
-        foreach (var l in lanes)
-            Console.WriteLine($"  {l.Position}  {l.Name}");
-}, CommonOptions.WorkspaceOption, CommonOptions.JsonOption);
-
-// ── wire lane command ─────────────────────────────────────────────────────────
+// ── lane ──────────────────────────────────────────────────────────────────────
 
 var laneCmd = new Command("lane", "Inspect kanban lanes");
-laneCmd.AddCommand(laneListCmd);
+laneCmd.AddCommand(new ListLanesCliCommand(mediator));
 root.AddCommand(laneCmd);
 
 // ── install-skills ────────────────────────────────────────────────────────────
@@ -180,55 +137,10 @@ installSkillsCmd.SetHandler(() =>
 });
 root.AddCommand(installSkillsCmd);
 
-// ── skill bootstrap ───────────────────────────────────────────────────────────
-
-var skillBootstrapCmd = new Command(
-    "bootstrap",
-    "Emit workspace + tag/lane info for a skill preamble. Non-zero exit if not in a workspace.");
-skillBootstrapCmd.AddOption(CommonOptions.JsonOption);
-skillBootstrapCmd.SetHandler(async (InvocationContext context) =>
-{
-    var json = context.ParseResult.GetValueForOption(CommonOptions.JsonOption);
-
-    Workspace ws;
-    try
-    {
-        ws = await resolver.ResolveAsync(null);
-    }
-    catch (InvalidOperationException)
-    {
-        Console.Error.WriteLine(
-            "Not in a Bishop workspace. Run `bishop workspace list` to see available workspaces, then `cd` into one of the listed paths and retry.");
-        context.ExitCode = 1;
-        return;
-    }
-
-    var info = await mediator.Send(new GetSkillBootstrapInfoQuery(ws.Id));
-
-    if (json)
-    {
-        Console.WriteLine(JsonSerializer.Serialize(new
-        {
-            workspaceName = info.WorkspaceName,
-            workspacePath = info.WorkspacePath,
-            gitHubRepo = info.GitHubRepo,
-            tags = info.Tags.Select(t => new { name = t.Name, colour = t.Colour }),
-            lanes = info.Lanes.Select(l => new { name = l.Name, position = l.Position })
-        }, jsonOpts));
-    }
-    else
-    {
-        Console.WriteLine($"Workspace: {info.WorkspaceName}");
-        Console.WriteLine($"Path:      {info.WorkspacePath}");
-        if (!string.IsNullOrEmpty(info.GitHubRepo))
-            Console.WriteLine($"GitHub:    {info.GitHubRepo}");
-        Console.WriteLine($"Tags:      {string.Join(", ", info.Tags.Select(t => t.Name))}");
-        Console.WriteLine($"Lanes:     {string.Join(", ", info.Lanes.OrderBy(l => l.Position).Select(l => l.Name))}");
-    }
-});
+// ── skill ─────────────────────────────────────────────────────────────────────
 
 var skillCmd = new Command("skill", "Skill runtime utilities");
-skillCmd.AddCommand(skillBootstrapCmd);
+skillCmd.AddCommand(new BootstrapSkillCliCommand(mediator));
 root.AddCommand(skillCmd);
 
 // ── work-next ─────────────────────────────────────────────────────────────────
