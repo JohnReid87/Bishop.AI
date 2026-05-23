@@ -243,9 +243,9 @@ public sealed class GitCli : IGitCli
             {
                 using (upProc)
                 {
-                    await upProc.StandardOutput.ReadToEndAsync(cancellationToken);
+                    var upOut = await upProc.StandardOutput.ReadToEndAsync(cancellationToken);
                     await upProc.WaitForExitAsync(cancellationToken);
-                    if (upProc.ExitCode == 0)
+                    if (upProc.ExitCode == 0 && !string.IsNullOrWhiteSpace(upOut))
                     {
                         var revPsi = new ProcessStartInfo("git")
                         {
