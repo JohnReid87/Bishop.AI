@@ -174,9 +174,19 @@ Rules:
 >
 > **Follow-up cards**
 >
-> ## Tasks
-> - [ ] **Title**: \<concise card title\> | **Tag**: \<tag\> | **Lane**: \<lane\> | **Body**: \<body\>
-> - [ ] **Title**: ...
+> ### 1. \<concise card title\>
+> **Tag:** \<tag\>  ·  **Lane:** \<lane\>
+>
+> #### Why
+> \<body\>
+>
+> #### Acceptance
+> - \<criterion\>
+>
+> ---
+>
+> ### 2. \<concise card title\>
+> ...
 
 Either side may be empty. If the chat concluded that nothing needs to change,
 print:

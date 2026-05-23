@@ -88,9 +88,19 @@ Then print the task list for review:
 
 > **Target workspace:** <name>
 
-## Tasks
-- [ ] **Title**: <concise card title> | **Tag**: <tag> | **Lane**: <lane> | **Body**: <body>
-- [ ] **Title**: ...
+### 1. <concise card title>
+**Tag:** <tag>  ·  **Lane:** <lane>
+
+#### Why
+<body>
+
+#### Acceptance
+- <criterion>
+
+---
+
+### 2. <concise card title>
+...
 
 **Tag** should match one of the tag names from `tags[].name` in the workspace JSON.
 If the workspace has no tags defined, use `feature` as the default.
@@ -98,7 +108,7 @@ If the workspace has no tags defined, use `feature` as the default.
 **Lane** defaults to `To Do`. Use a lane name from `lanes[].name` when placing
 the card somewhere other than the default.
 
-**Body format.** Use the H3-section markdown template below. Required sections: `### Why` and `### Acceptance`. Include optional sections only when they add value.
+**Body format.** Body section headings use `####` in the preview above so they nest under the `### N.` card heading. The description passed to `bishop card add` uses `###` as shown in the template below. Required sections: `### Why` and `### Acceptance`. Include optional sections only when they add value.
 
 ```markdown
 ### Why

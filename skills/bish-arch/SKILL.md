@@ -208,9 +208,19 @@ that aren't in this list — the headings above are the floor, not the ceiling.
 
    > **Target workspace:** \<name\>
    >
-   > ## Tasks
-   > - [ ] **Title**: \<concise card title\> | **Tag**: arch | **Lane**: Ideas | **Body**: \<body\>
-   > - [ ] ...
+   > ### 1. \<concise card title\>
+   > **Tag:** arch  ·  **Lane:** Ideas
+   >
+   > #### Why
+   > \<body\>
+   >
+   > #### Acceptance
+   > - \<criterion\>
+   >
+   > ---
+   >
+   > ### 2. \<concise card title\>
+   > ...
 
    Then ask:
 
