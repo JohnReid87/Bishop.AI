@@ -70,14 +70,49 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
                 .Select(l => l.Name)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            var missing = SystemLaneNames.All.Where(n => !existingLaneNames.Contains(n)).ToList();
-            if (missing.Count > 0)
-            {
-                var nextPosition = existing.Lanes.Count > 0
-                    ? existing.Lanes.Max(l => l.Position) + 1
-                    : 1;
+            var lanesAddedList = new List<string>();
+            var changed = false;
 
-                foreach (var laneName in missing)
+            // Promote any user-created Backlog lane to system
+            var userBacklog = existing.Lanes
+                .FirstOrDefault(l => string.Equals(l.Name, SystemLaneNames.Backlog, StringComparison.OrdinalIgnoreCase) && !l.IsSystem);
+            if (userBacklog is not null)
+            {
+                userBacklog.IsSystem = true;
+                changed = true;
+            }
+
+            var maxPosition = existing.Lanes.Count > 0 ? existing.Lanes.Max(l => l.Position) : 0;
+
+            // If Backlog is absent, insert at position 1 and shift all existing lanes up
+            if (!existingLaneNames.Contains(SystemLaneNames.Backlog))
+            {
+                foreach (var lane in existing.Lanes)
+                    lane.Position++;
+                maxPosition++;
+
+                db.Lanes.Add(new Lane
+                {
+                    Id = Guid.NewGuid(),
+                    WorkspaceId = existing.Id,
+                    Name = SystemLaneNames.Backlog,
+                    Position = 1,
+                    IsSystem = true,
+                });
+                lanesAddedList.Add(SystemLaneNames.Backlog);
+                changed = true;
+            }
+
+            // Append any other missing system lanes at the end
+            var otherMissing = SystemLaneNames.All
+                .Where(n => !string.Equals(n, SystemLaneNames.Backlog, StringComparison.OrdinalIgnoreCase))
+                .Where(n => !existingLaneNames.Contains(n))
+                .ToList();
+
+            if (otherMissing.Count > 0)
+            {
+                var nextPosition = maxPosition + 1;
+                foreach (var laneName in otherMissing)
                 {
                     db.Lanes.Add(new Lane
                     {
@@ -87,13 +122,16 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
                         Position = nextPosition++,
                         IsSystem = true,
                     });
+                    lanesAddedList.Add(laneName);
                 }
-
-                await db.SaveChangesAsync(cancellationToken);
+                changed = true;
             }
 
+            if (changed)
+                await db.SaveChangesAsync(cancellationToken);
+
             created = false;
-            lanesAdded = missing;
+            lanesAdded = lanesAddedList;
         }
 
         var tagsAdded = await SeedTagsAsync(db, workspace, request.SeedTags, cancellationToken);

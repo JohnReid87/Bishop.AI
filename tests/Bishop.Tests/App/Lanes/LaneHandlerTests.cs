@@ -40,7 +40,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task CreateWorkspace_SeedsThreeLanes()
+    public async Task CreateWorkspace_SeedsFourLanes()
     {
         // Arrange
         var name = U("Seeded");
@@ -52,9 +52,9 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         var lanes = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
 
         // Assert
-        lanes.Should().HaveCount(3);
-        lanes.Select(l => l.Name).Should().Equal("To Do", "Doing", "Done");
-        lanes.Select(l => l.Position).Should().Equal(1, 2, 3);
+        lanes.Should().HaveCount(4);
+        lanes.Select(l => l.Name).Should().Equal("Backlog", "To Do", "Doing", "Done");
+        lanes.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
     }
 
     [Fact]
@@ -78,10 +78,10 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Reorder of system lanes must not be blocked
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var done = lanes[2];
+        var done = lanes[3];
         var handler = new MoveLaneCommandHandler(_factory);
 
-        // Act — move "Done" (pos 3) to position 1
+        // Act — move "Done" (pos 4) to position 1
         var act = async () => await handler.Handle(new MoveLaneCommand(done.Id, 1), default);
 
         // Assert — no exception
@@ -104,7 +104,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         var lanes = await handler.Handle(new ListLanesByWorkspaceQuery(ws1.Id), default);
 
         // Assert
-        lanes.Should().HaveCount(3);
+        lanes.Should().HaveCount(4);
         lanes.Should().AllSatisfy(l => l.WorkspaceId.Should().Be(ws1.Id));
     }
 
@@ -116,13 +116,13 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         var handler = new AddLaneCommandHandler(_factory);
 
         // Act
-        var result = await handler.Handle(new AddLaneCommand(workspace.Id, "Backlog"), default);
+        var result = await handler.Handle(new AddLaneCommand(workspace.Id, "Review"), default);
 
         // Assert
         result.Id.Should().NotBeEmpty();
-        result.Name.Should().Be("Backlog");
+        result.Name.Should().Be("Review");
         result.WorkspaceId.Should().Be(workspace.Id);
-        result.Position.Should().Be(4);
+        result.Position.Should().Be(5);
     }
 
     [Fact]
@@ -137,8 +137,8 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         var fifth = await handler.Handle(new AddLaneCommand(workspace.Id, "Deploy"), default);
 
         // Assert
-        fourth.Position.Should().Be(4);
-        fifth.Position.Should().Be(5);
+        fourth.Position.Should().Be(5);
+        fifth.Position.Should().Be(6);
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var todo = lanes[0];
+        var todo = lanes[1];
         var handler = new RenameLaneCommandHandler(_factory);
 
         // Act
@@ -180,10 +180,10 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var done = lanes[2];
+        var done = lanes[3];
         var handler = new MoveLaneCommandHandler(_factory);
 
-        // Act — move "Done" (pos 3) to position 1 → Done, To Do, Doing
+        // Act — move "Done" (pos 4) to position 1 → Done, Backlog, To Do, Doing
         await handler.Handle(new MoveLaneCommand(done.Id, 1), default);
 
         // Assert
@@ -191,8 +191,8 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
             .Where(l => l.WorkspaceId == done.WorkspaceId)
             .OrderBy(l => l.Position)
             .ToListAsync();
-        updated.Select(l => l.Name).Should().Equal("Done", "To Do", "Doing");
-        updated.Select(l => l.Position).Should().Equal(1, 2, 3);
+        updated.Select(l => l.Name).Should().Equal("Done", "Backlog", "To Do", "Doing");
+        updated.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
     }
 
     [Fact]
@@ -200,19 +200,19 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var todo = lanes[0];
+        var todo = lanes[1];
         var handler = new MoveLaneCommandHandler(_factory);
 
-        // Act — move "To Do" (pos 1) to position 3 → Doing, Done, To Do
-        await handler.Handle(new MoveLaneCommand(todo.Id, 3), default);
+        // Act — move "To Do" (pos 2) to position 4 → Backlog, Doing, Done, To Do
+        await handler.Handle(new MoveLaneCommand(todo.Id, 4), default);
 
         // Assert
         var updated = await _db.Lanes
             .Where(l => l.WorkspaceId == todo.WorkspaceId)
             .OrderBy(l => l.Position)
             .ToListAsync();
-        updated.Select(l => l.Name).Should().Equal("Doing", "Done", "To Do");
-        updated.Select(l => l.Position).Should().Equal(1, 2, 3);
+        updated.Select(l => l.Name).Should().Equal("Backlog", "Doing", "Done", "To Do");
+        updated.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
     }
 
     [Fact]
@@ -231,9 +231,9 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
             .Where(l => l.WorkspaceId == workspace.Id)
             .OrderBy(l => l.Position)
             .ToListAsync();
-        remaining.Should().HaveCount(3);
-        remaining.Select(l => l.Name).Should().Equal("To Do", "Doing", "Done");
-        remaining.Select(l => l.Position).Should().Equal(1, 2, 3);
+        remaining.Should().HaveCount(4);
+        remaining.Select(l => l.Name).Should().Equal("Backlog", "To Do", "Doing", "Done");
+        remaining.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
     }
 
     [Fact]
@@ -241,7 +241,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
-        var doing = lanes[1];
+        var doing = lanes[2];
         var handler = new RemoveLaneCommandHandler(_factory);
 
         // Act
@@ -275,14 +275,15 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
-        var todo = lanes[0];  // pos 1
-        var doing = lanes[1]; // pos 2
-        var done = lanes[2];  // pos 3
+        var backlog = lanes[0]; // pos 1
+        var todo = lanes[1];    // pos 2
+        var doing = lanes[2];   // pos 3
+        var done = lanes[3];    // pos 4
         var handler = new ReorderLanesCommandHandler(_factory);
 
-        // Act — reverse order: Done, To Do, Doing
+        // Act — reverse order: Done, Doing, To Do, Backlog
         await handler.Handle(
-            new ReorderLanesCommand(workspace.Id, [done.Id, todo.Id, doing.Id]),
+            new ReorderLanesCommand(workspace.Id, [done.Id, doing.Id, todo.Id, backlog.Id]),
             default);
 
         // Assert
@@ -290,8 +291,8 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
             .Where(l => l.WorkspaceId == workspace.Id)
             .OrderBy(l => l.Position)
             .ToListAsync();
-        updated.Select(l => l.Name).Should().Equal("Done", "To Do", "Doing");
-        updated.Select(l => l.Position).Should().Equal(1, 2, 3);
+        updated.Select(l => l.Name).Should().Equal("Done", "Doing", "To Do", "Backlog");
+        updated.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
     }
 
     [Fact]
@@ -299,23 +300,24 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
-        var todo = lanes[0];  // pos 1
-        var doing = lanes[1]; // pos 2
-        var done = lanes[2];  // pos 3
+        var backlog = lanes[0]; // pos 1
+        var todo = lanes[1];    // pos 2
+        var doing = lanes[2];   // pos 3
+        var done = lanes[3];    // pos 4
         var handler = new ReorderLanesCommandHandler(_factory);
 
-        // Act — supply only Done and To Do; Doing is omitted from the list
+        // Act — supply only Done and To Do; Backlog and Doing are omitted from the list
         await handler.Handle(
             new ReorderLanesCommand(workspace.Id, [done.Id, todo.Id]),
             default);
 
-        // Assert — mapped lanes get new positions; Doing retains its original position
+        // Assert — mapped lanes get new positions; unmapped lanes retain their original positions
         var doneLane = await _db.Lanes.FindAsync(done.Id);
         var todoLane = await _db.Lanes.FindAsync(todo.Id);
         var doingLane = await _db.Lanes.FindAsync(doing.Id);
         doneLane!.Position.Should().Be(1);
         todoLane!.Position.Should().Be(2);
-        doingLane!.Position.Should().Be(2); // unchanged
+        doingLane!.Position.Should().Be(3); // unchanged
     }
 
     [Fact]
@@ -336,7 +338,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
             .Where(l => l.WorkspaceId == ws2.Id)
             .OrderBy(l => l.Position)
             .ToListAsync();
-        ws2Lanes.Select(l => l.Position).Should().Equal(1, 2, 3);
+        ws2Lanes.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
     }
 
     [Fact]
@@ -349,7 +351,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var handler = new ListLanesByWorkspaceQueryHandler(_factory);
         var initial = await handler.Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
-        initial[0].Name.Should().Be("To Do");
+        initial[0].Name.Should().Be("Backlog");
 
         // Act — simulate CLI rename via a second context on the same connection
         var cliOptions = new DbContextOptionsBuilder<BishopDbContext>()

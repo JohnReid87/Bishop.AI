@@ -1,4 +1,5 @@
 using Bishop.App.Git;
+using Bishop.App.Lanes;
 using Bishop.App.Tags;
 using Bishop.App.Terminal;
 using Bishop.App.Workspaces.CreateWorkspace;
@@ -129,9 +130,9 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         result.Should().NotBeNull();
-        result!.Lanes.Should().HaveCount(3);
+        result!.Lanes.Should().HaveCount(4);
         result.Lanes.Select(l => l.Position).Should().BeInAscendingOrder();
-        result.Lanes.Select(l => l.Name).Should().Equal("To Do", "Doing", "Done");
+        result.Lanes.Select(l => l.Name).Should().Equal("Backlog", "To Do", "Doing", "Done");
     }
 
     [Fact]
@@ -185,15 +186,15 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         result.Created.Should().BeTrue();
-        result.LanesAdded.Should().Equal("To Do", "Doing", "Done");
+        result.LanesAdded.Should().Equal("Backlog", "To Do", "Doing", "Done");
         result.Workspace.Name.Should().Be("My Repo");
         result.Workspace.Path.Should().Be(Path.GetFullPath(path));
         var lanes = await _db.Lanes
             .Where(l => l.WorkspaceId == result.Workspace.Id)
             .OrderBy(l => l.Position)
             .ToListAsync();
-        lanes.Select(l => l.Name).Should().Equal("To Do", "Doing", "Done");
-        lanes.Select(l => l.Position).Should().Equal(1, 2, 3);
+        lanes.Select(l => l.Name).Should().Equal("Backlog", "To Do", "Doing", "Done");
+        lanes.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
     }
 
     [Fact]
@@ -247,7 +248,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var workspaceCount = await _db.Workspaces.CountAsync(w => w.Path == result.Workspace.Path);
         workspaceCount.Should().Be(1);
         var laneCount = await _db.Lanes.CountAsync(l => l.WorkspaceId == result.Workspace.Id);
-        laneCount.Should().Be(3);
+        laneCount.Should().Be(4);
     }
 
     [Fact]
@@ -270,7 +271,85 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         result.Created.Should().BeFalse();
         result.LanesAdded.Should().Equal("Doing");
         var laneCount = await _db.Lanes.CountAsync(l => l.WorkspaceId == ws.Id);
-        laneCount.Should().Be(3);
+        laneCount.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task InitWorkspace_BacklogMissing_InsertsAtPositionOneAndShiftsOthers()
+    {
+        // Arrange: simulate pre-migration state — workspace has To Do/Doing/Done at positions 1/2/3
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\no-backlog-{tag}";
+        var ws = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand($"NoBacklog-{tag}", path), default);
+        var backlogLane = await _db.Lanes.FirstAsync(l => l.WorkspaceId == ws.Id && l.Name == "Backlog");
+        _db.Lanes.Remove(backlogLane);
+        var remaining = await _db.Lanes.Where(l => l.WorkspaceId == ws.Id).OrderBy(l => l.Position).ToListAsync();
+        for (var i = 0; i < remaining.Count; i++) remaining[i].Position = i + 1;
+        await _db.SaveChangesAsync();
+        var handler = CreateInitHandler();
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        // Assert
+        result.LanesAdded.Should().Equal("Backlog");
+        var lanes = await _db.Lanes
+            .Where(l => l.WorkspaceId == ws.Id)
+            .OrderBy(l => l.Position)
+            .ToListAsync();
+        lanes.Should().HaveCount(4);
+        lanes.Select(l => l.Name).Should().Equal("Backlog", "To Do", "Doing", "Done");
+        lanes[0].IsSystem.Should().BeTrue();
+        lanes.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
+    }
+
+    [Fact]
+    public async Task InitWorkspace_UserCreatedBacklog_PromotesToSystemLane()
+    {
+        // Arrange: workspace with a user-created Backlog lane (IsSystem = false)
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\user-backlog-{tag}";
+        var ws = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand($"UserBacklog-{tag}", path), default);
+        var backlogLane = await _db.Lanes.FirstAsync(l => l.WorkspaceId == ws.Id && l.Name == "Backlog");
+        backlogLane.IsSystem = false;
+        await _db.SaveChangesAsync();
+        var handler = CreateInitHandler();
+
+        // Act
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        // Assert — nothing added (lane already exists), but IsSystem was promoted
+        result.LanesAdded.Should().BeEmpty();
+        var promoted = await _db.Lanes.AsNoTracking()
+            .FirstAsync(l => l.WorkspaceId == ws.Id && l.Name == "Backlog");
+        promoted.IsSystem.Should().BeTrue();
+        // Position must be unchanged — it was already at position 1
+        promoted.Position.Should().Be(backlogLane.Position);
+    }
+
+    [Fact]
+    public async Task InitWorkspace_BacklogReconciliation_IsIdempotent()
+    {
+        // Arrange: fresh workspace (has all 4 system lanes including Backlog)
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\idem-backlog-{tag}";
+        var handler = CreateInitHandler();
+        await handler.Handle(new InitWorkspaceCommand(path, "Idem Backlog"), default);
+
+        // Act — run reconciliation a second time
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        // Assert — no changes
+        result.LanesAdded.Should().BeEmpty();
+        var lanes = await _db.Lanes
+            .Where(l => l.WorkspaceId == result.Workspace.Id)
+            .OrderBy(l => l.Position)
+            .ToListAsync();
+        lanes.Should().HaveCount(4);
+        lanes.Select(l => l.Name).Should().Equal("Backlog", "To Do", "Doing", "Done");
+        lanes.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
     }
 
     [Fact]
@@ -799,7 +878,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
         launcher.Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>()).Returns(true);
-        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>(), Substitute.For<IDefaultTagSeeder>());
+        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>(), Substitute.For<IDefaultTagSeeder>(), Substitute.For<ISystemLaneSeeder>());
 
         // Act
         var result = await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace"), default);
@@ -814,7 +893,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var launcher = Substitute.For<ITerminalLauncher>();
         launcher.Launch(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>(), Arg.Any<string?>()).Returns(false);
-        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>(), Substitute.For<IDefaultTagSeeder>());
+        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>(), Substitute.For<IDefaultTagSeeder>(), Substitute.For<ISystemLaneSeeder>());
 
         // Act
         var result = await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace"), default);
@@ -829,13 +908,90 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var snap = new TerminalSnap(0, 0, 800, 600);
         var launcher = Substitute.For<ITerminalLauncher>();
-        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>(), Substitute.For<IDefaultTagSeeder>());
+        var handler = new LaunchWorkspaceCommandHandler(launcher, Substitute.For<IWorkspaceContextSeeder>(), Substitute.For<IDefaultTagSeeder>(), Substitute.For<ISystemLaneSeeder>());
 
         // Act
         await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace", snap), default);
 
         // Assert
         launcher.Received(1).Launch(@"C:\workspace", null, snap);
+    }
+
+    // ── SystemLaneSeeder ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SystemLaneSeeder_UserCreatedBacklog_PromotesToSystemLane()
+    {
+        // Arrange: workspace with a user-created Backlog lane (IsSystem = false)
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\seeder-{tag}";
+        var ws = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand($"Seeder-{tag}", path), default);
+        var backlogLane = await _db.Lanes.FirstAsync(l => l.WorkspaceId == ws.Id && l.Name == "Backlog");
+        backlogLane.IsSystem = false;
+        await _db.SaveChangesAsync();
+        var seeder = new SystemLaneSeeder(_factory);
+
+        // Act
+        await seeder.EnsureAsync(path);
+
+        // Assert
+        var promoted = await _db.Lanes.AsNoTracking()
+            .FirstAsync(l => l.WorkspaceId == ws.Id && l.Name == "Backlog");
+        promoted.IsSystem.Should().BeTrue();
+        promoted.Position.Should().Be(backlogLane.Position);
+    }
+
+    [Fact]
+    public async Task SystemLaneSeeder_BacklogMissing_InsertsAtPositionOne()
+    {
+        // Arrange: workspace without Backlog lane, remaining lanes at positions 1/2/3
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\seeder-nob-{tag}";
+        var ws = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand($"SeederNoB-{tag}", path), default);
+        var backlogLane = await _db.Lanes.FirstAsync(l => l.WorkspaceId == ws.Id && l.Name == "Backlog");
+        var remaining = await _db.Lanes
+            .Where(l => l.WorkspaceId == ws.Id && l.Id != backlogLane.Id)
+            .OrderBy(l => l.Position)
+            .ToListAsync();
+        for (var i = 0; i < remaining.Count; i++) remaining[i].Position = i + 1;
+        _db.Lanes.Remove(backlogLane);
+        await _db.SaveChangesAsync();
+        var seeder = new SystemLaneSeeder(_factory);
+
+        // Act
+        await seeder.EnsureAsync(path);
+
+        // Assert
+        var lanes = await _db.Lanes.AsNoTracking()
+            .Where(l => l.WorkspaceId == ws.Id)
+            .OrderBy(l => l.Position)
+            .ToListAsync();
+        lanes.Should().HaveCount(4);
+        lanes.Select(l => l.Name).Should().Equal("Backlog", "To Do", "Doing", "Done");
+        lanes[0].IsSystem.Should().BeTrue();
+        lanes.Select(l => l.Position).Should().Equal(1, 2, 3, 4);
+    }
+
+    [Fact]
+    public async Task SystemLaneSeeder_AlreadyCorrect_IsNoOp()
+    {
+        // Arrange: fully seeded workspace
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\seeder-idem-{tag}";
+        await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand($"SeederIdem-{tag}", path), default);
+        var seeder = new SystemLaneSeeder(_factory);
+
+        // Act — run twice
+        await seeder.EnsureAsync(path);
+        await seeder.EnsureAsync(path);
+
+        // Assert — lane count unchanged
+        var ws = await _db.Workspaces.FirstAsync(w => w.Path == Path.GetFullPath(path));
+        var laneCount = await _db.Lanes.CountAsync(l => l.WorkspaceId == ws.Id);
+        laneCount.Should().Be(4);
     }
 
     private sealed class ThrowingSaveChangesInterceptor : SaveChangesInterceptor

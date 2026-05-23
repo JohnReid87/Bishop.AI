@@ -3,6 +3,7 @@ using Bishop.App.CatMode;
 using Bishop.App.Claude;
 using Bishop.App.Git;
 using Bishop.App.GitHub;
+using Bishop.App.Lanes;
 using Bishop.App.Ping;
 using Bishop.App.Settings;
 using Bishop.App.Tags;
@@ -37,6 +38,7 @@ public static class ServiceCollectionExtensions
 #pragma warning restore CA1416
         services.AddSingleton<IWorkspaceContextSeeder, WorkspaceContextSeeder>();
         services.AddSingleton<IDefaultTagSeeder, DefaultTagSeeder>();
+        services.AddSingleton<ISystemLaneSeeder, SystemLaneSeeder>();
         services.AddSingleton<ICatModeService, CatModeService>();
         return services;
     }
