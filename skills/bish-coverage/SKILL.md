@@ -108,8 +108,8 @@ makes no assumption about specific namespace prefixes — it works for any
      can still hide a guard, null check, or mapping worth testing, and the
      user decides per-card in the interview whether it's worth filing.
 
-   If nothing survives, congratulate the user — coverage is at or above the
-   threshold — and STOP without pushing anything.
+   If nothing survives, record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-coverage`,
+   then congratulate the user — coverage is at or above the threshold — and STOP without pushing anything.
 
 5. **Cluster gaps by source-file directory.** Use the `file` field's parent
    directory as the cluster key. Classes sharing the same parent folder become
@@ -170,7 +170,7 @@ makes no assumption about specific namespace prefixes — it works for any
    > All under-covered areas already have open cards on the board. Nothing new
    > to file.
 
-   Then STOP.
+   Record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-coverage`, then STOP.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each one,
    show the cluster name, then each class in the cluster with its coverage

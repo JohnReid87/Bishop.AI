@@ -165,7 +165,8 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    to 15. If it returns fewer than 3, that's fine — surface what it found.
 
    If the subagent reports no findings (all applicable dimensions clean),
-   congratulate the user and STOP without pushing anything.
+   record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-arch`,
+   then congratulate the user and STOP without pushing anything.
 
 3. **Echo summary.** Print a one-line overview the user can scan before triage.
    Format (paths shown are illustrative only — use whatever the subagent

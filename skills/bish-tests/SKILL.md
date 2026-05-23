@@ -171,7 +171,7 @@ are shallow.
    > All audited classes already have open quality cards on the board.
    > Nothing new to file.
 
-   Then continue to step 9 so the clean-classes summary still prints.
+   Record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-tests`, then continue to step 9 so the clean-classes summary still prints.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each
    one, show the class, the test file path, and the issues found. Offer:

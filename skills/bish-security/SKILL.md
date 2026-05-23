@@ -216,8 +216,9 @@ surface, because the same code often gets copy-pasted into production.
    - Returns findings as a numbered list, severity-ordered (high first).
 
    If the subagent reports **no findings** (all applicable dimensions
-   clean, no vulnerable packages, no workflow misconfig), congratulate
-   the user and STOP without pushing anything.
+   clean, no vulnerable packages, no workflow misconfig), record this
+   run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-security`,
+   then congratulate the user and STOP without pushing anything.
 
 6. **Echo summary.** Print a one-line overview the user can scan before
    triage. Format (paths shown are illustrative):
@@ -239,7 +240,7 @@ surface, because the same code often gets copy-pasted into production.
    > All security findings already have open cards on the board.
    > Nothing new to file.
 
-   Then STOP.
+   Record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-security`, then STOP.
 
 8. **Triage loop.** Walk surviving findings in severity order. For each
    finding:
