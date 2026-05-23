@@ -474,6 +474,10 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         exitIdx.Should().BeGreaterThan(-1);
         var summary = lines[exitIdx + 1];
         summary.Should().StartWith($"card #{card.Number}: 14 tool uses, 12.3k↑ 4.1k↓ in ");
+        summary.Should().Contain("(git ");
+        summary.Should().Contain("· claim ");
+        summary.Should().Contain("· claude ");
+        summary.Should().Contain("· record ");
     }
 
     [Fact]
@@ -510,6 +514,10 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         exitIdx.Should().BeGreaterThan(-1);
         var summary = lines[exitIdx + 1];
         summary.Should().StartWith($"card #{card.Number}: 0 tool uses, 0↑ 0↓ in ");
+        summary.Should().Contain("(git ");
+        summary.Should().Contain("· claim ");
+        summary.Should().Contain("· claude ");
+        summary.Should().Contain("· record ");
     }
 
     [Fact]

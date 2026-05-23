@@ -19,6 +19,8 @@ public sealed class Card : IAuditable
     public DateTimeOffset UpdatedAt { get; set; }
     public int TotalInputTokens { get; set; }
     public int TotalOutputTokens { get; set; }
+    public int TotalCacheCreationTokens { get; set; }
+    public int TotalCacheReadTokens { get; set; }
     public int ClaudeRunCount { get; set; }
 
     [JsonIgnore]

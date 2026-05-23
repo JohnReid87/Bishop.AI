@@ -21,6 +21,10 @@ public sealed class StreamJsonFormatter
 
     public int RunningOutputTokens { get; private set; }
 
+    public int RunningCacheCreationTokens { get; private set; }
+
+    public int RunningCacheReadTokens { get; private set; }
+
     public int ToolUseCount => _toolUseCount;
 
     public string? Format(string line)
@@ -101,6 +105,8 @@ public sealed class StreamJsonFormatter
             return;
         RunningInputTokens += ReadInt(usage, "input_tokens");
         RunningOutputTokens += ReadInt(usage, "output_tokens");
+        RunningCacheCreationTokens += ReadInt(usage, "cache_creation_input_tokens");
+        RunningCacheReadTokens += ReadInt(usage, "cache_read_input_tokens");
     }
 
     private void EmitStatus(string label)
@@ -180,7 +186,7 @@ public sealed class StreamJsonFormatter
         }
 
         if (RunningInputTokens > 0 || RunningOutputTokens > 0)
-            Totals = new ClaudeRunTotals(RunningInputTokens, RunningOutputTokens);
+            Totals = new ClaudeRunTotals(RunningInputTokens, RunningOutputTokens, RunningCacheCreationTokens, RunningCacheReadTokens);
 
         var parts = new List<string>
         {

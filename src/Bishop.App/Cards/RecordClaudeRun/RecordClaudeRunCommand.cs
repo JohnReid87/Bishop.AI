@@ -5,4 +5,6 @@ namespace Bishop.App.Cards.RecordClaudeRun;
 public sealed record RecordClaudeRunCommand(
     Guid CardId,
     int InputTokens,
-    int OutputTokens) : IRequest;
+    int OutputTokens,
+    int CacheCreationTokens = 0,
+    int CacheReadTokens = 0) : IRequest;

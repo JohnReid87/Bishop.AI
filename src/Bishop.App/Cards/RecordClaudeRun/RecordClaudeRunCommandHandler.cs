@@ -19,6 +19,8 @@ public sealed class RecordClaudeRunCommandHandler : IRequestHandler<RecordClaude
 
         card.TotalInputTokens += request.InputTokens;
         card.TotalOutputTokens += request.OutputTokens;
+        card.TotalCacheCreationTokens += request.CacheCreationTokens;
+        card.TotalCacheReadTokens += request.CacheReadTokens;
         card.ClaudeRunCount += 1;
 
         await db.SaveChangesAsync(cancellationToken);

@@ -574,4 +574,35 @@ public sealed class StreamJsonFormatterTests
             "a — 600↑ 200↓",
             "b — 1.2k↑ 400↓");
     }
+
+    [Fact]
+    public void RunningCacheTokens_AccumulateAcrossMultipleAssistantEvents()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":40,"cache_creation_input_tokens":200,"cache_read_input_tokens":5000},"content":[{"type":"text","text":"a"}]}}""");
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":50,"output_tokens":20,"cache_creation_input_tokens":0,"cache_read_input_tokens":8000},"content":[{"type":"text","text":"b"}]}}""");
+
+        sut.RunningCacheCreationTokens.Should().Be(200);
+        sut.RunningCacheReadTokens.Should().Be(13000);
+    }
+
+    [Fact]
+    public void RunningCacheTokens_StayZero_WhenUsageOmitsCacheFields()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":40},"content":[{"type":"text","text":"a"}]}}""");
+
+        sut.RunningCacheCreationTokens.Should().Be(0);
+        sut.RunningCacheReadTokens.Should().Be(0);
+    }
+
+    [Fact]
+    public void Totals_IncludesCacheTokens_WhenPresent()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":1000,"output_tokens":300,"cache_creation_input_tokens":400,"cache_read_input_tokens":12000},"content":[{"type":"text","text":"hi"}]}}""");
+        sut.Format("""{"type":"result","duration_ms":500}""");
+
+        sut.Totals.Should().Be(new ClaudeRunTotals(1000, 300, 400, 12000));
+    }
 }

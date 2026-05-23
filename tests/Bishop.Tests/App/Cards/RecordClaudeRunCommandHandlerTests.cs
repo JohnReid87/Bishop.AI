@@ -73,6 +73,24 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
     }
 
     [Fact]
+    public async Task Handle_AccumulatesCacheTokens()
+    {
+        // Arrange
+        var card = await CreateCardAsync();
+        var sut = new RecordClaudeRunCommandHandler(_factory);
+
+        // Act
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 1000, 300, CacheCreationTokens: 400, CacheReadTokens: 12000), default);
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 500, 150, CacheCreationTokens: 0, CacheReadTokens: 8000), default);
+
+        // Assert
+        var saved = await _db.Cards.AsNoTracking().SingleAsync(c => c.Id == card.Id);
+        saved.TotalCacheCreationTokens.Should().Be(400);
+        saved.TotalCacheReadTokens.Should().Be(20000);
+        saved.ClaudeRunCount.Should().Be(2);
+    }
+
+    [Fact]
     public async Task Handle_Throws_WhenCardDoesNotExist()
     {
         var sut = new RecordClaudeRunCommandHandler(_factory);

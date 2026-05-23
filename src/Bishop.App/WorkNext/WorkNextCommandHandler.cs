@@ -48,7 +48,10 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                     return new WorkNextResult(succeeded, WorkNextStopReason.Cancelled, ToNullableList(failedCardNumbers));
                 }
 
+                var gitSw = Stopwatch.StartNew();
                 var status = await _git.GetWorkingTreeStatusAsync(request.WorkspacePath, cancellationToken);
+                gitSw.Stop();
+
                 switch (status)
                 {
                     case GetWorkingTreeStatusResult.Dirty dirty:
@@ -59,9 +62,11 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                         return new WorkNextResult(succeeded, WorkNextStopReason.GitNotFound, ToNullableList(failedCardNumbers));
                 }
 
+                var claimSw = Stopwatch.StartNew();
                 var card = await _sender.Send(
                     new ClaimCardCommand(request.WorkspaceId, SystemLaneNames.ToDo, request.Tag),
                     cancellationToken);
+                claimSw.Stop();
 
                 if (card is null)
                     return new WorkNextResult(succeeded, WorkNextStopReason.EmptyLane, ToNullableList(failedCardNumbers));
@@ -73,12 +78,25 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                 Console.Out.WriteLine(startLine);
 
                 var prompt = $"/bish-auto-card #{card.Number}";
-                var stopwatch = Stopwatch.StartNew();
+                var claudeSw = Stopwatch.StartNew();
                 var runResult = await _claude.RunPromptAsync(request.WorkspacePath, prompt, request.Model, cancellationToken);
-                stopwatch.Stop();
+                claudeSw.Stop();
+
+                var recordElapsed = TimeSpan.Zero;
+                if (runResult.ExitCode == 0)
+                {
+                    var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
+                    var recordSw = Stopwatch.StartNew();
+                    await _sender.Send(
+                        new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens, totals.CacheCreationTokens, totals.CacheReadTokens),
+                        cancellationToken);
+                    recordSw.Stop();
+                    recordElapsed = recordSw.Elapsed;
+                    succeeded++;
+                }
 
                 Console.Out.WriteLine($"exit {runResult.ExitCode}");
-                Console.Out.WriteLine(FormatCardSummary(card.Number, runResult, stopwatch.Elapsed));
+                Console.Out.WriteLine(FormatCardSummary(card.Number, runResult, gitSw.Elapsed, claimSw.Elapsed, claudeSw.Elapsed, recordElapsed));
 
                 if (runResult.ExitCode != 0)
                 {
@@ -87,13 +105,6 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                     failedCardNumbers.Add(card.Number);
                     continue;
                 }
-
-                var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
-                await _sender.Send(
-                    new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens),
-                    cancellationToken);
-
-                succeeded++;
 
                 if (request.MaxIterations > 0 && succeeded >= request.MaxIterations)
                     return new WorkNextResult(succeeded, WorkNextStopReason.CapReached, ToNullableList(failedCardNumbers));
@@ -108,13 +119,22 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
 
     private static IReadOnlyList<int>? ToNullableList(List<int> list) => list.Count > 0 ? list : null;
 
-    private static string FormatCardSummary(int cardNumber, ClaudeRunResult runResult, TimeSpan elapsed)
+    private static string FormatCardSummary(
+        int cardNumber,
+        ClaudeRunResult runResult,
+        TimeSpan gitElapsed,
+        TimeSpan claimElapsed,
+        TimeSpan claudeElapsed,
+        TimeSpan recordElapsed)
     {
         var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
         var toolUses = runResult.ToolUseCount == 1 ? "1 tool use" : $"{runResult.ToolUseCount} tool uses";
         var inTokens = RunFormatting.FormatTokens(totals.InputTokens);
         var outTokens = RunFormatting.FormatTokens(totals.OutputTokens);
-        var duration = RunFormatting.FormatDuration(elapsed);
-        return $"card #{cardNumber}: {toolUses}, {inTokens}↑ {outTokens}↓ in {duration}";
+        var totalCached = totals.CacheCreationTokens + totals.CacheReadTokens;
+        var cachedPart = totalCached > 0 ? $" (+{RunFormatting.FormatTokens(totalCached)} cached)" : string.Empty;
+        var duration = RunFormatting.FormatDuration(claudeElapsed);
+        var steps = $"(git {RunFormatting.FormatDuration(gitElapsed)} · claim {RunFormatting.FormatDuration(claimElapsed)} · claude {RunFormatting.FormatDuration(claudeElapsed)} · record {RunFormatting.FormatDuration(recordElapsed)})";
+        return $"card #{cardNumber}: {toolUses}, {inTokens}↑ {outTokens}↓{cachedPart} in {duration} {steps}";
     }
 }
