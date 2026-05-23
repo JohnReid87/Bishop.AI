@@ -22,10 +22,10 @@ errors only) and the bright signal green — are absent from the family.
 | ---------- | ---------- | -------------- |
 | `arch`     | `#6b8caf`  | slate blue     |
 | `bug`      | `#c97a8a`  | muted rose     |
-| `chore`    | `#a89878`  | warm taupe     |
+| `chore`    | `#9aa86a`  | olive          |
 | `docs`     | `#5fa89c`  | soft teal      |
 | `feature`  | `#7fa87a`  | sage green     |
-| `security` | `#c4806a`  | muted copper   |
+| `security` | `#7878bc`  | slate-indigo   |
 | `spike`    | `#9a7ab8`  | muted violet   |
 | `test`     | `#c4a85f`  | muted gold     |
 

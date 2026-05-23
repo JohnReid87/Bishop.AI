@@ -9,10 +9,10 @@ public static class BrandTagPalette
         {
             [TagNames.Arch] = "#6b8caf",
             [TagNames.Bug] = "#c97a8a",
-            [TagNames.Chore] = "#a89878",
+            [TagNames.Chore] = "#9aa86a",
             [TagNames.Docs] = "#5fa89c",
             [TagNames.Feature] = "#7fa87a",
-            [TagNames.Security] = "#c4806a",
+            [TagNames.Security] = "#7878bc",
             [TagNames.Spike] = "#9a7ab8",
             [TagNames.Test] = "#c4a85f",
         };
