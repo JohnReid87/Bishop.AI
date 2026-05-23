@@ -1,19 +1,18 @@
 using Bishop.App;
 using Bishop.Core;
-using Bishop.App.Cards.ClaimCard;
-using Bishop.App.Cards.CloseCard;
-using Bishop.App.Cards.PushCard;
-using Bishop.App.Cards.ImportFromGitHub;
-using Bishop.App.Cards.PushLane;
-using Bishop.App.Cards.MoveCard;
-using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Skills.GetSkillBootstrapInfo;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.Cli.Cards.Add;
+using Bishop.Cli.Cards.Claim;
+using Bishop.Cli.Cards.Close;
 using Bishop.Cli.Cards.Edit;
+using Bishop.Cli.Cards.ImportFromGitHub;
 using Bishop.Cli.Cards.List;
+using Bishop.Cli.Cards.Move;
+using Bishop.Cli.Cards.Push;
 using Bishop.Cli.Cards.Remove;
+using Bishop.Cli.Cards.Reopen;
 using Bishop.Cli.Cards.View;
 using Bishop.Cli.Workspaces.Current;
 using Bishop.Cli.Workspaces.Init;
@@ -67,80 +66,6 @@ workspaceCmd.AddCommand(new SetGitHubCliCommand(mediator));
 workspaceCmd.AddCommand(new UnsetGitHubCliCommand(mediator));
 root.AddCommand(workspaceCmd);
 
-// ── card move ─────────────────────────────────────────────────────────────────
-
-var cardIdArg = new Argument<string>("card-id", "Card short ID or prefix");
-var toLaneOpt = new Option<string>("--to-lane", "Target lane name") { IsRequired = true };
-var toPositionOpt = new Option<int>("--to-position", "Target zero-based position") { IsRequired = true };
-var noCloseOpt = new Option<bool>("--no-close", "Skip auto-close when moving into the Done lane");
-
-var cardMoveCmd = new Command("move", "Move a card to another lane or position");
-cardMoveCmd.AddArgument(cardIdArg);
-cardMoveCmd.AddOption(CommonOptions.WorkspaceOption);
-cardMoveCmd.AddOption(toLaneOpt);
-cardMoveCmd.AddOption(toPositionOpt);
-cardMoveCmd.AddOption(noCloseOpt);
-cardMoveCmd.SetHandler(async (string prefix, string? workspace, string toLane, int toPosition, bool noClose) =>
-{
-    var resolved = await cardResolver.ResolveAsync(workspace, prefix);
-    if (resolved is null) return;
-    var (cardId, _, _) = resolved.Value;
-    var card = await mediator.Send(new MoveCardCommand(cardId, toLane, toPosition, noClose));
-    Console.WriteLine($"Moved card #{card.Number} → [{card.LaneName}] position {card.Position}");
-}, cardIdArg, CommonOptions.WorkspaceOption, toLaneOpt, toPositionOpt, noCloseOpt);
-
-// ── card claim ────────────────────────────────────────────────────────────────
-
-var claimSourceLaneOpt = new Option<string>("--lane", () => SystemLaneNames.ToDo, "Source lane to claim from");
-var claimTagOpt = new Option<string?>("--tag", "Only claim the first card carrying this tag");
-
-var cardClaimCmd = new Command("claim", "Pick the top card from a lane and move it to Doing");
-cardClaimCmd.AddOption(CommonOptions.WorkspaceOption);
-cardClaimCmd.AddOption(claimSourceLaneOpt);
-cardClaimCmd.AddOption(claimTagOpt);
-cardClaimCmd.AddOption(CommonOptions.JsonOption);
-cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, string? tagName, bool json) =>
-{
-    var ws = await resolver.ResolveAsync(workspace);
-
-    var card = await mediator.Send(new ClaimCardCommand(ws.Id, sourceLaneName, tagName));
-
-    if (card is null)
-    {
-        Console.Error.WriteLine(tagName is null
-            ? $"Lane '{sourceLaneName}' is empty — nothing to claim."
-            : $"No card tagged '{tagName}' in '{sourceLaneName}'.");
-        Environment.ExitCode = 1;
-        return;
-    }
-
-    if (json)
-    {
-        Console.WriteLine(JsonSerializer.Serialize(new
-        {
-            id = card.Id,
-            number = card.Number,
-            title = card.Title,
-            description = card.Description,
-            laneName = card.LaneName,
-            position = card.Position,
-            createdAt = card.CreatedAt,
-            updatedAt = card.UpdatedAt,
-            tag = card.TagName
-        }, jsonOpts));
-    }
-    else
-    {
-        Console.WriteLine($"Claimed #{card.Number} — '{card.Title}' [{sourceLaneName}] → [{card.LaneName}]");
-        if (card.TagName is not null)
-            Console.WriteLine($"Tag: {card.TagName}");
-        if (!string.IsNullOrEmpty(card.Description))
-        {
-            Console.WriteLine();
-            Console.WriteLine(card.Description);
-        }
-    }
-}, CommonOptions.WorkspaceOption, claimSourceLaneOpt, claimTagOpt, CommonOptions.JsonOption);
 
 // ── tag list ──────────────────────────────────────────────────────────────────
 
@@ -164,136 +89,20 @@ var tagCmd = new Command("tag", "Manage workspace tags");
 tagCmd.AddCommand(tagListCmd);
 root.AddCommand(tagCmd);
 
-// ── card push ─────────────────────────────────────────────────────────────────
-
-var cardPushIdArg = new Argument<string?>("card-id", "Card short ID or prefix (mutually exclusive with --lane)")
-{
-    Arity = ArgumentArity.ZeroOrOne
-};
-var cardPushLaneOpt = new Option<string?>("--lane", "Push all unlinked cards in a lane (mutually exclusive with card-id)");
-var cardPushDryRunOpt = new Option<bool>("--dry-run", "Preview what would be pushed without calling gh");
-
-var cardPushCmd = new Command("push", "Push a card to GitHub Issues");
-cardPushCmd.AddArgument(cardPushIdArg);
-cardPushCmd.AddOption(cardPushLaneOpt);
-cardPushCmd.AddOption(cardPushDryRunOpt);
-cardPushCmd.AddOption(CommonOptions.WorkspaceOption);
-cardPushCmd.SetHandler(async (string? prefix, string? lane, bool dryRun, string? workspace) =>
-{
-    if (prefix is not null && lane is not null)
-    {
-        Console.Error.WriteLine("card-id and --lane are mutually exclusive.");
-        Environment.ExitCode = 1;
-        return;
-    }
-    if (prefix is null && lane is null)
-    {
-        Console.Error.WriteLine("Specify either a card-id or --lane <name>.");
-        Environment.ExitCode = 1;
-        return;
-    }
-    if (lane is not null)
-    {
-        var ws = await resolver.ResolveAsync(workspace);
-        var result = await mediator.Send(new PushLaneCommand(ws.Id, lane, dryRun));
-        var dryPrefix = dryRun ? "[dry-run] " : string.Empty;
-        Console.WriteLine($"{dryPrefix}pushed {result.Pushed.Count}, skipped {result.SkippedAlreadyLinked} (already linked), failed {result.Failed.Count}.");
-        foreach (var c in result.Pushed)
-        {
-            var issueRef = dryRun ? string.Empty : $"  https://github.com/{ws.GitHubRepo}/issues/{c.GitHubIssueNumber}";
-            Console.WriteLine($"  {(dryRun ? "would push" : "pushed")}  #{c.Number}  {c.Title}{issueRef}");
-        }
-        foreach (var f in result.Failed)
-            Console.WriteLine($"  failed  #{f.CardNumber}  {f.Error}");
-        if (result.Failed.Count > 0)
-            Environment.ExitCode = 1;
-        return;
-    }
-    var resolved = await cardResolver.ResolveAsync(workspace, prefix!);
-    if (resolved is null) return;
-    var (cardId, _, wsResolved) = resolved.Value;
-    var card = await mediator.Send(new PushCardCommand(cardId));
-    var singleIssueUrl = $"https://github.com/{wsResolved.GitHubRepo}/issues/{card.GitHubIssueNumber}";
-    Console.WriteLine($"Pushed card #{card.Number} → {singleIssueUrl}");
-}, cardPushIdArg, cardPushLaneOpt, cardPushDryRunOpt, CommonOptions.WorkspaceOption);
-
-// ── card import-from-github ───────────────────────────────────────────────────
-
-var importLabelOpt = new Option<string?>("--label", "Filter to issues carrying this GitHub label");
-var importLimitOpt = new Option<int>("--limit", () => 100, "Maximum number of issues to import");
-var importDryRunOpt = new Option<bool>("--dry-run", "Preview what would be imported without writing anything");
-
-var cardImportFromGitHubCmd = new Command("import-from-github", "Import open GitHub issues as cards in the To Do lane");
-cardImportFromGitHubCmd.AddOption(importLabelOpt);
-cardImportFromGitHubCmd.AddOption(importLimitOpt);
-cardImportFromGitHubCmd.AddOption(importDryRunOpt);
-cardImportFromGitHubCmd.AddOption(CommonOptions.JsonOption);
-cardImportFromGitHubCmd.AddOption(CommonOptions.WorkspaceOption);
-cardImportFromGitHubCmd.SetHandler(async (string? label, int limit, bool dryRun, bool json, string? workspace) =>
-{
-    var ws = await resolver.ResolveAsync(workspace);
-    var result = await mediator.Send(new ImportFromGitHubCommand(ws.Id, label, limit, dryRun));
-    if (json)
-    {
-        Console.WriteLine(JsonSerializer.Serialize(result, jsonOpts));
-        return;
-    }
-    var prefix = dryRun ? "[dry-run] " : string.Empty;
-    Console.WriteLine($"{prefix}Imported {result.Imported.Count}, skipped {result.SkippedAlreadyPresent.Count} (already present), failed {result.Failed.Count}.");
-    foreach (var c in result.Imported)
-        Console.WriteLine($"  {(dryRun ? "would import" : "imported")}  #{c.GitHubIssueNumber}  {c.Title}");
-    foreach (var n in result.SkippedAlreadyPresent)
-        Console.WriteLine($"  {(dryRun ? "would skip" : "skipped")}   #{n}");
-    foreach (var f in result.Failed)
-        Console.WriteLine($"  failed    #{f.IssueNumber}  {f.Error}");
-}, importLabelOpt, importLimitOpt, importDryRunOpt, CommonOptions.JsonOption, CommonOptions.WorkspaceOption);
-
-// ── card close ────────────────────────────────────────────────────────────────
-
-var cardCloseIdArg = new Argument<string>("card-id", "Card short ID or prefix");
-
-var cardCloseCmd = new Command("close", "Mark a card as closed");
-cardCloseCmd.AddArgument(cardCloseIdArg);
-cardCloseCmd.AddOption(CommonOptions.WorkspaceOption);
-cardCloseCmd.SetHandler(async (string prefix, string? workspace) =>
-{
-    var resolved = await cardResolver.ResolveAsync(workspace, prefix);
-    if (resolved is null) return;
-    var (cardId, cardNumber, _) = resolved.Value;
-    await mediator.Send(new CloseCardCommand(cardId));
-    Console.WriteLine($"Closed card #{cardNumber}");
-}, cardCloseIdArg, CommonOptions.WorkspaceOption);
-
-// ── card reopen ───────────────────────────────────────────────────────────────
-
-var cardReopenIdArg = new Argument<string>("card-id", "Card short ID or prefix");
-
-var cardReopenCmd = new Command("reopen", "Reopen a closed card");
-cardReopenCmd.AddArgument(cardReopenIdArg);
-cardReopenCmd.AddOption(CommonOptions.WorkspaceOption);
-cardReopenCmd.SetHandler(async (string prefix, string? workspace) =>
-{
-    var resolved = await cardResolver.ResolveAsync(workspace, prefix);
-    if (resolved is null) return;
-    var (cardId, cardNumber, _) = resolved.Value;
-    await mediator.Send(new ReopenCardCommand(cardId));
-    Console.WriteLine($"Reopened card #{cardNumber}");
-}, cardReopenIdArg, CommonOptions.WorkspaceOption);
-
 // ── wire card command ─────────────────────────────────────────────────────────
 
 var cardCmd = new Command("card", "Manage kanban cards");
 cardCmd.AddCommand(new AddCardCliCommand(mediator));
 cardCmd.AddCommand(new ViewCardCliCommand(mediator, cardResolver));
-cardCmd.AddCommand(cardMoveCmd);
+cardCmd.AddCommand(new MoveCardCliCommand(mediator, cardResolver));
 cardCmd.AddCommand(new RemoveCardCliCommand(mediator, cardResolver));
 cardCmd.AddCommand(new EditCardCliCommand(mediator, cardResolver));
-cardCmd.AddCommand(cardClaimCmd);
+cardCmd.AddCommand(new ClaimCardCliCommand(mediator));
 cardCmd.AddCommand(new ListCardsCliCommand(mediator));
-cardCmd.AddCommand(cardPushCmd);
-cardCmd.AddCommand(cardImportFromGitHubCmd);
-cardCmd.AddCommand(cardCloseCmd);
-cardCmd.AddCommand(cardReopenCmd);
+cardCmd.AddCommand(new PushCardCliCommand(mediator, cardResolver));
+cardCmd.AddCommand(new ImportFromGitHubCliCommand(mediator));
+cardCmd.AddCommand(new CloseCardCliCommand(mediator, cardResolver));
+cardCmd.AddCommand(new ReopenCardCliCommand(mediator, cardResolver));
 root.AddCommand(cardCmd);
 
 // ── lane list ─────────────────────────────────────────────────────────────────
