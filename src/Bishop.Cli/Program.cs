@@ -15,6 +15,7 @@ using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Lanes.ListLanesByWorkspace;
+using Bishop.App.Skills.GetSkillBootstrapInfo;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
@@ -743,6 +744,57 @@ installSkillsCmd.SetHandler(() =>
     }
 });
 root.AddCommand(installSkillsCmd);
+
+// ── skill bootstrap ───────────────────────────────────────────────────────────
+
+var skillBootstrapCmd = new Command(
+    "bootstrap",
+    "Emit workspace + tag/lane info for a skill preamble. Non-zero exit if not in a workspace.");
+skillBootstrapCmd.AddOption(jsonOpt);
+skillBootstrapCmd.SetHandler(async (InvocationContext context) =>
+{
+    var json = context.ParseResult.GetValueForOption(jsonOpt);
+
+    Workspace ws;
+    try
+    {
+        ws = await resolver.ResolveAsync(null);
+    }
+    catch (InvalidOperationException)
+    {
+        Console.Error.WriteLine(
+            "Not in a Bishop workspace. Run `bishop workspace list` to see available workspaces, then `cd` into one of the listed paths and retry.");
+        context.ExitCode = 1;
+        return;
+    }
+
+    var info = await mediator.Send(new GetSkillBootstrapInfoQuery(ws.Id));
+
+    if (json)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            workspaceName = info.WorkspaceName,
+            workspacePath = info.WorkspacePath,
+            gitHubRepo = info.GitHubRepo,
+            tags = info.Tags.Select(t => new { name = t.Name, colour = t.Colour }),
+            lanes = info.Lanes.Select(l => new { name = l.Name, position = l.Position })
+        }, jsonOpts));
+    }
+    else
+    {
+        Console.WriteLine($"Workspace: {info.WorkspaceName}");
+        Console.WriteLine($"Path:      {info.WorkspacePath}");
+        if (!string.IsNullOrEmpty(info.GitHubRepo))
+            Console.WriteLine($"GitHub:    {info.GitHubRepo}");
+        Console.WriteLine($"Tags:      {string.Join(", ", info.Tags.Select(t => t.Name))}");
+        Console.WriteLine($"Lanes:     {string.Join(", ", info.Lanes.OrderBy(l => l.Position).Select(l => l.Name))}");
+    }
+});
+
+var skillCmd = new Command("skill", "Skill runtime utilities");
+skillCmd.AddCommand(skillBootstrapCmd);
+root.AddCommand(skillCmd);
 
 // ── work-next ─────────────────────────────────────────────────────────────────
 
