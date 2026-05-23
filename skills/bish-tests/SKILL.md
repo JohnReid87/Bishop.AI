@@ -209,6 +209,8 @@ are shallow.
    > Re-run `/bish-tests` after the new cards are worked. Dedupe makes
    > repeated runs safe.
 
+10. **Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-tests`.
+
 </what-to-do>
 
 <guardrails>

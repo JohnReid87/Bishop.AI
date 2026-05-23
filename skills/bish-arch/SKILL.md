@@ -259,6 +259,8 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    > resurface — explain the same way or capture the rebuttal in a project
    > memory if it's load-bearing.
 
+10. **Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-arch`.
+
 </what-to-do>
 
 ## Card body template

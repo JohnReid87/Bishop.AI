@@ -149,6 +149,10 @@ decide whether to file them later.
 
 If no edits were applied, skip this step.
 
+---
+
+**8. Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-audit-docs`.
+
 </what-to-do>
 
 <guardrails>

@@ -296,6 +296,8 @@ surface, because the same code often gets copy-pasted into production.
     > will resurface — capture load-bearing rebuttals as a project memory
     > so future runs don't re-ask.
 
+12. **Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-security`.
+
 </what-to-do>
 
 ## Card body template

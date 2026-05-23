@@ -211,6 +211,7 @@ they resolve from the current working directory.
 - `bishop workspace current [--json]` — resolves the workspace from cwd by ancestor match
 - `bishop workspace init [--path <dir>] [--name <name>]` — register a directory; idempotent
 - `bishop workspace set-github <owner/repo>` — link the workspace to a GitHub repo
+- `bishop workspace record-skill-run --skill <name> --sha <sha>` — record that a review skill ran on the current workspace
 
 ### Card
 
@@ -400,6 +401,32 @@ be one card, folded into another, or split.
 - Split only when the pieces have independent acceptance criteria,
   or when they could ship in separate PRs without one blocking the
   other.
+
+## Skill-Run Recording Procedure (STABLE)
+
+Call this procedure as the **final step** of any review skill that completes
+its normal flow. "Normal flow" means the skill ran its full review and the user
+was walked through findings — including runs where there were no findings, or
+all findings were already carded. Do NOT call it on error STOPs (failed
+`bishop skill bootstrap`, missing workspace, etc.).
+
+1. Capture the current HEAD:
+
+   ```bash
+   git rev-parse HEAD
+   ```
+
+2. Record the run, substituting the kebab-case name of the calling skill (e.g.
+   `bish-arch`, `bish-security`, `bish-tests`, `bish-coverage`,
+   `bish-audit-docs`) for `<skill-name>`:
+
+   ```bash
+   bishop workspace record-skill-run --skill <skill-name> --sha <sha>
+   ```
+
+A successful invocation prints one confirmation line. On non-zero exit, surface
+the error to the user but do not abort — the run is complete whether or not the
+record write succeeds.
 
 ## Per-finding Walk Pattern (TUNABLE)
 

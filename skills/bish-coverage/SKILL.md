@@ -204,6 +204,8 @@ makes no assumption about specific namespace prefixes — it works for any
     > `/bish-tests` to audit the test files of well-covered classes.
     > Dedupe makes repeated runs safe.
 
+11. **Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-coverage`.
+
 </what-to-do>
 
 <guardrails>
