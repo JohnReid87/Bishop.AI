@@ -17,7 +17,7 @@ remediation. On success, parse the JSON and extract:
 - `workspaceName` — echoed back as confirmation
 - `workspacePath` — repo root used by the discovery subagent
 - `tags[].name` — existing tag names (the skill needs an `arch` tag; see step 5)
-- `lanes[].name` — lane names (defaults to `Ideas` when pushing)
+- `lanes[].name` — lane names (`To Do` is the push target; see step 8)
 
 Echo the workspace name on its own line:
 
@@ -32,7 +32,7 @@ current Bishop workspace's path. A single Explore subagent first detects the
 stack in use, then applies universal dimensions plus stack-conditional ones,
 producing a ranked list of findings. The user triages findings one at a time,
 clustering related ones into single cards as they go. Confirmed cards are
-pushed tagged `arch` to the `Ideas` lane.
+pushed tagged `arch` to the `To Do` lane.
 
 The skill always reviews the whole solution. It does not accept a scoping
 argument — if the user wants something narrower, they can say so during
@@ -183,10 +183,6 @@ that aren't in this list — the headings above are the floor, not the ceiling.
        again with the user's own rebuttal as a hint.
      - **Defer** — note it but don't card it now.
 
-   - When the user picks **Card it**, ask one follow-up if the dimension is
-     ambiguous about lane: default is `Ideas`, but for **high** severity items
-     offer `To Do` as an alternative.
-
 5. **Ensure the `arch` tag exists.** If `tags[].name` doesn't include `arch`,
    stop and tell the user: the canonical tags are seeded by `bishop workspace init` — re-running it will restore any missing tags.
 
@@ -205,7 +201,7 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    > **Target workspace:** \<name\>
    >
    > ### 1. \<concise card title\>
-   > **Tag:** arch  ·  **Lane:** Ideas
+   > **Tag:** arch  ·  **Lane:** To Do
    >
    > #### Why
    > \<body\>
@@ -225,7 +221,7 @@ that aren't in this list — the headings above are the floor, not the ceiling.
 8. **Push confirmed cards** in order. For each, call `bishop card add`
    (see BISHOP_CONTEXT.md `Card` section) with:
 
-   - `--lane "<Lane>"` (default `Ideas`)
+   - `--lane "To Do"`
    - `--title "<Title>"`
    - `--tag arch`
    - `--description-file -` piping the body from the **Card body template** below
@@ -236,7 +232,7 @@ that aren't in this list — the headings above are the floor, not the ceiling.
 
    | Card | Title | Lane | Severity |
    |------|-------|------|----------|
-   | #N | ... | Ideas | high |
+   | #N | ... | To Do | high |
 
    Then offer:
 
@@ -277,8 +273,8 @@ Rules:
 - Do NOT propose findings without `file:line` citations — every claim must be
   locatable in the code. Reject subagent output that omits locations.
 - Do NOT include dismissed or deferred findings in the pushed cards.
-- Default lane is `Ideas`. Only promote to `To Do` if the user explicitly
-  picks it for a high-severity item during triage.
+- All `arch` cards land in `To Do`. Do not prompt the user for an alternative
+  lane during triage — re-prioritisation happens on the board after the push.
 - Do NOT produce a Markdown report or any companion file. The cards on the
   board are the durable output.
 - Always pass `--bottom` to `bishop card add`. Arch reviews are bulk pushes
