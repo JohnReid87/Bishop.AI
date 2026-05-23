@@ -24,13 +24,14 @@ public sealed partial class LaneViewModel : ObservableObject
     public string DisplayName => $"{Name} ({FilteredCards.Count})";
 
     public bool IsToDoLane => IsSystem && Name == SystemLaneNames.ToDo;
+    public bool IsBacklogLane => Name == SystemLaneNames.Backlog;
     public bool CanWorkNext => IsToDoLane && Cards.Count > 0;
     public string WorkNextTooltip => CanWorkNext ? "Ralph it" : "No cards in To Do";
 
     [ObservableProperty]
     public partial bool HasGitHubRepo { get; set; }
 
-    public bool IsImportVisible => IsToDoLane && HasGitHubRepo;
+    public bool IsImportVisible => IsBacklogLane && HasGitHubRepo;
 
     [ObservableProperty]
     public partial bool IsWorkNextRunning { get; set; }

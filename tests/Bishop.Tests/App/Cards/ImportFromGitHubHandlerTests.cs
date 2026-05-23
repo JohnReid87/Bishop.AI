@@ -78,12 +78,12 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
     // ── Success path ─────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task ImportFromGitHub_Success_CreatesCardsInToDoSortedByIssueNumberAsc()
+    public async Task ImportFromGitHub_Success_CreatesCardsInBacklogSortedByIssueNumberAsc()
     {
         // Arrange — issues returned out of order; should land sorted ASC
         const string repo = "owner/repo";
         var (workspace, lanes) = await CreateWorkspaceAsync(gitHubRepo: repo);
-        var todoLane = lanes.Single(l => l.Name == "To Do");
+        var backlogLane = lanes.Single(l => l.Name == "Backlog");
 
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(IssueListJson((5, "Fifth", "body5", []), (1, "First", "body1", []), (3, "Third", "body3", [])));
@@ -98,9 +98,9 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         result.SkippedAlreadyPresent.Should().BeEmpty();
         result.Failed.Should().BeEmpty();
 
-        // Cards in To Do, in issue-number order
+        // Cards in Backlog, in issue-number order
         var cards = await _db.Cards
-            .Where(c => c.LaneId == todoLane.Id)
+            .Where(c => c.LaneId == backlogLane.Id)
             .OrderBy(c => c.Position)
             .ToListAsync();
         cards.Should().HaveCount(3);
@@ -262,7 +262,7 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         // Arrange
         const string repo = "owner/repo";
         var (workspace, lanes) = await CreateWorkspaceAsync(gitHubRepo: repo);
-        var todoLane = lanes.Single(l => l.Name == "To Do");
+        var backlogLane = lanes.Single(l => l.Name == "Backlog");
 
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(IssueListJson((20, "Preview me", "body", []), (21, "Me too", "", [])));
@@ -278,7 +278,7 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         result.Failed.Should().BeEmpty();
 
         // No cards actually written
-        var cardCount = await _db.Cards.CountAsync(c => c.LaneId == todoLane.Id);
+        var cardCount = await _db.Cards.CountAsync(c => c.LaneId == backlogLane.Id);
         cardCount.Should().Be(0);
     }
 

@@ -29,10 +29,10 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
             ?? throw new InvalidOperationException(
                 $"Workspace '{workspace.Name}' has no GitHub repo configured. Run: bishop workspace set-github <owner/repo>");
 
-        var todoLane = await db.Lanes.FirstOrDefaultAsync(
-            l => l.WorkspaceId == request.WorkspaceId && l.Name == SystemLaneNames.ToDo,
+        var backlogLane = await db.Lanes.FirstOrDefaultAsync(
+            l => l.WorkspaceId == request.WorkspaceId && l.Name == SystemLaneNames.Backlog,
             cancellationToken)
-            ?? throw new InvalidOperationException($"Workspace '{workspace.Name}' has no '{SystemLaneNames.ToDo}' lane.");
+            ?? throw new InvalidOperationException($"Workspace '{workspace.Name}' has no '{SystemLaneNames.Backlog}' lane.");
 
         var workspaceTags = await db.Tags
             .Where(t => t.WorkspaceId == request.WorkspaceId)
@@ -103,7 +103,7 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
                 }
 
                 var maxPosition = await issueDb.Cards
-                    .Where(c => c.LaneId == todoLane.Id)
+                    .Where(c => c.LaneId == backlogLane.Id)
                     .MaxAsync(c => (int?)c.Position, cancellationToken);
                 var newPosition = (maxPosition ?? 0) + 1;
 
@@ -124,7 +124,7 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
                 var card = new Card
                 {
                     Id = Guid.NewGuid(),
-                    LaneId = todoLane.Id,
+                    LaneId = backlogLane.Id,
                     Title = issue.Title,
                     Description = description,
                     Number = number,

@@ -75,7 +75,7 @@ public sealed partial class WorkspaceDetailPage : Page
         InitSkillViewerModelMenu();
         SkillViewer.PropertyChanged += OnSkillViewerPropertyChanged;
         Board.Lanes.CollectionChanged += (_, _) => ApplyWorkNextStateToToDoLane();
-        Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToToDoLane();
+        Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
     }
 
     private void OnSkillViewerPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -175,11 +175,11 @@ public sealed partial class WorkspaceDetailPage : Page
         todoLane.IsWorkNextStopping = _workNextState.IsStopping;
     }
 
-    private void ApplyGitHubRepoToToDoLane()
+    private void ApplyGitHubRepoToBacklogLane()
     {
-        var todoLane = Board.Lanes.FirstOrDefault(l => l.IsToDoLane);
-        if (todoLane is null) return;
-        todoLane.HasGitHubRepo = !string.IsNullOrEmpty(_item?.GitHubRepo);
+        var backlogLane = Board.Lanes.FirstOrDefault(l => l.IsBacklogLane);
+        if (backlogLane is null) return;
+        backlogLane.HasGitHubRepo = !string.IsNullOrEmpty(_item?.GitHubRepo);
     }
 
     private void OnDatabaseChanged(object? sender, EventArgs e)
@@ -200,7 +200,7 @@ public sealed partial class WorkspaceDetailPage : Page
         if (e.PropertyName is nameof(WorkspaceItemViewModel.IsPathMissing))
             UpdatePathStatus();
         if (e.PropertyName is nameof(WorkspaceItemViewModel.GitHubRepo))
-            ApplyGitHubRepoToToDoLane();
+            ApplyGitHubRepoToBacklogLane();
     }
 
     private async void UpdateView(WorkspaceItemViewModel vm)
@@ -209,7 +209,7 @@ public sealed partial class WorkspaceDetailPage : Page
         WorkspacePathText.Text = vm.Path;
         ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
         UpdatePathStatus();
-        ApplyGitHubRepoToToDoLane();
+        ApplyGitHubRepoToBacklogLane();
         await LoadSkillsAsync();
         SetupWorkNextWatcher(vm.Path);
         _skillViewerCard = null;
