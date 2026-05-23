@@ -1,6 +1,6 @@
 using Bishop.App.Skills.GetSkillBootstrapInfo;
 using Bishop.App.Workspaces.ListWorkspaces;
-using Bishop.Cli.Skills.Bootstrap;
+using Bishop.Cli.Bootstrap;
 using Bishop.Core;
 using FluentAssertions;
 using MediatR;

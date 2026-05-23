@@ -14,7 +14,7 @@ using Bishop.Cli.Cards.View;
 using Bishop.Cli.Context.Print;
 using Bishop.Cli.InstallSkills;
 using Bishop.Cli.Lanes.List;
-using Bishop.Cli.Skills.Bootstrap;
+using Bishop.Cli.Bootstrap;
 using Bishop.Cli.Tags.List;
 using Bishop.Cli.WorkNext;
 using Bishop.Cli.Workspaces.Current;

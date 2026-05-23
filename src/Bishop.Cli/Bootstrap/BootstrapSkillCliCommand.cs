@@ -5,7 +5,7 @@ using System.CommandLine.Invocation;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Bishop.Cli.Skills.Bootstrap;
+namespace Bishop.Cli.Bootstrap;
 
 internal sealed class BootstrapSkillCliCommand : Command
 {
