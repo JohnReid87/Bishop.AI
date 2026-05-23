@@ -121,4 +121,42 @@ public class CardViewModelTests
         vm.MatchesSearch("Refactor").Should().BeTrue();
         vm.MatchesSearch("tech").Should().BeFalse();
     }
+
+    [Fact]
+    public void CloseReopenGlyph_ReturnsStringForEachClosedState()
+    {
+        var open = new CardViewModel { IsClosed = false };
+        var closed = new CardViewModel { IsClosed = true };
+
+        open.CloseReopenGlyph.Should().NotBeNull();
+        closed.CloseReopenGlyph.Should().NotBeNull();
+    }
+
+    [Theory]
+    [InlineData("Any title", null)]
+    [InlineData("", null)]
+    [InlineData("Any title", "tag")]
+    [InlineData("", "")]
+    public void MatchesSearch_EmptyQueryMatchesAnyCard(string title, string? tagName)
+    {
+        var vm = new CardViewModel { Title = title, TagName = tagName };
+
+        vm.MatchesSearch("").Should().BeTrue();
+    }
+
+    [Fact]
+    public void MatchesSearch_EmptyTitleDoesNotMatchNonEmptyQuery()
+    {
+        var vm = new CardViewModel { Title = "" };
+
+        vm.MatchesSearch("anything").Should().BeFalse();
+    }
+
+    [Fact]
+    public void MatchesSearch_EmptyTagNameDoesNotContributeToMatch()
+    {
+        var vm = new CardViewModel { Title = "irrelevant", TagName = "" };
+
+        vm.MatchesSearch("query").Should().BeFalse();
+    }
 }
