@@ -1,3 +1,6 @@
+using Bishop.App.Git.GetCardCommit;
+using Bishop.App.Git.GetRecentCommits;
+using Bishop.App.Git.Push;
 using System.ComponentModel;
 using System.Diagnostics;
 

@@ -1,5 +1,6 @@
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Git;
+using Bishop.App.Git.GetCardCommit;
 using Bishop.App.Settings;
 using Bishop.App.Skills;
 using Bishop.App.Skills.LaunchSkill;

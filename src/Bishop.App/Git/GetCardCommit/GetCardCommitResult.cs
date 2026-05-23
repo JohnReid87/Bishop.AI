@@ -1,4 +1,6 @@
-namespace Bishop.App.Git;
+using Bishop.App.Git;
+
+namespace Bishop.App.Git.GetCardCommit;
 
 public abstract record GetCardCommitResult
 {

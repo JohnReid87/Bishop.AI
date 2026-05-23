@@ -1,4 +1,5 @@
 using Bishop.App.Git;
+using Bishop.App.Git.Push;
 using FluentAssertions;
 using NSubstitute;
 

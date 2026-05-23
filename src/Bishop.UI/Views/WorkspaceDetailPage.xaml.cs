@@ -7,6 +7,8 @@ using Bishop.App.GitHub;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Git;
+using Bishop.App.Git.GetRecentCommits;
+using Bishop.App.Git.Push;
 using Bishop.UI.Services;
 using Bishop.ViewModels;
 using Bishop.App.Settings;

@@ -1,6 +1,7 @@
+using Bishop.App.Git;
 using MediatR;
 
-namespace Bishop.App.Git;
+namespace Bishop.App.Git.Push;
 
 public sealed class PushCommandHandler : IRequestHandler<PushCommand, PushResult>
 {

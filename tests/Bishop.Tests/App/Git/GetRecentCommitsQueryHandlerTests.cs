@@ -1,4 +1,5 @@
 using Bishop.App.Git;
+using Bishop.App.Git.GetRecentCommits;
 using FluentAssertions;
 using NSubstitute;
 

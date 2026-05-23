@@ -1,4 +1,5 @@
 using Bishop.App.Git;
+using Bishop.App.Git.GetCardCommit;
 using FluentAssertions;
 
 namespace Bishop.Tests.App.Git;

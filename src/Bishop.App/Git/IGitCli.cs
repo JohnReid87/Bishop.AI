@@ -1,3 +1,7 @@
+using Bishop.App.Git.GetCardCommit;
+using Bishop.App.Git.GetRecentCommits;
+using Bishop.App.Git.Push;
+
 namespace Bishop.App.Git;
 
 public interface IGitCli

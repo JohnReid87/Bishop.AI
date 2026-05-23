@@ -1,6 +1,7 @@
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Claude;
 using Bishop.App.Git;
+using Bishop.App.Git.GetCardCommit;
 using MediatR;
 using System.CommandLine;
 using System.Text.Json;
