@@ -78,6 +78,8 @@ public sealed partial class SettingsDialog : ContentDialog
         await mediator.Send(new LaunchSkillCommand(workspacePath, command, SnapHelper.ComputeSnap(), modelId));
     }
 
+    private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
+
     private async Task ShowSkillContentAsync(InstalledSkill skill)
     {
         var markdown = new MarkdownTextBlock
