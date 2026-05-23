@@ -308,7 +308,7 @@ public sealed partial class WorkspaceDetailPage : Page
         var result = await mediator.Send(new GetRecentCommitsQuery(workspacePath));
 
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4), MinWidth = 360, MaxWidth = 480 };
+        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4), Width = 420 };
 
         switch (result)
         {
