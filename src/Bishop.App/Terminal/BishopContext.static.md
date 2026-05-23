@@ -21,6 +21,11 @@ the task instead of doing everything inside a single session.
 - `bish-tests` — audits the quality of existing tests (shallow asserts,
   brittle mocks, missing edge cases, untested public methods) and pushes
   cards tagged `test`.
+- `bish-security` — security audit of the current .NET solution. Scans for
+  injection, weak crypto and hardcoded secrets, unsafe deserialization,
+  missing authn/authz, plus stack-conditional checks and GitHub Actions
+  workflow misconfig. Also runs `dotnet list package --vulnerable`. Walks
+  findings one at a time; agreed items become cards tagged `security`.
 - `bish-audit-docs` — audits Markdown docs in the repo for drift against the
   code and edits the docs in place per agreed finding.
 
