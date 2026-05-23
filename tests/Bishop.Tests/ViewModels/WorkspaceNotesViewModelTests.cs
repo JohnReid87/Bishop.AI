@@ -166,9 +166,9 @@ public class WorkspaceNotesViewModelTests
     {
         var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
+        var vm = NewVm();
         try
         {
-            var vm = NewVm();
             await vm.LoadAsync(Guid.NewGuid(), dir);
 
             File.Exists(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md")).Should().BeTrue();
@@ -192,9 +192,9 @@ public class WorkspaceNotesViewModelTests
         var bishopDir = Path.Combine(dir, ".bishop");
         Directory.CreateDirectory(bishopDir);
         await File.WriteAllTextAsync(Path.Combine(bishopDir, "BISHOP_NOTES.md"), "existing notes");
+        var vm = NewVm();
         try
         {
-            var vm = NewVm();
             await vm.LoadAsync(Guid.NewGuid(), dir);
 
             vm.NotesContent.Should().Be("existing notes");
@@ -226,9 +226,9 @@ public class WorkspaceNotesViewModelTests
         var dir2 = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(dir1);
         Directory.CreateDirectory(dir2);
+        var vm = NewVm();
         try
         {
-            var vm = NewVm();
             await vm.LoadAsync(Guid.NewGuid(), dir1);
             vm.NotesContent = "unsaved changes";
 
@@ -251,9 +251,9 @@ public class WorkspaceNotesViewModelTests
     {
         var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
+        var vm = NewVm();
         try
         {
-            var vm = NewVm();
             await vm.LoadAsync(Guid.NewGuid(), dir);
             vm.NotesContent = "new content";
 
@@ -277,9 +277,9 @@ public class WorkspaceNotesViewModelTests
     {
         var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
+        var vm = NewVm();
         try
         {
-            var vm = NewVm();
             await vm.LoadAsync(Guid.NewGuid(), dir);
             await File.WriteAllTextAsync(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md"), "reloaded content");
 
@@ -301,9 +301,9 @@ public class WorkspaceNotesViewModelTests
     {
         var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
+        var vm = NewVm();
         try
         {
-            var vm = NewVm();
             await vm.LoadAsync(Guid.NewGuid(), dir);
             vm.NotesContent = "flush content";
 
@@ -325,9 +325,9 @@ public class WorkspaceNotesViewModelTests
     {
         var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
+        var vm = NewVm();
         try
         {
-            var vm = NewVm();
             await vm.LoadAsync(Guid.NewGuid(), dir);
             vm.IsExpanded = true;
             vm.NotesContent = "collapse notes";
@@ -350,9 +350,9 @@ public class WorkspaceNotesViewModelTests
     {
         var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
+        var vm = NewVm();
         try
         {
-            var vm = NewVm();
             await vm.LoadAsync(Guid.NewGuid(), dir);
             vm.NotesContent = "debounced content";
 
