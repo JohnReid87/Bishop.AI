@@ -241,6 +241,18 @@ public sealed class ClaudeExecutableResolverTests
         ex.Directories.Should().BeEmpty();
     }
 
+    [Fact]
+    public void Resolve_TrimsWhitespaceFromPathExtEntries_OnWindows()
+    {
+        var exe = Path.Combine("C:\\bin", "claude.EXE");
+        var env = MakeEnv(path: Join("C:\\bin"), pathExt: " .EXE ; .CMD ");
+        var sut = new ClaudeExecutableResolver(env, p => PathEquals(p, exe), isWindows: true);
+
+        var result = sut.Resolve();
+
+        result.Should().BeEquivalentTo(exe);
+    }
+
     private static Func<string, string?> MakeEnv(string? path, string? pathExt)
     {
         return key => key switch
