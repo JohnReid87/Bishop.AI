@@ -12,20 +12,16 @@ bishop.category: review
 
 ---
 
-**Before anything else — detect the active Bishop workspace:**
+**Before anything else — initialize from `bishop skill bootstrap`:**
 
-Run `bishop workspace current --json`.
+Run `bishop skill bootstrap --json`. If it exits non-zero, surface the stderr
+line verbatim to the user and STOP — the helper already explains the
+remediation. On success, parse the JSON and extract:
 
-- If the command exits non-zero or produces no output, STOP immediately and tell the user:
-
-  > **Not in a Bishop workspace.** Run `bishop workspace list` to see available workspaces,
-  > then `cd` into one of the listed paths and retry.
-
-- If it succeeds, parse the JSON and extract:
-  - `name` — workspace name (echoed back as confirmation)
-  - `path` — repo root used by the discovery subagent
-  - `tags[].name` — existing tag names (the skill needs a `security` tag; see step 3)
-  - `lanes[].name` — lane names (defaults to `To Do` when pushing)
+- `workspaceName` — echoed back as confirmation
+- `workspacePath` — repo root used by the discovery subagent
+- `tags[].name` — existing tag names (the skill needs a `security` tag; see step 3)
+- `lanes[].name` — lane names (defaults to `To Do` when pushing)
 
 Echo the workspace name back on its own line:
 
@@ -149,9 +145,9 @@ surface, because the same code often gets copy-pasted into production.
 1. **Workspace detection** (above).
 
 2. **Pre-flight: .NET workspace check.** Glob for `**/*.csproj` from
-   `path`. If zero matches, STOP and tell the user:
+   `workspacePath`. If zero matches, STOP and tell the user:
 
-   > **No `*.csproj` found at `<path>`.** `/bish-security` audits .NET
+   > **No `*.csproj` found at `<workspacePath>`.** `/bish-security` audits .NET
    > solutions only. If this workspace is .NET, check that the projects
    > are committed; otherwise this skill doesn't apply.
 
@@ -168,7 +164,7 @@ surface, because the same code often gets copy-pasted into production.
    Do NOT stop on this step — auto-create is the contract, to remove
    first-run friction.
 
-4. **CVE scan.** Run from the workspace `path`:
+4. **CVE scan.** Run from `workspacePath`:
 
    ```bash
    dotnet list package --vulnerable --include-transitive
@@ -184,7 +180,7 @@ surface, because the same code often gets copy-pasted into production.
 5. **Discovery phase.** Spawn one Explore subagent (via `Agent` with
    `subagent_type: "Explore"`). Brief it with:
 
-   - The repo root from `path`.
+   - The repo root from `workspacePath`.
    - **First sub-step: detect the stack.** Read the `*.sln` to enumerate
      projects, then for each `*.csproj` capture the `Sdk` attribute,
      `<TargetFramework[s]>`, `UseWPF` / `UseWindowsForms` properties,
@@ -276,30 +272,15 @@ surface, because the same code often gets copy-pasted into production.
    - One card ≈ one PR. If a card is a one-line change, fold it into
      the nearest related card.
 
-10. **Push confirmed cards** in order. For each, pipe the body via
-    stdin:
+10. **Push confirmed cards** in order. For each, call `bishop card add`
+    (see BISHOP_CONTEXT.md `Card` section) with:
 
-    ```bash
-    bishop card add --lane "To Do" --title "<Title>" --tag security --description-file - --bottom << 'BODY'
-    ### Why
-    <dimension> — <what's wrong, 1 sentence>. Locations: `<file:line[, file:line]...>`.
-
-    ### Risk
-    <High|Med|Low> — <CWE-N name if known>
-
-    ### Acceptance
-    - <verifiable criterion>
-
-    ### Changes
-    - `<file:line>` — <suggested change>
-
-    ### Related
-    - `<file:line>` — <one-line summary of clustered finding>
-    BODY
-    ```
-
-    Always pass `--bottom` so security cards land at the bottom of the
-    target lane without disrupting manual ordering.
+    - `--lane "To Do"`
+    - `--title "<Title>"`
+    - `--tag security`
+    - `--description-file -` piping the body from the **Card body template** below
+    - `--bottom` — security reviews are bulk pushes and must not jump ahead
+      of manually prioritised work
 
 11. **Print summary table:**
 

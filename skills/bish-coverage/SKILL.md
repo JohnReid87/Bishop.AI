@@ -12,19 +12,15 @@ bishop.category: review
 
 ---
 
-**Before anything else — detect the active Bishop workspace:**
+**Before anything else — initialize from `bishop skill bootstrap`:**
 
-Run `bishop workspace current --json`.
+Run `bishop skill bootstrap --json`. If it exits non-zero, surface the stderr
+line verbatim to the user and STOP — the helper already explains the
+remediation. On success, parse the JSON and extract:
 
-- If the command exits non-zero or produces no output, STOP immediately and tell the user:
-
-  > **Not in a Bishop workspace.** Run `bishop workspace list` to see available workspaces,
-  > then `cd` into one of the listed paths and retry.
-
-- If it succeeds, parse the JSON and extract:
-  - `name` — workspace name (echoed back as confirmation)
-  - `tags[].name` — existing tag names (the skill needs a `test` tag; see step 6)
-  - `lanes[].name` — lane names (defaults to `To Do` when pushing)
+- `workspaceName` — echoed back as confirmation
+- `tags[].name` — existing tag names (the skill needs a `test` tag; see step 6)
+- `lanes[].name` — lane names (defaults to `To Do` when pushing)
 
 Echo the workspace name back on its own line:
 
@@ -175,17 +171,14 @@ makes no assumption about specific namespace prefixes — it works for any
    When two or more suggestions clearly belong together (same top-level folder,
    same theme), offer a fourth option to merge them into one card before pushing.
 
-9. **Push confirmed cards** by piping the body via stdin:
+9. **Push confirmed cards.** For each, call `bishop card add`
+   (see BISHOP_CONTEXT.md `Card` section) with:
 
-   ```bash
-   bishop card add --lane "To Do" --title "<Title>" --tag test --description-file - --bottom << 'BODY'
-   ### Why
-   <fill in>
-
-   ### Acceptance
-   - <fill in>
-   BODY
-   ```
+   - `--lane "To Do"`
+   - `--title "<Title>"`
+   - `--tag test`
+   - `--description-file -` piping the body shape from step 5
+   - `--bottom` — bulk pushes must not jump ahead of manually prioritised work
 
 10. **Print a summary table** after all cards are pushed:
 

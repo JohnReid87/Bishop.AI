@@ -19,13 +19,13 @@ confirm each finding with the user, and apply the agreed edits in place.
 
 **1. Soft workspace detect.**
 
-Run `bishop workspace current --json`.
+Run `bishop skill bootstrap`.
 
-- On success, parse the JSON and capture the workspace `name`. Echo it back:
+- On success, echo the workspace name:
 
   > **Workspace:** <name>
 
-- On failure (non-zero exit or empty output), fall back to the git repo name
+- On non-zero exit, fall back to the git repo name
   (`git rev-parse --show-toplevel`, then take the leaf directory). Echo:
 
   > **Not in a Bishop workspace — auditing repo:** <leaf-dir>
