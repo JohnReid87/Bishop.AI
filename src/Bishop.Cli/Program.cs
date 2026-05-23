@@ -17,10 +17,11 @@ using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Skills.GetSkillBootstrapInfo;
 using Bishop.App.Tags.ListTagsByWorkspace;
-using Bishop.App.Workspaces.InitWorkspace;
-using Bishop.App.Workspaces.ListWorkspaces;
-using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
-using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
+using Bishop.Cli.Workspaces.Current;
+using Bishop.Cli.Workspaces.Init;
+using Bishop.Cli.Workspaces.List;
+using Bishop.Cli.Workspaces.SetGitHub;
+using Bishop.Cli.Workspaces.UnsetGitHub;
 using Bishop.App.Git;
 using Bishop.App.WorkNext;
 using Bishop.Cli;
@@ -59,104 +60,14 @@ var cardResolver = new CardResolver(mediator);
 
 var root = new RootCommand("Bishop AI — kanban CLI");
 
-// ── workspace list ──────────────────────────────────────────────────────────
-
-var workspaceListCmd = new Command("list", "List all workspaces");
-workspaceListCmd.AddOption(CommonOptions.JsonOption);
-workspaceListCmd.SetHandler(async (bool json) =>
-{
-    var workspaces = await mediator.Send(new ListWorkspacesQuery());
-    if (json)
-    {
-        Console.WriteLine(JsonSerializer.Serialize(workspaces.OrderBy(w => w.Position), jsonOpts));
-    }
-    else
-    {
-        foreach (var w in workspaces.OrderBy(w => w.Position))
-            Console.WriteLine($"{w.Name,-30} {w.Path}");
-    }
-}, CommonOptions.JsonOption);
-
-// ── workspace current ───────────────────────────────────────────────────────
-
-var workspaceCurrentCmd = new Command("current", "Show the workspace whose path is an ancestor of cwd");
-workspaceCurrentCmd.AddOption(CommonOptions.JsonOption);
-workspaceCurrentCmd.SetHandler(async (bool json) =>
-{
-    try
-    {
-        var ws = await resolver.ResolveAsync(null);
-        if (json)
-            Console.WriteLine(JsonSerializer.Serialize(ws, jsonOpts));
-        else
-            Console.WriteLine($"{ws.Name,-30} {ws.Path}");
-    }
-    catch (InvalidOperationException)
-    {
-        Environment.ExitCode = 1;
-    }
-}, CommonOptions.JsonOption);
-
-// ── workspace init ──────────────────────────────────────────────────────────
-
-var initPathOpt = new Option<string?>("--path", "Directory to initialise (defaults to cwd)");
-var initNameOpt = new Option<string?>("--name", "Workspace name (defaults to directory name)");
-var initNoGitHubDetectOpt = new Option<bool>("--no-github-detect", "Skip auto-detecting GitHub remote");
-
-var workspaceInitCmd = new Command("init", "Register a directory as a workspace");
-workspaceInitCmd.AddOption(initPathOpt);
-workspaceInitCmd.AddOption(initNameOpt);
-workspaceInitCmd.AddOption(initNoGitHubDetectOpt);
-workspaceInitCmd.SetHandler(async (string? path, string? name, bool noGitHubDetect) =>
-{
-    var dir = path ?? Directory.GetCurrentDirectory();
-    var result = await mediator.Send(new InitWorkspaceCommand(dir, name, DetectGitHub: !noGitHubDetect));
-    var ws = result.Workspace;
-    if (result.Created)
-        Console.WriteLine($"Initialized workspace '{ws.Name}' at {ws.Path}");
-    else
-        Console.WriteLine($"Workspace '{ws.Name}' is already initialized");
-    if (result.GitHubLinked)
-        Console.WriteLine($"  GitHub: {ws.GitHubRepo}");
-}, initPathOpt, initNameOpt, initNoGitHubDetectOpt);
-
-// ── workspace set-github ────────────────────────────────────────────────────
-
-var setGithubRepoArg = new Argument<string>("repo", "GitHub repo in owner/repo format");
-
-var workspaceSetGithubCmd = new Command("set-github", "Associate workspace with a GitHub repo");
-workspaceSetGithubCmd.AddArgument(setGithubRepoArg);
-workspaceSetGithubCmd.AddOption(CommonOptions.WorkspaceOption);
-workspaceSetGithubCmd.SetHandler(async (string repo, string? workspace) =>
-{
-    if (!repo.Contains('/') || repo.StartsWith('/') || repo.EndsWith('/'))
-    {
-        Console.Error.WriteLine($"Invalid repo '{repo}': expected owner/repo format (e.g. JohnReid87/MyProject).");
-        Environment.ExitCode = 1;
-        return;
-    }
-    var ws = await resolver.ResolveAsync(workspace);
-    await mediator.Send(new SetWorkspaceGitHubRepoCommand(ws.Id, repo));
-    Console.WriteLine($"Workspace '{ws.Name}' linked to GitHub repo '{repo}'");
-}, setGithubRepoArg, CommonOptions.WorkspaceOption);
-
-// ── workspace unset-github ──────────────────────────────────────────────────
-
-var workspaceUnsetGithubCmd = new Command("unset-github", "Remove the GitHub repo association from a workspace");
-workspaceUnsetGithubCmd.AddOption(CommonOptions.WorkspaceOption);
-workspaceUnsetGithubCmd.SetHandler(async (string? workspace) =>
-{
-    var ws = await resolver.ResolveAsync(workspace);
-    await mediator.Send(new UnsetWorkspaceGitHubRepoCommand(ws.Id));
-    Console.WriteLine($"Removed GitHub repo association from workspace '{ws.Name}'");
-}, CommonOptions.WorkspaceOption);
+// ── workspace ───────────────────────────────────────────────────────────────
 
 var workspaceCmd = new Command("workspace", "Manage workspaces");
-workspaceCmd.AddCommand(workspaceListCmd);
-workspaceCmd.AddCommand(workspaceCurrentCmd);
-workspaceCmd.AddCommand(workspaceInitCmd);
-workspaceCmd.AddCommand(workspaceSetGithubCmd);
-workspaceCmd.AddCommand(workspaceUnsetGithubCmd);
+workspaceCmd.AddCommand(new ListWorkspacesCliCommand(mediator));
+workspaceCmd.AddCommand(new CurrentWorkspaceCliCommand(mediator));
+workspaceCmd.AddCommand(new InitWorkspaceCliCommand(mediator));
+workspaceCmd.AddCommand(new SetGitHubCliCommand(mediator));
+workspaceCmd.AddCommand(new UnsetGitHubCliCommand(mediator));
 root.AddCommand(workspaceCmd);
 
 // ── card add ─────────────────────────────────────────────────────────────────
