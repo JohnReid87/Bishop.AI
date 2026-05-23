@@ -237,4 +237,110 @@ public class WorkspaceBoardViewModelTests
         vm.Lanes.Should().HaveCount(2);
         vm.Lanes[1].Name.Should().Be("Doing");
     }
+
+    [Fact]
+    public async Task LoadAsync_WithTagNameSetButTagMissingFromDictionary_SetsTagColourNull()
+    {
+        var workspaceId = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("To Do", 1) });
+        var card = new Card { Id = Guid.NewGuid(), Number = 1, Title = "T", LaneName = "To Do", Description = "", TagName = "feature" };
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card> { card });
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<TagInfo>());
+
+        var vm = new WorkspaceBoardViewModel(mediator);
+        await vm.LoadAsync(workspaceId);
+
+        var cardVm = vm.Lanes[0].Cards[0];
+        cardVm.TagName.Should().Be("feature");
+        cardVm.TagColour.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RefreshCommand_CaseInsensitiveLaneNameMatch_TakesIncrementalPath()
+    {
+        var workspaceId = Guid.NewGuid();
+        var cardId = Guid.NewGuid();
+        var card = new Card { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" };
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("To Do", 1) });
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card> { card });
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<TagInfo>());
+
+        var vm = new WorkspaceBoardViewModel(mediator);
+        await vm.LoadAsync(workspaceId);
+        var originalCardVm = vm.Lanes[0].Cards[0];
+
+        // Refresh with same lane but different casing — incremental path taken, card reference preserved
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("TO DO", 1) });
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "TO DO", Description = "" } });
+        await vm.RefreshCommand.ExecuteAsync(null);
+
+        vm.Lanes[0].Cards[0].Should().BeSameAs(originalCardVm);
+    }
+
+    [Fact]
+    public async Task RefreshCommand_WhenLanesUnchanged_ReorderedCards_UpdatesPositions()
+    {
+        var workspaceId = Guid.NewGuid();
+        var cardAlphaId = Guid.NewGuid();
+        var cardBetaId = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("To Do", 1) });
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card>
+            {
+                new() { Id = cardAlphaId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" },
+                new() { Id = cardBetaId, Number = 2, Title = "Beta", LaneName = "To Do", Description = "" },
+            });
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<TagInfo>());
+
+        var vm = new WorkspaceBoardViewModel(mediator);
+        await vm.LoadAsync(workspaceId);
+
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card>
+            {
+                new() { Id = cardBetaId, Number = 2, Title = "Beta", LaneName = "To Do", Description = "" },
+                new() { Id = cardAlphaId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" },
+            });
+        await vm.RefreshCommand.ExecuteAsync(null);
+
+        vm.Lanes[0].Cards.Should().HaveCount(2);
+        vm.Lanes[0].Cards[0].Title.Should().Be("Beta");
+        vm.Lanes[0].Cards[1].Title.Should().Be("Alpha");
+    }
+
+    [Fact]
+    public async Task RefreshCommand_WhenLanesUnchanged_AllCardsRemoved_EmptiesLane()
+    {
+        var workspaceId = Guid.NewGuid();
+        var card = new Card { Id = Guid.NewGuid(), Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" };
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("To Do", 1) });
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card> { card });
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<TagInfo>());
+
+        var vm = new WorkspaceBoardViewModel(mediator);
+        await vm.LoadAsync(workspaceId);
+
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card>());
+        await vm.RefreshCommand.ExecuteAsync(null);
+
+        vm.Lanes[0].Cards.Should().BeEmpty();
+    }
 }
