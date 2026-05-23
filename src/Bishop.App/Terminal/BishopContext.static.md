@@ -147,6 +147,9 @@ documents what is and is not permitted so you can audit the loop without source-
 **File and agent tools**
 - `Read`, `Edit`, `Write`, `Glob`, `Grep`, `Agent`
 
+**Read-only inspection**
+- `Bash(wc:*)`, `Bash(xargs:*)` — line-count and argument-passing utilities; no destructive surface
+
 ### Explicitly excluded
 
 The following are **not** on the allowlist and will prompt for user confirmation

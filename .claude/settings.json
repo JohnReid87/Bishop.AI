@@ -19,7 +19,9 @@
       "Write",
       "Glob",
       "Grep",
-      "Agent"
+      "Agent",
+      "Bash(wc:*)",
+      "Bash(xargs:*)"
     ]
   }
 }
