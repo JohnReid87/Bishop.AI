@@ -152,10 +152,9 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     // ── Tag editing ───────────────────────────────────────────────────────────
 
-    private async void RemoveTag_Click(object sender, RoutedEventArgs e)
+    private async void ClearTag_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is CardTagViewModel tag)
-            await ViewModel.RemoveTagAsync(tag);
+        await ViewModel.ClearTagAsync();
     }
 
     private async void AddTag_Click(object sender, RoutedEventArgs e)
@@ -171,9 +170,8 @@ public sealed partial class CardDetailDialog : ContentDialog
             return;
         }
 
-        var alreadyAssigned = ViewModel.Tags.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var flyout = TagPickerFlyout.Build(allTags, alreadyAssigned, async (name, colour) =>
-            await ViewModel.AddTagAsync(name, colour));
+        var flyout = TagPickerFlyout.Build(allTags, [], async (name, colour) =>
+            await ViewModel.SetTagAsync(name, colour));
         flyout.ShowAt((FrameworkElement)sender);
     }
 

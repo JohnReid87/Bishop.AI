@@ -12,7 +12,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
 using Microsoft.UI.Xaml;
-using System.Collections.ObjectModel;
 
 namespace Bishop.UI.ViewModels;
 
@@ -25,9 +24,18 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public Guid CardId { get; }
     public int Number { get; }
     public string LaneName { get; }
-    public ObservableCollection<CardTagViewModel> Tags { get; } = [];
     public Visibility SkillsButtonVisibility { get; }
     public bool Updated { get; private set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TagChipVisibility), nameof(AddTagButtonVisibility))]
+    public partial string? TagName { get; set; }
+
+    [ObservableProperty]
+    public partial string? TagColour { get; set; }
+
+    public Visibility TagChipVisibility => TagName is not null ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility AddTagButtonVisibility => TagName is null ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TitleViewVisibility), nameof(TitleEditVisibility))]
@@ -153,17 +161,20 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         LaneName = card.LaneName;
         IsClosed = card.IsClosed;
         GitHubIssueNumber = card.GitHubIssueNumber;
-        if (card.TagName is not null)
-            Tags.Add(new CardTagViewModel { Name = card.TagName, Colour = card.TagColour ?? BrandTagPalette.DefaultColour });
+        TagName = card.TagName;
+        TagColour = card.TagColour;
         SkillsButtonVisibility = cardSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public Task<IReadOnlyList<Tag>> GetWorkspaceTagsAsync() =>
         _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
 
-    public async Task RemoveTagAsync(CardTagViewModel tag)
+    public async Task ClearTagAsync()
     {
-        Tags.Remove(tag);
+        var priorName = TagName;
+        var priorColour = TagColour;
+        TagName = null;
+        TagColour = null;
         try
         {
             await _mediator.Send(new UpdateCardCommand(CardId, null, null, true, null));
@@ -172,16 +183,18 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         }
         catch
         {
-            Tags.Add(tag);
+            TagName = priorName;
+            TagColour = priorColour;
             EditError = "Failed to remove tag.";
         }
     }
 
-    public async Task AddTagAsync(string name, string colour)
+    public async Task SetTagAsync(string name, string colour)
     {
-        var tagVm = new CardTagViewModel { Name = name, Colour = colour };
-        Tags.Clear();
-        Tags.Add(tagVm);
+        var priorName = TagName;
+        var priorColour = TagColour;
+        TagName = name;
+        TagColour = colour;
         try
         {
             await _mediator.Send(new UpdateCardCommand(CardId, null, null, true, name));
@@ -190,7 +203,8 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         }
         catch
         {
-            Tags.Clear();
+            TagName = priorName;
+            TagColour = priorColour;
             EditError = "Failed to add tag.";
         }
     }
