@@ -32,10 +32,12 @@ internal sealed class WorkNextCliCommand : Command
             var ws = await resolver.ResolveAsync(workspace);
             var result = await mediator.Send(new WorkNextCommand(ws.Id, ws.Path, tag, max, model));
 
+            var failedNumbers = result.FailedCardNumbers ?? Array.Empty<int>();
+            var total = result.Succeeded + failedNumbers.Count;
             var stamp = DateTimeOffset.Now.ToString("HH:mm:ss");
-            var summary = $"[{stamp}] Processed {result.CardsProcessed} card(s). Stopped: {result.StopReason}";
-            if (result.FailedCardNumber is { } failed)
-                summary += $" on card #{failed}";
+            var summary = $"[{stamp}] Processed: {total} · Succeeded: {result.Succeeded} · Failed: {failedNumbers.Count}";
+            if (failedNumbers.Count > 0)
+                summary += $" (#{string.Join(", #", failedNumbers)})";
             Console.Out.WriteLine(summary + ".");
 
             switch (result.StopReason)
@@ -50,10 +52,6 @@ internal sealed class WorkNextCliCommand : Command
                         Console.Error.WriteLine($"  {path}");
                     Environment.ExitCode = 1;
                     break;
-                case WorkNextStopReason.ClaudeFailed:
-                    Console.Error.WriteLine($"Card #{result.FailedCardNumber} left in 'Doing'.");
-                    Environment.ExitCode = 1;
-                    break;
                 case WorkNextStopReason.NotAGitRepo:
                     Console.Error.WriteLine($"Workspace '{ws.Path}' is not a git repository.");
                     Environment.ExitCode = 1;
@@ -62,6 +60,13 @@ internal sealed class WorkNextCliCommand : Command
                     Console.Error.WriteLine("'git' executable not found on PATH.");
                     Environment.ExitCode = 1;
                     break;
+            }
+
+            if (failedNumbers.Count > 0)
+            {
+                foreach (var n in failedNumbers)
+                    Console.Error.WriteLine($"Card #{n} left in 'Doing'.");
+                Environment.ExitCode = 1;
             }
         }, CommonOptions.WorkspaceOption, tagOpt, maxOpt, modelOpt);
     }

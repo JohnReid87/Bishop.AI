@@ -361,6 +361,78 @@ public sealed class GitCli : IGitCli
         }
     }
 
+    public async Task ResetHardAsync(string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("reset");
+        psi.ArgumentList.Add("--hard");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            throw new InvalidOperationException("git executable not found", ex);
+        }
+
+        if (proc is null)
+            throw new InvalidOperationException("Failed to start git process");
+
+        using (proc)
+        {
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git reset --hard exited {proc.ExitCode}: {stderr.Trim()}");
+        }
+    }
+
+    public async Task CleanWorkingTreeAsync(string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("clean");
+        psi.ArgumentList.Add("-fd");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            throw new InvalidOperationException("git executable not found", ex);
+        }
+
+        if (proc is null)
+            throw new InvalidOperationException("Failed to start git process");
+
+        using (proc)
+        {
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git clean -fd exited {proc.ExitCode}: {stderr.Trim()}");
+        }
+    }
+
     public async Task<GetWorkingTreeStatusResult> GetWorkingTreeStatusAsync(
         string workspacePath, CancellationToken cancellationToken = default)
     {

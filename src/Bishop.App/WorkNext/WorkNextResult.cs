@@ -5,14 +5,13 @@ public enum WorkNextStopReason
     EmptyLane,
     CapReached,
     DirtyWorkingTree,
-    ClaudeFailed,
     NotAGitRepo,
     GitNotFound,
     Cancelled,
 }
 
 public sealed record WorkNextResult(
-    int CardsProcessed,
+    int Succeeded,
     WorkNextStopReason StopReason,
-    int? FailedCardNumber = null,
+    IReadOnlyList<int>? FailedCardNumbers = null,
     IReadOnlyList<string>? DirtyPaths = null);

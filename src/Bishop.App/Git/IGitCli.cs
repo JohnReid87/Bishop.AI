@@ -11,4 +11,8 @@ public interface IGitCli
     Task<string?> GetOriginUrlAsync(string workspacePath, CancellationToken cancellationToken = default);
 
     Task<PushResult> PushAsync(string workspacePath, CancellationToken cancellationToken = default);
+
+    Task ResetHardAsync(string workspacePath, CancellationToken cancellationToken = default);
+
+    Task CleanWorkingTreeAsync(string workspacePath, CancellationToken cancellationToken = default);
 }

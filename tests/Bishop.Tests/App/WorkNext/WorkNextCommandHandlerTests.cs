@@ -122,9 +122,9 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             default);
 
         // Assert
-        result.CardsProcessed.Should().Be(0);
+        result.Succeeded.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.EmptyLane);
-        result.FailedCardNumber.Should().BeNull();
+        result.FailedCardNumbers.Should().BeNull();
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             default);
 
         // Assert
-        result.CardsProcessed.Should().Be(2);
+        result.Succeeded.Should().Be(2);
         result.StopReason.Should().Be(WorkNextStopReason.EmptyLane);
         await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
@@ -172,21 +172,54 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             default);
 
         // Assert
-        result.CardsProcessed.Should().Be(2);
+        result.Succeeded.Should().Be(2);
         result.StopReason.Should().Be(WorkNextStopReason.CapReached);
         await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ClaudeNonZeroExit_StopsAndSurfacesFailedCardNumber()
+    public async Task ClaudeNonZeroExit_SkipsCardAndContinuesToNextCard()
     {
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
         var add = new AddCardCommandHandler(_factory);
-        var first = await add.Handle(new AddCardCommand(workspace.Id, todo.Name,"T2", TagName: "test"), default);
+        var first = await add.Handle(new AddCardCommand(workspace.Id, todo.Name, "T2", TagName: "test"), default);
         // Inserted second → ends up at top (position 1) under insert-at-top semantics
-        var second = await add.Handle(new AddCardCommand(workspace.Id, todo.Name,"T1", TagName: "test"), default);
+        var second = await add.Handle(new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "test"), default);
+
+        var callCount = 0;
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                callCount++;
+                return Task.FromResult(callCount == 1
+                    ? new ClaudeRunResult(7, null, 0)   // second card (claimed first) fails
+                    : new ClaudeRunResult(0, null, 0)); // first card (claimed second) succeeds
+            });
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        var result = await handler.Handle(
+            new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10),
+            default);
+
+        // Assert — loop continues after the failure and processes the second card
+        result.Succeeded.Should().Be(1);
+        result.StopReason.Should().Be(WorkNextStopReason.EmptyLane);
+        result.FailedCardNumbers.Should().Equal(second.Number);
+        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ClaudeNonZeroExit_PopulatesFailedCardNumbers()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "test"), default);
 
         var claude = ClaudeReturnsExitCode(7);
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
@@ -197,10 +230,32 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             default);
 
         // Assert
-        result.CardsProcessed.Should().Be(0);
-        result.StopReason.Should().Be(WorkNextStopReason.ClaudeFailed);
-        result.FailedCardNumber.Should().Be(second.Number);
-        await claude.Received(1).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        result.Succeeded.Should().Be(0);
+        result.StopReason.Should().Be(WorkNextStopReason.EmptyLane);
+        result.FailedCardNumbers.Should().Equal(card.Number);
+    }
+
+    [Fact]
+    public async Task ClaudeNonZeroExit_ResetsAndCleansWorkingTree()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "test"), default);
+
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.Clean());
+        var claude = ClaudeReturnsExitCode(7);
+        var handler = new WorkNextCommandHandler(git, CreateSender(), claude);
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10), default);
+
+        // Assert
+        await git.Received(1).ResetHardAsync(WorkspacePath, Arg.Any<CancellationToken>());
+        await git.Received(1).CleanWorkingTreeAsync(WorkspacePath, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -224,9 +279,10 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             default);
 
         // Assert
-        result.CardsProcessed.Should().Be(0);
+        result.Succeeded.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.DirtyWorkingTree);
         result.DirtyPaths.Should().Equal("src/foo.cs", "README.md");
+        result.FailedCardNumbers.Should().BeNull();
         await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -503,7 +559,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             default);
 
         // Assert
-        result.CardsProcessed.Should().Be(0);
+        result.Succeeded.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.NotAGitRepo);
         await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
@@ -528,7 +584,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             default);
 
         // Assert
-        result.CardsProcessed.Should().Be(0);
+        result.Succeeded.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.GitNotFound);
         await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
@@ -686,7 +742,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
 
         // Assert
         result.StopReason.Should().Be(WorkNextStopReason.Cancelled);
-        result.CardsProcessed.Should().Be(1);
+        result.Succeeded.Should().Be(1);
         File.Exists(StopFile).Should().BeFalse();
         await claude.Received(1).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
@@ -713,7 +769,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
 
         // Assert
         result.StopReason.Should().Be(WorkNextStopReason.CapReached);
-        result.CardsProcessed.Should().Be(1);
+        result.Succeeded.Should().Be(1);
         File.Exists(StopFile).Should().BeFalse();
     }
 
@@ -817,14 +873,14 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var todo = lanes.Single(l => l.Name == "To Do");
-        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(workspace.Id, todo.Name,"T1", TagName: "test"), default);
+        await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "test"), default);
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeReturnsExitCode(7));
 
         // Act
         var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10), default);
 
-        // Assert
-        result.StopReason.Should().Be(WorkNextStopReason.ClaudeFailed);
+        // Assert — loop skips the failed card and exits via EmptyLane; heartbeat is still cleaned up
+        result.StopReason.Should().Be(WorkNextStopReason.EmptyLane);
         File.Exists(RunningFile).Should().BeFalse();
     }
 

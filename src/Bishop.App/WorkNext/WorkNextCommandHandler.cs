@@ -37,25 +37,26 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
 
         try
         {
-            var processed = 0;
+            var succeeded = 0;
+            var failedCardNumbers = new List<int>();
 
             while (true)
             {
                 if (File.Exists(stopFile))
                 {
                     File.Delete(stopFile);
-                    return new WorkNextResult(processed, WorkNextStopReason.Cancelled);
+                    return new WorkNextResult(succeeded, WorkNextStopReason.Cancelled, ToNullableList(failedCardNumbers));
                 }
 
                 var status = await _git.GetWorkingTreeStatusAsync(request.WorkspacePath, cancellationToken);
                 switch (status)
                 {
                     case GetWorkingTreeStatusResult.Dirty dirty:
-                        return new WorkNextResult(processed, WorkNextStopReason.DirtyWorkingTree, DirtyPaths: dirty.Paths);
+                        return new WorkNextResult(succeeded, WorkNextStopReason.DirtyWorkingTree, ToNullableList(failedCardNumbers), DirtyPaths: dirty.Paths);
                     case GetWorkingTreeStatusResult.NotAGitRepo:
-                        return new WorkNextResult(processed, WorkNextStopReason.NotAGitRepo);
+                        return new WorkNextResult(succeeded, WorkNextStopReason.NotAGitRepo, ToNullableList(failedCardNumbers));
                     case GetWorkingTreeStatusResult.GitNotFound:
-                        return new WorkNextResult(processed, WorkNextStopReason.GitNotFound);
+                        return new WorkNextResult(succeeded, WorkNextStopReason.GitNotFound, ToNullableList(failedCardNumbers));
                 }
 
                 var card = await _sender.Send(
@@ -63,7 +64,7 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                     cancellationToken);
 
                 if (card is null)
-                    return new WorkNextResult(processed, WorkNextStopReason.EmptyLane);
+                    return new WorkNextResult(succeeded, WorkNextStopReason.EmptyLane, ToNullableList(failedCardNumbers));
 
                 var startStamp = DateTimeOffset.Now.ToString("HH:mm:ss");
                 var startLine = request.Model is not null
@@ -80,17 +81,22 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                 Console.Out.WriteLine(FormatCardSummary(card.Number, runResult, stopwatch.Elapsed));
 
                 if (runResult.ExitCode != 0)
-                    return new WorkNextResult(processed, WorkNextStopReason.ClaudeFailed, FailedCardNumber: card.Number);
+                {
+                    await _git.ResetHardAsync(request.WorkspacePath, cancellationToken);
+                    await _git.CleanWorkingTreeAsync(request.WorkspacePath, cancellationToken);
+                    failedCardNumbers.Add(card.Number);
+                    continue;
+                }
 
                 var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
                 await _sender.Send(
                     new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens),
                     cancellationToken);
 
-                processed++;
+                succeeded++;
 
-                if (request.MaxIterations > 0 && processed >= request.MaxIterations)
-                    return new WorkNextResult(processed, WorkNextStopReason.CapReached);
+                if (request.MaxIterations > 0 && succeeded >= request.MaxIterations)
+                    return new WorkNextResult(succeeded, WorkNextStopReason.CapReached, ToNullableList(failedCardNumbers));
             }
         }
         finally
@@ -99,6 +105,8 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                 File.Delete(runningFile);
         }
     }
+
+    private static IReadOnlyList<int>? ToNullableList(List<int> list) => list.Count > 0 ? list : null;
 
     private static string FormatCardSummary(int cardNumber, ClaudeRunResult runResult, TimeSpan elapsed)
     {
