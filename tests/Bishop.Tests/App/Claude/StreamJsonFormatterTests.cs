@@ -401,12 +401,12 @@ public sealed class StreamJsonFormatterTests
     [Fact]
     public void OnStatus_DoesNotFire_WhenToolUseHasNoName()
     {
-        var statuses = new List<string>();
-        var sut = new StreamJsonFormatter(statuses.Add);
+        var callbackHits = 0;
+        var sut = new StreamJsonFormatter(_ => callbackHits++);
 
         sut.Format("""{"type":"assistant","message":{"content":[{"type":"tool_use","input":{"command":"ls"}}]}}""");
 
-        statuses.Should().BeEmpty();
+        callbackHits.Should().Be(0);
     }
 
     [Fact]
@@ -469,12 +469,30 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
+    public void Format_Assistant_Text_Strips_Trailing_Whitespace_Only()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"assistant","message":{"content":[{"type":"text","text":"hello   "}]}}""";
+
+        sut.Format(line).Should().Be("… hello");
+    }
+
+    [Fact]
     public void Format_Tool_Result_With_Error_Flag_Array_Item_Without_Text_Property_Uses_Placeholder()
     {
         var sut = new StreamJsonFormatter();
         var line = """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":[{"value":"data"}]}]}}""";
 
         sut.Format(line).Should().Be("[error] (no detail)");
+    }
+
+    [Fact]
+    public void Format_Tool_Result_With_Error_Flag_MixedTypeArray_ReturnsTextFromFirstTextBlock()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":[{"type":"image"},{"type":"text","text":"fallback"}]}]}}""";
+
+        sut.Format(line).Should().Be("[error] fallback");
     }
 
     [Fact]
