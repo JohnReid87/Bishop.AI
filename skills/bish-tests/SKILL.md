@@ -159,8 +159,8 @@ are shallow.
    that produced issues for this class (e.g. `assertion quality, edge cases`).
 
 6. **Ensure the `test` tag exists.** Check `tags[].name` from the workspace
-   JSON. If `test` is absent, run `bishop tag add test` once before pushing.
-   (`tag add` is idempotent for an existing name, so re-running is safe.)
+   JSON. If `test` is absent, stop and tell the user: the canonical tags are
+   seeded by `bishop workspace init` — re-running it will restore any missing tags.
 
 7. **Dedupe against existing cards.** Run `bishop card list --json`. Drop
    any suggestion whose title matches an existing card UNLESS that card is
@@ -234,8 +234,7 @@ are shallow.
   belongs in a separate spike.
 - Do NOT re-file a card whose title matches an existing open card. Re-runs
   must be idempotent.
-- If the `test` tag is missing, create it once via `bishop tag add test`
-  before pushing. Never push untagged.
+- If the `test` tag is missing, stop and tell the user to re-run `bishop workspace init` to restore canonical tags. Never push untagged.
 - Do NOT exceed 15 classes per run, even if more survive the threshold.
   Tell the user to re-run after working the cards.
 - Do NOT assume a specific test framework or mocking library. Mirrored-path

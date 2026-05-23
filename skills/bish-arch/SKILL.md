@@ -191,8 +191,7 @@ that aren't in this list — the headings above are the floor, not the ceiling.
      offer `To Do` as an alternative.
 
 5. **Ensure the `arch` tag exists.** If `tags[].name` doesn't include `arch`,
-   run `bishop tag add arch` once before pushing any cards. (`tag add` is
-   idempotent for an existing name, so re-running is safe.)
+   stop and tell the user: the canonical tags are seeded by `bishop workspace init` — re-running it will restore any missing tags.
 
 6. **Granularity pass.** Before printing the task list, re-read the agreed
    cards:

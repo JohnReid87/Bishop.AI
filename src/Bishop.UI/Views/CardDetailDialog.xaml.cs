@@ -199,16 +199,14 @@ public sealed partial class CardDetailDialog : ContentDialog
                 }));
             }
 
-            var trimmed = filter.Trim();
-            if (trimmed.Length > 0 &&
-                !matches.Any(t => t.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase)) &&
-                !already.Contains(trimmed))
+            if (matches.Count == 0)
             {
-                tagListPanel.Children.Add(MakeTagRow($"Create \"{trimmed}\"", BrandTagPalette.DefaultColour, async () =>
+                tagListPanel.Children.Add(new TextBlock
                 {
-                    flyout.Hide();
-                    await ViewModel.AddTagAsync(trimmed, BrandTagPalette.DefaultColour);
-                }));
+                    Text = "No matching tags",
+                    Opacity = 0.5,
+                    Margin = new Thickness(4, 2, 0, 2),
+                });
             }
         }
 

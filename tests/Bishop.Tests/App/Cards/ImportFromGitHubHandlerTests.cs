@@ -204,8 +204,8 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task ImportFromGitHub_LabelFiltering_OnlyMatchingWorkspaceTagsAttached()
     {
-        // Arrange — workspace has tags "bug" and "feature"; issue has labels "bug", "enhancement", "docs"
-        // Only "bug" and "docs" might match; but workspace has no "enhancement" or "docs" tag
+        // Arrange — workspace has tags "bug" and "feature"; issue has labels "bug", "wontfix", "docs"
+        // Only "bug" matches; workspace has no "wontfix" or "docs" tag
         const string repo = "owner/repo";
         var (workspace, _) = await CreateWorkspaceAsync(gitHubRepo: repo);
 
@@ -215,7 +215,7 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         _db.ChangeTracker.Clear();
 
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
-            .Returns(IssueListJson((10, "A bug", "body", ["bug", "enhancement"])));
+            .Returns(IssueListJson((10, "A bug", "body", ["bug", "wontfix"])));
 
         var handler = CreateHandler();
 

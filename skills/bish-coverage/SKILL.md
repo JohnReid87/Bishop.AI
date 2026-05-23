@@ -150,8 +150,7 @@ makes no assumption about specific namespace prefixes — it works for any
    - **Lane:** `To Do`.
 
 6. **Ensure the `test` tag exists.** Check `tags[].name`. If `test` is absent,
-   run `bishop tag add test` once before pushing any cards. (`tag add` is
-   idempotent for an existing name, so re-running is safe.)
+   stop and tell the user: the canonical tags are seeded by `bishop workspace init` — re-running it will restore any missing tags.
 
 7. **Dedupe against existing cards.** Run `bishop card list --json`. Drop
    any suggestion whose title matches an existing card UNLESS that card is in
@@ -213,8 +212,7 @@ makes no assumption about specific namespace prefixes — it works for any
   must be idempotent.
 - If `coverage.ps1` fails, surface its stderr and STOP. Do not try to recover
   or parse a partial summary.
-- If the `test` tag is missing, create it once via `bishop tag add test` before
-  pushing. Never push untagged.
+- If the `test` tag is missing, stop and tell the user to re-run `bishop workspace init` to restore canonical tags. Never push untagged.
 - Do NOT assume specific namespace prefixes (`Bishop.*`, `MyApp.*`, etc.).
   The skill clusters by directory, not by namespace pattern.
 

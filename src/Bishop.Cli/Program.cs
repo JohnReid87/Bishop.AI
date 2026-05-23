@@ -18,9 +18,7 @@ using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Lanes.MoveLane;
 using Bishop.App.Lanes.RemoveLane;
 using Bishop.App.Lanes.RenameLane;
-using Bishop.App.Tags.AddTag;
 using Bishop.App.Tags.ListTagsByWorkspace;
-using Bishop.App.Tags.RemoveTag;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
@@ -533,55 +531,10 @@ tagListCmd.SetHandler(async (string? workspace, bool json) =>
             Console.WriteLine(t.Name);
 }, workspaceOpt, jsonOpt);
 
-// ── tag add ───────────────────────────────────────────────────────────────────
-
-var tagAddNameArg = new Argument<string>("name", "Tag name");
-var tagColourOpt = new Option<string?>("--colour", $"Tag colour as 6-char hex (e.g. #4A90D9 or 4A90D9); defaults to {BrandTagPalette.DefaultColour}");
-
-var tagAddCmd = new Command("add", "Add a tag to a workspace");
-tagAddCmd.AddArgument(tagAddNameArg);
-tagAddCmd.AddOption(workspaceOpt);
-tagAddCmd.AddOption(tagColourOpt);
-tagAddCmd.SetHandler(async (string name, string? workspace, string? colour) =>
-{
-    string? normalisedColour = null;
-    if (colour is not null)
-    {
-        var hex = colour.TrimStart('#');
-        if (hex.Length != 6 || !hex.All(c => Uri.IsHexDigit(c)))
-        {
-            Console.Error.WriteLine($"Invalid colour '{colour}': must be a 6-char hex string (e.g. #4A90D9 or 4A90D9).");
-            Environment.Exit(1);
-            return;
-        }
-        normalisedColour = $"#{hex.ToUpperInvariant()}";
-    }
-
-    var ws = await resolver.ResolveAsync(workspace);
-    var tag = await mediator.Send(new AddTagCommand(ws.Id, name, normalisedColour));
-    Console.WriteLine($"Added tag '{tag.Name}' to workspace '{ws.Name}'");
-}, tagAddNameArg, workspaceOpt, tagColourOpt);
-
-// ── tag remove ────────────────────────────────────────────────────────────────
-
-var tagRemoveNameArg = new Argument<string>("name", "Tag name");
-
-var tagRemoveCmd = new Command("remove", "Remove a tag from a workspace");
-tagRemoveCmd.AddArgument(tagRemoveNameArg);
-tagRemoveCmd.AddOption(workspaceOpt);
-tagRemoveCmd.SetHandler(async (string name, string? workspace) =>
-{
-    var ws = await resolver.ResolveAsync(workspace);
-    await mediator.Send(new RemoveTagCommand(ws.Id, name));
-    Console.WriteLine($"Removed tag '{name}' from workspace '{ws.Name}'");
-}, tagRemoveNameArg, workspaceOpt);
-
 // ── wire tag command ──────────────────────────────────────────────────────────
 
 var tagCmd = new Command("tag", "Manage workspace tags");
 tagCmd.AddCommand(tagListCmd);
-tagCmd.AddCommand(tagAddCmd);
-tagCmd.AddCommand(tagRemoveCmd);
 root.AddCommand(tagCmd);
 
 // ── card push ─────────────────────────────────────────────────────────────────

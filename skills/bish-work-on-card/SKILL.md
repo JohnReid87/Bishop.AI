@@ -166,7 +166,7 @@ Run `bishop workspace current --json`.
    from the card's first tag (captured in step 1) and title:
 
    Tag → prefix mapping:
-   - `feature` or `enhancement` → `feat`
+   - `feature` → `feat`
    - `bug` → `fix`
    - `chore` → `chore`
    - `docs` → `docs`
@@ -202,7 +202,7 @@ Run `bishop workspace current --json`.
 - Do NOT accept multiple card IDs — one card per session, full stop.
 - Do NOT start work on dependent cards unless explicitly asked.
 - If the card is tagged `bug`, reproduce the symptom first before fixing.
-- If the card is tagged `feature` or `enhancement`, check whether any existing
+- If the card is tagged `feature`, check whether any existing
   code partially addresses it before writing new code.
 - If blocked by a missing dependency (e.g. card X requires card Y to be done
   first), stop and tell the user rather than improvising.

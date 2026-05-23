@@ -133,7 +133,7 @@ Run `bishop workspace current --json`.
 8. **Derive the commit message.** Use the same tag → prefix mapping as
    `/bish-work-on-card`:
 
-   - `feature` or `enhancement` → `feat`
+   - `feature` → `feat`
    - `bug` → `fix`
    - `chore` → `chore`
    - `docs` → `docs`
@@ -191,7 +191,7 @@ Run `bishop workspace current --json`.
 - **No claim path.** This skill never claims a card. If the supplied card is
   not in "Doing", move it there (step 2) — but never pull from "To Do".
 - If the card is tagged `bug`, reproduce the symptom before fixing.
-- If the card is tagged `feature` or `enhancement`, check whether any existing
+- If the card is tagged `feature`, check whether any existing
   code partially addresses it before writing new code.
 - If blocked by a missing dependency (e.g. card X requires card Y), exit
   non-zero with a clear message rather than improvising.

@@ -203,7 +203,6 @@ they resolve from the current working directory.
 ### Tag
 
 - `bishop tag list`
-- `bishop tag add [--colour <hex>]`
 
 Prefer `--json` output for any command an agent will parse. Pipe multi-line
 descriptions via `--description-file -` (stdin) to avoid quote escaping.
