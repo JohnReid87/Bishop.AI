@@ -8,6 +8,7 @@ public sealed class BishopDbContext : DbContext
     public DbSet<Workspace> Workspaces => Set<Workspace>();
     public DbSet<Card> Cards => Set<Card>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+    public DbSet<WorkspaceSkillRun> WorkspaceSkillRuns => Set<WorkspaceSkillRun>();
 
     public BishopDbContext(DbContextOptions<BishopDbContext> options) : base(options) { }
 

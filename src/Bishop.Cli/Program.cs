@@ -23,6 +23,7 @@ using Bishop.Cli.Workspaces.List;
 using Bishop.Cli.Workspaces.Purge;
 using Bishop.Cli.Workspaces.Remove;
 using Bishop.Cli.Workspaces.SetGitHub;
+using Bishop.Cli.Workspaces.RecordSkillRun;
 using Bishop.Cli.Workspaces.UnsetGitHub;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,6 +59,7 @@ workspaceCmd.AddCommand(new SetGitHubCliCommand(mediator));
 workspaceCmd.AddCommand(new UnsetGitHubCliCommand(mediator));
 workspaceCmd.AddCommand(new RemoveWorkspaceCliCommand(mediator));
 workspaceCmd.AddCommand(new PurgeWorkspaceCliCommand(mediator));
+workspaceCmd.AddCommand(new RecordSkillRunCliCommand(mediator));
 root.AddCommand(workspaceCmd);
 
 
