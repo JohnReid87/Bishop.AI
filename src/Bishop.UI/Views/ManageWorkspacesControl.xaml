@@ -10,7 +10,9 @@
     </UserControl.Resources>
     <ListView ItemsSource="{x:Bind ViewModel.Workspaces, Mode=OneWay}"
               SelectionMode="None"
-              MaxHeight="400">
+              MaxHeight="400"
+              ScrollViewer.HorizontalScrollMode="Disabled"
+              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListView.ItemContainerStyle>
             <Style TargetType="ListViewItem">
                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -39,6 +41,8 @@
                                Text="{x:Bind StatusText}"
                                FontSize="11"
                                Opacity="0.6"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="120"
                                VerticalAlignment="Center"/>
                     <StackPanel Grid.Column="2"
                                 Orientation="Horizontal"

@@ -50,7 +50,7 @@ internal static class SkillRowFactory
         }
         modelBtn.Flyout = modelFlyout;
 
-        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Stretch };
         row.Children.Add(nameText);
         row.Children.Add(modelBtn);
 
