@@ -75,6 +75,16 @@ must cite at least one `file:line` location.
 - **Test seams** — testability of core paths; whether tests hit real
   infrastructure (DB, filesystem, network) or fakes; missing seams around
   static helpers, singletons, and `DateTime.Now`-style ambient state.
+- **Justified abstractions** — interfaces or base classes with exactly one
+  production implementation and no test-seam justification (i.e. the interface
+  is never used to inject a fake or stub). Suggested action: delete the
+  interface and inline the concrete type. `complexity_delta: removes` makes
+  this a legitimate fix, not a regression.
+- **Intent encapsulation** — (i) inline blocks of 3+ lines performing one
+  nameable concept inside a larger method, and (ii) repeated 3-line chunks
+  within one class. Suggested action: extract a private named method in the
+  same class. Applies only when the extracted name would be clearer than the
+  existing code — do not flag trivially readable one-purpose methods.
 
 ### Stack-conditional — apply only when the SDK / package is detected
 
@@ -145,7 +155,10 @@ that aren't in this list — the headings above are the floor, not the ceiling.
      introduces with justification), `location` (file:line, may be multiple),
      `what` (1 sentence describing the issue), `why_it_matters` (consequence
      in this codebase, not a textbook quote), `suggested_action` (concrete
-     change).
+     change), `fix_cost` (low/med/high — effort to apply the suggested action),
+     `complexity_delta` (adds/neutral/removes — net effect on codebase
+     structural complexity after the fix). Reject any subagent output that
+     omits `fix_cost` or `complexity_delta` from a finding.
    - Returns findings as a numbered list, severity-ordered (high first).
 
    If the subagent returns more than 15 findings, ask it to re-rank and trim
@@ -159,17 +172,21 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    surfaced):
 
    ```
-   #1 [high] SOLID/SRP     — <project>/<...>/X.cs:42         — <one-line>
-   #2 [med]  MediatR       — <project>/<...>/Y.cs:55         — <one-line>
-   #3 [med]  Layer hygiene — <project>/<...>/Z.cs:18,33      — <one-line>
+   #1 [high] [fix:med]  SOLID/SRP     — <project>/<...>/X.cs:42         — <one-line>
+   #2 [med]  [fix:low]  MediatR       — <project>/<...>/Y.cs:55         — <one-line>
+   #3 [med]  [fix:high] Layer hygiene — <project>/<...>/Z.cs:18,33      — <one-line>
    ...
    ```
 
 4. **Triage loop.** Walk findings in severity order. For each finding:
 
    - Print the full body: location(s), what, why-it-matters, suggested-action,
-     plus your own recommended verdict (e.g. "Recommended: card it — this is a
-     clear DIP violation worth fixing before the next API host is added").
+     plus your own recommended verdict. The verdict must weigh `fix_cost` and
+     `complexity_delta` explicitly — for example: "Recommended: card it — clear
+     DIP violation, fix is low-cost and removes a layer" or "Recommended:
+     dismiss — high fix cost and adds a layer; only worth it if a second caller
+     appears". Use the pattern `<fix_cost> fix cost + <complexity_delta>
+     complexity → <card it / dismiss>` when the tradeoff is non-obvious.
 
    - Use `AskUserQuestion` with these options (recommended one first, suffixed
      " (Recommended)"):
@@ -274,6 +291,11 @@ Rules:
   "push" at the task list stage.
 - Do NOT propose findings without `file:line` citations — every claim must be
   locatable in the code. Reject subagent output that omits locations.
+- Every finding must carry `fix_cost` (low/med/high) and `complexity_delta`
+  (adds/neutral/removes). Reject subagent output that omits either field on any
+  finding — ask the subagent to add the missing fields before continuing triage.
+- `complexity_delta: removes` findings are valid and desirable. Deletion of an
+  unjustified abstraction is a legitimate suggested action, not a regression.
 - Do NOT include dismissed or deferred findings in the pushed cards.
 - All `arch` cards land in `To Do`. Do not prompt the user for an alternative
   lane during triage — re-prioritisation happens on the board after the push.
