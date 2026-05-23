@@ -19,7 +19,7 @@ public sealed class CardViewModel
     public bool IsTagVisible => TagName is not null;
     public bool IsAddTagButtonVisible => TagName is null;
     public double CardOpacity => IsClosed ? 0.5 : 1.0;
-    public string CloseReopenGlyph => IsClosed ? "" : "";
+    public string CloseReopenGlyph => IsClosed ? "\uE72C" : "\uE73E";
     public string CloseReopenTooltip => IsClosed ? "Reopen card" : "Close card";
 
     public bool IsDoneLane => LaneName == SystemLaneNames.Done;
