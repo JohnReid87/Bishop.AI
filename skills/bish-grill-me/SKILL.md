@@ -9,23 +9,44 @@ bishop.stage_prompt: "What do you want me to grill you on?"
 bishop.category: discuss
 ---
 
-**Orientation:** if `.bishop/BISHOP_CONTEXT.md` exists in the workspace, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.
+## What this skill is
+
+A **relentless interview**. The soul of the skill is the quality bar of the
+conversation, not the workspace plumbing wrapped around it.
+
+Relentless means:
+
+- **Walk every branch.** When a decision has dependent sub-decisions, resolve
+  each one before moving on. Don't paper over forks with "we can decide that
+  later."
+- **One question at a time.** No batched lists of questions. The user steers;
+  the agent narrows.
+- **Always offer a recommended answer.** Every question carries your best
+  guess as the first option — the user confirms or overrides, never picks
+  blind. Use `AskUserQuestion` whenever the answer set is discrete; free-text
+  only when genuinely open-ended (naming, novel design, free-form
+  constraints).
+- **Explore the codebase, don't read it.** When a question is answerable
+  from the repo, delegate to the `Agent` tool with
+  `subagent_type: "Explore"` and ask for `file:line` excerpts. Only fall
+  back to direct Read/Grep for tight follow-ups on a file/line range Explore
+  already surfaced.
+
+Cards land on the board only after **two gates**:
+
+1. A **granularity pass** — see BISHOP_CONTEXT.md → `## Card Granularity Rules (TUNABLE)`.
+2. A **preview** the user explicitly confirms with `push`. The agent never
+   writes to the board on its own.
 
 ---
 
-**Before interviewing, detect the active Bishop workspace:**
+**Initialize from `bishop skill bootstrap`.** Run `bishop skill bootstrap --json`.
+If it exits non-zero, surface the stderr line verbatim to the user and STOP —
+the helper already explains the remediation. On success, parse the JSON and
+capture `workspaceName`, `tags[].name`, `lanes[].name` for use during the
+interview.
 
-Run `bishop workspace current --json`.
-
-- If the command exits non-zero or produces no output, STOP immediately and tell the user:
-
-  > **Not in a Bishop workspace.** Run `bishop workspace list` to see available workspaces,
-  > then `cd` into one of the listed paths and retry.
-
-- If it succeeds, parse the JSON and extract:
-  - `name` — the workspace name (shown to the user as confirmation)
-  - `tags[].name` — available tag names (offer as choices during the interview)
-  - `lanes[].name` — available lane names (offer as choices during the interview)
+> **Workspace:** \<workspaceName\>
 
 ---
 
@@ -34,81 +55,62 @@ Run `bishop workspace current --json`.
 1. **`$ARGUMENTS` is a card Number** (matches `^#?\d+$`, e.g. `42` or `#42`):
    - Strip a leading `#` if present.
    - Run `bishop card view <number> --json`.
-   - If the command exits non-zero, STOP and surface stderr as-is. Do not guess.
-   - Parse the JSON and capture `number`, `title`, `description`, `tags`, `laneName`.
-   - Remember the `number` as the **source card** — you will reuse it at the end of the flow.
-   - Use `title` + `description` (and tags / lane for context) as the seed for the grill.
+   - If the command exits non-zero, STOP and surface stderr as-is. Do not
+     guess.
+   - Parse the JSON and capture `number`, `title`, `description`, `tags`,
+     `laneName`.
+   - Remember the `number` as the **source card** — reused in the closing
+     prompt below.
+   - Use `title` + `description` (and tags / lane for context) as the seed
+     for the grill.
    - Echo back so the user can confirm before the interview begins:
 
      > **Grilling card #N:** \<title\> *(lane: \<laneName\>, tags: \<comma-joined\>)*
 
-2. **`$ARGUMENTS` is non-empty free text** (the workspace-launch / staging-dialog path):
-   - Use the text verbatim as the seed for the grill.
-   - There is no source card; skip the closing card-action prompt later.
+2. **`$ARGUMENTS` is non-empty free text** (workspace-launch / staging-dialog
+   path):
+   - Use the text verbatim as the seed. No source card; skip the closing
+     prompt later.
 
-3. **`$ARGUMENTS` is empty** (skill was launched without arguments and the stage dialog was dismissed):
-   - Ask in chat: "What should I grill you on?" and wait for the user's reply before proceeding.
-   - There is no source card.
-
----
-
-Interview me relentlessly about every aspect of this plan until
-we reach a shared understanding. Walk down each branch of the design
-tree resolving dependencies between decisions one by one.
-
-If a question can be answered by exploring the codebase, explore
-the codebase instead — but delegate that exploration to the **Explore
-subagent** (via the `Agent` tool with `subagent_type: "Explore"`)
-rather than reading files into this conversation directly. Brief it
-with the specific question you need answered and ask it to return
-file paths + line numbers + short excerpts. Only fall back to direct
-Read/Grep for tight follow-ups on a file/line range the Explore
-agent already surfaced.
-
-For each question, provide your recommended answer.
-
-**Prefer `AskUserQuestion` over free-text prompts** whenever the
-question has a discrete set of plausible answers — pick a tag, choose
-between architectural patterns, decide on a lane, yes/no on a
-tradeoff. Put your recommendation as the first option and suffix it
-with " (Recommended)". Only fall back to free-text when the answer
-is genuinely open-ended (naming, novel design, free-form constraints).
-
-When we have reached shared understanding, do a **granularity pass**
-before writing the task list:
-
-- One task ≈ one PR's worth of work. If a task is a one-line change or
-  under ~30 minutes, fold it into the nearest related task rather than
-  filing it standalone.
-- Merge tasks that touch the same file/module for the same reason.
-- Split only when the pieces have independent acceptance criteria or
-  could ship in separate PRs without one blocking the other.
-
-Then print the task list for review:
-
-> **Target workspace:** <name>
-
-### 1. <concise card title>
-**Tag:** <tag>  ·  **Lane:** <lane>
-
-#### Why
-<body>
-
-#### Acceptance
-- <criterion>
+3. **`$ARGUMENTS` is empty** (skill launched without arguments and the stage
+   dialog was dismissed):
+   - Ask in chat: "What should I grill you on?" and wait for the user's
+     reply before proceeding. No source card.
 
 ---
 
-### 2. <concise card title>
-...
+## The interview
 
-**Tag** should match one of the tag names from `tags[].name` in the workspace JSON.
-If the workspace has no tags defined, use `feature` as the default.
+Interview the user relentlessly about every aspect of the seed until shared
+understanding is reached. Walk down each branch of the design tree, resolving
+dependencies between decisions one by one. For each question, provide your
+recommended answer; put it as the first option in `AskUserQuestion` and
+suffix it with " (Recommended)".
 
-**Lane** defaults to `To Do`. Use a lane name from `lanes[].name` when placing
-the card somewhere other than the default.
+When a question is answerable from the codebase, delegate to the **Explore
+subagent** (via the `Agent` tool with `subagent_type: "Explore"`). Brief it
+with the specific question and ask it to return `file:line` excerpts — never
+pull whole files into this conversation.
 
-**Body format.** Body section headings use `####` in the preview above so they nest under the `### N.` card heading. The description passed to `bishop card add` uses `###` as shown in the template below. Required sections: `### Why` and `### Acceptance`. Include optional sections only when they add value.
+---
+
+## After shared understanding — granularity pass + preview
+
+Apply the heuristics in BISHOP_CONTEXT.md →
+`## Card Granularity Rules (TUNABLE)` to merge or split the proposed cards
+before previewing them.
+
+Then print the preview in the shape defined by BISHOP_CONTEXT.md →
+`## Task List Preview Format (STABLE)`. Each card uses the body template
+below.
+
+**Tag** must be one of `tags[].name` from the bootstrap JSON. If the
+workspace has no tags defined, use `feature` as default.
+
+**Lane** defaults to `To Do`. Use another lane name from `lanes[].name`
+(typically `Backlog`) only when the user asks for a parking spot.
+
+### Body template
 
 ```markdown
 ### Why
@@ -135,44 +137,34 @@ Rules:
 - Omit `### Changes`, `### Out of scope`, `### Related` when they add no value.
 - Do not restate the title in `### Why`.
 - Backtick file paths, identifiers, and CLI commands.
-- Use bullets in `### Changes` and `### Acceptance`.
 
-After printing the task list, ask:
+After the preview, ask:
+
 > "Please review the tasks above. Say **push** to create the Bishop cards."
-
-**When the user confirms, push each card in order:**
-
-For each task, pipe the body via stdin:
-
-```bash
-bishop card add --lane "<Lane>" --title "<Title>" --tag "<Tag>" --description-file - --bottom << 'BODY'
-### Why
-<fill in>
-
-### Acceptance
-- <fill in>
-BODY
-```
-
-After all cards are created, print a brief summary:
-
-| Card | Title | Lane | Tag |
-|------|-------|------|-----|
-| <short ID from output> | ... | ... | ... |
 
 Do NOT push automatically. Wait for the user to say "push".
 
 ---
 
-**Closing card-action prompt.** After the summary table, if a **source card** was captured at the start (Path 1 above), ask the user what to do with it:
+## Push
 
-> Source card **#N** — \<title\> — is still in lane `<laneName>`. What now?
-> (`close` / `done` / `leave`)
+When the user confirms, add each card in order using `bishop card add` per
+BISHOP_CONTEXT.md → `## Card Push Procedure (STABLE)`. Push with `--bottom`
+so cards land in agreed order.
 
-- `close` → `bishop card close <number>` (marks closed; if the card has a linked GitHub issue, the CLI closes that too).
-- `done` → `bishop card move <number> --to-lane "Done" --to-position 0` (the CLI auto-closes on entry to the system `Done` lane).
-- `leave` → no-op; the card stays where it is.
+After all cards are created, print a brief summary:
 
-If there is no source card (Paths 2 and 3), skip this prompt entirely.
+| Card | Title | Lane | Tag |
+|------|-------|------|-----|
+| #N   | …     | …    | …   |
+
+---
+
+## Closing card-action prompt
+
+If a **source card** was captured at the start (Path 1), prompt the user
+about it after the summary, per BISHOP_CONTEXT.md →
+`## Source Card Closing Prompt (STABLE)`. If there is no source card
+(Paths 2 and 3), skip this prompt entirely.
 
 ARGUMENTS: $ARGUMENTS

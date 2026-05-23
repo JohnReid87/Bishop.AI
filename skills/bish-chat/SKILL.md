@@ -8,23 +8,37 @@ bishop.stage: false
 bishop.category: discuss
 ---
 
-**Orientation:** if `.bishop/BISHOP_CONTEXT.md` exists in the workspace, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.
+## What this skill is
+
+A **single-card, non-mutating chat**. The soul of the skill is what it
+refuses to do as much as what it does.
+
+The chat contract:
+
+- **One card per session.** `$ARGUMENTS` is a required card Number.
+  Free-text seeds belong in `/bish-grill-me`.
+- **Never move the source card.** No `card move`, no `card close`, no
+  `card reopen` at any point. The card stays in whatever lane it started
+  in. Lane changes are out of scope.
+- **Never split or delete the source card.**
+- **Lazy Explore.** Do not spawn the Explore subagent at chat start. Only
+  delegate when an actual code question comes up. Many chats never need it.
+- **Drift-tolerant.** Open-ended conversation. Resolve each branch before
+  moving to the next, but don't force a checklist — the user is thinking
+  out loud.
+
+The wrap-up produces **one combined proposal** covering source-card edits
+*and* any follow-up cards. The user reviews and says `push` before
+anything is written to the board.
 
 ---
 
-**Before anything else — detect the active Bishop workspace:**
+**Initialize from `bishop skill bootstrap`.** Run `bishop skill bootstrap --json`.
+If it exits non-zero, surface the stderr line verbatim and STOP — the helper
+already explains the remediation. On success, parse the JSON and capture
+`workspaceName`, `tags[].name`, `lanes[].name` for the wrap-up step.
 
-Run `bishop workspace current --json`.
-
-- If the command exits non-zero or produces no output, STOP immediately and tell the user:
-
-  > **Not in a Bishop workspace.** Run `bishop workspace list` to see available workspaces,
-  > then `cd` into one of the listed paths and retry.
-
-- If it succeeds, parse the JSON and extract:
-  - `name` — the workspace name
-  - `tags[].name` — available tag names (for the wrap-up step)
-  - `lanes[].name` — available lane names (for the wrap-up step)
+> **Workspace:** \<workspaceName\>
 
 ---
 
@@ -38,10 +52,11 @@ Run `bishop workspace current --json`.
 
   Wait for the user's reply before continuing.
 
-- If `$ARGUMENTS` is non-empty but does not match the pattern, STOP and tell the user:
+- If `$ARGUMENTS` is non-empty but does not match the pattern, STOP and
+  tell the user:
 
-  > `bish-chat` accepts a single card Number only (e.g. `42` or `#42`). Use `/bish-grill-me`
-  > for free-text seeds.
+  > `bish-chat` accepts a single card Number only (e.g. `42` or `#42`).
+  > Use `/bish-grill-me` for free-text seeds.
 
 - Strip a leading `#` if present, then run:
 
@@ -49,14 +64,16 @@ Run `bishop workspace current --json`.
   bishop card view <number> --json
   ```
 
-  If the command exits non-zero (no match), STOP and surface the stderr as-is. Do NOT guess.
+  If the command exits non-zero, STOP and surface stderr as-is. Do NOT
+  guess.
 
   Parse the JSON and capture:
-  - `number` — the canonical `#N` reference (used in headings and the `### Related` line)
+  - `number` — the canonical `#N` reference (used in headings and the
+    `### Related` line)
   - `title`, `description`, `laneName`, `tags`
 
-  Remember this as the **source card** — you will use `number` (and the existing
-  `tags` list) in the wrap-up step.
+  Remember this as the **source card** — you will use `number` (and the
+  existing `tags` list) in the wrap-up.
 
 Echo back so the user can confirm the right card was loaded:
 
@@ -66,69 +83,57 @@ Then open the chat with:
 
 > What are you thinking?
 
-**Never auto-move the card.** Chat is exploratory, not execution. The source card
-stays in whatever lane it was in.
-
 ---
 
-**During the chat:**
+## The chat
 
 Hold an open-ended conversation about the card. Resolve each branch of the
-discussion before moving to the next, the same way `/bish-grill-me` does.
+discussion before moving to the next, the same way `/bish-grill-me` does —
+but without forcing a structured task-tree walk.
 
-If a question can be answered by exploring the codebase, delegate that to the
-**Explore subagent** (via the `Agent` tool with `subagent_type: "Explore"`) — do
-not Read large files into this conversation directly. Brief it with the specific
-question you need answered and ask it to return file paths + line numbers +
-short excerpts. Only fall back to direct Read/Grep for tight follow-ups on a
-file/line range the Explore agent already surfaced.
+When a question is answerable from the repo, delegate to the **Explore
+subagent** (via `Agent` with `subagent_type: "Explore"`) for `file:line`
+excerpts. Do not Read large files directly. **Do not run Explore eagerly at
+chat start** — only when an actual code question arises.
 
-Do **not** run Explore eagerly at chat start — only when an actual code question
-arises. Many chats never need it.
-
-**Prefer `AskUserQuestion` over free-text prompts** whenever a question has a
-discrete set of plausible answers (pick a tag, choose between approaches, yes/no
-on a tradeoff). Put your recommendation as the first option and suffix it with
-" (Recommended)". Free-text is fine when the answer is genuinely open-ended.
+Prefer `AskUserQuestion` over free-text prompts whenever a question has a
+discrete set of answers (pick a tag, choose between approaches, yes/no on a
+tradeoff). Put your recommendation as the first option suffixed with
+" (Recommended)". Free-text is fine when the answer is genuinely
+open-ended.
 
 ---
 
-**Reaching wrap-up.**
+## Reaching wrap-up
 
-Move to the wrap-up step when either:
+Move to the wrap-up when either:
 
 - The conversation reaches a natural pause and there's a clear set of next
   actions (or a clear conclusion that nothing needs to change), **or**
-- The user says something like "wrap up", "land it", "ready", "let's push", or
-  similar.
+- The user says something like "wrap up", "land it", "ready", "let's push",
+  or similar.
 
-In the wrap-up, produce a **single combined proposal** covering both sides:
+Produce a **single combined proposal**:
 
-1. **Source-card edits** — zero or more of: title change, description rewrite,
-   tag list change. Only include fields that the chat actually decided to
-   change. Tag changes must pass the **full intended tag list** (existing tags
-   you want to keep + any new ones); `bishop card edit --tag` replaces all tags.
+1. **Source-card edits** — zero or more of: title change, description
+   rewrite, tag list change. Only include fields the chat actually decided
+   to change. Tag changes pass the **full intended list** (existing tags
+   you want to keep + any new ones); `bishop card edit --tag` replaces all
+   tags.
 2. **Follow-up cards** — zero or more new cards spun out of the chat.
 
-Apply the same **granularity pass** as `/bish-grill-me` before listing follow-ups:
+Apply the heuristics in BISHOP_CONTEXT.md →
+`## Card Granularity Rules (TUNABLE)` before listing follow-ups.
 
-- One card ≈ one PR's worth of work. Fold one-line or sub-30-minute changes
-  into the nearest related card.
-- Merge cards that touch the same file/module for the same reason.
-- Split only when the pieces have independent acceptance criteria or could
-  ship in separate PRs without one blocking the other.
+Each follow-up card's body uses the template below, plus an auto-included
+`### Related` section linking back to the source card (`#<source-number>`).
 
-Each follow-up card's body uses the same H3-section template as `/bish-grill-me`,
-plus an auto-included `### Related` section linking back to the source card
-(`#<source-number>`).
+**Tag** must be one of `tags[].name` from the bootstrap JSON. If the
+workspace has no tags, default to `feature`. **Lane** defaults to `To Do`;
+use another lane name from `lanes[].name` only when placing the card
+somewhere other than the default.
 
-**Tag** should match one of the tag names from `tags[].name` in the workspace JSON.
-If the workspace has no tags defined, use `feature` as the default.
-
-**Lane** defaults to `To Do`. Use a lane name from `lanes[].name` when placing
-the card somewhere other than the default.
-
-**Body format** (required sections: `### Why`, `### Acceptance`, `### Related`):
+### Body template
 
 ```markdown
 ### Why
@@ -158,38 +163,25 @@ Rules:
 
 ---
 
-**Print the proposal for review.**
+## Print the proposal
 
 > **Source card #N — proposed changes**
 >
 > *(omit any of the three sub-sections that have no changes)*
 >
 > - **Title:** \<old\> → \<new\>
-> - **Description:** *(show a short diff or "rewritten — see below")*
+> - **Description:** *(short diff or "rewritten — see below")*
 > - **Tags:** \<old comma-joined\> → \<new comma-joined\>
 >
 > ```markdown
 > <new description body, if changed>
 > ```
 >
-> **Follow-up cards**
->
-> ### 1. \<concise card title\>
-> **Tag:** \<tag\>  ·  **Lane:** \<lane\>
->
-> #### Why
-> \<body\>
->
-> #### Acceptance
-> - \<criterion\>
->
-> ---
->
-> ### 2. \<concise card title\>
-> ...
+> **Follow-up cards** — render per BISHOP_CONTEXT.md →
+> `## Task List Preview Format (STABLE)`.
 
-Either side may be empty. If the chat concluded that nothing needs to change,
-print:
+Either side may be empty. If the chat concluded that nothing needs to
+change, print:
 
 > Nothing to change on **#N** and no follow-ups to file. Done.
 
@@ -199,21 +191,24 @@ Otherwise, ask:
 
 > Please review. Say **push** to apply.
 
-Do NOT push automatically. Wait for the user to say "push".
+Do NOT push automatically.
 
 ---
 
-**When the user confirms with `push`:**
+## Push
+
+When the user confirms with `push`:
 
 1. **Apply source-card edits first** (skip if no edits proposed). Build a
    single `bishop card edit` call with only the changed flags:
 
    - `--title "<new>"` when the title changed.
    - `--tag "<name>"` repeated per tag when the tag list changed (pass the
-     **full intended list**, not just additions; the flag replaces all tags).
-     Use `--clear-tags` instead if the chat decided to remove all tags.
-   - `--description-file -` when the description changed; pipe the new body
-     via a single-quoted heredoc so `$` and backticks stay literal.
+     **full intended list**, not just additions; the flag replaces all
+     tags). Use `--clear-tags` instead if the chat decided to remove all
+     tags.
+   - `--description-file -` when the description changed; pipe the new
+     body via a single-quoted heredoc so `$` and backticks stay literal.
 
    Example with all three changes:
 
@@ -223,39 +218,19 @@ Do NOT push automatically. Wait for the user to say "push".
    BODY
    ```
 
-2. **Add each follow-up card in order**, piping each body via stdin:
+2. **Add each follow-up card** in order using `bishop card add` per
+   BISHOP_CONTEXT.md → `## Card Push Procedure (STABLE)`. Push with
+   `--bottom`.
 
-   ```bash
-   bishop card add --lane "<Lane>" --title "<Title>" --tag "<Tag>" --description-file - --bottom << 'BODY'
-   ### Why
-   <fill in>
-
-   ### Acceptance
-   - <fill in>
-
-   ### Related
-   - #<source-number>
-   BODY
-   ```
-
-3. **Print a summary table** covering both the source-card edit (if any) and
-   the new cards:
+3. **Print a summary table** covering both the source-card edit (if any)
+   and the new cards:
 
    | Card | Action | Title | Lane | Tag |
    |------|--------|-------|------|-----|
    | #<source> | edit | <new title or "unchanged"> | <lane> | <tags> |
-   | #<new>    | add  | ... | ... | ... |
+   | #<new>    | add  | … | … | … |
 
----
-
-**Guardrails:**
-
-- Never move the source card to a different lane (no `card move`, no `card
-  close`, no `card reopen`) at any point. Lane changes are out of scope.
-- Never split or delete the source card.
-- Do not run the Explore subagent eagerly at chat start — only when an actual
-  code question comes up.
-- Do not accept free-text seeds. If the user wants to seed a chat from a
-  description rather than a card, tell them to use `/bish-grill-me`.
+`bish-chat` deliberately omits the source-card closing prompt that
+`bish-grill-me` and `bish-triage` use — chat never moves the source card.
 
 ARGUMENTS: $ARGUMENTS
