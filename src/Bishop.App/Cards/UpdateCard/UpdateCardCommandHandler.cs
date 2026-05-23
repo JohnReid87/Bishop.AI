@@ -49,15 +49,9 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
             }
             else
             {
-                var tag = await db.Tags.FirstOrDefaultAsync(
-                    t => t.WorkspaceId == card.WorkspaceId && t.Name == request.TagName,
-                    cancellationToken);
-                if (tag is null)
-                {
-                    tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = card.WorkspaceId, Name = request.TagName };
-                    db.Tags.Add(tag);
-                }
-                card.TagName = tag.Name;
+                if (!BrandTagPalette.DefaultColours.ContainsKey(request.TagName))
+                    throw new InvalidOperationException($"Tag '{request.TagName}' is not a known tag.");
+                card.TagName = request.TagName;
             }
         }
 

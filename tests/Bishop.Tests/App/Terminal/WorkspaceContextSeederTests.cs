@@ -22,41 +22,50 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     private static Workspace MakeWorkspace(
         string name = "demo",
         string path = @"C:\demo",
-        string? gitHubRepo = null,
-        IEnumerable<(string Name, int Position, bool IsSystem)>? lanes = null,
-        IEnumerable<string>? tags = null) =>
+        string? gitHubRepo = null) =>
         new()
         {
             Id = Guid.NewGuid(),
             Name = name,
             Path = path,
             GitHubRepo = gitHubRepo,
-            Lanes = (lanes ?? [("To Do", 1, true), ("Doing", 2, true), ("Done", 3, true)])
-                .Select(l => new Lane { Id = Guid.NewGuid(), Name = l.Name, Position = l.Position, IsSystem = l.IsSystem })
-                .ToList(),
-            Tags = (tags ?? ["bug", "feature"])
-                .Select(t => new Tag { Id = Guid.NewGuid(), Name = t, Colour = "#888888" })
-                .ToList(),
         };
 
     // ── BuildBishopContext ─────────────────────────────────────────────────────
 
     [Fact]
-    public void BuildBishopContext_IncludesWorkspaceNameLanesAndTags()
+    public void BuildBishopContext_IncludesWorkspaceName()
     {
-        var workspace = MakeWorkspace(
-            name: "alpha",
-            lanes: [("Ideas", 1, false), ("To Do", 2, true)],
-            tags: ["bug", "chore"]);
+        var workspace = MakeWorkspace(name: "alpha");
 
         var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
 
         output.Should().Contain("# BISHOP_CONTEXT — alpha");
         output.Should().Contain("- **Name:** alpha");
-        output.Should().Contain("1. Ideas");
-        output.Should().Contain("2. To Do _(system)_");
-        output.Should().Contain("- `bug`");
-        output.Should().Contain("- `chore`");
+    }
+
+    [Fact]
+    public void BuildBishopContext_RendersSystemLanesFromConstants_InOrder()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        output.Should().Contain("1. Backlog");
+        output.Should().Contain("2. To Do");
+        output.Should().Contain("3. Doing");
+        output.Should().Contain("4. Done");
+    }
+
+    [Fact]
+    public void BuildBishopContext_RendersBrandTagsFromConstants()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        foreach (var tag in BrandTagPalette.DefaultColours.Keys)
+            output.Should().Contain($"- `{tag}`");
     }
 
     [Fact]
@@ -106,8 +115,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().Contain("`### Changes`");
         output.Should().Contain("`### Decided`");
         output.Should().Contain("--description-file -");
-        output.Should().Contain("### Why");
-        output.Should().Contain("### Acceptance");
     }
 
     [Fact]
@@ -219,35 +226,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public void BuildBishopContext_StillIncludesLiveWorkspaceMetadata_AlongsideStaticBody()
-    {
-        var workspace = MakeWorkspace(
-            name: "epsilon",
-            gitHubRepo: "owner/epsilon",
-            lanes: [("To Do", 1, true), ("Doing", 2, true)],
-            tags: ["bug"]);
-
-        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
-
-        output.IndexOf("# BISHOP_CONTEXT — epsilon", StringComparison.Ordinal)
-            .Should().BeLessThan(output.IndexOf("## Workflow", StringComparison.Ordinal));
-        output.Should().Contain("- **GitHub:** `owner/epsilon`");
-        output.Should().Contain("1. To Do _(system)_");
-        output.Should().Contain("- `bug`");
-    }
-
-    [Fact]
-    public void BuildBishopContext_RendersEmptyFallbacks_WhenNoLanesOrTags()
-    {
-        var workspace = MakeWorkspace(lanes: [], tags: []);
-
-        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
-
-        output.Should().Contain("_No lanes yet._");
-        output.Should().Contain("_No tags yet._");
-    }
-
-    [Fact]
     public void LoadStaticBody_ReturnsNonEmptyString()
     {
         var body = WorkspaceContextSeeder.LoadStaticBody();
@@ -344,7 +322,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         var output = WorkspaceContextSeeder.EnsureContextMd(existing, workspace);
 
         output.Should().Contain("\r\n");
-        output.Should().NotContain("\n\n\n"); // no LF-only gaps after splitting on \n
+        output.Should().NotContain("\n\n\n");
     }
 
     [Fact]
@@ -489,7 +467,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         var sut = new WorkspaceContextSeeder(_factory);
 
         await sut.SeedAsync("   ");
-        // Covers the IsNullOrWhiteSpace early-return guard — no exception, no files written.
     }
 
     [Fact]
@@ -508,7 +485,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         var sut = new WorkspaceContextSeeder(_factory);
 
         await sut.SeedAsync(@"C:\definitely-not-a-real-path-" + Guid.NewGuid().ToString("N"));
-        // No exception, no files written, no DB query needed beyond a no-op.
     }
 
     [Fact]
@@ -700,33 +676,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         }
     }
 
-    [Fact]
-    public async Task SeedAsync_BishopContext_ReflectsAddedTagOnNextLaunch()
-    {
-        var temp = CreateTempDir();
-        try
-        {
-            var workspace = await SeedRegisteredWorkspaceAsync(temp, name: U("Delta"));
-
-            var sut = new WorkspaceContextSeeder(_factory);
-            await sut.SeedAsync(temp);
-            var firstPass = File.ReadAllText(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md"));
-            firstPass.Should().NotContain("`newtag`");
-
-            _db.Tags.Add(new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "newtag", Colour = "#888888" });
-            await _db.SaveChangesAsync();
-
-            await sut.SeedAsync(temp);
-            var secondPass = File.ReadAllText(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md"));
-
-            secondPass.Should().Contain("- `newtag`");
-        }
-        finally
-        {
-            CleanupTempDir(temp);
-        }
-    }
-
     // ── EnsureContextMd / EnsureClaudeMd — legacy pointer rewrite ─────────────
 
     [Fact]
@@ -810,7 +759,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var sut = new WorkspaceContextSeeder(_factory);
             await sut.SeedAsync(temp);
 
-            // Second run must not throw and must leave .bishop/ files in place
             await sut.SeedAsync(temp);
 
             File.Exists(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md")).Should().BeTrue();
@@ -880,9 +828,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             Position = 1,
         };
         _db.Workspaces.Add(workspace);
-        _db.Lanes.Add(new Lane { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "To Do", Position = 1, IsSystem = true });
-        _db.Lanes.Add(new Lane { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "Doing", Position = 2, IsSystem = true });
-        _db.Tags.Add(new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "feature", Colour = "#888888" });
         await _db.SaveChangesAsync();
         return workspace;
     }

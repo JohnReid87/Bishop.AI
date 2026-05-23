@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using Bishop.App.Tags;
 using Bishop.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -12,25 +11,20 @@ internal sealed class DatabaseInitializer : IHostedService
     private static readonly TimeSpan MutexAcquireTimeout = TimeSpan.FromSeconds(60);
 
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
-    private readonly IDefaultTagSeeder _tagSeeder;
     private readonly string _stampPath;
     private readonly string _mutexName;
 
-    public DatabaseInitializer(
-        IDbContextFactory<BishopDbContext> dbFactory,
-        IDefaultTagSeeder tagSeeder,
-        string stampPath)
+    public DatabaseInitializer(IDbContextFactory<BishopDbContext> dbFactory, string stampPath)
     {
         _dbFactory = dbFactory;
-        _tagSeeder = tagSeeder;
         _stampPath = stampPath;
         _mutexName = BuildMutexName(stampPath);
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public Task StartAsync(CancellationToken cancellationToken)
     {
         EnsureSchema(cancellationToken);
-        await _tagSeeder.EnsureAllAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
     private void EnsureSchema(CancellationToken cancellationToken)

@@ -626,7 +626,7 @@ public sealed partial class WorkspaceDetailPage : Page
         if (_item is null) return;
 
         var mediator = App.Services.GetRequiredService<IMediator>();
-        IReadOnlyList<Bishop.Core.Tag> allTags;
+        IReadOnlyList<Bishop.Core.TagInfo> allTags;
         try
         {
             allTags = await mediator.Send(new ListTagsByWorkspaceQuery(_item.Id));

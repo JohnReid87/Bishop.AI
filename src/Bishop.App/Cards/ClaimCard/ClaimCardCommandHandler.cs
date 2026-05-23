@@ -49,22 +49,12 @@ public sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        var lanes = await db.Lanes
-            .Where(l => l.WorkspaceId == request.WorkspaceId)
-            .ToListAsync(cancellationToken);
-
-        var sourceLane = lanes.FirstOrDefault(l =>
-            string.Equals(l.Name, request.SourceLaneName, StringComparison.OrdinalIgnoreCase))
+        var sourceLaneName = SystemLaneNames.All
+            .FirstOrDefault(n => string.Equals(n, request.SourceLaneName, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException(
-                $"Lane '{request.SourceLaneName}' not found in workspace.");
-
-        var doingLane = lanes.FirstOrDefault(l =>
-            string.Equals(l.Name, SystemLaneNames.Doing, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException(
-                "Lane 'Doing' not found in workspace.");
+                $"Lane '{request.SourceLaneName}' is not a system lane.");
 
         var workspaceId = request.WorkspaceId;
-        var sourceLaneName = sourceLane.Name;
         var query = db.Cards.Where(c => c.WorkspaceId == workspaceId && c.LaneName == sourceLaneName);
 
         if (!string.IsNullOrEmpty(request.TagName))
@@ -92,7 +82,7 @@ public sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, 
         for (var i = 0; i < sourceSiblings.Count; i++)
             sourceSiblings[i].Position = i + 1;
 
-        var doingLaneName = doingLane.Name;
+        var doingLaneName = SystemLaneNames.Doing;
         var doingCards = await db.Cards
             .Where(c => c.WorkspaceId == workspaceId && c.LaneName == doingLaneName && c.Id != topCard.Id)
             .OrderBy(c => c.Position)

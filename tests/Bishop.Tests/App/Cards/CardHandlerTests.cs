@@ -34,12 +34,12 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
 
-    private async Task<(Workspace workspace, IReadOnlyList<Lane> lanes)> CreateWorkspaceWithLanesAsync()
+    private async Task<(Workspace workspace, IReadOnlyList<LaneInfo> lanes)> CreateWorkspaceWithLanesAsync()
     {
         var name = U("Test");
         var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
+        var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         return (workspace, lanes);
     }
@@ -225,7 +225,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var nameB = U("Other");
         var workspaceB = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(nameB, $@"C:\{nameB}"), default);
-        var lanesB = await new ListLanesByWorkspaceQueryHandler(_factory)
+        var lanesB = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspaceB.Id), default);
         var add = new AddCardCommandHandler(_factory);
 

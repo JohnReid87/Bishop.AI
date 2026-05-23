@@ -11,7 +11,5 @@ public sealed class Workspace : IAuditable
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
-    public ICollection<Lane> Lanes { get; set; } = [];
-    public ICollection<Tag> Tags { get; set; } = [];
     public ICollection<Card> Cards { get; set; } = [];
 }

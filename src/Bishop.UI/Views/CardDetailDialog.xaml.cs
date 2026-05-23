@@ -159,7 +159,7 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     private async void AddTag_Click(object sender, RoutedEventArgs e)
     {
-        IReadOnlyList<Bishop.Core.Tag> allTags;
+        IReadOnlyList<Bishop.Core.TagInfo> allTags;
         try
         {
             allTags = await ViewModel.GetWorkspaceTagsAsync();

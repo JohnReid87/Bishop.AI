@@ -9,7 +9,7 @@ namespace Bishop.UI.Views;
 internal static class TagPickerFlyout
 {
     internal static Flyout Build(
-        IReadOnlyList<Tag> allTags,
+        IReadOnlyList<TagInfo> allTags,
         IReadOnlyCollection<string> alreadyAssigned,
         Func<string, string, Task> onPick)
     {

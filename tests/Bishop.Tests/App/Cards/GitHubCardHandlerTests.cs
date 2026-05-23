@@ -54,7 +54,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         _db.ChangeTracker.Clear();
     }
 
-    private async Task<(Workspace workspace, IReadOnlyList<Lane> lanes)> CreateWorkspaceWithLanesAsync(string? gitHubRepo = null)
+    private async Task<(Workspace workspace, IReadOnlyList<LaneInfo> lanes)> CreateWorkspaceWithLanesAsync(string? gitHubRepo = null)
     {
         var name = U("Test");
         var workspace = await new CreateWorkspaceCommandHandler(_factory)
@@ -64,7 +64,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
             workspace.GitHubRepo = gitHubRepo;
             await PersistMutationAsync(workspace);
         }
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
+        var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         return (workspace, lanes);
     }

@@ -108,37 +108,24 @@ workspaceCurrentCmd.SetHandler(async (bool json) =>
 
 var initPathOpt = new Option<string?>("--path", "Directory to initialise (defaults to cwd)");
 var initNameOpt = new Option<string?>("--name", "Workspace name (defaults to directory name)");
-var initNoTagsOpt = new Option<bool>("--no-tags", "Skip seeding canonical tags");
 var initNoGitHubDetectOpt = new Option<bool>("--no-github-detect", "Skip auto-detecting GitHub remote");
 
-var workspaceInitCmd = new Command("init", "Register a directory as a workspace and seed default lanes");
+var workspaceInitCmd = new Command("init", "Register a directory as a workspace");
 workspaceInitCmd.AddOption(initPathOpt);
 workspaceInitCmd.AddOption(initNameOpt);
-workspaceInitCmd.AddOption(initNoTagsOpt);
 workspaceInitCmd.AddOption(initNoGitHubDetectOpt);
-workspaceInitCmd.SetHandler(async (string? path, string? name, bool noTags, bool noGitHubDetect) =>
+workspaceInitCmd.SetHandler(async (string? path, string? name, bool noGitHubDetect) =>
 {
     var dir = path ?? Directory.GetCurrentDirectory();
-    var result = await mediator.Send(new InitWorkspaceCommand(dir, name, SeedTags: !noTags, DetectGitHub: !noGitHubDetect));
+    var result = await mediator.Send(new InitWorkspaceCommand(dir, name, DetectGitHub: !noGitHubDetect));
     var ws = result.Workspace;
     if (result.Created)
-    {
         Console.WriteLine($"Initialized workspace '{ws.Name}' at {ws.Path}");
-        Console.WriteLine($"  Lanes: {string.Join(", ", result.LanesAdded)}");
-    }
-    else if (result.LanesAdded.Count > 0)
-    {
-        Console.WriteLine($"Workspace '{ws.Name}' already registered — added lanes: {string.Join(", ", result.LanesAdded)}");
-    }
     else
-    {
         Console.WriteLine($"Workspace '{ws.Name}' is already initialized");
-    }
-    if (result.TagsAdded.Count > 0)
-        Console.WriteLine($"  Tags: {string.Join(", ", result.TagsAdded)}");
     if (result.GitHubLinked)
         Console.WriteLine($"  GitHub: {ws.GitHubRepo}");
-}, initPathOpt, initNameOpt, initNoTagsOpt, initNoGitHubDetectOpt);
+}, initPathOpt, initNameOpt, initNoGitHubDetectOpt);
 
 // ── workspace set-github ────────────────────────────────────────────────────
 
@@ -658,10 +645,7 @@ laneListCmd.SetHandler(async (string? workspace, bool json) =>
         Console.WriteLine(JsonSerializer.Serialize(lanes, jsonOpts));
     else
         foreach (var l in lanes)
-        {
-            var marker = l.IsSystem ? " [system]" : string.Empty;
-            Console.WriteLine($"  {l.Position}  {l.Name}{marker}");
-        }
+            Console.WriteLine($"  {l.Position}  {l.Name}");
 }, workspaceOpt, jsonOpt);
 
 // ── wire lane command ─────────────────────────────────────────────────────────

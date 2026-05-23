@@ -30,7 +30,7 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
         var name = U("Test");
         var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
+        var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         var todo = lanes.Single(l => l.Name == "To Do");
         return await new AddCardCommandHandler(_factory)

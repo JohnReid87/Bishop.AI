@@ -16,6 +16,14 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
         if (!SystemLaneNames.All.Contains(request.LaneName))
             throw new InvalidOperationException($"Lane '{request.LaneName}' is not a system lane.");
 
+        string? tagName = null;
+        if (!string.IsNullOrEmpty(request.TagName))
+        {
+            if (!BrandTagPalette.DefaultColours.ContainsKey(request.TagName))
+                throw new InvalidOperationException($"Tag '{request.TagName}' is not a known tag.");
+            tagName = request.TagName;
+        }
+
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
         var workspace = await db.Workspaces.FindAsync([request.WorkspaceId], cancellationToken)
@@ -40,20 +48,6 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
         }
 
         var number = workspace.NextCardNumber++;
-
-        string? tagName = null;
-        if (!string.IsNullOrEmpty(request.TagName))
-        {
-            var tag = await db.Tags.FirstOrDefaultAsync(
-                t => t.WorkspaceId == workspace.Id && t.Name == request.TagName,
-                cancellationToken);
-            if (tag is null)
-            {
-                tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = request.TagName };
-                db.Tags.Add(tag);
-            }
-            tagName = tag.Name;
-        }
 
         var card = new Card
         {

@@ -26,7 +26,7 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
 
-    private async Task<(Workspace workspace, IReadOnlyList<Lane> lanes)> CreateWorkspaceAsync(string? gitHubRepo = null)
+    private async Task<(Workspace workspace, IReadOnlyList<LaneInfo> lanes)> CreateWorkspaceAsync(string? gitHubRepo = null)
     {
         var name = U("Test");
         var workspace = await new CreateWorkspaceCommandHandler(_factory)
@@ -39,7 +39,7 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
             await _db.SaveChangesAsync();
             _db.ChangeTracker.Clear();
         }
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
+        var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         return (workspace, lanes);
     }
@@ -202,17 +202,12 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
     // ── Label filtering ──────────────────────────────────────────────────────
 
     [Fact]
-    public async Task ImportFromGitHub_LabelFiltering_OnlyMatchingWorkspaceTagsAttached()
+    public async Task ImportFromGitHub_LabelFiltering_OnlyMatchingBrandTagsAttached()
     {
-        // Arrange — workspace has tags "bug" and "feature"; issue has labels "bug", "wontfix", "docs"
-        // Only "bug" matches; workspace has no "wontfix" or "docs" tag
+        // Arrange — brand palette includes "bug" and "feature"; issue carries labels
+        // "bug" and "wontfix". Only "bug" is a brand tag so it is the only attached tag.
         const string repo = "owner/repo";
         var (workspace, _) = await CreateWorkspaceAsync(gitHubRepo: repo);
-
-        // Add "bug" tag to workspace
-        _db.Tags.Add(new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "bug", Colour = "#ff0000" });
-        await _db.SaveChangesAsync();
-        _db.ChangeTracker.Clear();
 
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(IssueListJson((10, "A bug", "body", ["bug", "wontfix"])));

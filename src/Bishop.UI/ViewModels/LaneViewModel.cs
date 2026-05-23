@@ -15,16 +15,14 @@ public sealed partial class LaneViewModel : ObservableObject
 
     private string _currentFilter = string.Empty;
 
-    public Guid Id { get; init; }
     public Guid WorkspaceId { get; init; }
     public string Name { get; init; } = string.Empty;
-    public bool IsSystem { get; init; }
     public ObservableCollection<CardViewModel> Cards { get; } = [];
     public ObservableCollection<CardViewModel> FilteredCards { get; } = [];
 
     public string DisplayName => $"{Name} ({FilteredCards.Count})";
 
-    public bool IsToDoLane => IsSystem && Name == SystemLaneNames.ToDo;
+    public bool IsToDoLane => Name == SystemLaneNames.ToDo;
     public bool IsBacklogLane => Name == SystemLaneNames.Backlog;
     public bool CanWorkNext => IsToDoLane && Cards.Count > 0;
     public string WorkNextTooltip => CanWorkNext ? "Ralph it" : "No cards in To Do";

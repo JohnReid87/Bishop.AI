@@ -16,8 +16,6 @@ public sealed class GetWorkspaceQueryHandler : IRequestHandler<GetWorkspaceQuery
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         return await db.Workspaces
             .AsNoTracking()
-            .Include(w => w.Lanes.OrderBy(l => l.Position))
-            .Include(w => w.Tags.OrderBy(t => t.Name))
             .FirstOrDefaultAsync(w => w.Id == request.Id, cancellationToken);
     }
 }

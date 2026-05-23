@@ -40,19 +40,6 @@ public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorksp
         };
         db.Workspaces.Add(workspace);
 
-        var laneNames = SystemLaneNames.All;
-        for (var i = 0; i < laneNames.Count; i++)
-        {
-            db.Lanes.Add(new Lane
-            {
-                Id = Guid.NewGuid(),
-                WorkspaceId = workspace.Id,
-                Name = laneNames[i],
-                Position = i + 1,
-                IsSystem = true,
-            });
-        }
-
         await db.SaveChangesAsync(cancellationToken);
         return workspace;
     }

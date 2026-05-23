@@ -44,36 +44,17 @@ public sealed class BishopDbContextAuditTests : IDisposable
     public async Task SaveChangesAsync_SetsCreatedAtAndUpdatedAt_OnAddedCard()
     {
         var workspace = new Workspace { Id = Guid.NewGuid(), Name = "W", Path = "/w" };
-        var lane = new Lane { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "To Do", Position = 1 };
         _fixture.Db.Workspaces.Add(workspace);
-        _fixture.Db.Lanes.Add(lane);
         await _fixture.Db.SaveChangesAsync();
 
         var before = DateTimeOffset.UtcNow;
-        var card = new Card { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, LaneName = lane.Name, Title = "C", Number = 1 };
+        var card = new Card { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, LaneName = SystemLaneNames.ToDo, Title = "C", Number = 1 };
         _fixture.Db.Cards.Add(card);
         await _fixture.Db.SaveChangesAsync();
         var after = DateTimeOffset.UtcNow;
 
         card.CreatedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
         card.UpdatedAt.Should().Be(card.CreatedAt);
-    }
-
-    [Fact]
-    public async Task SaveChangesAsync_SetsCreatedAtAndUpdatedAt_OnAddedTag()
-    {
-        var workspace = new Workspace { Id = Guid.NewGuid(), Name = "W", Path = "/w" };
-        _fixture.Db.Workspaces.Add(workspace);
-        await _fixture.Db.SaveChangesAsync();
-
-        var before = DateTimeOffset.UtcNow;
-        var tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "feat" };
-        _fixture.Db.Tags.Add(tag);
-        await _fixture.Db.SaveChangesAsync();
-        var after = DateTimeOffset.UtcNow;
-
-        tag.CreatedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
-        tag.UpdatedAt.Should().Be(tag.CreatedAt);
     }
 
     [Fact]
@@ -93,13 +74,9 @@ public sealed class BishopDbContextAuditTests : IDisposable
 
     [Theory]
     [InlineData("Workspaces")]
-    [InlineData("Lanes")]
     [InlineData("Cards")]
-    [InlineData("Tags")]
     public void OnModelCreating_SetsNocaseCollation_OnGuidColumns(string tableName)
     {
-        // Verify via the SQLite schema that every table with Guid columns carries COLLATE NOCASE.
-        // EnsureCreated() already ran in DbFixture, so sqlite_master is populated.
         using var cmd = _fixture.Connection.CreateCommand();
         cmd.CommandText = $"SELECT sql FROM sqlite_master WHERE type='table' AND name='{tableName}'";
         var ddl = (string)cmd.ExecuteScalar()!;
@@ -124,18 +101,22 @@ public sealed class BishopDbContextAuditTests : IDisposable
     public async Task Card_TagName_CanRoundTrip()
     {
         var workspace = new Workspace { Id = Guid.NewGuid(), Name = "W2", Path = "/w2" };
-        var lane = new Lane { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "To Do", Position = 1 };
-        var tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "feat" };
-        var card = new Card { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, LaneName = lane.Name, Title = "C", Number = 1, TagName = tag.Name };
+        var card = new Card
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = workspace.Id,
+            LaneName = SystemLaneNames.ToDo,
+            Title = "C",
+            Number = 1,
+            TagName = TagNames.Feature,
+        };
         _fixture.Db.Workspaces.Add(workspace);
-        _fixture.Db.Lanes.Add(lane);
-        _fixture.Db.Tags.Add(tag);
         _fixture.Db.Cards.Add(card);
         await _fixture.Db.SaveChangesAsync();
 
         _fixture.Db.ChangeTracker.Clear();
         var loaded = await _fixture.Db.Cards
             .FirstAsync(c => c.Id == card.Id);
-        loaded.TagName.Should().Be("feat");
+        loaded.TagName.Should().Be(TagNames.Feature);
     }
 }

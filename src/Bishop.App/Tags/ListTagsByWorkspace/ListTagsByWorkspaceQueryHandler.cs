@@ -1,23 +1,15 @@
 using Bishop.Core;
-using Bishop.Data;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Tags.ListTagsByWorkspace;
 
-public sealed class ListTagsByWorkspaceQueryHandler : IRequestHandler<ListTagsByWorkspaceQuery, IReadOnlyList<Tag>>
+public sealed class ListTagsByWorkspaceQueryHandler : IRequestHandler<ListTagsByWorkspaceQuery, IReadOnlyList<TagInfo>>
 {
-    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private static readonly IReadOnlyList<TagInfo> Tags = BrandTagPalette.DefaultColours
+        .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
+        .Select(kv => new TagInfo(kv.Key, kv.Value))
+        .ToList();
 
-    public ListTagsByWorkspaceQueryHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
-
-    public async Task<IReadOnlyList<Tag>> Handle(ListTagsByWorkspaceQuery request, CancellationToken cancellationToken)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Tags
-            .AsNoTracking()
-            .Where(t => t.WorkspaceId == request.WorkspaceId)
-            .OrderBy(t => t.Name)
-            .ToListAsync(cancellationToken);
-    }
+    public Task<IReadOnlyList<TagInfo>> Handle(ListTagsByWorkspaceQuery request, CancellationToken cancellationToken)
+        => Task.FromResult(Tags);
 }

@@ -166,7 +166,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         SkillsButtonVisibility = cardSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public Task<IReadOnlyList<Tag>> GetWorkspaceTagsAsync() =>
+    public Task<IReadOnlyList<TagInfo>> GetWorkspaceTagsAsync() =>
         _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
 
     public async Task ClearTagAsync()

@@ -1,11 +1,9 @@
 using Bishop.App;
-using Bishop.App.Tags;
 using Bishop.Data;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using NSubstitute;
 using System.Data.Common;
 
 namespace Bishop.Tests.App;
@@ -67,8 +65,8 @@ public sealed class DatabaseInitializerTests : IDisposable
                 .AddInterceptors(new MigrationDdlThrowingInterceptor())
                 .Options);
 
-    private DatabaseInitializer CreateSut(IDbContextFactory<BishopDbContext>? factory = null, IDefaultTagSeeder? seeder = null) =>
-        new(factory ?? CreateFactory(), seeder ?? Substitute.For<IDefaultTagSeeder>(), _stampPath);
+    private DatabaseInitializer CreateSut(IDbContextFactory<BishopDbContext>? factory = null) =>
+        new(factory ?? CreateFactory(), _stampPath);
 
     private sealed class TestDbContextFactory : IDbContextFactory<BishopDbContext>
     {
@@ -296,20 +294,6 @@ public sealed class DatabaseInitializerTests : IDisposable
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>("the WAL PRAGMA failure should propagate from StartAsync");
-    }
-
-    [Fact]
-    public async Task StartAsync_InvokesTagSeederAfterSchemaIsReady()
-    {
-        // Arrange
-        var tagSeeder = Substitute.For<IDefaultTagSeeder>();
-        var sut = CreateSut(seeder: tagSeeder);
-
-        // Act
-        await sut.StartAsync(default);
-
-        // Assert
-        await tagSeeder.Received(1).EnsureAllAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

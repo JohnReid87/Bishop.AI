@@ -1,23 +1,13 @@
 using Bishop.Core;
-using Bishop.Data;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Lanes.ListLanesByWorkspace;
 
-public sealed class ListLanesByWorkspaceQueryHandler : IRequestHandler<ListLanesByWorkspaceQuery, IReadOnlyList<Lane>>
+public sealed class ListLanesByWorkspaceQueryHandler : IRequestHandler<ListLanesByWorkspaceQuery, IReadOnlyList<LaneInfo>>
 {
-    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private static readonly IReadOnlyList<LaneInfo> Lanes =
+        SystemLaneNames.All.Select((name, i) => new LaneInfo(name, i + 1)).ToList();
 
-    public ListLanesByWorkspaceQueryHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
-
-    public async Task<IReadOnlyList<Lane>> Handle(ListLanesByWorkspaceQuery request, CancellationToken cancellationToken)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Lanes
-            .AsNoTracking()
-            .Where(l => l.WorkspaceId == request.WorkspaceId)
-            .OrderBy(l => l.Position)
-            .ToListAsync(cancellationToken);
-    }
+    public Task<IReadOnlyList<LaneInfo>> Handle(ListLanesByWorkspaceQuery request, CancellationToken cancellationToken)
+        => Task.FromResult(Lanes);
 }

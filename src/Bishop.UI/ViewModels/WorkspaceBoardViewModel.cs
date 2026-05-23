@@ -48,7 +48,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         // ListView scroll positions are preserved and unnecessary Replace notifications are
         // avoided. A full rebuild (Lanes.Clear) is only needed when lanes are added,
         // removed, renamed, or reordered.
-        if (Lanes.Count == lanes.Count && Lanes.Select(l => l.Id).SequenceEqual(lanes.Select(l => l.Id)))
+        if (Lanes.Count == lanes.Count && Lanes.Select(l => l.Name).SequenceEqual(lanes.Select(l => l.Name), StringComparer.OrdinalIgnoreCase))
         {
             foreach (var laneVm in Lanes)
             {
@@ -73,7 +73,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         Lanes.Clear();
         foreach (var lane in lanes)
         {
-            var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { Id = lane.Id, WorkspaceId = _workspaceId, Name = lane.Name, IsSystem = lane.IsSystem };
+            var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { WorkspaceId = _workspaceId, Name = lane.Name };
             foreach (var card in cardsByLane[lane.Name])
                 laneVm.Cards.Add(BuildCardViewModel(card, lane.Name, tagColourByName));
             Lanes.Add(laneVm);

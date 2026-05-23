@@ -31,23 +31,14 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
         if (card.GitHubIssueNumber.HasValue)
             throw new InvalidOperationException($"Card #{card.Number} is already linked to GitHub issue #{card.GitHubIssueNumber}.");
 
-        Tag? tag = null;
-        if (card.TagName is { } tagName)
-        {
-            tag = await db.Tags
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    t => t.WorkspaceId == card.WorkspaceId && t.Name == tagName,
-                    cancellationToken);
-        }
-
         // Ensure the label exists on GitHub (ignore failures — label may already exist or permissions may be limited)
-        if (tag is not null)
+        if (card.TagName is { } tagName
+            && BrandTagPalette.DefaultColours.TryGetValue(tagName, out var tagColour))
         {
-            var color = tag.Colour.TrimStart('#');
+            var color = tagColour.TrimStart('#');
             try
             {
-                await _ghCli.RunAsync(["label", "create", tag.Name, "--color", color, "--repo", repo, "--force"], cancellationToken);
+                await _ghCli.RunAsync(["label", "create", tagName, "--color", color, "--repo", repo, "--force"], cancellationToken);
             }
             catch { /* label creation is best-effort */ }
         }

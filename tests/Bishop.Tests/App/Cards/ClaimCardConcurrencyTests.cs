@@ -58,7 +58,7 @@ public sealed class ClaimCardConcurrencyTests : IDisposable
         var workspaceName = $"ws-{Guid.NewGuid():N}"[..20];
         var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(workspaceName, $@"C:\{workspaceName}"), default);
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
+        var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
         var doing = lanes.Single(l => l.Name == SystemLaneNames.Doing);

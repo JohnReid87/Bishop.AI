@@ -29,12 +29,12 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
 
-    private async Task<(Workspace workspace, IReadOnlyList<Lane> lanes)> CreateWorkspaceWithLanesAsync()
+    private async Task<(Workspace workspace, IReadOnlyList<LaneInfo> lanes)> CreateWorkspaceWithLanesAsync()
     {
         var name = U("Test");
         var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var lanes = await new ListLanesByWorkspaceQueryHandler(_factory)
+        var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);
         return (workspace, lanes);
     }
@@ -175,6 +175,6 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Lane 'Nope' not found in workspace.");
+            .WithMessage("Lane 'Nope' is not a system lane.");
     }
 }

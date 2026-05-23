@@ -73,8 +73,6 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
     {
         var workspaces = await db.Workspaces
             .AsNoTracking()
-            .Include(w => w.Lanes.OrderBy(l => l.Position))
-            .Include(w => w.Tags.OrderBy(t => t.Name))
             .ToListAsync(cancellationToken);
 
         return workspaces.FirstOrDefault(w =>
@@ -104,33 +102,14 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 
         sb.AppendLine("### Lanes");
         sb.AppendLine();
-        if (workspace.Lanes.Count == 0)
-        {
-            sb.AppendLine("_No lanes yet._");
-        }
-        else
-        {
-            var i = 1;
-            foreach (var lane in workspace.Lanes.OrderBy(l => l.Position))
-            {
-                var suffix = lane.IsSystem ? " _(system)_" : "";
-                sb.AppendLine($"{i}. {lane.Name}{suffix}");
-                i++;
-            }
-        }
+        for (var i = 0; i < SystemLaneNames.All.Count; i++)
+            sb.AppendLine($"{i + 1}. {SystemLaneNames.All[i]}");
         sb.AppendLine();
 
         sb.AppendLine("### Tags");
         sb.AppendLine();
-        if (workspace.Tags.Count == 0)
-        {
-            sb.AppendLine("_No tags yet._");
-        }
-        else
-        {
-            foreach (var tag in workspace.Tags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
-                sb.AppendLine($"- `{tag.Name}`");
-        }
+        foreach (var name in BrandTagPalette.DefaultColours.Keys.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+            sb.AppendLine($"- `{name}`");
         sb.AppendLine();
 
         sb.Append(LoadStaticBody());

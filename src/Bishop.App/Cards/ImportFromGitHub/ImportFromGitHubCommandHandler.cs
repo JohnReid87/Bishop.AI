@@ -29,17 +29,9 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
             ?? throw new InvalidOperationException(
                 $"Workspace '{workspace.Name}' has no GitHub repo configured. Run: bishop workspace set-github <owner/repo>");
 
-        var backlogLane = await db.Lanes.FirstOrDefaultAsync(
-            l => l.WorkspaceId == request.WorkspaceId && l.Name == SystemLaneNames.Backlog,
-            cancellationToken)
-            ?? throw new InvalidOperationException($"Workspace '{workspace.Name}' has no '{SystemLaneNames.Backlog}' lane.");
+        var backlogLaneName = SystemLaneNames.Backlog;
 
-        var workspaceTags = await db.Tags
-            .Where(t => t.WorkspaceId == request.WorkspaceId)
-            .ToListAsync(cancellationToken);
-
-        var tagNameSet = workspaceTags
-            .Select(t => t.Name)
+        var tagNameSet = BrandTagPalette.DefaultColours.Keys
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var ghArgs = new List<string>
@@ -103,7 +95,7 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
                 }
 
                 var maxPosition = await issueDb.Cards
-                    .Where(c => c.WorkspaceId == request.WorkspaceId && c.LaneName == backlogLane.Name)
+                    .Where(c => c.WorkspaceId == request.WorkspaceId && c.LaneName == backlogLaneName)
                     .MaxAsync(c => (int?)c.Position, cancellationToken);
                 var newPosition = (maxPosition ?? 0) + 1;
 
@@ -116,20 +108,15 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
                     ? footer
                     : $"{issueBody}\n\n{footer}";
 
-                var matchingTagNames = issue.Labels
+                var firstTagName = issue.Labels
                     .Select(l => l.Name)
-                    .Where(n => tagNameSet.Contains(n))
-                    .ToList();
-
-                var firstTagName = matchingTagNames
-                    .Select(n => workspaceTags.FirstOrDefault(t => string.Equals(t.Name, n, StringComparison.OrdinalIgnoreCase))?.Name)
-                    .FirstOrDefault(t => t is not null);
+                    .FirstOrDefault(n => tagNameSet.Contains(n));
 
                 var card = new Card
                 {
                     Id = Guid.NewGuid(),
                     WorkspaceId = request.WorkspaceId,
-                    LaneName = backlogLane.Name,
+                    LaneName = backlogLaneName,
                     TagName = firstTagName,
                     Title = issue.Title,
                     Description = description,
