@@ -161,6 +161,213 @@ public class WorkspaceNotesViewModelTests
         vm.IsExternalChangeBarVisible.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task LoadAsync_WithNewDirectory_CreatesNotesFileAndSetsIdleStatus()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var vm = NewVm();
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+
+            File.Exists(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md")).Should().BeTrue();
+            vm.NotesContent.Should().BeEmpty();
+            vm.SaveStatusIsEditing.Should().BeFalse();
+            vm.SaveStatusIsError.Should().BeFalse();
+            vm.IsExternalChangeBarVisible.Should().BeFalse();
+            vm.SaveStatusText.Should().StartWith("Saved");
+        }
+        finally
+        {
+            vm.Dispose();
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenNotesExist_ReadsExistingContent()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        var bishopDir = Path.Combine(dir, ".bishop");
+        Directory.CreateDirectory(bishopDir);
+        await File.WriteAllTextAsync(Path.Combine(bishopDir, "BISHOP_NOTES.md"), "existing notes");
+        try
+        {
+            var vm = NewVm();
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+
+            vm.NotesContent.Should().Be("existing notes");
+            vm.SaveStatusIsEditing.Should().BeFalse();
+        }
+        finally
+        {
+            vm.Dispose();
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WithNonExistentWorkspacePath_LeavesContentEmpty()
+    {
+        var vm = NewVm();
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+
+        await vm.LoadAsync(Guid.NewGuid(), nonExistentPath);
+
+        vm.NotesContent.Should().BeEmpty();
+        vm.SaveStatusIsEditing.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task LoadAsync_SecondCall_FlushesUncommittedChangesToFirstWorkspace()
+    {
+        var dir1 = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        var dir2 = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir1);
+        Directory.CreateDirectory(dir2);
+        try
+        {
+            var vm = NewVm();
+            await vm.LoadAsync(Guid.NewGuid(), dir1);
+            vm.NotesContent = "unsaved changes";
+
+            await vm.LoadAsync(Guid.NewGuid(), dir2);
+
+            (await File.ReadAllTextAsync(Path.Combine(dir1, ".bishop", "BISHOP_NOTES.md")))
+                .Should().Be("unsaved changes");
+            vm.NotesContent.Should().BeEmpty();
+        }
+        finally
+        {
+            vm.Dispose();
+            Directory.Delete(dir1, recursive: true);
+            Directory.Delete(dir2, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task QuickSaveAsync_WithChangedContent_WritesFileAndClearsEditingFlag()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var vm = NewVm();
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+            vm.NotesContent = "new content";
+
+            await vm.QuickSaveAsync();
+
+            (await File.ReadAllTextAsync(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md")))
+                .Should().Be("new content");
+            vm.SaveStatusIsEditing.Should().BeFalse();
+            vm.SaveStatusIsError.Should().BeFalse();
+            vm.SaveStatusText.Should().StartWith("Saved");
+        }
+        finally
+        {
+            vm.Dispose();
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ReloadCommand_WhenFileExists_LoadsFileContent()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var vm = NewVm();
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md"), "reloaded content");
+
+            await vm.ReloadCommand.ExecuteAsync(null);
+
+            vm.NotesContent.Should().Be("reloaded content");
+            vm.SaveStatusIsEditing.Should().BeFalse();
+            vm.IsExternalChangeBarVisible.Should().BeFalse();
+        }
+        finally
+        {
+            vm.Dispose();
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FlushAsync_WithChangedContent_WritesContentToFile()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var vm = NewVm();
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+            vm.NotesContent = "flush content";
+
+            await vm.FlushAsync();
+
+            (await File.ReadAllTextAsync(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md")))
+                .Should().Be("flush content");
+            vm.SaveStatusIsEditing.Should().BeFalse();
+        }
+        finally
+        {
+            vm.Dispose();
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ToggleCommand_WhenCollapsingWithWorkspace_WritesNotes()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var vm = NewVm();
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+            vm.IsExpanded = true;
+            vm.NotesContent = "collapse notes";
+
+            await vm.ToggleCommand.ExecuteAsync(null);
+
+            vm.IsExpanded.Should().BeFalse();
+            (await File.ReadAllTextAsync(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md")))
+                .Should().Be("collapse notes");
+        }
+        finally
+        {
+            vm.Dispose();
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task NotesContent_WhenChanged_EventuallyWritesToFile()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var vm = NewVm();
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+            vm.NotesContent = "debounced content";
+
+            await Task.Delay(800);
+
+            (await File.ReadAllTextAsync(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md")))
+                .Should().Be("debounced content");
+        }
+        finally
+        {
+            vm.Dispose();
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static WorkspaceNotesViewModel NewVm() =>
         new(new FakeUiDispatcher());
 
