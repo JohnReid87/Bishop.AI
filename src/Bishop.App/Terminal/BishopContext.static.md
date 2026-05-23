@@ -4,7 +4,7 @@ Bishop ships with a family of Claude Code skills (`bish-*`) that collaborate
 through the kanban board. Each skill plays one role; pick the right one for
 the task instead of doing everything inside a single session.
 
-### Review skills — analyse and produce cards
+### Review skills — analyse and produce cards (`bishop.category: review`)
 
 - `bish-arch` — architectural / SOLID review of the current .NET solution.
   Walks findings one at a time; agreed items become cards tagged `arch`.
@@ -25,7 +25,7 @@ the task instead of doing everything inside a single session.
   structured `bug` card (or a `spike` + fix-stub pair when root cause is
   unconfirmed).
 
-### Conversational skills — explore and plan
+### Conversational skills — explore and plan (`bishop.category: discuss`)
 
 - `bish-chat` — quick open-ended chat about a single card. Accepts a card
   Number, loads it, and opens a conversation; the wrap-up can edit the
@@ -37,7 +37,7 @@ the task instead of doing everything inside a single session.
   **not yet on the board** — you have an idea and need it stress-tested and
   broken down into trackable items.
 
-### Setup-Execute skills — onboard, configure, and implement cards
+### Setup-Execute skills — onboard, configure, and implement cards (`bishop.category: setup` / `execute`)
 
 Deterministic procedures that mutate state (filesystem, board, git). The
 soul is the procedure itself — the agent reads steps in order.
@@ -54,7 +54,7 @@ soul is the procedure itself — the agent reads steps in order.
   long-running sessions accumulate context that hurts cost and quality.
   Use when work is **already a card** and you want it implemented now.
 
-### Bishop-level / meta skills — operate on the skill family itself
+### Bishop-level / meta skills — operate on the skill family itself (`bishop.category: meta`)
 
 These skills do not target a workspace's code; they operate on `skills/`
 in the Bishop.AI repository. See [`docs/SKILL_FAMILY.md`](../docs/SKILL_FAMILY.md)
