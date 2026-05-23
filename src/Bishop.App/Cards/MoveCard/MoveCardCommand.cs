@@ -5,7 +5,7 @@ namespace Bishop.App.Cards.MoveCard;
 
 public sealed record MoveCardCommand(
     Guid CardId,
-    Guid ToLaneId,
+    string ToLaneName,
     int ToPosition,
     bool KeepOpen = false,
-    Guid? ExpectedSourceLaneId = null) : IRequest<Card>;
+    string? ExpectedSourceLaneName = null) : IRequest<Card>;

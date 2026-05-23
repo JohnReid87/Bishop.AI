@@ -13,25 +13,26 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
 
     public async Task<Card> Handle(AddCardCommand request, CancellationToken cancellationToken)
     {
+        if (!SystemLaneNames.All.Contains(request.LaneName))
+            throw new InvalidOperationException($"Lane '{request.LaneName}' is not a system lane.");
+
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
-        var lane = await db.Lanes.FindAsync([request.LaneId], cancellationToken)
-            ?? throw new InvalidOperationException($"Lane {request.LaneId} not found.");
-        var workspace = await db.Workspaces.FindAsync([lane.WorkspaceId], cancellationToken)
-            ?? throw new InvalidOperationException($"Workspace {lane.WorkspaceId} not found.");
+        var workspace = await db.Workspaces.FindAsync([request.WorkspaceId], cancellationToken)
+            ?? throw new InvalidOperationException($"Workspace {request.WorkspaceId} not found.");
 
         int newPosition;
         if (request.Position == CardInsertPosition.Bottom)
         {
             var maxPosition = await db.Cards
-                .Where(c => c.WorkspaceId == workspace.Id && c.LaneName == lane.Name)
+                .Where(c => c.WorkspaceId == workspace.Id && c.LaneName == request.LaneName)
                 .MaxAsync(c => (int?)c.Position, cancellationToken);
             newPosition = (maxPosition ?? 0) + 1;
         }
         else
         {
             var existing = await db.Cards
-                .Where(c => c.WorkspaceId == workspace.Id && c.LaneName == lane.Name)
+                .Where(c => c.WorkspaceId == workspace.Id && c.LaneName == request.LaneName)
                 .ToListAsync(cancellationToken);
             foreach (var c in existing)
                 c.Position++;
@@ -58,7 +59,7 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
         {
             Id = Guid.NewGuid(),
             WorkspaceId = workspace.Id,
-            LaneName = lane.Name,
+            LaneName = request.LaneName,
             TagName = tagName,
             Title = request.Title,
             Description = request.Description,

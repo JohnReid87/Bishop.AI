@@ -44,7 +44,7 @@ public sealed class CardStdinTests : IClassFixture<DbFixture>
     [Fact]
     public async Task CardAdd_StdinPath_PreservesUnicodeDescription()
     {
-        var (_, lane) = await CreateWorkspaceWithTodoLaneAsync();
+        var (workspace, lane) = await CreateWorkspaceWithTodoLaneAsync();
 
         var previousIn = Console.In;
         try
@@ -53,7 +53,7 @@ public sealed class CardStdinTests : IClassFixture<DbFixture>
             var desc = await Console.In.ReadToEndAsync();
 
             var card = await new AddCardCommandHandler(_factory)
-                .Handle(new AddCardCommand(lane.Id, "encoding-test-add", desc), default);
+                .Handle(new AddCardCommand(workspace.Id, lane.Name, "encoding-test-add", desc), default);
 
             card.Description.Should().Be(UnicodeBody);
         }
@@ -66,11 +66,11 @@ public sealed class CardStdinTests : IClassFixture<DbFixture>
     [Fact]
     public async Task CardEdit_StdinPath_PreservesUnicodeDescription()
     {
-        var (_, lane) = await CreateWorkspaceWithTodoLaneAsync();
+        var (workspace, lane) = await CreateWorkspaceWithTodoLaneAsync();
 
         // Create the card with a placeholder description first.
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lane.Id, "encoding-test-edit", "placeholder"), default);
+            .Handle(new AddCardCommand(workspace.Id, lane.Name, "encoding-test-edit", "placeholder"), default);
 
         var previousIn = Console.In;
         try

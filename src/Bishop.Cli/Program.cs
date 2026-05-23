@@ -206,14 +206,10 @@ cardAddCmd.SetHandler(async (string? workspace, string lane, string title, strin
         null => description ?? ""
     };
     var ws = await resolver.ResolveAsync(workspace);
-    var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
-    var targetLane = lanes.FirstOrDefault(l =>
-        string.Equals(l.Name, lane, StringComparison.OrdinalIgnoreCase))
-        ?? throw new InvalidOperationException($"Lane '{lane}' not found in workspace '{ws.Name}'.");
     var insertPosition = bottom ? CardInsertPosition.Bottom : CardInsertPosition.Top;
-    var card = await mediator.Send(new AddCardCommand(targetLane.Id, title, desc, tag, insertPosition));
+    var card = await mediator.Send(new AddCardCommand(ws.Id, lane, title, desc, tag, insertPosition));
     var tagSuffix = !string.IsNullOrEmpty(tag) ? $"  [{tag}]" : "";
-    Console.WriteLine($"Added card #{card.Number} — '{card.Title}' → [{targetLane.Name}]{tagSuffix}");
+    Console.WriteLine($"Added card #{card.Number} — '{card.Title}' → [{card.LaneName}]{tagSuffix}");
 }, workspaceOpt, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt, bottomOpt);
 
 // ── card short-ID prefix resolver ─────────────────────────────────────────────
@@ -340,13 +336,9 @@ cardMoveCmd.SetHandler(async (string prefix, string? workspace, string toLane, i
 {
     var resolved = await resolveCardByPrefixAsync(workspace, prefix);
     if (resolved is null) return;
-    var (cardId, _, ws) = resolved.Value;
-    var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
-    var targetLane = lanes.FirstOrDefault(l =>
-        string.Equals(l.Name, toLane, StringComparison.OrdinalIgnoreCase))
-        ?? throw new InvalidOperationException($"Lane '{toLane}' not found in workspace '{ws.Name}'.");
-    var card = await mediator.Send(new MoveCardCommand(cardId, targetLane.Id, toPosition, noClose));
-    Console.WriteLine($"Moved card #{card.Number} → [{targetLane.Name}] position {card.Position}");
+    var (cardId, _, _) = resolved.Value;
+    var card = await mediator.Send(new MoveCardCommand(cardId, toLane, toPosition, noClose));
+    Console.WriteLine($"Moved card #{card.Number} → [{card.LaneName}] position {card.Position}");
 }, cardIdArg, workspaceOpt, toLaneOpt, toPositionOpt, noCloseOpt);
 
 // ── card remove ───────────────────────────────────────────────────────────────
@@ -408,7 +400,7 @@ cardEditCmd.SetHandler(async (InvocationContext ctx) =>
 
     var resolved = await resolveCardByPrefixAsync(workspace, prefix);
     if (resolved is null) return;
-    var (cardId, _, ws) = resolved.Value;
+    var (cardId, _, _) = resolved.Value;
 
     var desc = descFile switch
     {
@@ -425,18 +417,8 @@ cardEditCmd.SetHandler(async (InvocationContext ctx) =>
             : await File.ReadAllTextAsync(appendDescFile);
     }
 
-    Guid? toLaneId = null;
-    if (toLane is not null)
-    {
-        var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
-        var targetLane = lanes.FirstOrDefault(l =>
-            string.Equals(l.Name, toLane, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException($"Lane '{toLane}' not found in workspace '{ws.Name}'.");
-        toLaneId = targetLane.Id;
-    }
-
     var updateTag = tag is not null;
-    var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTag, tag, appendDesc, toLaneId, noClose));
+    var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTag, tag, appendDesc, toLane, noClose));
     Console.WriteLine($"Updated card #{card.Number} — '{card.Title}'");
 });
 

@@ -20,7 +20,7 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
     public async Task<Card> Handle(UpdateCardCommand request, CancellationToken cancellationToken)
     {
         if (request.Title is null && request.Description is null && request.AppendDescription is null
-            && !request.UpdateTag && request.ToLaneId is null)
+            && !request.UpdateTag && request.ToLaneName is null)
             throw new InvalidOperationException("At least one field (--title, --description, or --tag) must be supplied.");
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -63,8 +63,8 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
 
         await db.SaveChangesAsync(cancellationToken);
 
-        if (request.ToLaneId.HasValue)
-            card = await _sender.Send(new MoveCardCommand(card.Id, request.ToLaneId.Value, 1, request.KeepOpen), cancellationToken);
+        if (request.ToLaneName is not null)
+            card = await _sender.Send(new MoveCardCommand(card.Id, request.ToLaneName, 1, request.KeepOpen), cancellationToken);
 
         return card;
     }

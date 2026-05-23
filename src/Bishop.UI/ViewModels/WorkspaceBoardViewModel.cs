@@ -73,7 +73,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         Lanes.Clear();
         foreach (var lane in lanes)
         {
-            var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { Id = lane.Id, Name = lane.Name, IsSystem = lane.IsSystem };
+            var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { Id = lane.Id, WorkspaceId = _workspaceId, Name = lane.Name, IsSystem = lane.IsSystem };
             foreach (var card in cardsByLane[lane.Name])
                 laneVm.Cards.Add(BuildCardViewModel(card, lane.Name, tagColourByName));
             Lanes.Add(laneVm);

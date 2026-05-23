@@ -4,7 +4,8 @@ using MediatR;
 namespace Bishop.App.Cards.AddCard;
 
 public sealed record AddCardCommand(
-    Guid LaneId,
+    Guid WorkspaceId,
+    string LaneName,
     string Title,
     string Description = "",
     string? TagName = null,

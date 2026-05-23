@@ -75,9 +75,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task CloseCard_SetsIsClosedTrue_AndPersists()
     {
         // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         var handler = new CloseCardCommandHandler(_factory, _ghCli);
 
         // Act
@@ -106,9 +106,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         const string repo = "owner/repo";
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         card.GitHubIssueNumber = 77;
         await PersistMutationAsync(card);
         var handler = new CloseCardCommandHandler(_factory, _ghCli);
@@ -128,9 +128,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task ReopenCard_SetsIsClosedFalse_AndPersists()
     {
         // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         card.IsClosed = true;
         await PersistMutationAsync(card);
         var handler = new ReopenCardCommandHandler(_factory, _ghCli);
@@ -161,9 +161,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         const string repo = "owner/repo";
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         card.GitHubIssueNumber = 55;
         card.IsClosed = true;
         await PersistMutationAsync(card);
@@ -197,9 +197,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task PushCard_NoGitHubRepo_Throws()
     {
         // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         var handler = new PushCardCommandHandler(_factory, _ghCli);
 
         // Act
@@ -214,9 +214,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task PushCard_AlreadyLinked_Throws()
     {
         // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: "owner/repo");
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: "owner/repo");
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         card.GitHubIssueNumber = 10;
         await PersistMutationAsync(card);
         var handler = new PushCardCommandHandler(_factory, _ghCli);
@@ -234,9 +234,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         const string repo = "owner/repo";
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "My feature"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"My feature"), default);
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult("https://github.com/owner/repo/issues/42"));
         var before = DateTimeOffset.UtcNow;
@@ -256,9 +256,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         const string repo = "owner/repo";
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult("https://github.com/owner/repo/issues/1"));
         var handler = new PushCardCommandHandler(_factory, _ghCli);
@@ -277,9 +277,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         const string repo = "owner/repo";
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task", TagName: "feature"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task", TagName: "feature"), default);
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult("https://github.com/owner/repo/issues/7"));
         var handler = new PushCardCommandHandler(_factory, _ghCli);
@@ -298,9 +298,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         const string repo = "owner/repo";
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Closed task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Closed task"), default);
         card.IsClosed = true;
         await PersistMutationAsync(card);
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
@@ -334,13 +334,13 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task MoveCard_ToDoneLane_SetsIsClosedTrue()
     {
         // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         var handler = new MoveCardCommandHandler(_factory, CreateForwardingSender());
 
         // Act
-        await handler.Handle(new MoveCardCommand(card.Id, lanes[3].Id, 1), default);
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[3].Name,1), default);
 
         // Assert
         (await _db.Cards.FindAsync(card.Id))!.IsClosed.Should().BeTrue();
@@ -350,14 +350,14 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task MoveCard_ToDoneLane_WithKeepOpen_LeavesCardOpen()
     {
         // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         var sender = Substitute.For<ISender>();
         var handler = new MoveCardCommandHandler(_factory, sender);
 
         // Act
-        await handler.Handle(new MoveCardCommand(card.Id, lanes[3].Id, 1, KeepOpen: true), default);
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[3].Name,1, KeepOpen: true), default);
 
         // Assert
         var stored = (await _db.Cards.FindAsync(card.Id))!;
@@ -371,15 +371,15 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         const string repo = "owner/repo";
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         card.GitHubIssueNumber = 33;
         await PersistMutationAsync(card);
         var handler = new MoveCardCommandHandler(_factory, CreateForwardingSender());
 
         // Act
-        await handler.Handle(new MoveCardCommand(card.Id, lanes[3].Id, 1, KeepOpen: true), default);
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[3].Name,1, KeepOpen: true), default);
 
         // Assert
         await _ghCli.DidNotReceive().RunAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
@@ -391,15 +391,15 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         const string repo = "owner/repo";
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         card.GitHubIssueNumber = 11;
         await PersistMutationAsync(card);
         var handler = new MoveCardCommandHandler(_factory, CreateForwardingSender());
 
         // Act
-        await handler.Handle(new MoveCardCommand(card.Id, lanes[3].Id, 1), default);
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[3].Name,1), default);
 
         // Assert
         await _ghCli.Received(1).RunAsync(
@@ -411,15 +411,15 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task MoveCard_FromDoneLane_SetsIsClosedFalse()
     {
         // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[3].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[3].Name,"Task"), default);
         card.IsClosed = true;
         await PersistMutationAsync(card);
         var handler = new MoveCardCommandHandler(_factory, CreateForwardingSender());
 
         // Act
-        await handler.Handle(new MoveCardCommand(card.Id, lanes[2].Id, 1), default);
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[2].Name,1), default);
 
         // Assert
         (await _db.Cards.FindAsync(card.Id))!.IsClosed.Should().BeFalse();
@@ -430,16 +430,16 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     {
         // Arrange
         const string repo = "owner/repo";
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[3].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[3].Name,"Task"), default);
         card.GitHubIssueNumber = 22;
         card.IsClosed = true;
         await PersistMutationAsync(card);
         var handler = new MoveCardCommandHandler(_factory, CreateForwardingSender());
 
         // Act
-        await handler.Handle(new MoveCardCommand(card.Id, lanes[2].Id, 1), default);
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[2].Name,1), default);
 
         // Assert
         await _ghCli.Received(1).RunAsync(
@@ -451,10 +451,10 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task MoveCard_WithinDoneLane_PreservesCloseState()
     {
         // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var add = new AddCardCommandHandler(_factory);
-        var a = await add.Handle(new AddCardCommand(lanes[3].Id, "A"), default);
-        var b = await add.Handle(new AddCardCommand(lanes[3].Id, "B"), default);
+        var a = await add.Handle(new AddCardCommand(workspace.Id, lanes[3].Name,"A"), default);
+        var b = await add.Handle(new AddCardCommand(workspace.Id, lanes[3].Name,"B"), default);
         a.IsClosed = true;
         b.IsClosed = true;
         await PersistMutationAsync(a);
@@ -462,7 +462,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         var handler = new MoveCardCommandHandler(_factory, CreateForwardingSender());
 
         // Act — reorder within Done; no close/reopen should be dispatched
-        await handler.Handle(new MoveCardCommand(a.Id, lanes[3].Id, 1), default);
+        await handler.Handle(new MoveCardCommand(a.Id, lanes[3].Name,1), default);
 
         // Assert
         await _ghCli.DidNotReceive().RunAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
@@ -473,13 +473,13 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task MoveCard_BetweenNonDoneLanes_DoesNotChangeCloseState()
     {
         // Arrange
-        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         var handler = new MoveCardCommandHandler(_factory, CreateForwardingSender());
 
         // Act — To Do → Doing
-        await handler.Handle(new MoveCardCommand(card.Id, lanes[1].Id, 1), default);
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[1].Name,1), default);
 
         // Assert
         (await _db.Cards.FindAsync(card.Id))!.IsClosed.Should().BeFalse();

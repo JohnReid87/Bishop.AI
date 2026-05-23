@@ -59,8 +59,8 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         var todo = lanes.Single(l => l.Name == "To Do");
         var doing = lanes.Single(l => l.Name == "Doing");
         var add = new AddCardCommandHandler(_factory);
-        await add.Handle(new AddCardCommand(todo.Id, "First"), default);
-        var second = await add.Handle(new AddCardCommand(todo.Id, "Second"), default);
+        await add.Handle(new AddCardCommand(workspace.Id, todo.Name,"First"), default);
+        var second = await add.Handle(new AddCardCommand(workspace.Id, todo.Name,"Second"), default);
         var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act — Second was added last so insert-at-top puts it at position 1
@@ -85,11 +85,11 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
 
         // Inserted in this order — with insert-at-top, final lane order top→bottom is:
         // Plain-3 (pos 1), Tagged-test (pos 2), Plain-1 (pos 3)
-        await add.Handle(new AddCardCommand(todo.Id, "Plain-1"), default);
+        await add.Handle(new AddCardCommand(workspace.Id, todo.Name,"Plain-1"), default);
         var tagged = await add.Handle(
-            new AddCardCommand(todo.Id, "Tagged-test", TagName: "test"),
+            new AddCardCommand(workspace.Id, todo.Name,"Tagged-test", TagName: "test"),
             default);
-        await add.Handle(new AddCardCommand(todo.Id, "Plain-3"), default);
+        await add.Handle(new AddCardCommand(workspace.Id, todo.Name,"Plain-3"), default);
         var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act
@@ -112,8 +112,8 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         var todo = lanes.Single(l => l.Name == "To Do");
         var doing = lanes.Single(l => l.Name == "Doing");
         var add = new AddCardCommandHandler(_factory);
-        await add.Handle(new AddCardCommand(todo.Id, "Plain-1"), default);
-        await add.Handle(new AddCardCommand(todo.Id, "Tagged-bug", TagName: "bug"), default);
+        await add.Handle(new AddCardCommand(workspace.Id, todo.Name,"Plain-1"), default);
+        await add.Handle(new AddCardCommand(workspace.Id, todo.Name,"Tagged-bug", TagName: "bug"), default);
         var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act

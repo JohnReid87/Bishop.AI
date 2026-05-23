@@ -898,13 +898,13 @@ public sealed partial class WorkspaceDetailPage : Page
 
         var position = GetDropIndex(sender as ListView, e, targetLane);
         var card = _draggedCard;
-        var targetLaneId = targetLane.Id;
+        var targetLaneName = targetLane.Name;
 
         _draggedCard = null;
         _dragSourceLane = null;
 
         var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new MoveCardCommand(card.Id, targetLaneId, position));
+        await mediator.Send(new MoveCardCommand(card.Id, targetLaneName, position));
         await Board.RefreshCommand.ExecuteAsync(null);
     }
 

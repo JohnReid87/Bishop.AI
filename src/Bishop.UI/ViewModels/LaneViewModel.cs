@@ -16,6 +16,7 @@ public sealed partial class LaneViewModel : ObservableObject
     private string _currentFilter = string.Empty;
 
     public Guid Id { get; init; }
+    public Guid WorkspaceId { get; init; }
     public string Name { get; init; } = string.Empty;
     public bool IsSystem { get; init; }
     public ObservableCollection<CardViewModel> Cards { get; } = [];
@@ -138,7 +139,7 @@ public sealed partial class LaneViewModel : ObservableObject
         AddCardErrorMessage = null;
         try
         {
-            await _mediator.Send(new AddCardCommand(Id, title), cancellationToken);
+            await _mediator.Send(new AddCardCommand(WorkspaceId, Name, title), cancellationToken);
         }
         catch (Exception ex)
         {

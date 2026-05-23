@@ -63,7 +63,7 @@ public sealed class ClaimCardConcurrencyTests : IDisposable
         var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
         var doing = lanes.Single(l => l.Name == SystemLaneNames.Doing);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(todo.Id, "Only card"), default);
+            .Handle(new AddCardCommand(workspace.Id, todo.Name, "Only card"), default);
 
         var handlerA = new ClaimCardCommandHandler(_factory, CreateSender());
         var handlerB = new ClaimCardCommandHandler(_factory, CreateSender());
