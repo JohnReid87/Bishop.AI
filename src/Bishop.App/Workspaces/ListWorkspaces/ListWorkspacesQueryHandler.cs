@@ -16,6 +16,7 @@ public sealed class ListWorkspacesQueryHandler : IRequestHandler<ListWorkspacesQ
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         return await db.Workspaces
             .AsNoTracking()
+            .Where(w => !w.IsRemoved)
             .OrderBy(w => w.Position)
             .ToListAsync(cancellationToken);
     }

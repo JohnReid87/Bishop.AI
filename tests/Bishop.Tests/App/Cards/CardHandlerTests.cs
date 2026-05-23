@@ -253,7 +253,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Arrange
         var workspaceId = Guid.NewGuid();
         await _db.Database.ExecuteSqlRawAsync(
-            "INSERT INTO Workspaces (Id, Name, Path, Position, NextCardNumber, CreatedAt, UpdatedAt) VALUES ({0}, {1}, 'C:\\ws', 1, 1, {2}, {2})",
+            "INSERT INTO Workspaces (Id, Name, Path, Position, NextCardNumber, IsRemoved, CreatedAt, UpdatedAt) VALUES ({0}, {1}, 'C:\\ws', 1, 1, 0, {2}, {2})",
             workspaceId.ToString().ToUpperInvariant(),
             U("WS"),
             DateTimeOffset.UtcNow);

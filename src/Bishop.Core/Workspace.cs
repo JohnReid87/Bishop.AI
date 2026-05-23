@@ -8,6 +8,8 @@ public sealed class Workspace : IAuditable
     public int Position { get; set; }
     public int NextCardNumber { get; set; } = 1;
     public string? GitHubRepo { get; set; }
+    public bool IsRemoved { get; set; }
+    public DateTimeOffset? RemovedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 

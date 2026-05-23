@@ -564,6 +564,37 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         launcher.Received(1).Launch(@"C:\workspace", null, snap);
     }
 
+    [Fact]
+    public async Task ListWorkspaces_ExcludesRemovedWorkspaces()
+    {
+        var name = U("Removed");
+        var created = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        var ws = await _db.Workspaces.FindAsync(created.Id);
+        ws!.IsRemoved = true;
+        ws.RemovedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        var handler = new ListWorkspacesQueryHandler(_factory);
+
+        var result = await handler.Handle(new ListWorkspacesQuery(), default);
+
+        result.Should().NotContain(w => w.Id == created.Id);
+    }
+
+    [Fact]
+    public async Task ListWorkspaces_IncludesNonRemovedWorkspaces()
+    {
+        var name = U("Active");
+        var created = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        var handler = new ListWorkspacesQueryHandler(_factory);
+
+        var result = await handler.Handle(new ListWorkspacesQuery(), default);
+
+        result.Should().Contain(w => w.Id == created.Id);
+    }
+
     private sealed class ThrowingSaveChangesInterceptor : SaveChangesInterceptor
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
