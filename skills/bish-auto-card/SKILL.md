@@ -24,24 +24,19 @@ exists.
 
 <what-to-do>
 
-**Before anything else — detect the active Bishop workspace:**
+**Before anything else — initialize from `bishop skill bootstrap`:**
 
-Run `bishop workspace current --json`.
+Run `bishop skill bootstrap --json`. If it exits non-zero, exit non-zero and
+surface the stderr line verbatim — the helper already explains the remediation.
+On success, parse the JSON and echo the workspace name back so the parent log
+captures the destination:
 
-- If the command exits non-zero or produces no output, exit non-zero with:
+> **Workspace:** <name>
 
-  > **Not in a Bishop workspace.** `bishop workspace current` failed.
-
-- Otherwise, parse the JSON and echo the workspace name back so the parent
-  log captures the destination:
-
-  > **Workspace:** <name>
-
-  Also capture `workspace.Path` from the parsed JSON as the **workspace
-  boundary** (`$WORKSPACE_PATH`). Every `Edit`, `Write`, and `NotebookEdit`
-  call during this run must target a path that resolves (after absolute-path
-  normalization) under `$WORKSPACE_PATH`. This is audited before every commit
-  (step 8).
+Capture `workspacePath` from the JSON as the **workspace boundary**
+(`$WORKSPACE_PATH`). Every `Edit`, `Write`, and `NotebookEdit` call during
+this run must target a path that resolves (after absolute-path normalization)
+under `$WORKSPACE_PATH`. This is audited before every commit (step 8).
 
 ---
 

@@ -33,6 +33,8 @@ Run `git rev-parse --is-inside-work-tree` (capture stdout, suppress stderr).
 
 ### Step 2 — Bishop workspace
 
+> Uses `bishop workspace current` directly rather than `bishop skill bootstrap` — this skill runs *before* a workspace exists, which is the very case bootstrap rejects with a non-zero exit.
+
 Run `bishop workspace current --json`.
 
 - If it succeeds → parse the JSON and record `workspace: already registered as <name>`. Continue to step 3.

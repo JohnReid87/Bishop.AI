@@ -23,19 +23,14 @@ and start a fresh session for each subsequent card.
 
 <what-to-do>
 
-**Before anything else — detect the active Bishop workspace:**
+**Before anything else — initialize from `bishop skill bootstrap`:**
 
-Run `bishop workspace current --json`.
+Run `bishop skill bootstrap`. If it exits non-zero, surface the stderr line
+verbatim to the user and STOP — the helper already explains the remediation.
+On success, echo the workspace name back so the user can confirm the
+destination before any further work begins:
 
-- If the command exits non-zero or produces no output, STOP and tell the user:
-
-  > **Not in a Bishop workspace.** Run `bishop workspace list` to see available
-  > workspaces, then `cd` into one of the listed paths and retry.
-
-- Otherwise, parse the JSON and echo the workspace name back so the user can
-  confirm the destination before any further work begins:
-
-  > **Workspace:** <name>
+> **Workspace:** <name>
 
 ---
 
