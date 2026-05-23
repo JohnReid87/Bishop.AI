@@ -3,6 +3,7 @@ using FluentAssertions;
 
 namespace Bishop.Tests.App;
 
+[Collection("EnvVar")]
 public sealed class BishopStampPathTests : IDisposable
 {
     private readonly string? _originalBishopStamp;

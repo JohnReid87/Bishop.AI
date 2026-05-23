@@ -3,6 +3,7 @@ using FluentAssertions;
 
 namespace Bishop.Tests.App;
 
+[Collection("EnvVar")]
 public sealed class BishopDbConnectionStringTests : IDisposable
 {
     private readonly string? _originalBishopDb;
