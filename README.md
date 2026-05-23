@@ -10,6 +10,10 @@ The UI is the primary surface for kanban work (cards, lanes, tags); the `bishop`
 - Build: `dotnet build Bishop.AI.slnx`
 - Tests: `dotnet test`
 - Per-user MSI: `pwsh installer/build.ps1` (one-time prereq: `dotnet tool install --global wix --version 5.0.2`). Output at `installer/bin/Release/Bishop.AI.msi`.
-- After MSI install: run `bishop install-skills` once to populate `~/.claude/skills/` with the bundled Claude Code skills (`bish-arch`, `bish-audit-docs`, `bish-auto-card`, `bish-chat`, `bish-coverage`, `bish-grill-me`, `bish-onboard`, `bish-security`, `bish-tests`, `bish-triage`, `bish-work-on-card`, `bish-write-skill`).
+- After MSI install: run `bishop install-skills` once to populate `~/.claude/skills/` with the bundled Claude Code skills. They group into four categories — see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the rationale:
+  - **Review:** `bish-arch`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`
+  - **Conversational:** `bish-chat`, `bish-grill-me`
+  - **Setup-Execute:** `bish-auto-card`, `bish-onboard`, `bish-work-on-card`
+  - **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code
 
 See [CONTEXT.md](CONTEXT.md) for tech stack, architecture, and conventions, and [DIRECTION.md](DIRECTION.md) for scope decisions.

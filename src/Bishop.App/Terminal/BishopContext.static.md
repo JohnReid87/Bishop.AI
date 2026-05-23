@@ -54,6 +54,21 @@ the task instead of doing everything inside a single session.
   git/workspace/skills/CLAUDE.md state and runs only the missing steps.
   Idempotent — re-running only performs missing steps.
 
+### Bishop-level / meta skills — operate on the skill family itself
+
+These skills do not target a workspace's code; they operate on `skills/`
+in the Bishop.AI repository. See [`docs/SKILL_FAMILY.md`](../docs/SKILL_FAMILY.md)
+for the category rationale.
+
+- `bish-write-skill` — authors a new Bishop skill. Interviews to pick a
+  category (Conversational / Review / Setup-Execute / Bishop-level), emits
+  a skeleton `SKILL.md` to `skills/<name>/`, and checks the result against
+  the family's canonical patterns.
+- `bish-audit-skills` — audits the skill family against the canonical
+  patterns in `docs/SKILL_FAMILY.md` (category, leading content,
+  workspace-detection, STABLE-section references, heuristic content,
+  frontmatter), walks findings with the user, and pushes refactor cards.
+
 ### Choosing between `bish-grill-me` and `bish-work-on-card`
 
 - No Number yet, just an idea or proposal → `bish-grill-me`. Produces cards.
