@@ -1,8 +1,7 @@
-using Bishop.ViewModels;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
-namespace Bishop.UI.ViewModels;
+namespace Bishop.ViewModels;
 
 public sealed partial class PushLaneToGitHubDialogViewModel : ObservableObject
 {
