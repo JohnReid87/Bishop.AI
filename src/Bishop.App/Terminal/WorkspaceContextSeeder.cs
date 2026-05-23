@@ -25,7 +25,7 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         if (string.IsNullOrWhiteSpace(workspacePath) || !Directory.Exists(workspacePath))
             return;
 
-        var fullPath = Path.GetFullPath(workspacePath);
+        var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(workspacePath));
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var workspace = await ResolveWorkspaceAsync(db, fullPath, cancellationToken);
         if (workspace is null) return;

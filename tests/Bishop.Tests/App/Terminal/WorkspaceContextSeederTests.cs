@@ -549,9 +549,14 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     [Fact]
     public async Task SeedAsync_DoesNothing_WhenPathIsWhitespaceOnly()
     {
+        const string path = "   ";
         var sut = new WorkspaceContextSeeder(_factory);
 
-        await sut.SeedAsync("   ");
+        await sut.SeedAsync(path);
+
+        File.Exists(Path.Combine(path, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(path, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(path, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
     }
 
     [Fact]
@@ -567,9 +572,14 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     [Fact]
     public async Task SeedAsync_DoesNothing_WhenPathDoesNotExist()
     {
+        var path = @"C:\definitely-not-a-real-path-" + Guid.NewGuid().ToString("N");
         var sut = new WorkspaceContextSeeder(_factory);
 
-        await sut.SeedAsync(@"C:\definitely-not-a-real-path-" + Guid.NewGuid().ToString("N"));
+        await sut.SeedAsync(path);
+
+        File.Exists(Path.Combine(path, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(path, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(path, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
     }
 
     [Fact]
@@ -585,6 +595,66 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             File.Exists(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md")).Should().BeFalse();
             File.Exists(Path.Combine(temp, "CONTEXT.md")).Should().BeFalse();
             File.Exists(Path.Combine(temp, "CLAUDE.md")).Should().BeFalse();
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    // ── SeedAsync — path normalisation (ResolveWorkspaceAsync) ───────────────
+
+    [Fact]
+    public async Task SeedAsync_SeedsFiles_WhenPathHasTrailingSlash()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("TrailSlash"));
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(temp + Path.DirectorySeparatorChar);
+
+            File.Exists(Path.Combine(temp, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeTrue();
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_SeedsFiles_WhenPathUsesMixedSeparators()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("MixedSep"));
+            var mixedPath = temp.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(mixedPath);
+
+            File.Exists(Path.Combine(temp, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeTrue();
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_SeedsFiles_WhenPathDiffersByCase()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("CaseVar"));
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(temp.ToUpperInvariant());
+
+            File.Exists(Path.Combine(temp, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeTrue();
         }
         finally
         {
@@ -848,6 +918,31 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
             File.Exists(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md")).Should().BeTrue();
             File.Exists(Path.Combine(temp, "BISHOP_CONTEXT.md")).Should().BeFalse();
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_LeavesLegacyContextFileInPlace_WhenNewFileAlreadyExists()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            await SeedRegisteredWorkspaceAsync(temp, name: U("Conflict"));
+
+            var legacyContext = Path.Combine(temp, WorkspaceContextSeeder.BishopContextFileName);
+            File.WriteAllText(legacyContext, "legacy content");
+            var bishopDir = Path.Combine(temp, WorkspaceContextSeeder.BishopFolder);
+            Directory.CreateDirectory(bishopDir);
+            File.WriteAllText(Path.Combine(bishopDir, WorkspaceContextSeeder.BishopContextFileName), "existing new content");
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(temp);
+
+            File.Exists(legacyContext).Should().BeTrue("legacy root file must not be moved or deleted when new file already exists");
         }
         finally
         {
