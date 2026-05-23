@@ -1,13 +1,12 @@
 using Bishop.App.Cards.AddCard;
 using Bishop.Core;
-using Bishop.ViewModels;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 
-namespace Bishop.UI.ViewModels;
+namespace Bishop.ViewModels;
 
 public sealed partial class LaneViewModel : ObservableObject
 {

@@ -5,16 +5,14 @@ using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Claude;
 using Bishop.App.Git;
+using Bishop.App.Skills;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.Core;
-using Bishop.App.Skills;
-using Bishop.ViewModels;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
-using Microsoft.UI.Xaml;
 
-namespace Bishop.UI.ViewModels;
+namespace Bishop.ViewModels;
 
 public sealed partial class CardDetailDialogViewModel : ObservableObject
 {
@@ -25,36 +23,35 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public Guid CardId { get; }
     public int Number { get; }
     public string LaneName { get; }
-    public Visibility SkillsButtonVisibility { get; }
+    public bool IsSkillsButtonVisible { get; }
+    public bool IsPushSectionVisible => _workspaceGitHubRepo is not null;
     public bool Updated { get; private set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TagChipVisibility), nameof(AddTagButtonVisibility))]
+    [NotifyPropertyChangedFor(nameof(IsTagVisible), nameof(IsAddTagButtonVisible))]
     public partial string? TagName { get; set; }
 
     [ObservableProperty]
     public partial string? TagColour { get; set; }
 
-    public Visibility TagChipVisibility => TagName is not null ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility AddTagButtonVisibility => TagName is null ? Visibility.Visible : Visibility.Collapsed;
+    public bool IsTagVisible => TagName is not null;
+    public bool IsAddTagButtonVisible => TagName is null;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TitleViewVisibility), nameof(TitleEditVisibility))]
     public partial bool IsTitleEditing { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DescriptionViewVisibility), nameof(DescriptionEditVisibility))]
     public partial bool IsDescriptionEditing { get; set; }
 
     [ObservableProperty]
     public partial string Title { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DescriptionVisibility), nameof(NoDescriptionVisibility))]
+    [NotifyPropertyChangedFor(nameof(HasDescription))]
     public partial string Description { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EditErrorVisibility))]
+    [NotifyPropertyChangedFor(nameof(HasEditError))]
     public partial string? EditError { get; set; }
 
     [ObservableProperty]
@@ -62,19 +59,18 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public partial bool IsClosed { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanPushToGitHub), nameof(PushButtonVisibility), nameof(GitHubLinkVisibility), nameof(GitHubIssueUrl))]
+    [NotifyPropertyChangedFor(nameof(CanPushToGitHub), nameof(IsPushButtonVisible), nameof(IsGitHubLinkVisible), nameof(GitHubIssueUrl))]
     public partial int? GitHubIssueNumber { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PushErrorVisibility))]
+    [NotifyPropertyChangedFor(nameof(HasPushError))]
     public partial string? PushError { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ClaudeTotalsVisibility))]
+    [NotifyPropertyChangedFor(nameof(HasClaudeTotals))]
     public partial string? ClaudeTotalsText { get; set; }
 
-    public Visibility ClaudeTotalsVisibility =>
-        string.IsNullOrEmpty(ClaudeTotalsText) ? Visibility.Collapsed : Visibility.Visible;
+    public bool HasClaudeTotals => !string.IsNullOrEmpty(ClaudeTotalsText);
 
     public void SetClaudeTotals(int inputTokens, int outputTokens, int runCount) =>
         ClaudeTotalsText = ClaudeTotalsFormatter.Format(inputTokens, outputTokens, runCount);
@@ -89,35 +85,29 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         ? $"https://github.com/{_workspaceGitHubRepo}/issues/{GitHubIssueNumber}"
         : null;
 
-    public Visibility PushButtonVisibility => GitHubIssueNumber is null ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility GitHubLinkVisibility => GitHubIssueNumber is not null ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility PushErrorVisibility => string.IsNullOrEmpty(PushError) ? Visibility.Collapsed : Visibility.Visible;
-    public Visibility PushSectionVisibility => _workspaceGitHubRepo is not null ? Visibility.Visible : Visibility.Collapsed;
+    public bool IsPushButtonVisible => GitHubIssueNumber is null;
+    public bool IsGitHubLinkVisible => GitHubIssueNumber is not null;
+    public bool HasPushError => !string.IsNullOrEmpty(PushError);
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CommitVisibility), nameof(CommitTextVisibility))]
+    [NotifyPropertyChangedFor(nameof(IsCommitVisible), nameof(IsCommitTextVisible))]
     public partial string? CommitShortHash { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CommitLinkVisibility), nameof(CommitTextVisibility))]
+    [NotifyPropertyChangedFor(nameof(IsCommitLinkVisible), nameof(IsCommitTextVisible), nameof(CommitUrl))]
     public partial string? CommitHash { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CommitLinkVisibility), nameof(CommitTextVisibility))]
+    [NotifyPropertyChangedFor(nameof(IsCommitLinkVisible), nameof(IsCommitTextVisible), nameof(CommitUrl))]
     public partial bool CommitIsPushed { get; set; }
 
     public string? CommitUrl => CommitIsPushed && CommitHash is not null && _workspaceGitHubRepo is not null
         ? $"https://github.com/{_workspaceGitHubRepo}/commit/{CommitHash}"
         : null;
 
-    public Visibility CommitVisibility =>
-        string.IsNullOrEmpty(CommitShortHash) ? Visibility.Collapsed : Visibility.Visible;
-
-    public Visibility CommitLinkVisibility =>
-        CommitUrl is not null ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility CommitTextVisibility =>
-        !string.IsNullOrEmpty(CommitShortHash) && CommitUrl is null ? Visibility.Visible : Visibility.Collapsed;
+    public bool IsCommitVisible => !string.IsNullOrEmpty(CommitShortHash);
+    public bool IsCommitLinkVisible => CommitUrl is not null;
+    public bool IsCommitTextVisible => !string.IsNullOrEmpty(CommitShortHash) && CommitUrl is null;
 
     public void SetCommit(CommitInfo commit)
     {
@@ -126,29 +116,14 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         CommitShortHash = commit.ShortHash;
     }
 
-    public Visibility TitleViewVisibility => IsTitleEditing ? Visibility.Collapsed : Visibility.Visible;
-    public Visibility TitleEditVisibility => IsTitleEditing ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility DescriptionViewVisibility => IsDescriptionEditing ? Visibility.Collapsed : Visibility.Visible;
-    public Visibility DescriptionEditVisibility => IsDescriptionEditing ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility DescriptionVisibility =>
-        string.IsNullOrWhiteSpace(Description) ? Visibility.Collapsed : Visibility.Visible;
-
-    public Visibility NoDescriptionVisibility =>
-        string.IsNullOrWhiteSpace(Description) ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility EditErrorVisibility =>
-        string.IsNullOrEmpty(EditError) ? Visibility.Collapsed : Visibility.Visible;
+    public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
+    public bool HasEditError => !string.IsNullOrEmpty(EditError);
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DeleteConfirmVisibility))]
     public partial bool ShowDeleteConfirm { get; set; }
 
     [ObservableProperty]
     public partial bool Deleted { get; set; }
-
-    public Visibility DeleteConfirmVisibility =>
-        ShowDeleteConfirm ? Visibility.Visible : Visibility.Collapsed;
 
     public CardDetailDialogViewModel(CardViewModel card, SkillMenuItem[] cardSkills, Guid workspaceId, string? gitHubRepo, IMediator mediator)
     {
@@ -164,7 +139,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         GitHubIssueNumber = card.GitHubIssueNumber;
         TagName = card.TagName;
         TagColour = card.TagColour;
-        SkillsButtonVisibility = cardSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        IsSkillsButtonVisible = cardSkills.Length > 0;
     }
 
     public Task<IReadOnlyList<TagInfo>> GetWorkspaceTagsAsync() =>
@@ -210,8 +185,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         }
     }
 
-    // ── Title editing ─────────────────────────────────────────────────────────
-
     public void StartTitleEdit() => IsTitleEditing = true;
 
     public void CancelTitleEdit() => IsTitleEditing = false;
@@ -241,8 +214,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
             EditError = "Failed to save title.";
         }
     }
-
-    // ── Description editing ───────────────────────────────────────────────────
 
     public void StartDescriptionEdit() => IsDescriptionEditing = true;
 
@@ -274,8 +245,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         }
     }
 
-    // ── Close / Reopen ────────────────────────────────────────────────────────
-
     [RelayCommand]
     private async Task ToggleClosedAsync(CancellationToken cancellationToken)
     {
@@ -295,8 +264,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         }
     }
 
-    // ── Push to GitHub ────────────────────────────────────────────────────────
-
     [RelayCommand]
     private async Task PushToGitHubAsync(CancellationToken cancellationToken)
     {
@@ -312,8 +279,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
             PushError = ex.Message;
         }
     }
-
-    // ── Delete ────────────────────────────────────────────────────────────────
 
     [RelayCommand]
     private void RequestDelete() => ShowDeleteConfirm = true;

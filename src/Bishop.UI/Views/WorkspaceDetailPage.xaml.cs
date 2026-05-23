@@ -21,7 +21,6 @@ using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
 using Bishop.App.WorkNext;
 using Bishop.App.WorkNext.LaunchWorkNext;
 using Bishop.Core.Skills;
-using Bishop.UI.ViewModels;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Input;

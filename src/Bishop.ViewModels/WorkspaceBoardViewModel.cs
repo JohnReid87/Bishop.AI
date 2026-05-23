@@ -1,13 +1,12 @@
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Tags.ListTagsByWorkspace;
-using Bishop.ViewModels;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
 using System.Collections.ObjectModel;
 
-namespace Bishop.UI.ViewModels;
+namespace Bishop.ViewModels;
 
 public sealed partial class WorkspaceBoardViewModel : ObservableObject
 {

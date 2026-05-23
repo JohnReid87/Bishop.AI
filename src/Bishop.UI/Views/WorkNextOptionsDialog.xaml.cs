@@ -1,4 +1,4 @@
-using Bishop.UI.ViewModels;
+using Bishop.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Bishop.UI.Views;

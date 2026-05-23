@@ -1,6 +1,5 @@
 using Bishop.App;
 using Bishop.UI.Services;
-using Bishop.UI.ViewModels;
 using Bishop.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

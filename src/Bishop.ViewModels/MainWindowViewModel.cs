@@ -7,13 +7,11 @@ using Bishop.App.Workspaces.UpdateWorkspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
-using Microsoft.UI.Xaml;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.IO;
 using System.Text.Json;
 
-namespace Bishop.UI.ViewModels;
+namespace Bishop.ViewModels;
 
 public sealed partial class MainWindowViewModel : ObservableObject
 {
@@ -24,39 +22,28 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<WorkspaceItemViewModel> Workspaces { get; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EmptyStateVisibility))]
-    [NotifyPropertyChangedFor(nameof(ContentEmptyStateVisibility))]
+    [NotifyPropertyChangedFor(nameof(IsWorkspaceListEmpty))]
+    [NotifyPropertyChangedFor(nameof(IsContentEmpty))]
     public partial WorkspaceItemViewModel? SelectedWorkspace { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ExpandedPanelVisibility))]
-    [NotifyPropertyChangedFor(nameof(CollapsedPanelVisibility))]
     public partial bool IsPaneOpen { get; set; } = true;
 
-    public Visibility EmptyStateVisibility =>
-        Workspaces.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    public bool IsWorkspaceListEmpty => Workspaces.Count == 0;
 
-    public Visibility ContentEmptyStateVisibility =>
-        SelectedWorkspace is null ? Visibility.Visible : Visibility.Collapsed;
+    public bool IsContentEmpty => SelectedWorkspace is null;
 
-    public Visibility ExpandedPanelVisibility => IsPaneOpen ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility CollapsedPanelVisibility => IsPaneOpen ? Visibility.Collapsed : Visibility.Visible;
-
-    public Visibility CatModeOnVisibility => CatMode.IsActive ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility CatModeOffVisibility => CatMode.IsActive ? Visibility.Collapsed : Visibility.Visible;
+    public bool IsCatModeActive => CatMode.IsActive;
 
     public MainWindowViewModel(IMediator mediator, ICatModeService catMode)
     {
         _mediator = mediator;
         CatMode = catMode;
-        Workspaces.CollectionChanged += (_, _) => OnPropertyChanged(nameof(EmptyStateVisibility));
+        Workspaces.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsWorkspaceListEmpty));
         CatMode.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(ICatModeService.IsActive))
-            {
-                OnPropertyChanged(nameof(CatModeOnVisibility));
-                OnPropertyChanged(nameof(CatModeOffVisibility));
-            }
+                OnPropertyChanged(nameof(IsCatModeActive));
         };
     }
 

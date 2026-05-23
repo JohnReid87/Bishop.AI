@@ -1,15 +1,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.UI.Dispatching;
 using System.Diagnostics;
 using System.Text.Json;
-using Windows.UI.Text;
 
-namespace Bishop.UI.ViewModels;
+namespace Bishop.ViewModels;
 
 public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposable
 {
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IUiDispatcher _uiDispatcher;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
     private string _lastSavedContent = string.Empty;
@@ -31,7 +29,6 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     public partial double PanelHeight { get; set; } = 200;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SaveStatusFontStyle))]
     [NotifyPropertyChangedFor(nameof(SaveStatusOpacity))]
     public partial bool SaveStatusIsEditing { get; set; }
 
@@ -41,16 +38,13 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     [ObservableProperty]
     public partial string SaveStatusText { get; set; } = string.Empty;
 
-    public FontStyle SaveStatusFontStyle =>
-        SaveStatusIsEditing ? FontStyle.Italic : FontStyle.Normal;
-
     public double SaveStatusOpacity => SaveStatusIsEditing ? 0.5 : 1.0;
 
     public string ChevronGlyph => IsExpanded ? "" : "";
 
-    public WorkspaceNotesViewModel()
+    public WorkspaceNotesViewModel(IUiDispatcher uiDispatcher)
     {
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _uiDispatcher = uiDispatcher;
     }
 
     partial void OnIsExpandedChanged(bool value)
@@ -128,7 +122,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
 
     private void OnFileChanged(object sender, FileSystemEventArgs e)
     {
-        _dispatcherQueue.TryEnqueue(async () =>
+        _uiDispatcher.TryEnqueue(async () =>
         {
             var fileContent = await ReadNotesAsync();
             if (fileContent == _lastSavedContent) return;

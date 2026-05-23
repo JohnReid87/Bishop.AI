@@ -1,6 +1,6 @@
 using Bishop.App.Cards.ImportFromGitHub;
 using Bishop.App.GitHub;
-using Bishop.UI.ViewModels;
+using Bishop.ViewModels;
 using MediatR;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

@@ -5,13 +5,13 @@ using CommunityToolkit.Mvvm.Input;
 using System.Diagnostics;
 using System.Text.Json;
 
-namespace Bishop.UI.ViewModels;
+namespace Bishop.ViewModels;
 
 public sealed partial class SkillViewerViewModel : ObservableObject
 {
-    internal const double DefaultPanelWidth = 480;
-    internal const double MinPanelWidth = 280;
-    internal const double MaxPanelWidth = 2000;
+    public const double DefaultPanelWidth = 480;
+    public const double MinPanelWidth = 280;
+    public const double MaxPanelWidth = 2000;
 
     private readonly IAppSettings _appSettings;
     private readonly string _prefsFilePath;

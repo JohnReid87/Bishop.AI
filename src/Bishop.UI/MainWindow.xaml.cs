@@ -1,5 +1,5 @@
-using Bishop.UI.ViewModels;
 using Bishop.UI.Views;
+using Bishop.ViewModels;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -73,13 +73,18 @@ public sealed partial class MainWindow : Window
             else
                 ContentFrame.Content = null;
 
-            EmptyStateText.Visibility = ViewModel.EmptyStateVisibility;
+            UpdateEmptyStateVisibility();
         }
-        else if (e.PropertyName == nameof(MainWindowViewModel.EmptyStateVisibility))
+        else if (e.PropertyName == nameof(MainWindowViewModel.IsWorkspaceListEmpty))
         {
-            EmptyStateText.Visibility = ViewModel.EmptyStateVisibility;
+            UpdateEmptyStateVisibility();
         }
     }
+
+    private void UpdateEmptyStateVisibility() =>
+        EmptyStateText.Visibility = ViewModel.IsWorkspaceListEmpty
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     private WorkspaceItemViewModel? _draggedWorkspace;
     private WorkspaceItemViewModel? _selectionBeforeDrag;

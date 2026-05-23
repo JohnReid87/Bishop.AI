@@ -41,7 +41,7 @@
                 <Border Background="{x:Bind ViewModel.TagColour, Converter={StaticResource HexColorToBrushConverter}, Mode=OneWay}"
                         CornerRadius="3"
                         Padding="4,1"
-                        Visibility="{x:Bind ViewModel.TagChipVisibility, Mode=OneWay}">
+                        Visibility="{x:Bind ViewModel.IsTagVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
                         <TextBlock Text="{x:Bind ViewModel.TagName, Mode=OneWay}"
                                    Style="{StaticResource CaptionTextBlockStyle}"
@@ -66,7 +66,7 @@
                         BorderThickness="0"
                         CornerRadius="3"
                         VerticalAlignment="Center"
-                        Visibility="{x:Bind ViewModel.AddTagButtonVisibility, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.IsAddTagButtonVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                         Background="{StaticResource AppDividerBrush}">
                     <TextBlock Text="+"
                                Style="{StaticResource CaptionTextBlockStyle}"
@@ -77,7 +77,7 @@
                     Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                     ToolTipService.ToolTip="Skills"
                     Click="SkillButton_Click"
-                    Visibility="{x:Bind ViewModel.SkillsButtonVisibility}"
+                    Visibility="{x:Bind ViewModel.IsSkillsButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                     VerticalAlignment="Center">
                 <FontIcon Glyph="&#xEBD2;" FontSize="12"/>
             </Button>
@@ -96,7 +96,7 @@
                    Foreground="{StaticResource AppTextSecondaryBrush}"
                    FontFamily="Cascadia Mono"
                    Margin="0,0,0,10"
-                   Visibility="{x:Bind ViewModel.ClaudeTotalsVisibility, Mode=OneWay}"/>
+                   Visibility="{x:Bind ViewModel.HasClaudeTotals, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
         <!-- Divider: header / body -->
         <Border Height="1" Background="{StaticResource AppDividerBrush}" Margin="0,0,0,12"/>
@@ -105,13 +105,13 @@
         <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}"
                    Style="{StaticResource SubtitleTextBlockStyle}"
                    TextWrapping="Wrap"
-                   Visibility="{x:Bind ViewModel.TitleViewVisibility, Mode=OneWay}"
+                   Visibility="{x:Bind ViewModel.IsTitleEditing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                    Tapped="TitleView_Tapped"/>
 
         <!-- Title - edit mode -->
         <TextBox x:Name="TitleTextBox"
                  TextWrapping="Wrap"
-                 Visibility="{x:Bind ViewModel.TitleEditVisibility, Mode=OneWay}"
+                 Visibility="{x:Bind ViewModel.IsTitleEditing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                  LostFocus="TitleTextBox_LostFocus"
                  KeyDown="TitleTextBox_KeyDown"/>
 
@@ -120,19 +120,19 @@
                       Margin="0,8,0,0"
                       Background="Transparent"
                       VerticalScrollBarVisibility="Auto"
-                      Visibility="{x:Bind ViewModel.DescriptionViewVisibility, Mode=OneWay}"
+                      Visibility="{x:Bind ViewModel.IsDescriptionEditing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                       Tapped="DescriptionView_Tapped">
             <Grid Padding="0,0,12,0">
                 <controls:MarkdownTextBlock
                     Text="{x:Bind ViewModel.Description, Mode=OneWay}"
                     Foreground="{StaticResource AppTextPrimaryBrush}"
-                    Visibility="{x:Bind ViewModel.DescriptionVisibility, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasDescription, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                     IsHitTestVisible="False"/>
                 <TextBlock
                     Text="No description."
                     FontStyle="Italic"
                     Foreground="{StaticResource AppTextTertiaryBrush}"
-                    Visibility="{x:Bind ViewModel.NoDescriptionVisibility, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasDescription, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                     IsHitTestVisible="False"/>
             </Grid>
         </ScrollViewer>
@@ -145,7 +145,7 @@
                  MaxHeight="480"
                  Margin="0,8,0,0"
                  PlaceholderText="Ctrl+Enter to save, Esc to cancel"
-                 Visibility="{x:Bind ViewModel.DescriptionEditVisibility, Mode=OneWay}"
+                 Visibility="{x:Bind ViewModel.IsDescriptionEditing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                  LostFocus="DescriptionTextBox_LostFocus"
                  KeyDown="DescriptionTextBox_KeyDown"/>
 
@@ -159,7 +159,7 @@
                 Text="{x:Bind ViewModel.EditError, Mode=OneWay}"
                 Foreground="{StaticResource BrushError}"
                 TextWrapping="Wrap"
-                Visibility="{x:Bind ViewModel.EditErrorVisibility, Mode=OneWay}"/>
+                Visibility="{x:Bind ViewModel.HasEditError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
             <Grid>
                 <!-- Left: Close/Reopen + GitHub + delete confirmation -->
@@ -169,39 +169,39 @@
                             Padding="8,4" FontSize="12"/>
 
                     <StackPanel Orientation="Horizontal" Spacing="6"
-                                Visibility="{x:Bind ViewModel.PushSectionVisibility}">
+                                Visibility="{x:Bind ViewModel.IsPushSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Button Content="Push to GitHub"
                                 Command="{x:Bind ViewModel.PushToGitHubCommand}"
                                 IsEnabled="{x:Bind ViewModel.CanPushToGitHub, Mode=OneWay}"
-                                Visibility="{x:Bind ViewModel.PushButtonVisibility, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.IsPushButtonVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                 Padding="8,4" FontSize="12"/>
                         <TextBlock Text="{x:Bind ViewModel.PushError, Mode=OneWay}"
                                    Foreground="{StaticResource BrushError}"
                                    VerticalAlignment="Center"
-                                   Visibility="{x:Bind ViewModel.PushErrorVisibility, Mode=OneWay}"/>
+                                   Visibility="{x:Bind ViewModel.HasPushError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                         <HyperlinkButton Content="{x:Bind ViewModel.GitHubIssueUrl, Mode=OneWay}"
                                          Click="GitHubIssueButton_Click"
-                                         Visibility="{x:Bind ViewModel.GitHubLinkVisibility, Mode=OneWay}"
+                                         Visibility="{x:Bind ViewModel.IsGitHubLinkVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                          Padding="0" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="4"
-                                Visibility="{x:Bind ViewModel.CommitVisibility, Mode=OneWay}">
+                                Visibility="{x:Bind ViewModel.IsCommitVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBlock Text="commit"
                                    Foreground="{StaticResource AppTextTertiaryBrush}"
                                    VerticalAlignment="Center" FontSize="12"/>
                         <HyperlinkButton Content="{x:Bind ViewModel.CommitShortHash, Mode=OneWay}"
                                          Click="CommitButton_Click"
-                                         Visibility="{x:Bind ViewModel.CommitLinkVisibility, Mode=OneWay}"
+                                         Visibility="{x:Bind ViewModel.IsCommitLinkVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                          Padding="0" VerticalAlignment="Center" FontSize="12"/>
                         <TextBlock Text="{x:Bind ViewModel.CommitShortHash, Mode=OneWay}"
                                    FontFamily="Cascadia Mono"
                                    VerticalAlignment="Center" FontSize="12"
-                                   Visibility="{x:Bind ViewModel.CommitTextVisibility, Mode=OneWay}"/>
+                                   Visibility="{x:Bind ViewModel.IsCommitTextVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="6"
-                                Visibility="{x:Bind ViewModel.DeleteConfirmVisibility, Mode=OneWay}">
+                                Visibility="{x:Bind ViewModel.ShowDeleteConfirm, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBlock Text="Delete this card?"
                                    Foreground="{StaticResource BrushError}"
                                    VerticalAlignment="Center"

@@ -2,7 +2,8 @@
     x:Class="Bishop.UI.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:vm="using:Bishop.UI.ViewModels"
+    xmlns:vm="using:Bishop.ViewModels"
+    xmlns:cnv="using:Bishop.UI.Converters"
     Title="Bishop.AI">
     <Grid x:Name="RootGrid" PreviewKeyDown="RootGrid_PreviewKeyDown">
         <Grid.RowDefinitions>
@@ -33,7 +34,7 @@
                     Padding="0"
                     Background="Transparent"
                     BorderThickness="0"
-                    Visibility="{x:Bind ViewModel.CatModeOffVisibility, Mode=OneWay}"
+                    Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsCatModeActive), Mode=OneWay}"
                     Command="{x:Bind ViewModel.ToggleCatModeCommand}"
                     ToolTipService.ToolTip="Pause keyboard input (cat mode)">
                 <Path Data="{StaticResource IconPawPrintData}"
@@ -49,7 +50,7 @@
                     Padding="0"
                     Background="Transparent"
                     BorderThickness="0"
-                    Visibility="{x:Bind ViewModel.CatModeOnVisibility, Mode=OneWay}"
+                    Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsCatModeActive), Mode=OneWay}"
                     Command="{x:Bind ViewModel.ToggleCatModeCommand}"
                     ToolTipService.ToolTip="Resume keyboard input (cat mode active)">
                 <Path Data="{StaticResource IconPawPrintData}"
@@ -76,7 +77,7 @@
                 <Grid>
                     <!-- Expanded state -->
                     <Grid Margin="0,8,0,0" RowSpacing="4"
-                          Visibility="{x:Bind ViewModel.ExpandedPanelVisibility, Mode=OneWay}">
+                          Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
@@ -148,7 +149,7 @@
                                                   Foreground="{StaticResource BrushError}"
                                                   Margin="4,0,0,0"
                                                   VerticalAlignment="Center"
-                                                  Visibility="{x:Bind PathMissingVisibility, Mode=OneWay}"/>
+                                                  Visibility="{x:Bind cnv:XamlConvert.ToVis(IsPathMissing), Mode=OneWay}"/>
                                         <FlyoutBase.AttachedFlyout>
                                             <MenuFlyout>
                                                 <MenuFlyoutItem Text="Rename" Click="RenameWorkspace_Click">
@@ -177,7 +178,7 @@
 
                     <!-- Collapsed icon strip (~40px) -->
                     <Grid Margin="0,8,0,0" RowSpacing="4"
-                          Visibility="{x:Bind ViewModel.CollapsedPanelVisibility, Mode=OneWay}">
+                          Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
@@ -269,14 +270,14 @@
                 <!-- Cat mode tint: subtle dark overlay across the whole content area -->
                 <Border IsHitTestVisible="False"
                         Background="#80000000"
-                        Visibility="{x:Bind ViewModel.CatModeOnVisibility, Mode=OneWay}"/>
+                        Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsCatModeActive), Mode=OneWay}"/>
 
                 <!-- Cat mode mark: centered cat illustration so the state is visible from across the room -->
                 <Viewbox IsHitTestVisible="False"
                          MaxWidth="420" MaxHeight="420"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center"
-                         Visibility="{x:Bind ViewModel.CatModeOnVisibility, Mode=OneWay}">
+                         Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsCatModeActive), Mode=OneWay}">
                     <Path Data="{StaticResource IconCatModePanelData}"
                           Fill="#CCE8E8E8"
                           Stretch="Uniform"/>
@@ -284,7 +285,7 @@
 
                 <!-- Empty state: centered brand mark + wordmark + CTAs -->
                 <Grid x:Name="WorkspaceEmptyState"
-                      Visibility="{x:Bind ViewModel.ContentEmptyStateVisibility, Mode=OneWay}">
+                      Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsContentEmpty), Mode=OneWay}">
                     <StackPanel HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Spacing="32">

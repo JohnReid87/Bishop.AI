@@ -1,4 +1,4 @@
-namespace Bishop.UI.ViewModels;
+namespace Bishop.ViewModels;
 
 public sealed record ModelOption(string Id, string Label)
 {
