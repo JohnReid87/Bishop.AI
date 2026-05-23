@@ -251,30 +251,8 @@ public sealed partial class MainWindow : Window
         await dialog.ShowAsync();
     }
 
-    private WindowGeometry? _preExpansionGeometry;
     private bool _isSnapping;
     private DispatcherTimer? _snapTimer;
-
-    public void SetExpandedForViewer(bool expanded)
-    {
-        if (expanded)
-        {
-            if (_preExpansionGeometry is null)
-            {
-                var pos = AppWindow.Position;
-                var size = AppWindow.Size;
-                _preExpansionGeometry = new WindowGeometry(pos.X, pos.Y, size.Width, size.Height);
-            }
-            var wa = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-            AppWindow.MoveAndResize(new RectInt32(wa.X, wa.Y, wa.Width, wa.Height));
-        }
-        else if (_preExpansionGeometry is not null)
-        {
-            var g = _preExpansionGeometry;
-            _preExpansionGeometry = null;
-            AppWindow.MoveAndResize(new RectInt32(g.X, g.Y, g.Width, g.Height));
-        }
-    }
 
     private void SetupHalfScreenLocking()
     {
@@ -294,7 +272,6 @@ public sealed partial class MainWindow : Window
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {
         if (_isSnapping) return;
-        if (_preExpansionGeometry is not null) return;
         if (!args.DidPositionChange && !args.DidSizeChange) return;
 
         _snapTimer?.Stop();
@@ -303,7 +280,6 @@ public sealed partial class MainWindow : Window
 
     private void SnapToHalfScreen()
     {
-        if (_preExpansionGeometry is not null) return;
         var wa = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var pos = AppWindow.Position;
@@ -363,17 +339,9 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            WindowGeometry geometry;
-            if (_preExpansionGeometry is not null)
-            {
-                geometry = _preExpansionGeometry;
-            }
-            else
-            {
-                var pos = AppWindow.Position;
-                var size = AppWindow.Size;
-                geometry = new WindowGeometry(pos.X, pos.Y, size.Width, size.Height);
-            }
+            var pos = AppWindow.Position;
+            var size = AppWindow.Size;
+            var geometry = new WindowGeometry(pos.X, pos.Y, size.Width, size.Height);
             Directory.CreateDirectory(Path.GetDirectoryName(WindowGeometryFilePath)!);
             File.WriteAllText(WindowGeometryFilePath, JsonSerializer.Serialize(geometry));
         }

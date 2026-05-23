@@ -27,7 +27,6 @@ using Bishop.Core.Skills;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Input;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -52,63 +51,22 @@ public sealed partial class WorkspaceDetailPage : Page
     private bool _isDraggingNotes;
     private double _dragStartPageY;
     private double _dragStartNoteHeight;
-    private bool _isDraggingKanban;
-    private double _dragStartPageX;
-    private double _dragStartPanelWidth;
-    private CardViewModel? _skillViewerCard;
     private SkillMenuItem[] _cardSkills = [];
     private SkillMenuItem[] _workspaceSkills = [];
 
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
-    public SkillViewerViewModel SkillViewer { get; }
 
     public WorkspaceDetailPage()
     {
         Board = App.Services.GetRequiredService<WorkspaceBoardViewModel>();
         Notes = App.Services.GetRequiredService<WorkspaceNotesViewModel>();
-        SkillViewer = App.Services.GetRequiredService<SkillViewerViewModel>();
         _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         InitializeComponent();
-        InitSkillViewerModelMenu();
-        SkillViewerMarkdown.OnLinkClicked += SkillViewerMarkdown_OnLinkClicked;
-        SkillViewer.PropertyChanged += OnSkillViewerPropertyChanged;
         Board.Lanes.CollectionChanged += (_, _) => ApplyWorkNextStateToToDoLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
-    }
-
-    private void OnSkillViewerPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(SkillViewerViewModel.IsOpen)) return;
-        if (App.MainWindow is not { } window) return;
-
-        if (SkillViewer.IsOpen)
-        {
-            window.SetExpandedForViewer(true);
-            var wa = Microsoft.UI.Windowing.DisplayArea
-                .GetFromWindowId(window.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Primary)
-                .WorkArea;
-            SkillViewer.SetAutoPanelWidth(wa.Width / 2.0);
-        }
-        else
-        {
-            window.SetExpandedForViewer(false);
-        }
-    }
-
-    private void InitSkillViewerModelMenu()
-    {
-        var flyout = new MenuFlyout();
-        foreach (var (id, label) in WorkNextOptionsDialogViewModel.Models)
-        {
-            var capturedId = id;
-            var item = new MenuFlyoutItem { Text = label };
-            item.Click += async (_, _) => await SkillViewer.SetModelAsync(capturedId);
-            flyout.Items.Add(item);
-        }
-        SkillViewerModelButton.Flyout = flyout;
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -224,8 +182,6 @@ public sealed partial class WorkspaceDetailPage : Page
         ApplyGitHubRepoToDoneLane();
         await LoadSkillsAsync();
         SetupWorkNextWatcher(vm.Path);
-        _skillViewerCard = null;
-        _ = SkillViewer.LoadAsync(vm.Id, vm.Path);
         _ = Board.LoadAsync(vm.Id);
         _ = Notes.LoadAsync(vm.Id, vm.Path);
     }
@@ -301,10 +257,11 @@ public sealed partial class WorkspaceDetailPage : Page
                     flyout.Hide();
                     await LaunchSkillAsync(skill, rendered, workspacePath, card: null, chosenModel);
                 },
-                onView: async () =>
+                onView: () =>
                 {
                     flyout.Hide();
-                    await OpenSkillViewerAsync(skill, card: null);
+                    App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
+                    return Task.CompletedTask;
                 }));
             if (item.HasSeparatorAfter)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
@@ -595,10 +552,11 @@ public sealed partial class WorkspaceDetailPage : Page
                     flyout.Hide();
                     await LaunchSkillAsync(skill, rendered, workspacePath, card, chosenModel);
                 },
-                onView: async () =>
+                onView: () =>
                 {
                     flyout.Hide();
-                    await OpenSkillViewerAsync(skill, card);
+                    App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
+                    return Task.CompletedTask;
                 }));
             if (item.HasSeparatorAfter)
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
@@ -693,67 +651,6 @@ public sealed partial class WorkspaceDetailPage : Page
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             CharacterSpacing = 75,
         };
-
-    private async Task OpenSkillViewerAsync(InstalledSkill skill, CardViewModel? card)
-    {
-        _skillViewerCard = card;
-        await SkillViewer.OpenAsync(skill);
-    }
-
-    private async void SkillViewerLaunch_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item is null || SkillViewer.Skill is null || SkillViewer.Skill.Command is null) return;
-        var card = _skillViewerCard;
-        var rendered = SkillCommandRenderer.Render(SkillViewer.Skill.Command, card?.Number, card?.Title, card?.Description, _item.Path);
-        await LaunchSkillAsync(SkillViewer.Skill, rendered, _item.Path, card, SkillViewer.ModelId);
-    }
-
-    private void SkillViewer_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key != VirtualKey.Escape) return;
-        e.Handled = true;
-        SkillViewer.IsOpen = false;
-    }
-
-    private async void SkillViewerMarkdown_OnLinkClicked(object? sender, LinkClickedEventArgs e)
-    {
-        if (e.Uri.IsAbsoluteUri && e.Uri.Scheme is "http" or "https")
-            return;
-
-        e.Handled = true;
-        await SkillViewer.NavigateLinkAsync(e.Uri.OriginalString);
-    }
-
-    private void KanbanSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        _isDraggingKanban = true;
-        _dragStartPageX = e.GetCurrentPoint(this).Position.X;
-        _dragStartPanelWidth = SkillViewer.PanelWidth;
-        ((UIElement)sender).CapturePointer(e.Pointer);
-        e.Handled = true;
-    }
-
-    private void KanbanSplitter_PointerMoved(object sender, PointerRoutedEventArgs e)
-    {
-        if (!_isDraggingKanban) return;
-        var delta = _dragStartPageX - e.GetCurrentPoint(this).Position.X;
-        SkillViewer.PanelWidth = Math.Max(SkillViewerViewModel.MinPanelWidth,
-            Math.Min(SkillViewerViewModel.MaxPanelWidth, _dragStartPanelWidth + delta));
-        e.Handled = true;
-    }
-
-    private void KanbanSplitter_PointerReleased(object sender, PointerRoutedEventArgs e)
-    {
-        _isDraggingKanban = false;
-        ((UIElement)sender).ReleasePointerCapture(e.Pointer);
-        e.Handled = true;
-    }
-
-    private void KanbanSplitter_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
-    {
-        _isDraggingKanban = false;
-    }
-
 
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
     {

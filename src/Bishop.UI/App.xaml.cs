@@ -42,7 +42,6 @@ public partial class App : Application
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<WorkspaceBoardViewModel>();
                 services.AddTransient<WorkspaceNotesViewModel>();
-                services.AddTransient<SkillViewerViewModel>();
                 services.AddTransient<WorkspaceManagerViewModel>();
                 services.AddTransient<BishopSettingsViewModel>();
             })
