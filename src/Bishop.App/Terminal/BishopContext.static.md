@@ -251,6 +251,24 @@ For the reasoning behind extracting these sections (and the boundary
 between what belongs here versus inside each skill), see
 [`docs/SKILL_FAMILY.md`](../docs/SKILL_FAMILY.md).
 
+## Shell selection (STABLE)
+
+When running shell commands, pick the tool that matches the command syntax:
+
+1. **Use the PowerShell tool** if the command line contains PowerShell cmdlets —
+   `ConvertFrom-Json`, `Where-Object`, `Select-Object`, `Get-ChildItem`,
+   `Format-Table`, `Sort-Object`, `Measure-Object`, or any `Verb-Noun` cmdlet.
+   PowerShell is the native shell on this host; mixing PowerShell cmdlets into a
+   Bash call produces `command not found` (exit 127) errors.
+
+2. **Use the Bash tool** if the command line contains POSIX utilities — `grep`,
+   `sed`, `awk`, `xargs`, `wc`, `jq`, etc. For `bishop … --json` output that
+   needs filtering or projection, prefer Bash + `jq` over piping into PowerShell
+   cmdlets.
+
+The `bishop` CLI itself is available in both tools; the rule governs the
+**surrounding pipeline**, not the `bishop` call itself.
+
 ## Card Push Procedure (STABLE)
 
 Push a card from a skill by piping its body through stdin via a
