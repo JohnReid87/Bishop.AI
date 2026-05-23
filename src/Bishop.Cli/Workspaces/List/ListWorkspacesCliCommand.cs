@@ -15,17 +15,24 @@ internal sealed class ListWorkspacesCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
+    private static readonly Option<bool> s_includeRemovedOpt =
+        new("--include-removed", "Include archived (removed) workspaces in the output");
+
     public ListWorkspacesCliCommand(IMediator mediator) : base("list", "List all workspaces")
     {
         AddOption(CommonOptions.JsonOption);
-        this.SetHandler(async (bool json) =>
+        AddOption(s_includeRemovedOpt);
+        this.SetHandler(async (bool json, bool includeRemoved) =>
         {
-            var workspaces = await mediator.Send(new ListWorkspacesQuery());
+            var workspaces = await mediator.Send(new ListWorkspacesQuery(includeRemoved));
             if (json)
                 Console.WriteLine(JsonSerializer.Serialize(workspaces.OrderBy(w => w.Position), s_jsonOpts));
             else
                 foreach (var w in workspaces.OrderBy(w => w.Position))
-                    Console.WriteLine($"{w.Name,-30} {w.Path}");
-        }, CommonOptions.JsonOption);
+                {
+                    var name = w.IsRemoved ? $"{w.Name} [removed]" : w.Name;
+                    Console.WriteLine($"{name,-30} {w.Path}");
+                }
+        }, CommonOptions.JsonOption, s_includeRemovedOpt);
     }
 }
