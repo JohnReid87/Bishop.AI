@@ -196,7 +196,7 @@ public sealed partial class CardDetailDialog : ContentDialog
             var settingKey = $"skill.{skill.Name}.last_model";
             var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
 
-            panel.Children.Add(MakeSkillRow(item.Name, savedModel, async chosenModel =>
+            panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel, async chosenModel =>
             {
                 await appSettings.SetAsync(settingKey, chosenModel);
                 flyout.Hide();
@@ -229,59 +229,5 @@ public sealed partial class CardDetailDialog : ContentDialog
             CharacterSpacing = 75,
         };
 
-    private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch)
-    {
-        var currentModelId = selectedModelId;
-        var currentLabel = WorkNextOptionsDialogViewModel.Models.FirstOrDefault(m => m.Id == selectedModelId)?.Label ?? "Sonnet 4.6";
-
-        var nameText = new TextBlock
-        {
-            Text = skillName,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Width = 120,
-            FontSize = 12,
-        };
-
-        var modelBtn = new Button
-        {
-            Content = $"{currentLabel} ▾",
-            Padding = new Thickness(4, 2, 4, 2),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(6, 0, 6, 0),
-            Width = 90,
-            FontSize = 12,
-        };
-
-        var modelFlyout = new MenuFlyout();
-        foreach (var option in WorkNextOptionsDialogViewModel.Models)
-        {
-            var capturedId = option.Id;
-            var capturedLabel = option.Label;
-            var mi = new MenuFlyoutItem { Text = option.Label };
-            mi.Click += (_, _) =>
-            {
-                currentModelId = capturedId;
-                modelBtn.Content = $"{capturedLabel} ▾";
-            };
-            modelFlyout.Items.Add(mi);
-        }
-        modelBtn.Flyout = modelFlyout;
-
-        var launchBtn = new Button
-        {
-            Content = "▶",
-            Padding = new Thickness(4, 2, 4, 2),
-            VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 12,
-        };
-        launchBtn.Click += async (_, _) => await onLaunch(currentModelId);
-
-        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        row.Children.Add(nameText);
-        row.Children.Add(modelBtn);
-        row.Children.Add(launchBtn);
-        return row;
-    }
 
 }

@@ -53,10 +53,9 @@
 
         <TabViewItem Header="Skills" IsClosable="False">
             <TabViewItem.Content>
-                <TextBlock Text="Coming soon"
-                           Foreground="{StaticResource AppTextTertiaryBrush}"
-                           FontStyle="Italic"
-                           Padding="0,8,0,0"/>
+                <ScrollViewer Padding="0,8,0,4" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="SkillsPanel" Spacing="2"/>
+                </ScrollViewer>
             </TabViewItem.Content>
         </TabViewItem>
 
