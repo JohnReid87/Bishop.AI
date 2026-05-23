@@ -180,11 +180,10 @@ Run `bishop workspace current --json`.
    On a successful commit, pipe the drafted `### Agent notes` block to
    `card edit` via stdin:
    ```
-   bishop card edit <number> --append-description-file - --to-lane "Done"
+   bishop card edit <number> --append-description-file - --to-lane "Done" --no-close
    ```
    (Pipe the notes block as stdin — use a shell heredoc or equivalent.)
-   Moving to Done auto-closes the card (the CLI's default move behaviour;
-   `--no-close` is not available on `card edit`).
+   `--no-close` keeps `IsClosed=false` so the human review gate is preserved.
 
    If `bishop card edit` exits non-zero, exit non-zero — the commit has
    already landed and the user can update/move the card manually after

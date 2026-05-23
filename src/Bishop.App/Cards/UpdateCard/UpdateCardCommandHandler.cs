@@ -66,7 +66,7 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
         await db.SaveChangesAsync(cancellationToken);
 
         if (request.ToLaneId.HasValue)
-            card = await _sender.Send(new MoveCardCommand(card.Id, request.ToLaneId.Value, 1), cancellationToken);
+            card = await _sender.Send(new MoveCardCommand(card.Id, request.ToLaneId.Value, 1, request.KeepOpen), cancellationToken);
 
         return card;
     }

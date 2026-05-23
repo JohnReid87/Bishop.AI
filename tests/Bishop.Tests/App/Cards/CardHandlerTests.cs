@@ -498,6 +498,28 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         persisted.IsClosed.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task EditCard_ToLaneWithKeepOpen_MovesCardWithoutClosing()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var doneLane = lanes.Single(l => l.Name == "Done");
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(lanes.Single(l => l.Name == "To Do").Id, "Task", "Existing"), default);
+        var handler = new UpdateCardCommandHandler(_factory, CreateSender());
+
+        // Act
+        var result = await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: false, TagName: null,
+                AppendDescription: "### Agent notes\nDone.", ToLaneId: doneLane.Id, KeepOpen: true),
+            default);
+
+        // Assert — card moved to Done but IsClosed remains false
+        var persisted = await _db.Cards.FindAsync(card.Id);
+        persisted!.LaneId.Should().Be(doneLane.Id);
+        persisted.IsClosed.Should().BeFalse();
+    }
+
     private ISender CreateSender()
     {
         var ghCli = Substitute.For<IGhCli>();

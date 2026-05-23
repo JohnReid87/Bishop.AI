@@ -32,6 +32,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.CommandLine;
 using System.CommandLine.Builder;
+using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -378,6 +379,7 @@ var editDescFileOpt = new Option<string?>("--description-file", "Read descriptio
 var editAppendDescFileOpt = new Option<string?>("--append-description-file", "Append to description from file (use - for stdin); mutually exclusive with --description and --description-file");
 var editTagOpt = new Option<string?>("--tag", "Set tag (use empty string to clear)");
 var editToLaneOpt = new Option<string?>("--to-lane", "Move card to this lane after editing");
+var editNoCloseOpt = new Option<bool>("--no-close", "Skip auto-close when moving into the Done lane");
 
 var cardEditCmd = new Command("edit", "Edit a card's title, description, or tag");
 cardEditCmd.AddArgument(cardEditIdArg);
@@ -388,8 +390,19 @@ cardEditCmd.AddOption(editDescFileOpt);
 cardEditCmd.AddOption(editAppendDescFileOpt);
 cardEditCmd.AddOption(editTagOpt);
 cardEditCmd.AddOption(editToLaneOpt);
-cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, string? description, string? descFile, string? appendDescFile, string? tag, string? toLane) =>
+cardEditCmd.AddOption(editNoCloseOpt);
+cardEditCmd.SetHandler(async (InvocationContext ctx) =>
 {
+    var prefix = ctx.ParseResult.GetValueForArgument(cardEditIdArg);
+    var workspace = ctx.ParseResult.GetValueForOption(workspaceOpt);
+    var title = ctx.ParseResult.GetValueForOption(editTitleOpt);
+    var description = ctx.ParseResult.GetValueForOption(editDescOpt);
+    var descFile = ctx.ParseResult.GetValueForOption(editDescFileOpt);
+    var appendDescFile = ctx.ParseResult.GetValueForOption(editAppendDescFileOpt);
+    var tag = ctx.ParseResult.GetValueForOption(editTagOpt);
+    var toLane = ctx.ParseResult.GetValueForOption(editToLaneOpt);
+    var noClose = ctx.ParseResult.GetValueForOption(editNoCloseOpt);
+
     var descOptionCount = new[] { description is not null, descFile is not null, appendDescFile is not null }.Count(x => x);
     if (descOptionCount > 1)
     {
@@ -428,9 +441,9 @@ cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, s
     }
 
     var updateTag = tag is not null;
-    var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTag, tag, appendDesc, toLaneId));
+    var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTag, tag, appendDesc, toLaneId, noClose));
     Console.WriteLine($"Updated card #{card.Number} — '{card.Title}'");
-}, cardEditIdArg, workspaceOpt, editTitleOpt, editDescOpt, editDescFileOpt, editAppendDescFileOpt, editTagOpt, editToLaneOpt);
+});
 
 // ── card claim ────────────────────────────────────────────────────────────────
 
