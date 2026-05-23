@@ -131,7 +131,29 @@ Run `bishop workspace current --json`.
    - Run `dotnet test`. If any test fails, exit non-zero and surface the
      failure. Do not retry `dotnet test` — test failures are real signals.
 
-8. **Derive the commit message.** Use the same tag → prefix mapping as
+8. **Draft Agent notes and derive the commit message.** No prompt.
+
+   Silently compose an `### Agent notes` block from the session context.
+   Use this template, **omitting any section that has no relevant content** —
+   do not emit empty headers:
+
+   ````markdown
+   ### Agent notes
+
+   #### Summary
+   <1–3 sentences>
+
+   #### Changes
+   - <file or change>
+
+   #### Decisions
+   - <choice over alt — why>
+
+   #### Tests
+   - <what ran, what was added>
+   ````
+
+   Then derive the commit message. Use the same tag → prefix mapping as
    `/bish-work-on-card`:
 
    - `feature` → `feat`
@@ -145,25 +167,28 @@ Run `bishop workspace current --json`.
    Take the **first** tag from `tags` (the same field captured in step 1).
    Format: `<prefix>: <title> (card N)`.
 
-9. **Commit and move to Done, in that order.** No prompt.
+9. **Commit and update the card, in that order.** No prompt.
    ```
    git add -A
    git commit -m "<derived message>"
    ```
    If `git commit` exits non-zero (e.g. pre-commit hook, nothing to commit,
-   signing failure), exit non-zero immediately. Do NOT move the card to
-   "Done"; leave it in "Doing" and let the staged changes (if any) sit in
+   signing failure), exit non-zero immediately. Do NOT update the card;
+   leave it in "Doing" and let the staged changes (if any) sit in
    the working tree for the user to inspect.
 
-   On a successful commit:
+   On a successful commit, pipe the drafted `### Agent notes` block to
+   `card edit` via stdin:
    ```
-   bishop card move <number> --to-lane "Done" --to-position 0 --no-close
+   bishop card edit <number> --append-description-file - --to-lane "Done"
    ```
-   The `--no-close` flag (card #72) leaves the card with `IsClosed=false` so
-   a human can review before closing.
+   (Pipe the notes block as stdin — use a shell heredoc or equivalent.)
+   Moving to Done auto-closes the card (the CLI's default move behaviour;
+   `--no-close` is not available on `card edit`).
 
-   If the `bishop card move` exits non-zero, exit non-zero — the commit has
-   already landed and the user can move the card manually after inspecting.
+   If `bishop card edit` exits non-zero, exit non-zero — the commit has
+   already landed and the user can update/move the card manually after
+   inspecting.
 
 10. **Never push.** Pushing is out of scope. The parent loop or the user
     decides when to push after review.

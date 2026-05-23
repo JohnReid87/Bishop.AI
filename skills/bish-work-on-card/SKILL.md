@@ -162,9 +162,30 @@ Run `bishop workspace current --json`.
    **Follow-up cards to consider:**
    - <anything discovered that is out of scope but worth tracking>
 
-9. Ask the user whether to **move the card to "Done" and commit the changes**
-   in a single confirmation. Derive a pre-filled Conventional Commits proposal
-   from the card's first tag (captured in step 1) and title:
+9. **Draft Agent notes**, then ask the user to confirm finalizing the card.
+
+   Before the prompt, silently compose an `### Agent notes` block from the
+   session context. Use this template, **omitting any section that has no
+   relevant content** — do not emit empty headers:
+
+   ````markdown
+   ### Agent notes
+
+   #### Summary
+   <1–3 sentences>
+
+   #### Changes
+   - <file or change>
+
+   #### Decisions
+   - <choice over alt — why>
+
+   #### Tests
+   - <what ran, what was added>
+   ````
+
+   Derive a pre-filled Conventional Commits proposal from the card's first tag
+   (captured in step 1) and title:
 
    Tag → prefix mapping:
    - `feature` → `feat`
@@ -177,17 +198,23 @@ Run `bishop workspace current --json`.
 
    Proposal format: `<prefix>: <title> (card N)`
 
-   Present the combined prompt — confirming Done implies confirming the commit:
+   Present the combined prompt — confirming implies: write Agent notes to the
+   card, move it to Done, and commit:
 
-   > Move card #N to "Done" and commit as `feat: Add lane CRUD (card 42)`?
-   > (`y` to do both / paste a different commit message to use instead / `n`
+   > Write findings to card #N, move to Done, and commit as `feat: Add lane CRUD (card 42)`?
+   > (`y` to do all three / paste a different commit message to use instead / `n`
    > to leave the card in "Doing" and the working tree untouched)
 
-   - On `y` (or an edited commit message) → run both, in order:
-     ```
-     bishop card move <number> --to-lane "Done" --to-position 0
-     git add -A && git commit -m "<message>"
-     ```
+   - On `y` (or an edited commit message) → run in order:
+     1. Pipe the drafted `### Agent notes` block to `card edit` via stdin:
+        ```
+        bishop card edit <number> --append-description-file - --to-lane "Done"
+        ```
+        (Pipe the notes block as stdin — use a shell heredoc or equivalent.)
+     2. Commit:
+        ```
+        git add -A && git commit -m "<message>"
+        ```
      If the commit fails (e.g. pre-commit hook), do NOT roll the card back —
      surface the error and let the user re-run the commit manually.
    - On `n` → leave the card in "Doing" and the working tree as-is. Do not
