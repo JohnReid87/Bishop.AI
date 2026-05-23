@@ -81,6 +81,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <!-- Header row: label + add button -->
@@ -174,6 +175,22 @@
                                 </Style>
                             </ListView.ItemContainerStyle>
                         </ListView>
+
+                        <!-- Bishop tools settings button -->
+                        <Button Grid.Row="2"
+                                HorizontalAlignment="Stretch"
+                                Margin="8,4,8,8"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="SettingsButton_Click"
+                                ToolTipService.ToolTip="Bishop tools">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE713;" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Bishop tools"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Button>
                     </Grid>
 
                     <!-- Collapsed icon strip (~40px) -->
@@ -182,6 +199,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <!-- + Add button -->
@@ -260,6 +278,17 @@
                                 </ListView.ItemContainerStyle>
                             </ListView>
                         </ScrollViewer>
+
+                        <!-- Bishop tools settings button (collapsed) -->
+                        <Button Grid.Row="2"
+                                Width="200" Height="32"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,8"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="SettingsButton_Click"
+                                ToolTipService.ToolTip="Bishop tools">
+                            <FontIcon Glyph="&#xE713;" FontSize="13"/>
+                        </Button>
                     </Grid>
                 </Grid>
             </NavigationView.PaneCustomContent>

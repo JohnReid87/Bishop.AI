@@ -40,6 +40,7 @@ public partial class App : Application
                 services.AddTransient<WorkspaceBoardViewModel>();
                 services.AddTransient<WorkspaceNotesViewModel>();
                 services.AddTransient<SkillViewerViewModel>();
+                services.AddTransient<BishopSettingsViewModel>();
             })
             .Build();
 
@@ -49,7 +50,9 @@ public partial class App : Application
         UnhandledException += OnAppUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
-        MainWindow = new MainWindow(_host.Services.GetRequiredService<MainWindowViewModel>());
+        MainWindow = new MainWindow(
+            _host.Services.GetRequiredService<MainWindowViewModel>(),
+            _host.Services.GetRequiredService<BishopSettingsViewModel>());
         MainWindow.Activate();
     }
 

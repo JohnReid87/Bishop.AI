@@ -6,5 +6,6 @@ public enum SkillCategory
     Discuss,
     Execute,
     Setup,
+    Meta,
     Other,
 }

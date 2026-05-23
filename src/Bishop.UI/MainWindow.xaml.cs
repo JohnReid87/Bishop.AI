@@ -1,3 +1,4 @@
+using Bishop.Core.Skills;
 using Bishop.UI.Views;
 using Bishop.ViewModels;
 using Microsoft.UI;
@@ -6,6 +7,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
@@ -21,10 +23,13 @@ public sealed partial class MainWindow : Window
 {
     public MainWindowViewModel ViewModel { get; }
 
-    public MainWindow(MainWindowViewModel viewModel)
+    private readonly BishopSettingsViewModel _settingsVm;
+
+    public MainWindow(MainWindowViewModel viewModel, BishopSettingsViewModel settingsVm)
     {
         InitializeComponent();
         ViewModel = viewModel;
+        _settingsVm = settingsVm;
 
         SetupTitleBar();
         ApplyWindowGeometry();
@@ -238,6 +243,71 @@ public sealed partial class MainWindow : Window
 
         if (await confirmDialog.ShowAsync() == ContentDialogResult.Primary)
             await ViewModel.DeleteWorkspaceAsync(item);
+    }
+
+    private async void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _settingsVm.WorkspacePath = ViewModel.SelectedWorkspace?.Path ?? string.Empty;
+        await _settingsVm.LoadAsync();
+
+        var flyout = new Flyout { Placement = FlyoutPlacementMode.Top };
+        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4), MinWidth = 220 };
+
+        if (_settingsVm.MetaSkills.Count == 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = "No meta skills found.",
+                FontSize = 12,
+                Opacity = 0.6,
+                Margin = new Thickness(4, 4, 4, 4),
+            });
+        }
+        else
+        {
+            foreach (var skill in _settingsVm.MetaSkills)
+            {
+                var skillCopy = skill;
+                var btn = new Button
+                {
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    HorizontalContentAlignment = HorizontalAlignment.Left,
+                    Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)),
+                    BorderThickness = new Thickness(0),
+                    Padding = new Thickness(8, 6, 8, 6),
+                    Content = new StackPanel
+                    {
+                        Spacing = 2,
+                        Children =
+                        {
+                            new TextBlock
+                            {
+                                Text = $"/{skillCopy.Name}",
+                                FontSize = 12,
+                                FontFamily = new FontFamily("Cascadia Mono, Consolas, Courier New"),
+                            },
+                            new TextBlock
+                            {
+                                Text = skillCopy.Description,
+                                FontSize = 11,
+                                Opacity = 0.6,
+                                TextWrapping = TextWrapping.WrapWholeWords,
+                                MaxWidth = 220,
+                            },
+                        },
+                    },
+                };
+                btn.Click += async (_, _) =>
+                {
+                    flyout.Hide();
+                    await _settingsVm.LaunchAsync(skillCopy);
+                };
+                panel.Children.Add(btn);
+            }
+        }
+
+        flyout.Content = panel;
+        flyout.ShowAt((FrameworkElement)sender);
     }
 
     private WindowGeometry? _preExpansionGeometry;

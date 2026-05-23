@@ -80,6 +80,7 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
             "discuss"   => Discuss,
             "execute"   => Execute,
             "setup"     => Setup,
+            "meta"      => Meta,
             _           => Other,
         };
     }
