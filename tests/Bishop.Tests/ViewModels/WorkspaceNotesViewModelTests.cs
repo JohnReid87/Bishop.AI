@@ -42,6 +42,48 @@ public class WorkspaceNotesViewModelTests
         vm.PanelHeight.Should().Be(200);
     }
 
+    [Fact]
+    public void ChevronGlyph_IsAccessibleForBothExpandedStates()
+    {
+        var vm = NewVm();
+
+        vm.IsExpanded = false;
+        vm.ChevronGlyph.Should().NotBeNull();
+
+        vm.IsExpanded = true;
+        vm.ChevronGlyph.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void KeepEditsCommand_HidesExternalChangeBar()
+    {
+        var vm = NewVm();
+        vm.IsExternalChangeBarVisible = true;
+
+        vm.KeepEditsCommand.Execute(null);
+
+        vm.IsExternalChangeBarVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task QuickSaveAsync_WithNoWorkspacePath_ClearsExternalChangeBar()
+    {
+        var vm = NewVm();
+        vm.IsExternalChangeBarVisible = true;
+
+        await vm.QuickSaveAsync();
+
+        vm.IsExternalChangeBarVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Dispose_DoesNotThrow()
+    {
+        var vm = NewVm();
+        var act = () => vm.Dispose();
+        act.Should().NotThrow();
+    }
+
     private static WorkspaceNotesViewModel NewVm() =>
         new(new FakeUiDispatcher());
 
