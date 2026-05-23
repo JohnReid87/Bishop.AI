@@ -25,7 +25,7 @@ the task instead of doing everything inside a single session.
   structured `bug` card (or a `spike` + fix-stub pair when root cause is
   unconfirmed).
 
-### Discuss skills — explore and plan
+### Conversational skills — explore and plan
 
 - `bish-chat` — quick open-ended chat about a single card. Accepts a card
   Number, loads it, and opens a conversation; the wrap-up can edit the
@@ -37,22 +37,22 @@ the task instead of doing everything inside a single session.
   **not yet on the board** — you have an idea and need it stress-tested and
   broken down into trackable items.
 
-### Execute skills — implement cards
+### Setup-Execute skills — onboard, configure, and implement cards
+
+Deterministic procedures that mutate state (filesystem, board, git). The
+soul is the procedure itself — the agent reads steps in order.
 
 - `bish-auto-card` — unattended sibling of `bish-work-on-card`, intended
   for automation (e.g. a parent loop driving `bishop card claim`). Same
   contract, but no prompts and non-zero exit on any failure.
+- `bish-onboard` — adopt Bishop in any project in one interview. Detects
+  git/workspace/skills/CLAUDE.md state and runs only the missing steps.
+  Idempotent — re-running only performs missing steps.
 - `bish-work-on-card` — interactive. Accepts a single card Number
   (e.g. `42` or `#42`), moves it to "Doing", implements it, then prompts
   before moving it to "Done" and committing. **One card per session** —
   long-running sessions accumulate context that hurts cost and quality.
   Use when work is **already a card** and you want it implemented now.
-
-### Setup skills — onboard and configure
-
-- `bish-onboard` — adopt Bishop in any project in one interview. Detects
-  git/workspace/skills/CLAUDE.md state and runs only the missing steps.
-  Idempotent — re-running only performs missing steps.
 
 ### Bishop-level / meta skills — operate on the skill family itself
 
