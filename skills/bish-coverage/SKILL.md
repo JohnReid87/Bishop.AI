@@ -139,11 +139,20 @@ makes no assumption about specific namespace prefixes — it works for any
      ### Why
      `<cluster>` is below the `<threshold>%` line-coverage threshold (worst class: `<name>` at `<coverage>%`).
 
+     ### Classes
+     Add unit tests exercising public methods (including null/edge inputs and error paths) for the classes below.
+     - `<ClassName1>` (<coverage1>%, `<file1>`)
+     - `<ClassName2>` (<coverage2>%, `<file2>`)
+
      ### Acceptance
+     - `<ClassName1>` reports `lineCoverage ≥ <threshold>` in the next coverage run.
+     - `<ClassName2>` reports `lineCoverage ≥ <threshold>` in the next coverage run.
      - All listed classes report `lineCoverage ≥ <threshold>` in the next coverage run.
 
-     ### Changes
-     Classes in scope: `<ClassName1>`, `<ClassName2>`, ...
+     ### Related
+     - `<file1>`
+     - `<file2>`
+     - Open `TestResults/coverage-report/index.html` and drill into each class to find uncovered methods and line ranges.
      ```
    - **Tag:** `test`.
    - **Lane:** `To Do`.
@@ -164,7 +173,8 @@ makes no assumption about specific namespace prefixes — it works for any
    Then STOP.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each one,
-   show the cluster, the worst class and its coverage, and offer:
+   show the cluster name, then each class in the cluster with its coverage
+   percentage and source file path (e.g. `ClassName (42%, src/Foo/Bar.cs)`), and offer:
 
    - **Push as-is (Recommended)** — file the card with the proposed title/body.
    - **Skip** — do not file this card.
