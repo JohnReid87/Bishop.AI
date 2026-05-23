@@ -23,8 +23,7 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
         var card = await db.Cards
             .Include(c => c.Lane)
                 .ThenInclude(l => l.Workspace)
-            .Include(c => c.CardTags)
-                .ThenInclude(ct => ct.Tag)
+            .Include(c => c.Tag)
             .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
@@ -34,15 +33,13 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
         if (card.GitHubIssueNumber.HasValue)
             throw new InvalidOperationException($"Card #{card.Number} is already linked to GitHub issue #{card.GitHubIssueNumber}.");
 
-        var tags = card.CardTags.Select(ct => ct.Tag).OrderBy(t => t.Name).ToList();
-
-        // Ensure labels exist on GitHub (ignore failures — label may already exist or permissions may be limited)
-        foreach (var tag in tags)
+        // Ensure the label exists on GitHub (ignore failures — label may already exist or permissions may be limited)
+        if (card.Tag is not null)
         {
-            var color = tag.Colour.TrimStart('#');
+            var color = card.Tag.Colour.TrimStart('#');
             try
             {
-                await _ghCli.RunAsync(["label", "create", tag.Name, "--color", color, "--repo", repo, "--force"], cancellationToken);
+                await _ghCli.RunAsync(["label", "create", card.Tag.Name, "--color", color, "--repo", repo, "--force"], cancellationToken);
             }
             catch { /* label creation is best-effort */ }
         }
@@ -54,10 +51,10 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
 
         // Build gh issue create args
         var createArgs = new List<string> { "issue", "create", "--repo", repo, "--title", card.Title, "--body", body };
-        foreach (var tag in tags)
+        if (card.Tag is not null)
         {
             createArgs.Add("--label");
-            createArgs.Add(tag.Name);
+            createArgs.Add(card.Tag.Name);
         }
 
         var issueUrl = await _ghCli.RunCaptureAsync([.. createArgs], cancellationToken);

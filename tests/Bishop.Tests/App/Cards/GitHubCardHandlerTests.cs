@@ -273,13 +273,13 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task PushCard_WithTags_CreatesLabelsForEachTag()
+    public async Task PushCard_WithTag_CreatesLabelOnGitHub()
     {
         // Arrange
         const string repo = "owner/repo";
         var (_, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task", TagNames: ["feature", "urgent"]), default);
+            .Handle(new AddCardCommand(lanes[0].Id, "Task", TagName: "feature"), default);
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult("https://github.com/owner/repo/issues/7"));
         var handler = new PushCardCommandHandler(_factory, _ghCli);
@@ -288,11 +288,8 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         await handler.Handle(new PushCardCommand(card.Id), default);
 
         // Assert
-        await _ghCli.Received().RunAsync(
+        await _ghCli.Received(1).RunAsync(
             Arg.Is<string[]>(a => a[0] == "label" && a[1] == "create" && a[2] == "feature"),
-            Arg.Any<CancellationToken>());
-        await _ghCli.Received().RunAsync(
-            Arg.Is<string[]>(a => a[0] == "label" && a[1] == "create" && a[2] == "urgent"),
             Arg.Any<CancellationToken>());
     }
 

@@ -96,7 +96,6 @@ public sealed class BishopDbContextAuditTests : IDisposable
     [InlineData("Lanes")]
     [InlineData("Cards")]
     [InlineData("Tags")]
-    [InlineData("CardTags")]
     public void OnModelCreating_SetsNocaseCollation_OnGuidColumns(string tableName)
     {
         // Verify via the SQLite schema that every table with Guid columns carries COLLATE NOCASE.
@@ -122,26 +121,23 @@ public sealed class BishopDbContextAuditTests : IDisposable
     }
 
     [Fact]
-    public async Task CardTags_CanRoundTrip()
+    public async Task Card_TagId_CanRoundTrip()
     {
-        var workspace = new Workspace { Id = Guid.NewGuid(), Name = "W", Path = "/w" };
+        var workspace = new Workspace { Id = Guid.NewGuid(), Name = "W2", Path = "/w2" };
         var lane = new Lane { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "To Do", Position = 1 };
-        var card = new Card { Id = Guid.NewGuid(), LaneId = lane.Id, Title = "C", Number = 1 };
         var tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "feat" };
+        var card = new Card { Id = Guid.NewGuid(), LaneId = lane.Id, Title = "C", Number = 1, TagId = tag.Id };
         _fixture.Db.Workspaces.Add(workspace);
         _fixture.Db.Lanes.Add(lane);
-        _fixture.Db.Cards.Add(card);
         _fixture.Db.Tags.Add(tag);
-        await _fixture.Db.SaveChangesAsync();
-
-        var cardTag = new CardTag { CardId = card.Id, TagId = tag.Id };
-        _fixture.Db.CardTags.Add(cardTag);
+        _fixture.Db.Cards.Add(card);
         await _fixture.Db.SaveChangesAsync();
 
         _fixture.Db.ChangeTracker.Clear();
-        var loaded = await _fixture.Db.CardTags.FindAsync(card.Id, tag.Id);
-        loaded.Should().NotBeNull();
-        loaded!.CardId.Should().Be(card.Id);
+        var loaded = await _fixture.Db.Cards
+            .Include(c => c.Tag)
+            .FirstAsync(c => c.Id == card.Id);
         loaded.TagId.Should().Be(tag.Id);
+        loaded.Tag!.Name.Should().Be("feat");
     }
 }

@@ -90,23 +90,20 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             || vm.Description != card.Description
             || vm.IsClosed != card.IsClosed
             || vm.GitHubIssueNumber != card.GitHubIssueNumber
-            || vm.GitHubPushedAt != card.GitHubPushedAt
-            || vm.Tags.Count != card.CardTags.Count)
+            || vm.GitHubPushedAt != card.GitHubPushedAt)
             return false;
 
-        for (var i = 0; i < vm.Tags.Count; i++)
-        {
-            var ct = card.CardTags.ElementAt(i).Tag;
-            if (vm.Tags[i].Name != ct.Name || vm.Tags[i].Colour != ct.Colour)
-                return false;
-        }
+        var cardTagCount = card.Tag is not null ? 1 : 0;
+        if (vm.Tags.Count != cardTagCount)
+            return false;
+        if (card.Tag is not null && (vm.Tags[0].Name != card.Tag.Name || vm.Tags[0].Colour != card.Tag.Colour))
+            return false;
 
         return true;
     }
 
     private static CardViewModel BuildCardViewModel(Bishop.Core.Card card, string laneName)
     {
-        var firstTag = card.CardTags.FirstOrDefault()?.Tag;
         return new CardViewModel
         {
             Id = card.Id,
@@ -115,9 +112,11 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             Title = card.Title,
             Description = card.Description,
             LaneName = laneName,
-            Tags = card.CardTags.Select(ct => new CardTagViewModel { Name = ct.Tag.Name, Colour = ct.Tag.Colour }).ToList(),
-            FirstTagName = firstTag?.Name,
-            FirstTagColour = firstTag?.Colour,
+            Tags = card.Tag is not null
+                ? [new CardTagViewModel { Name = card.Tag.Name, Colour = card.Tag.Colour }]
+                : [],
+            FirstTagName = card.Tag?.Name,
+            FirstTagColour = card.Tag?.Colour,
             IsClosed = card.IsClosed,
             GitHubIssueNumber = card.GitHubIssueNumber,
             GitHubPushedAt = card.GitHubPushedAt,

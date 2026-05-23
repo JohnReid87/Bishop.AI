@@ -19,8 +19,10 @@ public sealed class Card : IAuditable
     public int TotalOutputTokens { get; set; }
     public int ClaudeRunCount { get; set; }
 
+    public Guid? TagId { get; set; }
+
     [JsonIgnore]
     public Lane Lane { get; set; } = null!;
     [JsonIgnore]
-    public ICollection<CardTag> CardTags { get; set; } = [];
+    public Tag? Tag { get; set; }
 }

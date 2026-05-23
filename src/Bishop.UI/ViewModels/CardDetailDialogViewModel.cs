@@ -164,10 +164,9 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public async Task RemoveTagAsync(CardTagViewModel tag)
     {
         Tags.Remove(tag);
-        var names = Tags.Select(t => t.Name).ToList();
         try
         {
-            await _mediator.Send(new UpdateCardCommand(CardId, null, null, true, names));
+            await _mediator.Send(new UpdateCardCommand(CardId, null, null, true, null));
             EditError = null;
             Updated = true;
         }
@@ -180,20 +179,18 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
 
     public async Task AddTagAsync(string name, string colour)
     {
-        if (Tags.Any(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-            return;
         var tagVm = new CardTagViewModel { Name = name, Colour = colour };
+        Tags.Clear();
         Tags.Add(tagVm);
-        var names = Tags.Select(t => t.Name).ToList();
         try
         {
-            await _mediator.Send(new UpdateCardCommand(CardId, null, null, true, names));
+            await _mediator.Send(new UpdateCardCommand(CardId, null, null, true, name));
             EditError = null;
             Updated = true;
         }
         catch
         {
-            Tags.Remove(tagVm);
+            Tags.Clear();
             EditError = "Failed to add tag.";
         }
     }
@@ -219,7 +216,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
 
         try
         {
-            await _mediator.Send(new UpdateCardCommand(CardId, trimmed, null, false, []));
+            await _mediator.Send(new UpdateCardCommand(CardId, trimmed, null, false, null));
             EditError = null;
             Updated = true;
         }
@@ -251,7 +248,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
 
         try
         {
-            await _mediator.Send(new UpdateCardCommand(CardId, null, trimmed, false, []));
+            await _mediator.Send(new UpdateCardCommand(CardId, null, trimmed, false, null));
             EditError = null;
             Updated = true;
         }

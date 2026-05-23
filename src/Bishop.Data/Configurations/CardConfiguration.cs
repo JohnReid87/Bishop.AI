@@ -19,5 +19,9 @@ internal sealed class CardConfiguration : IEntityTypeConfiguration<Card>
                .WithMany(l => l.Cards)
                .HasForeignKey(c => c.LaneId)
                .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(c => c.Tag)
+               .WithMany(t => t.Cards)
+               .HasForeignKey(c => c.TagId)
+               .OnDelete(DeleteBehavior.SetNull);
     }
 }

@@ -68,7 +68,7 @@ public sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, 
         if (!string.IsNullOrEmpty(request.TagName))
         {
             var tagName = request.TagName;
-            query = query.Where(c => c.CardTags.Any(ct => ct.Tag.Name == tagName));
+            query = query.Where(c => c.Tag != null && c.Tag.Name == tagName);
         }
 
         var topCard = await query

@@ -225,11 +225,10 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         // Assert
         result.Imported.Should().HaveCount(1);
         var card = await _db.Cards
-            .Include(c => c.CardTags)
-                .ThenInclude(ct => ct.Tag)
+            .Include(c => c.Tag)
             .FirstAsync(c => c.Id == result.Imported[0].Id);
-        var tagNames = card.CardTags.Select(ct => ct.Tag.Name).ToList();
-        tagNames.Should().ContainSingle().Which.Should().Be("bug");
+        card.Tag.Should().NotBeNull();
+        card.Tag!.Name.Should().Be("bug");
     }
 
     [Fact]
@@ -250,9 +249,9 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         // Assert
         result.Imported.Should().HaveCount(1);
         var card = await _db.Cards
-            .Include(c => c.CardTags)
+            .Include(c => c.Tag)
             .FirstAsync(c => c.Id == result.Imported[0].Id);
-        card.CardTags.Should().BeEmpty();
+        card.Tag.Should().BeNull();
     }
 
     // ── Dry-run ──────────────────────────────────────────────────────────────

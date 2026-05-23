@@ -349,7 +349,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
 
         // Act
         var result = await handler.Handle(
-            new UpdateCardCommand(card.Id, Title: "Renamed", Description: null, UpdateTags: false, TagNames: []),
+            new UpdateCardCommand(card.Id, Title: "Renamed", Description: null, UpdateTag: false, TagName: null),
             default);
 
         // Assert
@@ -368,7 +368,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
 
         // Act
         var result = await handler.Handle(
-            new UpdateCardCommand(card.Id, Title: null, Description: "New desc", UpdateTags: false, TagNames: []),
+            new UpdateCardCommand(card.Id, Title: null, Description: "New desc", UpdateTag: false, TagName: null),
             default);
 
         // Assert
@@ -376,45 +376,42 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task EditCard_ReplacesTags()
+    public async Task EditCard_ReplacesTag()
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task", TagNames: ["bug", "urgent"]), default);
+            .Handle(new AddCardCommand(lanes[0].Id, "Task", TagName: "bug"), default);
         var handler = new UpdateCardCommandHandler(_factory);
 
         // Act
         await handler.Handle(
-            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTags: true, TagNames: ["feature"]),
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: true, TagName: "feature"),
             default);
 
         // Assert
-        var tagNames = await _db.CardTags
-            .Where(ct => ct.CardId == card.Id)
-            .Include(ct => ct.Tag)
-            .Select(ct => ct.Tag.Name)
-            .ToListAsync();
-        tagNames.Should().BeEquivalentTo(["feature"]);
+        var updated = await _db.Cards.FindAsync(card.Id);
+        var tag = await _db.Tags.FindAsync(updated!.TagId);
+        tag!.Name.Should().Be("feature");
     }
 
     [Fact]
-    public async Task EditCard_ClearsTags()
+    public async Task EditCard_ClearsTag()
     {
         // Arrange
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(lanes[0].Id, "Task", TagNames: ["bug"]), default);
+            .Handle(new AddCardCommand(lanes[0].Id, "Task", TagName: "bug"), default);
         var handler = new UpdateCardCommandHandler(_factory);
 
         // Act
         await handler.Handle(
-            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTags: true, TagNames: []),
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: true, TagName: null),
             default);
 
         // Assert
-        var tagCount = await _db.CardTags.CountAsync(ct => ct.CardId == card.Id);
-        tagCount.Should().Be(0);
+        var updated = await _db.Cards.FindAsync(card.Id);
+        updated!.TagId.Should().BeNull();
     }
 
     [Fact]
@@ -428,7 +425,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
 
         // Act
         var act = async () => await handler.Handle(
-            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTags: false, TagNames: []),
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: false, TagName: null),
             default);
 
         // Assert

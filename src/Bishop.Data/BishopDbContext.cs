@@ -9,7 +9,6 @@ public sealed class BishopDbContext : DbContext
     public DbSet<Lane> Lanes => Set<Lane>();
     public DbSet<Card> Cards => Set<Card>();
     public DbSet<Tag> Tags => Set<Tag>();
-    public DbSet<CardTag> CardTags => Set<CardTag>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
 
     public BishopDbContext(DbContextOptions<BishopDbContext> options) : base(options) { }

@@ -13,14 +13,13 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
 
     public async Task<Card> Handle(UpdateCardCommand request, CancellationToken cancellationToken)
     {
-        if (request.Title is null && request.Description is null && !request.UpdateTags)
-            throw new InvalidOperationException("At least one field (--title, --description, --tag, or --clear-tags) must be supplied.");
+        if (request.Title is null && request.Description is null && !request.UpdateTag)
+            throw new InvalidOperationException("At least one field (--title, --description, or --tag) must be supplied.");
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
         var card = await db.Cards
             .Include(c => c.Lane)
-            .Include(c => c.CardTags)
             .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
@@ -30,21 +29,23 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
         if (request.Description is not null)
             card.Description = request.Description;
 
-        if (request.UpdateTags)
+        if (request.UpdateTag)
         {
-            db.CardTags.RemoveRange(card.CardTags);
-
-            foreach (var tagName in request.TagNames.Distinct(StringComparer.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(request.TagName))
+            {
+                card.TagId = null;
+            }
+            else
             {
                 var tag = await db.Tags.FirstOrDefaultAsync(
-                    t => t.WorkspaceId == card.Lane.WorkspaceId && t.Name == tagName,
+                    t => t.WorkspaceId == card.Lane.WorkspaceId && t.Name == request.TagName,
                     cancellationToken);
                 if (tag is null)
                 {
-                    tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = card.Lane.WorkspaceId, Name = tagName };
+                    tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = card.Lane.WorkspaceId, Name = request.TagName };
                     db.Tags.Add(tag);
                 }
-                db.CardTags.Add(new CardTag { CardId = card.Id, TagId = tag.Id });
+                card.TagId = tag.Id;
             }
         }
 

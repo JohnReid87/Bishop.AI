@@ -187,7 +187,7 @@ root.AddCommand(workspaceCmd);
 var laneNameOpt = new Option<string>("--lane", "Lane name") { IsRequired = true };
 var titleOpt = new Option<string>("--title", "Card title") { IsRequired = true };
 var descOpt = new Option<string?>("--description", "Card description (optional)");
-var tagOpt = new Option<string[]>("--tag", "Tag name (repeatable)") { Arity = ArgumentArity.ZeroOrMore };
+var tagOpt = new Option<string?>("--tag", "Tag name");
 var descFileOpt = new Option<string?>("--description-file", "Read description from file (use - for stdin)");
 
 var bottomOpt = new Option<bool>("--bottom", "Insert at the bottom of the lane instead of the top");
@@ -200,7 +200,7 @@ cardAddCmd.AddOption(descOpt);
 cardAddCmd.AddOption(tagOpt);
 cardAddCmd.AddOption(descFileOpt);
 cardAddCmd.AddOption(bottomOpt);
-cardAddCmd.SetHandler(async (string? workspace, string lane, string title, string? description, string[] tags, string? descFile, bool bottom) =>
+cardAddCmd.SetHandler(async (string? workspace, string lane, string title, string? description, string? tag, string? descFile, bool bottom) =>
 {
     var desc = descFile switch
     {
@@ -214,8 +214,8 @@ cardAddCmd.SetHandler(async (string? workspace, string lane, string title, strin
         string.Equals(l.Name, lane, StringComparison.OrdinalIgnoreCase))
         ?? throw new InvalidOperationException($"Lane '{lane}' not found in workspace '{ws.Name}'.");
     var insertPosition = bottom ? CardInsertPosition.Bottom : CardInsertPosition.Top;
-    var card = await mediator.Send(new AddCardCommand(targetLane.Id, title, desc, tags.Length > 0 ? tags : null, insertPosition));
-    var tagSuffix = tags.Length > 0 ? $"  [{string.Join(", ", tags)}]" : "";
+    var card = await mediator.Send(new AddCardCommand(targetLane.Id, title, desc, tag, insertPosition));
+    var tagSuffix = !string.IsNullOrEmpty(tag) ? $"  [{tag}]" : "";
     Console.WriteLine($"Added card #{card.Number} — '{card.Title}' → [{targetLane.Name}]{tagSuffix}");
 }, workspaceOpt, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt, bottomOpt);
 
@@ -301,19 +301,18 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             totalInputTokens = card.TotalInputTokens,
             totalOutputTokens = card.TotalOutputTokens,
             claudeRunCount = card.ClaudeRunCount,
-            tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList(),
+            tag = card.Tag?.Name,
             commit = commitObj
         }, jsonOpts));
     }
     else
     {
-        var tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
         Console.WriteLine(card.Title);
         Console.WriteLine($"Lane: {card.Lane.Name}");
         if (card.IsClosed)
             Console.WriteLine("Status: closed");
-        if (tags.Count > 0)
-            Console.WriteLine($"Tags: {string.Join(", ", tags)}");
+        if (card.Tag is not null)
+            Console.WriteLine($"Tag: {card.Tag.Name}");
         var claudeLine = ClaudeTotalsFormatter.Format(
             card.TotalInputTokens,
             card.TotalOutputTokens,
@@ -376,18 +375,16 @@ var cardEditIdArg = new Argument<string>("card-id", "Card short ID or prefix");
 var editTitleOpt = new Option<string?>("--title", "New card title");
 var editDescOpt = new Option<string?>("--description", "New card description");
 var editDescFileOpt = new Option<string?>("--description-file", "Read description from file (use - for stdin)");
-var editTagOpt = new Option<string[]>("--tag", "Replace all tags with these names (repeatable)") { Arity = ArgumentArity.ZeroOrMore };
-var editClearTagsOpt = new Option<bool>("--clear-tags", "Remove all tags from the card");
+var editTagOpt = new Option<string?>("--tag", "Set tag (use empty string to clear)");
 
-var cardEditCmd = new Command("edit", "Edit a card's title, description, or tags");
+var cardEditCmd = new Command("edit", "Edit a card's title, description, or tag");
 cardEditCmd.AddArgument(cardEditIdArg);
 cardEditCmd.AddOption(workspaceOpt);
 cardEditCmd.AddOption(editTitleOpt);
 cardEditCmd.AddOption(editDescOpt);
 cardEditCmd.AddOption(editDescFileOpt);
 cardEditCmd.AddOption(editTagOpt);
-cardEditCmd.AddOption(editClearTagsOpt);
-cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, string? description, string? descFile, string[] tags, bool clearTags) =>
+cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, string? description, string? descFile, string? tag) =>
 {
     var resolved = await resolveCardByPrefixAsync(workspace, prefix);
     if (resolved is null) return;
@@ -400,12 +397,10 @@ cardEditCmd.SetHandler(async (string prefix, string? workspace, string? title, s
         null => description
     };
 
-    var updateTags = clearTags || tags.Length > 0;
-    var tagNames = clearTags ? (string[])[] : tags;
-
-    var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTags, tagNames));
+    var updateTag = tag is not null;
+    var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTag, tag));
     Console.WriteLine($"Updated card #{card.Number} — '{card.Title}'");
-}, cardEditIdArg, workspaceOpt, editTitleOpt, editDescOpt, editDescFileOpt, editTagOpt, editClearTagsOpt);
+}, cardEditIdArg, workspaceOpt, editTitleOpt, editDescOpt, editDescFileOpt, editTagOpt);
 
 // ── card claim ────────────────────────────────────────────────────────────────
 
@@ -445,15 +440,14 @@ cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, string?
             position = card.Position,
             createdAt = card.CreatedAt,
             updatedAt = card.UpdatedAt,
-            tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
+            tag = card.Tag?.Name
         }, jsonOpts));
     }
     else
     {
-        var tags = card.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
         Console.WriteLine($"Claimed #{card.Number} — '{card.Title}' [{sourceLaneName}] → [{card.Lane.Name}]");
-        if (tags.Count > 0)
-            Console.WriteLine($"Tags: {string.Join(", ", tags)}");
+        if (card.Tag is not null)
+            Console.WriteLine($"Tag: {card.Tag.Name}");
         if (!string.IsNullOrEmpty(card.Description))
         {
             Console.WriteLine();
@@ -488,7 +482,7 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
             isClosed = c.IsClosed,
             gitHubIssueNumber = c.GitHubIssueNumber,
             gitHubPushedAt = c.GitHubPushedAt,
-            tags = c.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList()
+            tag = c.Tag?.Name
         });
         Console.WriteLine(JsonSerializer.Serialize(output, jsonOpts));
     }
@@ -506,8 +500,7 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
             Console.WriteLine($"\n[{lane?.Name ?? "?"}]");
             foreach (var c in laneCards)
             {
-                var tags = c.CardTags.Select(ct => ct.Tag.Name).OrderBy(n => n).ToList();
-                var tagSuffix = tags.Count > 0 ? $"  [{string.Join(", ", tags)}]" : "";
+                var tagSuffix = c.Tag is not null ? $"  [{c.Tag.Name}]" : "";
                 var closedMarker = c.IsClosed ? " [closed]" : "";
                 Console.WriteLine($"  #{c.Number,-4}  {c.Title}{closedMarker}{tagSuffix}");
             }

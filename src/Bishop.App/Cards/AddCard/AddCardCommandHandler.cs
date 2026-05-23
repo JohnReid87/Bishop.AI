@@ -48,21 +48,18 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
         };
         db.Cards.Add(card);
 
-        if (request.TagNames is { Count: > 0 })
+        if (!string.IsNullOrEmpty(request.TagName))
         {
             var workspaceId = lane.WorkspaceId;
-            foreach (var tagName in request.TagNames.Distinct(StringComparer.OrdinalIgnoreCase))
+            var tag = await db.Tags.FirstOrDefaultAsync(
+                t => t.WorkspaceId == workspaceId && t.Name == request.TagName,
+                cancellationToken);
+            if (tag is null)
             {
-                var tag = await db.Tags.FirstOrDefaultAsync(
-                    t => t.WorkspaceId == workspaceId && t.Name == tagName,
-                    cancellationToken);
-                if (tag is null)
-                {
-                    tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspaceId, Name = tagName };
-                    db.Tags.Add(tag);
-                }
-                db.CardTags.Add(new CardTag { CardId = card.Id, TagId = tag.Id });
+                tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspaceId, Name = request.TagName };
+                db.Tags.Add(tag);
             }
+            card.TagId = tag.Id;
         }
 
         await db.SaveChangesAsync(cancellationToken);

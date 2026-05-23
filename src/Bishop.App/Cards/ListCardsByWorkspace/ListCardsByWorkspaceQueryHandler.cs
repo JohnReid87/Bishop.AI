@@ -16,8 +16,7 @@ public sealed class ListCardsByWorkspaceQueryHandler : IRequestHandler<ListCards
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         return await db.Cards
             .AsNoTracking()
-            .Include(c => c.CardTags)
-            .ThenInclude(ct => ct.Tag)
+            .Include(c => c.Tag)
             .Where(c => c.Lane.WorkspaceId == request.WorkspaceId)
             .OrderBy(c => c.Lane.Position)
             .ThenBy(c => c.Position)

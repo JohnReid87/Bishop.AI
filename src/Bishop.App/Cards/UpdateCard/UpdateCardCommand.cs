@@ -7,5 +7,5 @@ public sealed record UpdateCardCommand(
     Guid CardId,
     string? Title,
     string? Description,
-    bool UpdateTags,
-    IReadOnlyList<string> TagNames) : IRequest<Card>;
+    bool UpdateTag,
+    string? TagName) : IRequest<Card>;

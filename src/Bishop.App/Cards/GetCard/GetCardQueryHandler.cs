@@ -17,8 +17,7 @@ public sealed class GetCardQueryHandler : IRequestHandler<GetCardQuery, Card?>
         return await db.Cards
             .AsNoTracking()
             .Include(c => c.Lane)
-            .Include(c => c.CardTags)
-            .ThenInclude(ct => ct.Tag)
+            .Include(c => c.Tag)
             .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken);
     }
 }

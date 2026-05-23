@@ -7,5 +7,5 @@ public sealed record AddCardCommand(
     Guid LaneId,
     string Title,
     string Description = "",
-    IReadOnlyList<string>? TagNames = null,
+    string? TagName = null,
     CardInsertPosition Position = CardInsertPosition.Top) : IRequest<Card>;

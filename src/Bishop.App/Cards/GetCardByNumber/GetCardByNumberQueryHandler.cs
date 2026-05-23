@@ -17,8 +17,7 @@ public sealed class GetCardByNumberQueryHandler : IRequestHandler<GetCardByNumbe
         return await db.Cards
             .AsNoTracking()
             .Include(c => c.Lane)
-            .Include(c => c.CardTags)
-            .ThenInclude(ct => ct.Tag)
+            .Include(c => c.Tag)
             .Where(c => c.Lane.WorkspaceId == request.WorkspaceId && c.Number == request.Number)
             .FirstOrDefaultAsync(cancellationToken);
     }

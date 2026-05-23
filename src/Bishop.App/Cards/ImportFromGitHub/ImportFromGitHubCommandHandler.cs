@@ -133,11 +133,11 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
                 };
                 issueDb.Cards.Add(card);
 
-                foreach (var tagName in matchingTagNames)
-                {
-                    var tag = workspaceTags.First(t => string.Equals(t.Name, tagName, StringComparison.OrdinalIgnoreCase));
-                    issueDb.CardTags.Add(new CardTag { CardId = card.Id, TagId = tag.Id });
-                }
+                var firstTag = matchingTagNames
+                    .Select(n => workspaceTags.FirstOrDefault(t => string.Equals(t.Name, n, StringComparison.OrdinalIgnoreCase)))
+                    .FirstOrDefault(t => t is not null);
+                if (firstTag is not null)
+                    card.TagId = firstTag.Id;
 
                 await issueDb.SaveChangesAsync(cancellationToken);
                 imported.Add(card);

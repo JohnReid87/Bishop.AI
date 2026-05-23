@@ -87,7 +87,7 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         // Plain-3 (pos 1), Tagged-test (pos 2), Plain-1 (pos 3)
         await add.Handle(new AddCardCommand(todo.Id, "Plain-1"), default);
         var tagged = await add.Handle(
-            new AddCardCommand(todo.Id, "Tagged-test", TagNames: ["test"]),
+            new AddCardCommand(todo.Id, "Tagged-test", TagName: "test"),
             default);
         await add.Handle(new AddCardCommand(todo.Id, "Plain-3"), default);
         var handler = new ClaimCardCommandHandler(_factory, CreateSender());
@@ -101,7 +101,8 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         claimed.Should().NotBeNull();
         claimed!.Id.Should().Be(tagged.Id);
         claimed.LaneId.Should().Be(doing.Id);
-        claimed.CardTags.Should().ContainSingle().Which.Tag.Name.Should().Be("test");
+        claimed.Tag.Should().NotBeNull();
+        claimed.Tag!.Name.Should().Be("test");
     }
 
     [Fact]
@@ -113,7 +114,7 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         var doing = lanes.Single(l => l.Name == "Doing");
         var add = new AddCardCommandHandler(_factory);
         await add.Handle(new AddCardCommand(todo.Id, "Plain-1"), default);
-        await add.Handle(new AddCardCommand(todo.Id, "Tagged-bug", TagNames: ["bug"]), default);
+        await add.Handle(new AddCardCommand(todo.Id, "Tagged-bug", TagName: "bug"), default);
         var handler = new ClaimCardCommandHandler(_factory, CreateSender());
 
         // Act

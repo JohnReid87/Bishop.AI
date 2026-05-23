@@ -77,7 +77,7 @@ public sealed class CardStdinTests : IClassFixture<DbFixture>
             var desc = await Console.In.ReadToEndAsync();
 
             var updated = await new UpdateCardCommandHandler(_factory)
-                .Handle(new UpdateCardCommand(card.Id, null, desc, false, []), default);
+                .Handle(new UpdateCardCommand(card.Id, null, desc, false, null), default);
 
             updated.Description.Should().Be(UnicodeBody);
         }

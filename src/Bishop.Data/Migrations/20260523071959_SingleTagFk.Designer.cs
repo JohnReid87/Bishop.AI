@@ -3,6 +3,7 @@ using System;
 using Bishop.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Bishop.Data.Migrations
 {
     [DbContext(typeof(BishopDbContext))]
-    partial class BishopDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260523071959_SingleTagFk")]
+    partial class SingleTagFk
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.16");
@@ -29,7 +32,7 @@ namespace Bishop.Data.Migrations
 
                     b.HasKey("Key");
 
-                    b.ToTable("AppSettings", (string)null);
+                    b.ToTable("AppSettings");
                 });
 
             modelBuilder.Entity("Bishop.Core.Card", b =>
@@ -99,7 +102,7 @@ namespace Bishop.Data.Migrations
 
                     b.HasIndex("TagId");
 
-                    b.ToTable("Cards", (string)null);
+                    b.ToTable("Cards");
                 });
 
             modelBuilder.Entity("Bishop.Core.Lane", b =>
@@ -130,7 +133,7 @@ namespace Bishop.Data.Migrations
 
                     b.HasIndex("WorkspaceId");
 
-                    b.ToTable("Lanes", (string)null);
+                    b.ToTable("Lanes");
                 });
 
             modelBuilder.Entity("Bishop.Core.Tag", b =>
@@ -165,7 +168,7 @@ namespace Bishop.Data.Migrations
                     b.HasIndex("WorkspaceId", "Name")
                         .IsUnique();
 
-                    b.ToTable("Tags", (string)null);
+                    b.ToTable("Tags");
                 });
 
             modelBuilder.Entity("Bishop.Core.Workspace", b =>
@@ -206,7 +209,7 @@ namespace Bishop.Data.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Workspaces", (string)null);
+                    b.ToTable("Workspaces");
                 });
 
             modelBuilder.Entity("Bishop.Core.Card", b =>
