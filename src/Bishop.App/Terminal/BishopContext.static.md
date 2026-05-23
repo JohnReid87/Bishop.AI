@@ -252,7 +252,7 @@ BODY
 ```
 
 - `<lane>` is normally `"To Do"`; `bish-grill-me` allows `"Backlog"`
-  or `"Ideas"` when the user asks for a parking spot.
+  when the user asks for a parking spot.
 - `<tag>` is a single workspace-scoped tag name (e.g. `arch`,
   `security`, `test`, `bug`, `docs`, `feature`, `refactor`, `chore`).
   Cards carry at most one tag.
