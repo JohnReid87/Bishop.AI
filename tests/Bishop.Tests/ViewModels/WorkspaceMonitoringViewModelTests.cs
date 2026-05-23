@@ -120,4 +120,79 @@ public class WorkspaceMonitoringViewModelTests
             Arg.Is<GetWorkspaceSkillRunsQuery>(q => q.WorkspaceId == workspaceId),
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task LoadAsync_AllClear_BadgeHidden()
+    {
+        _gitCli.GetCommitCountSinceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<int?>(0));
+        var workspaceId = Guid.NewGuid();
+        _mediator.Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>(
+                TrackedSkills.Select(s => new WorkspaceSkillRun
+                {
+                    Id = Guid.NewGuid(), WorkspaceId = workspaceId,
+                    SkillName = s, RecordedAt = DateTimeOffset.UtcNow, GitSha = "abc"
+                }).ToList()));
+
+        await _vm.LoadAsync(workspaceId, @"C:\fake");
+
+        _vm.BadgeCount.Should().Be(0);
+        _vm.BadgeIsRed.Should().BeFalse();
+        _vm.BadgeIsAmber.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task LoadAsync_NeverRunSkills_BadgeIsRedWithCorrectCount()
+    {
+        await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
+
+        _vm.BadgeIsRed.Should().BeTrue();
+        _vm.BadgeIsAmber.Should().BeFalse();
+        _vm.BadgeCount.Should().Be(TrackedSkills.Length);
+        _vm.BadgeTooltip.Should().Be($"{TrackedSkills.Length} of 5 reviews need attention");
+    }
+
+    [Fact]
+    public async Task LoadAsync_OnlyAmberSkills_BadgeIsAmber()
+    {
+        var workspaceId = Guid.NewGuid();
+        _mediator.Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>(
+                TrackedSkills.Select(s => new WorkspaceSkillRun
+                {
+                    Id = Guid.NewGuid(), WorkspaceId = workspaceId,
+                    SkillName = s, RecordedAt = DateTimeOffset.UtcNow, GitSha = "abc"
+                }).ToList()));
+        _gitCli.GetCommitCountSinceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<int?>(15));
+
+        await _vm.LoadAsync(workspaceId, @"C:\fake");
+
+        _vm.BadgeIsRed.Should().BeFalse();
+        _vm.BadgeIsAmber.Should().BeTrue();
+        _vm.BadgeCount.Should().Be(TrackedSkills.Length);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MixOfRedAndAmber_BadgeIsRed()
+    {
+        var workspaceId = Guid.NewGuid();
+        var archSha = "arch-sha";
+        _mediator.Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>(
+            [
+                new WorkspaceSkillRun { Id = Guid.NewGuid(), WorkspaceId = workspaceId, SkillName = "bish-arch", RecordedAt = DateTimeOffset.UtcNow, GitSha = archSha },
+                new WorkspaceSkillRun { Id = Guid.NewGuid(), WorkspaceId = workspaceId, SkillName = "bish-tests", RecordedAt = DateTimeOffset.UtcNow, GitSha = "tests-sha" },
+            ]));
+        _gitCli.GetCommitCountSinceAsync(archSha, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<int?>(60));
+        _gitCli.GetCommitCountSinceAsync(Arg.Is<string>(s => s != archSha), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<int?>(15));
+
+        await _vm.LoadAsync(workspaceId, @"C:\fake");
+
+        _vm.BadgeIsRed.Should().BeTrue();
+        _vm.BadgeIsAmber.Should().BeFalse();
+    }
 }

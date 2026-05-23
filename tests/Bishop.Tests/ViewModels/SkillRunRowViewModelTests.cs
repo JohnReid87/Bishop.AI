@@ -76,4 +76,34 @@ public class SkillRunRowViewModelTests
 
         row.LastRunText.Should().Be("3h ago");
     }
+
+    [Fact]
+    public void NeverRun_SeverityRankIsRed()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", null, null, false);
+
+        row.SeverityRank.Should().Be(2);
+    }
+
+    [Fact]
+    public void ShaUnreachable_SeverityRankIsRed()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow.AddDays(-1), null, shaUnreachable: true);
+
+        row.SeverityRank.Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(9, 0)]
+    [InlineData(10, 1)]
+    [InlineData(49, 1)]
+    [InlineData(50, 2)]
+    [InlineData(100, 2)]
+    public void SeverityRank_MatchesCommitThresholds(int commitsSince, int expectedRank)
+    {
+        var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow.AddDays(-1), commitsSince, false);
+
+        row.SeverityRank.Should().Be(expectedRank);
+    }
 }

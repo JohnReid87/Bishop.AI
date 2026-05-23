@@ -25,6 +25,18 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
 
     public ObservableCollection<SkillRunRowViewModel> Rows { get; } = [];
 
+    [ObservableProperty]
+    private int _badgeCount;
+
+    [ObservableProperty]
+    private bool _badgeIsRed;
+
+    [ObservableProperty]
+    private bool _badgeIsAmber;
+
+    [ObservableProperty]
+    private string _badgeTooltip = string.Empty;
+
     public WorkspaceMonitoringViewModel(IMediator mediator, IGitCli gitCli)
     {
         _mediator = mediator;
@@ -63,5 +75,20 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         Rows.Clear();
         foreach (var row in rows)
             Rows.Add(row);
+
+        UpdateBadge();
+    }
+
+    private void UpdateBadge()
+    {
+        var attentionCount = Rows.Count(r => r.SeverityRank > 0);
+        var hasRed = Rows.Any(r => r.SeverityRank >= 2);
+
+        BadgeCount = attentionCount;
+        BadgeIsRed = hasRed;
+        BadgeIsAmber = !hasRed && attentionCount > 0;
+        BadgeTooltip = attentionCount > 0
+            ? $"{attentionCount} of {TrackedSkills.Length} reviews need attention"
+            : string.Empty;
     }
 }

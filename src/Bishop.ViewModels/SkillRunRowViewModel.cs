@@ -7,6 +7,7 @@ public sealed class SkillRunRowViewModel
     public string CommitsSinceText { get; }
     public string StatusDotColor { get; }
     public string StatusTooltip { get; }
+    public int SeverityRank { get; }
 
     public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable)
     {
@@ -18,12 +19,14 @@ public sealed class SkillRunRowViewModel
             CommitsSinceText = "—";
             StatusDotColor = "#ff5555";
             StatusTooltip = "Never audited";
+            SeverityRank = 2;
         }
         else if (shaUnreachable)
         {
             CommitsSinceText = "Re-audit";
             StatusDotColor = "#ff5555";
             StatusTooltip = "Audit SHA is no longer reachable from HEAD";
+            SeverityRank = 2;
         }
         else
         {
@@ -31,6 +34,7 @@ public sealed class SkillRunRowViewModel
             CommitsSinceText = count.ToString();
             StatusDotColor = count < 10 ? "#4a9e6a" : count < 50 ? "#c4944f" : "#ff5555";
             StatusTooltip = count < 10 ? "Fresh" : count < 50 ? "Getting stale" : "Stale — re-audit recommended";
+            SeverityRank = count < 10 ? 0 : count < 50 ? 1 : 2;
         }
     }
 
