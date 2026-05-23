@@ -1,6 +1,6 @@
 ---
 name: bish-audit-skills
-description: Audit the Bishop skill family in `skills/` against the canonical patterns in `docs/SKILL_FAMILY.md` — category, leading content, workspace-detection, STABLE-section references, heuristic content, frontmatter — then walk findings with the user and push refactor cards. Use when the family has accumulated drift, after a structural change to the conventions, or when the user invokes `/bish-audit-skills`.
+description: Audit the Bishop skill family in `skills/` against the canonical patterns in `docs/SKILL_FAMILY.md` — category, leading content, workspace-detection, STABLE-section references, heuristic content, frontmatter, and bundled-skills-list drift across `README.md` / `CONTEXT.md` / `DIRECTION.md` / `BishopContext.static.md` — then walk findings with the user and push refactor cards. Use when the family has accumulated drift, after a structural change to the conventions, or when the user invokes `/bish-audit-skills`.
 allowed-tools: Read, Glob, Grep, AskUserQuestion, Bash(bishop:*)
 bishop.category: meta
 ---
@@ -11,11 +11,14 @@ A **Bishop-level meta-skill**. It operates on `skills/` in the Bishop.AI
 repository (or any directory the user nominates that already holds
 `bish-*` skill directories), not on a workspace's application code.
 
-The soul is the **audit checklist** — the same ten items a skill author
-should self-check against (and that `bish-write-skill` runs as a
-post-write check on a single file). This skill applies the checklist
-at scale to every skill in the family and converts agreed violations
-into refactor cards.
+The soul is the **audit checklist** — items 1–10 mirror the per-skill
+conformance check `bish-write-skill` runs on a single new file, plus
+item 11, a family-wide check that ensures the bundled-skills lists in
+`README.md`, `CONTEXT.md`, `DIRECTION.md`, and
+`src/Bishop.App/Terminal/BishopContext.static.md` still track the
+actual contents of `skills/`. This skill applies the checklist at
+scale to the family and converts agreed violations into refactor
+cards.
 
 For the reasoning behind each checklist item, see
 [`docs/SKILL_FAMILY.md`](../../docs/SKILL_FAMILY.md) — especially §1
@@ -82,6 +85,33 @@ via §6 of `SKILL_FAMILY.md` when judging an edge case.
     `bishop.stage`, `bishop.stage_prompt` (when `stage: true`),
     `bishop.category` set per the skill's category and surface.
 
+Item 11 is a family-wide check, not per-skill:
+
+11. **Bundled-skills-list drift** — every skill in `skills/bish-*/`
+    appears at least once in each of these four canonical
+    bundled-skills lists, grouped by category rather than as a flat
+    list:
+    - `README.md` — "Getting started → After MSI install" bullet
+      group.
+    - `CONTEXT.md` — both the `skills/` entry under "Repository
+      layout" and the "Skill integration" paragraph.
+    - `DIRECTION.md` — the "Skills live in this repo" decision block.
+    - `src/Bishop.App/Terminal/BishopContext.static.md` — the
+      `## Workflow` section's `### *** skills` sub-headings.
+
+    Each doc must group skills under labels that map 1:1 to the
+    canonical four categories — either the doc-level names
+    (Conversational / Review / Setup-Execute / Bishop-level / meta)
+    or equivalent labels that correspond 1:1 to the frontmatter
+    `bishop.category` values (`discuss` / `review` / `setup` +
+    `execute` / `meta`). Findings:
+    - **Missing skill** — a `skills/bish-*/` directory not named in
+      one of the four docs.
+    - **Missing category** — one of the four categories has no
+      heading or label in a doc that otherwise lists skills.
+    - **Stale flat list** — a doc lists skills inline without any
+      category grouping at all.
+
 ---
 
 <what-to-do>
@@ -97,10 +127,10 @@ via §6 of `SKILL_FAMILY.md` when judging an edge case.
 
 2. **Confirm against `SKILL_FAMILY.md`.** `Read`
    [`docs/SKILL_FAMILY.md`](../../docs/SKILL_FAMILY.md). If §6 of
-   that file disagrees with the ten-item checklist above, STOP and
-   tell the user the doc and this skill have drifted. Do not paper
-   over the disagreement — the checklist is the contract and one of
-   the two files needs an update first.
+   that file disagrees with the eleven-item checklist above, STOP
+   and tell the user the doc and this skill have drifted. Do not
+   paper over the disagreement — the checklist is the contract and
+   one of the two files needs an update first.
 
 3. **Audit each skill.** For each `SKILL.md` found in step 1:
 
@@ -128,13 +158,53 @@ via §6 of `SKILL_FAMILY.md` when judging an edge case.
    Severity heuristic: item 7 paraphrases of STABLE sections and item
    3 inline detection in workspace-level skills are `high`; item 2
    miscategorisation is `high`; item 10 missing frontmatter keys are
-   `medium`; item 8 and item 9 dilution are `medium`; the rest depend
-   on context.
+   `medium`; item 8 and item 9 dilution are `medium`; item 11
+   missing-skill and missing-category are `high`, item 11
+   stale-flat-list is `medium`; the rest depend on context.
 
-4. **Print a summary.** Group findings by skill, alphabetical. One
+4. **Audit bundled-skills lists (item 11).** Family-wide, not
+   per-skill. `Read` each of these four docs and check the
+   bundled-skills list inside:
+
+   - `README.md` — "Getting started → After MSI install" bullet group.
+   - `CONTEXT.md` — both the `skills/` entry under "Repository
+     layout" and the "Skill integration" paragraph.
+   - `DIRECTION.md` — the "Skills live in this repo" decision block.
+   - `src/Bishop.App/Terminal/BishopContext.static.md` — the
+     `## Workflow` section's `### *** skills` sub-headings.
+
+   For each doc:
+
+   - Use `Grep` to count occurrences of every `bish-*` directory
+     name enumerated in step 3. A skill referenced zero times in
+     the doc is a **missing-skill** finding (item 11, severity
+     `high`).
+   - Check that the doc carries headings or labels that group
+     skills by the canonical four categories. Accept either the
+     doc-level names (Conversational / Review / Setup-Execute /
+     Bishop-level / meta) or labels that map 1:1 to the frontmatter
+     values (`discuss` / `review` / `setup` + `execute` / `meta`).
+     A category with no representation at all in a doc that
+     otherwise lists skills is a **missing-category** finding
+     (item 11, severity `high`).
+   - If the doc renders skills as an ungrouped flat list (no
+     category headings or labels at all), that is a
+     **stale-flat-list** finding (item 11, severity `medium`).
+
+   Record findings using the same structured format as step 3. For
+   missing-skill findings, set `skill` to the affected skill name
+   and `location` to the doc path. For missing-category and
+   stale-flat-list findings, set `skill` to `(family-wide)` and
+   `location` to the doc path plus the affected section heading.
+
+5. **Print a summary.** Group findings by `skill`, alphabetical
+   (item-11 family-wide findings cluster under `(family-wide)`). One
    line per finding:
 
    ```
+   (family-wide)
+     [high]   item-11 — `bish-foo` missing from README.md
+     [medium] item-11 — BishopContext.static.md lists skills as a flat list
    bish-grill-me
      [high]   item-3 — inline `bishop workspace current --json` preamble (lines 14-27)
      [medium] item-10 — missing `bishop.category` frontmatter key
@@ -145,7 +215,7 @@ via §6 of `SKILL_FAMILY.md` when judging an edge case.
    If a skill has no findings, list it under a `Clean:` heading at the
    bottom so the user can see what was checked.
 
-5. **Walk findings one at a time** per
+6. **Walk findings one at a time** per
    `BISHOP_CONTEXT.md → ## Per-finding Walk Pattern (TUNABLE)`. For
    each finding, print the full body (skill, item, severity, what,
    location, suggested-action, plus your recommended verdict) and use
@@ -160,7 +230,7 @@ via §6 of `SKILL_FAMILY.md` when judging an edge case.
      in this codebase.
    - **Defer** — note but do not card now.
 
-6. **Granularity pass** per
+7. **Granularity pass** per
    `BISHOP_CONTEXT.md → ## Card Granularity Rules (TUNABLE)`. Common
    clustering patterns for this skill:
 
@@ -170,24 +240,30 @@ via §6 of `SKILL_FAMILY.md` when judging an edge case.
      card per section across all affected skills, not per skill.
    - Item-10 frontmatter gaps across many skills → one card
      "Backfill missing frontmatter keys across the family".
+   - Multiple item-11 missing-skill / missing-category findings
+     across docs → one card "Backfill bundled-skills lists across
+     `README.md`, `CONTEXT.md`, `DIRECTION.md`, and
+     `BishopContext.static.md`", not per doc.
 
-7. **Print the preview** per
+8. **Print the preview** per
    `BISHOP_CONTEXT.md → ## Task List Preview Format (STABLE)`. Each
    card body uses the template below. Cards default to
    `--lane "To Do"` and `--tag chore`; switch to `--tag docs` when
-   the finding is about drift in `SKILL_FAMILY.md` or
-   `BISHOP_CONTEXT.md` rather than in a `SKILL.md` file.
+   the finding is about drift in a documentation file
+   (`SKILL_FAMILY.md`, `BISHOP_CONTEXT.md`, `README.md`, `CONTEXT.md`,
+   `DIRECTION.md`, `BishopContext.static.md`) rather than in a
+   `SKILL.md` file. All item-11 findings take `--tag docs`.
 
    Ask:
 
    > Please review the tasks above. Say **push** to create the Bishop cards.
 
-8. **Push confirmed cards** per
+9. **Push confirmed cards** per
    `BISHOP_CONTEXT.md → ## Card Push Procedure (STABLE)`. Always
    `--bottom` so the audit batch does not jump ahead of manually
    prioritised work.
 
-9. **Print summary table:**
+10. **Print summary table:**
 
    | Card | Title | Lane | Tag |
    |------|-------|------|-----|
@@ -201,10 +277,10 @@ via §6 of `SKILL_FAMILY.md` when judging an edge case.
 
 ```markdown
 ### Why
-Item-<N> — <one-sentence statement of the violation>. Affected: `<skill-1>`, `<skill-2>`, …. See `docs/SKILL_FAMILY.md` §6 for the checklist rationale.
+Item-<N> — <one-sentence statement of the violation>. Affected: `<skill-or-doc-1>`, `<skill-or-doc-2>`, …. See `docs/SKILL_FAMILY.md` §6 for the checklist rationale.
 
 ### Acceptance
-- Re-running `/bish-audit-skills` reports no item-<N> finding against the listed skills.
+- Re-running `/bish-audit-skills` reports no item-<N> finding against the listed targets.
 - <any additional verifiable criterion specific to the finding>
 ```
 

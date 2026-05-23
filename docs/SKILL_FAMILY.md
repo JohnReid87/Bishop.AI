@@ -109,7 +109,20 @@ For each skill in `skills/`:
 9. **Procedural flow** — for setup/execute skills: is the procedure still readable top-to-bottom as imperative steps? Reordering for "purpose-first" is a bug here.
 10. **Frontmatter** — `name`, `description`, `allowed-tools`, `bishop.scope`, `bishop.command` all present and accurate? Stage flags (`bishop.stage`, `bishop.stage_prompt`) correct for the workspace-launch path?
 
-Flag findings per skill and walk them with the user before pushing follow-up cards (the standard per-finding cadence used by `bish-arch` / `bish-security`).
+Finally, run this family-wide check (not per-skill):
+
+11. **Bundled-skills-list drift** — every skill in `skills/bish-*/` must appear at least once in each of these four canonical bundled-skills lists, grouped by category rather than as a flat list:
+    - `README.md` — "Getting started → After MSI install" bullet group.
+    - `CONTEXT.md` — both the `skills/` entry under "Repository layout" and the "Skill integration" paragraph.
+    - `DIRECTION.md` — the "Skills live in this repo" decision block.
+    - `src/Bishop.App/Terminal/BishopContext.static.md` — the `## Workflow` section's `### *** skills` sub-headings.
+
+    Each doc must group skills under labels that map 1:1 to the canonical four categories — either the doc-level names (Conversational / Review / Setup-Execute / Bishop-level / meta) or equivalent labels that correspond 1:1 to the frontmatter `bishop.category` values (`discuss` / `review` / `setup` + `execute` / `meta`). Flag:
+    - **Missing skill** — a `skills/bish-*/` directory not named in one of the four docs.
+    - **Missing category** — one of the four categories has no heading or label in a doc that otherwise lists skills.
+    - **Stale flat list** — a doc lists skills inline without any category grouping at all.
+
+Flag findings (per-skill for items 1–10, family-wide for item 11) and walk them with the user before pushing follow-up cards (the standard per-finding cadence used by `bish-arch` / `bish-security`).
 
 ---
 
