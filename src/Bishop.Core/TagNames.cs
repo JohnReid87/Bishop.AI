@@ -9,6 +9,7 @@ public static class TagNames
     public const string Arch = "arch";
     public const string Test = "test";
     public const string Spike = "spike";
+    public const string Security = "security";
 
-    public static readonly IReadOnlyList<string> All = [Feature, Bug, Chore, Docs, Arch, Test, Spike];
+    public static readonly IReadOnlyList<string> All = [Feature, Bug, Chore, Docs, Arch, Test, Spike, Security];
 }

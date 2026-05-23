@@ -11,24 +11,25 @@ sitting on top.
 
 ## Tag palette — harmonic foundation
 
-The seven workspace tags are the colour family Bishop is tuned to. They
+The eight workspace tags are the colour family Bishop is tuned to. They
 share a mid-saturation, mid-luminance character (~50% saturation, ~55%
 lightness, hues spaced ~50° apart on the wheel) so the set sits calmly
 on `#141414` surfaces and stays well clear of the `#00ff41` signal so
 chips never read as "active" UI. Reserved hues — pure red (`#ff5555`,
 errors only) and the bright signal green — are absent from the family.
 
-| Tag       | Hex        | Reads as     |
-| --------- | ---------- | ------------ |
-| `arch`    | `#6b8caf`  | slate blue   |
-| `bug`     | `#c97a8a`  | muted rose   |
-| `chore`   | `#a89878`  | warm taupe   |
-| `docs`    | `#5fa89c`  | soft teal    |
-| `feature` | `#7fa87a`  | sage green   |
-| `spike`   | `#9a7ab8`  | muted violet |
-| `test`    | `#c4a85f`  | muted gold   |
+| Tag        | Hex        | Reads as       |
+| ---------- | ---------- | -------------- |
+| `arch`     | `#6b8caf`  | slate blue     |
+| `bug`      | `#c97a8a`  | muted rose     |
+| `chore`    | `#a89878`  | warm taupe     |
+| `docs`     | `#5fa89c`  | soft teal      |
+| `feature`  | `#7fa87a`  | sage green     |
+| `security` | `#c4806a`  | muted copper   |
+| `spike`    | `#9a7ab8`  | muted violet   |
+| `test`     | `#c4a85f`  | muted gold     |
 
-Listed alphabetically. All seven sit above the WCAG 0.179 relative-
+Listed alphabetically. All eight sit above the WCAG 0.179 relative-
 luminance threshold, so the contrast converter renders **black** chip
 text consistently across the set.
 

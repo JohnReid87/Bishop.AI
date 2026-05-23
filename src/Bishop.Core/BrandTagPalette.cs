@@ -12,6 +12,7 @@ public static class BrandTagPalette
             [TagNames.Chore] = "#a89878",
             [TagNames.Docs] = "#5fa89c",
             [TagNames.Feature] = "#7fa87a",
+            [TagNames.Security] = "#c4806a",
             [TagNames.Spike] = "#9a7ab8",
             [TagNames.Test] = "#c4a85f",
         };

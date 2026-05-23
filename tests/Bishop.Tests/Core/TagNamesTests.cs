@@ -34,17 +34,21 @@ public class TagNamesTests
         TagNames.Spike.Should().Be("spike");
 
     [Fact]
-    public void All_ContainsExactlySevenTags() =>
-        TagNames.All.Should().HaveCount(7);
+    public void Security_IsCorrectValue() =>
+        TagNames.Security.Should().Be("security");
+
+    [Fact]
+    public void All_ContainsExactlyEightTags() =>
+        TagNames.All.Should().HaveCount(8);
 
     [Fact]
     public void All_ContainsAllTagsInOrder() =>
         TagNames.All.Should().ContainInOrder(
-            "feature", "bug", "chore", "docs", "arch", "test", "spike");
+            "feature", "bug", "chore", "docs", "arch", "test", "spike", "security");
 
     [Fact]
     public void All_TagsReferenceConstantValues() =>
         TagNames.All.Should().BeEquivalentTo(
-            [TagNames.Feature, TagNames.Bug, TagNames.Chore, TagNames.Docs, TagNames.Arch, TagNames.Test, TagNames.Spike],
+            [TagNames.Feature, TagNames.Bug, TagNames.Chore, TagNames.Docs, TagNames.Arch, TagNames.Test, TagNames.Spike, TagNames.Security],
             opts => opts.WithStrictOrdering());
 }
