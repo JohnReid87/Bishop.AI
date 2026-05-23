@@ -24,6 +24,7 @@ public sealed partial class LaneViewModel : ObservableObject
 
     public bool IsToDoLane => Name == SystemLaneNames.ToDo;
     public bool IsBacklogLane => Name == SystemLaneNames.Backlog;
+    public bool IsDoneLane => Name == SystemLaneNames.Done;
     public bool CanWorkNext => IsToDoLane && Cards.Count > 0;
     public string WorkNextTooltip => CanWorkNext ? "Ralph it" : "No cards in To Do";
 
@@ -31,6 +32,7 @@ public sealed partial class LaneViewModel : ObservableObject
     public partial bool HasGitHubRepo { get; set; }
 
     public bool IsImportVisible => IsBacklogLane && HasGitHubRepo;
+    public bool IsPushToGitHubVisible => IsDoneLane && HasGitHubRepo;
 
     [ObservableProperty]
     public partial bool IsWorkNextRunning { get; set; }
@@ -109,7 +111,11 @@ public sealed partial class LaneViewModel : ObservableObject
         OnPropertyChanged(nameof(IsStopVisible));
     }
 
-    partial void OnHasGitHubRepoChanged(bool value) => OnPropertyChanged(nameof(IsImportVisible));
+    partial void OnHasGitHubRepoChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsImportVisible));
+        OnPropertyChanged(nameof(IsPushToGitHubVisible));
+    }
 
     partial void OnIsWorkNextStoppingChanged(bool value)
     {

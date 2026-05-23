@@ -212,6 +212,13 @@
                                             <FontIcon Glyph="&#xE70D;" FontSize="12"/>
                                         </Button>
                                         <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                Click="PushToGitHub_Click"
+                                                Visibility="{x:Bind IsPushToGitHubVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                ToolTipService.ToolTip="Push to GitHub"
+                                                Margin="0,0,4,0">
+                                            <FontIcon Glyph="&#xE70E;" FontSize="12"/>
+                                        </Button>
+                                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                 Command="{x:Bind BeginAddCardCommand}"
                                                 Click="BeginAddCard_Click"
                                                 Margin="0,0,8,0"

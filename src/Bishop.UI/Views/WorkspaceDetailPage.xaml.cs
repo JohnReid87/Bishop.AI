@@ -1,6 +1,7 @@
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Cards.ImportFromGitHub;
+using Bishop.App.Cards.PushLane;
 using Bishop.App.GitHub;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.ReopenCard;
@@ -71,6 +72,7 @@ public sealed partial class WorkspaceDetailPage : Page
         SkillViewer.PropertyChanged += OnSkillViewerPropertyChanged;
         Board.Lanes.CollectionChanged += (_, _) => ApplyWorkNextStateToToDoLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
+        Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
     }
 
     private void OnSkillViewerPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -177,6 +179,13 @@ public sealed partial class WorkspaceDetailPage : Page
         backlogLane.HasGitHubRepo = !string.IsNullOrEmpty(_item?.GitHubRepo);
     }
 
+    private void ApplyGitHubRepoToDoneLane()
+    {
+        var doneLane = Board.Lanes.FirstOrDefault(l => l.IsDoneLane);
+        if (doneLane is null) return;
+        doneLane.HasGitHubRepo = !string.IsNullOrEmpty(_item?.GitHubRepo);
+    }
+
     private void OnDatabaseChanged(object? sender, EventArgs e)
     {
         DispatcherQueue.TryEnqueue(async () =>
@@ -195,7 +204,10 @@ public sealed partial class WorkspaceDetailPage : Page
         if (e.PropertyName is nameof(WorkspaceItemViewModel.IsPathMissing))
             UpdatePathStatus();
         if (e.PropertyName is nameof(WorkspaceItemViewModel.GitHubRepo))
+        {
             ApplyGitHubRepoToBacklogLane();
+            ApplyGitHubRepoToDoneLane();
+        }
     }
 
     private async void UpdateView(WorkspaceItemViewModel vm)
@@ -205,6 +217,7 @@ public sealed partial class WorkspaceDetailPage : Page
         ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
         UpdatePathStatus();
         ApplyGitHubRepoToBacklogLane();
+        ApplyGitHubRepoToDoneLane();
         await LoadSkillsAsync();
         SetupWorkNextWatcher(vm.Path);
         _skillViewerCard = null;
@@ -963,6 +976,18 @@ public sealed partial class WorkspaceDetailPage : Page
         var dialog = new ImportFromGitHubDialog(_item.Id, repo, mediator, ghCli) { XamlRoot = XamlRoot };
         await dialog.ShowAsync();
         if (dialog.ViewModel.WasImported)
+            await Board.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private async void PushToGitHub_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item?.GitHubRepo is null) return;
+        var doneLane = Board.Lanes.FirstOrDefault(l => l.IsDoneLane);
+        if (doneLane is null) return;
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        var dialog = new PushLaneToGitHubDialog(_item.Id, doneLane.Name, doneLane.Cards.ToList(), mediator) { XamlRoot = XamlRoot };
+        await dialog.ShowAsync();
+        if (dialog.ViewModel.WasPushed)
             await Board.RefreshCommand.ExecuteAsync(null);
     }
 
