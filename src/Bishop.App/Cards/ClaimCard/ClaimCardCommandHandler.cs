@@ -63,12 +63,14 @@ public sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, 
             ?? throw new InvalidOperationException(
                 "Lane 'Doing' not found in workspace.");
 
-        var query = db.Cards.Where(c => c.LaneId == sourceLane.Id);
+        var workspaceId = request.WorkspaceId;
+        var sourceLaneName = sourceLane.Name;
+        var query = db.Cards.Where(c => c.WorkspaceId == workspaceId && c.LaneName == sourceLaneName);
 
         if (!string.IsNullOrEmpty(request.TagName))
         {
             var tagName = request.TagName;
-            query = query.Where(c => c.Tag != null && c.Tag.Name == tagName);
+            query = query.Where(c => c.TagName == tagName);
         }
 
         var topCard = await query
@@ -84,18 +86,19 @@ public sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, 
         // Inline move: source lane → Doing at position 1. Doing is never the auto-close
         // lane (only Done is), so no Close/Reopen dispatch is required.
         var sourceSiblings = await db.Cards
-            .Where(c => c.LaneId == sourceLane.Id && c.Id != topCard.Id)
+            .Where(c => c.WorkspaceId == workspaceId && c.LaneName == sourceLaneName && c.Id != topCard.Id)
             .OrderBy(c => c.Position)
             .ToListAsync(cancellationToken);
         for (var i = 0; i < sourceSiblings.Count; i++)
             sourceSiblings[i].Position = i + 1;
 
+        var doingLaneName = doingLane.Name;
         var doingCards = await db.Cards
-            .Where(c => c.LaneId == doingLane.Id && c.Id != topCard.Id)
+            .Where(c => c.WorkspaceId == workspaceId && c.LaneName == doingLaneName && c.Id != topCard.Id)
             .OrderBy(c => c.Position)
             .ToListAsync(cancellationToken);
 
-        topCard.LaneId = doingLane.Id;
+        topCard.LaneName = doingLaneName;
         doingCards.Insert(0, topCard);
         for (var i = 0; i < doingCards.Count; i++)
             doingCards[i].Position = i + 1;

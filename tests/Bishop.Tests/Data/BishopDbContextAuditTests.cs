@@ -50,7 +50,7 @@ public sealed class BishopDbContextAuditTests : IDisposable
         await _fixture.Db.SaveChangesAsync();
 
         var before = DateTimeOffset.UtcNow;
-        var card = new Card { Id = Guid.NewGuid(), LaneId = lane.Id, Title = "C", Number = 1 };
+        var card = new Card { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, LaneName = lane.Name, Title = "C", Number = 1 };
         _fixture.Db.Cards.Add(card);
         await _fixture.Db.SaveChangesAsync();
         var after = DateTimeOffset.UtcNow;
@@ -121,12 +121,12 @@ public sealed class BishopDbContextAuditTests : IDisposable
     }
 
     [Fact]
-    public async Task Card_TagId_CanRoundTrip()
+    public async Task Card_TagName_CanRoundTrip()
     {
         var workspace = new Workspace { Id = Guid.NewGuid(), Name = "W2", Path = "/w2" };
         var lane = new Lane { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "To Do", Position = 1 };
         var tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = "feat" };
-        var card = new Card { Id = Guid.NewGuid(), LaneId = lane.Id, Title = "C", Number = 1, TagId = tag.Id };
+        var card = new Card { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, LaneName = lane.Name, Title = "C", Number = 1, TagName = tag.Name };
         _fixture.Db.Workspaces.Add(workspace);
         _fixture.Db.Lanes.Add(lane);
         _fixture.Db.Tags.Add(tag);
@@ -135,9 +135,7 @@ public sealed class BishopDbContextAuditTests : IDisposable
 
         _fixture.Db.ChangeTracker.Clear();
         var loaded = await _fixture.Db.Cards
-            .Include(c => c.Tag)
             .FirstAsync(c => c.Id == card.Id);
-        loaded.TagId.Should().Be(tag.Id);
-        loaded.Tag!.Name.Should().Be("feat");
+        loaded.TagName.Should().Be("feat");
     }
 }

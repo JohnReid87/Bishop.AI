@@ -159,7 +159,7 @@ revealing exactly what the agent needs.
 Bishop tracks work as **cards** inside **lanes** on a per-workspace kanban board.
 Cards are addressed by their workspace-scoped Number, written as `#N` (e.g. `#42`).
 Card identifiers also accept the first 8 hex characters of the card's GUID.
-Tags are workspace-scoped; a card holds at most one tag via a nullable `TagId` FK on the `Cards` table.
+Tags are workspace-scoped; a card holds at most one tag, stored as a nullable `TagName` string on the `Cards` table.
 
 ### Card body convention
 

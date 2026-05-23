@@ -15,52 +15,57 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
+        var lane = await db.Lanes.FindAsync([request.LaneId], cancellationToken)
+            ?? throw new InvalidOperationException($"Lane {request.LaneId} not found.");
+        var workspace = await db.Workspaces.FindAsync([lane.WorkspaceId], cancellationToken)
+            ?? throw new InvalidOperationException($"Workspace {lane.WorkspaceId} not found.");
+
         int newPosition;
         if (request.Position == CardInsertPosition.Bottom)
         {
             var maxPosition = await db.Cards
-                .Where(c => c.LaneId == request.LaneId)
+                .Where(c => c.WorkspaceId == workspace.Id && c.LaneName == lane.Name)
                 .MaxAsync(c => (int?)c.Position, cancellationToken);
             newPosition = (maxPosition ?? 0) + 1;
         }
         else
         {
             var existing = await db.Cards
-                .Where(c => c.LaneId == request.LaneId)
+                .Where(c => c.WorkspaceId == workspace.Id && c.LaneName == lane.Name)
                 .ToListAsync(cancellationToken);
             foreach (var c in existing)
                 c.Position++;
             newPosition = 1;
         }
 
-        var lane = await db.Lanes.FindAsync([request.LaneId], cancellationToken);
-        var workspace = await db.Workspaces.FindAsync([lane!.WorkspaceId], cancellationToken);
-        var number = workspace!.NextCardNumber++;
+        var number = workspace.NextCardNumber++;
+
+        string? tagName = null;
+        if (!string.IsNullOrEmpty(request.TagName))
+        {
+            var tag = await db.Tags.FirstOrDefaultAsync(
+                t => t.WorkspaceId == workspace.Id && t.Name == request.TagName,
+                cancellationToken);
+            if (tag is null)
+            {
+                tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspace.Id, Name = request.TagName };
+                db.Tags.Add(tag);
+            }
+            tagName = tag.Name;
+        }
 
         var card = new Card
         {
             Id = Guid.NewGuid(),
-            LaneId = request.LaneId,
+            WorkspaceId = workspace.Id,
+            LaneName = lane.Name,
+            TagName = tagName,
             Title = request.Title,
             Description = request.Description,
             Number = number,
             Position = newPosition,
         };
         db.Cards.Add(card);
-
-        if (!string.IsNullOrEmpty(request.TagName))
-        {
-            var workspaceId = lane.WorkspaceId;
-            var tag = await db.Tags.FirstOrDefaultAsync(
-                t => t.WorkspaceId == workspaceId && t.Name == request.TagName,
-                cancellationToken);
-            if (tag is null)
-            {
-                tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = workspaceId, Name = request.TagName };
-                db.Tags.Add(tag);
-            }
-            card.TagId = tag.Id;
-        }
 
         await db.SaveChangesAsync(cancellationToken);
         return card;

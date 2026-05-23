@@ -13,4 +13,5 @@ public sealed class Workspace : IAuditable
 
     public ICollection<Lane> Lanes { get; set; } = [];
     public ICollection<Tag> Tags { get; set; } = [];
+    public ICollection<Card> Cards { get; set; } = [];
 }

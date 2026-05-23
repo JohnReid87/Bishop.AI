@@ -21,15 +21,14 @@ public sealed class CloseCardCommandHandler : IRequestHandler<CloseCardCommand, 
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var card = await db.Cards
-            .Include(c => c.Lane)
-                .ThenInclude(l => l.Workspace)
+            .Include(c => c.Workspace)
             .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
         card.IsClosed = true;
         await db.SaveChangesAsync(cancellationToken);
 
-        if (card.GitHubIssueNumber.HasValue && card.Lane.Workspace.GitHubRepo is { } repo)
+        if (card.GitHubIssueNumber.HasValue && card.Workspace.GitHubRepo is { } repo)
             await _ghCli.RunAsync(["issue", "close", card.GitHubIssueNumber.ToString()!, "--repo", repo], cancellationToken);
 
         return card;

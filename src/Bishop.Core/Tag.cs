@@ -13,6 +13,4 @@ public sealed class Tag : IAuditable
 
     [JsonIgnore]
     public Workspace Workspace { get; set; } = null!;
-    [JsonIgnore]
-    public ICollection<Card> Cards { get; set; } = [];
 }

@@ -21,25 +21,33 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var card = await db.Cards
-            .Include(c => c.Lane)
-                .ThenInclude(l => l.Workspace)
-            .Include(c => c.Tag)
+            .Include(c => c.Workspace)
             .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
-        var repo = card.Lane.Workspace.GitHubRepo
-            ?? throw new InvalidOperationException($"Workspace '{card.Lane.Workspace.Name}' has no GitHub repo configured. Run: bishop workspace set-github <owner/repo>");
+        var repo = card.Workspace.GitHubRepo
+            ?? throw new InvalidOperationException($"Workspace '{card.Workspace.Name}' has no GitHub repo configured. Run: bishop workspace set-github <owner/repo>");
 
         if (card.GitHubIssueNumber.HasValue)
             throw new InvalidOperationException($"Card #{card.Number} is already linked to GitHub issue #{card.GitHubIssueNumber}.");
 
-        // Ensure the label exists on GitHub (ignore failures — label may already exist or permissions may be limited)
-        if (card.Tag is not null)
+        Tag? tag = null;
+        if (card.TagName is { } tagName)
         {
-            var color = card.Tag.Colour.TrimStart('#');
+            tag = await db.Tags
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    t => t.WorkspaceId == card.WorkspaceId && t.Name == tagName,
+                    cancellationToken);
+        }
+
+        // Ensure the label exists on GitHub (ignore failures — label may already exist or permissions may be limited)
+        if (tag is not null)
+        {
+            var color = tag.Colour.TrimStart('#');
             try
             {
-                await _ghCli.RunAsync(["label", "create", card.Tag.Name, "--color", color, "--repo", repo, "--force"], cancellationToken);
+                await _ghCli.RunAsync(["label", "create", tag.Name, "--color", color, "--repo", repo, "--force"], cancellationToken);
             }
             catch { /* label creation is best-effort */ }
         }
@@ -51,10 +59,10 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
 
         // Build gh issue create args
         var createArgs = new List<string> { "issue", "create", "--repo", repo, "--title", card.Title, "--body", body };
-        if (card.Tag is not null)
+        if (card.TagName is { } labelName)
         {
             createArgs.Add("--label");
-            createArgs.Add(card.Tag.Name);
+            createArgs.Add(labelName);
         }
 
         var issueUrl = await _ghCli.RunCaptureAsync([.. createArgs], cancellationToken);

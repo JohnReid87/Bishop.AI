@@ -5,7 +5,9 @@ namespace Bishop.Core;
 public sealed class Card : IAuditable
 {
     public Guid Id { get; set; }
-    public Guid LaneId { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public string LaneName { get; set; } = string.Empty;
+    public string? TagName { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int Number { get; set; }
@@ -19,10 +21,6 @@ public sealed class Card : IAuditable
     public int TotalOutputTokens { get; set; }
     public int ClaudeRunCount { get; set; }
 
-    public Guid? TagId { get; set; }
-
     [JsonIgnore]
-    public Lane Lane { get; set; } = null!;
-    [JsonIgnore]
-    public Tag? Tag { get; set; }
+    public Workspace Workspace { get; set; } = null!;
 }

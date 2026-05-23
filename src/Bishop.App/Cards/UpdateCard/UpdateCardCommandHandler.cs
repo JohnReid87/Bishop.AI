@@ -25,9 +25,7 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
-        var card = await db.Cards
-            .Include(c => c.Lane)
-            .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
+        var card = await db.Cards.FindAsync([request.CardId], cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
         if (request.Title is not null)
@@ -47,19 +45,19 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
         {
             if (string.IsNullOrEmpty(request.TagName))
             {
-                card.TagId = null;
+                card.TagName = null;
             }
             else
             {
                 var tag = await db.Tags.FirstOrDefaultAsync(
-                    t => t.WorkspaceId == card.Lane.WorkspaceId && t.Name == request.TagName,
+                    t => t.WorkspaceId == card.WorkspaceId && t.Name == request.TagName,
                     cancellationToken);
                 if (tag is null)
                 {
-                    tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = card.Lane.WorkspaceId, Name = request.TagName };
+                    tag = new Tag { Id = Guid.NewGuid(), WorkspaceId = card.WorkspaceId, Name = request.TagName };
                     db.Tags.Add(tag);
                 }
-                card.TagId = tag.Id;
+                card.TagName = tag.Name;
             }
         }
 

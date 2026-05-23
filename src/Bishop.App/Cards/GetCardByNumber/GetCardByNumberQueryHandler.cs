@@ -16,9 +16,7 @@ public sealed class GetCardByNumberQueryHandler : IRequestHandler<GetCardByNumbe
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         return await db.Cards
             .AsNoTracking()
-            .Include(c => c.Lane)
-            .Include(c => c.Tag)
-            .Where(c => c.Lane.WorkspaceId == request.WorkspaceId && c.Number == request.Number)
+            .Where(c => c.WorkspaceId == request.WorkspaceId && c.Number == request.Number)
             .FirstOrDefaultAsync(cancellationToken);
     }
 }

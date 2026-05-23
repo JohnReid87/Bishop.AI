@@ -29,31 +29,34 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
             card = await db.Cards.FindAsync([request.CardId], cancellationToken)
                 ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
-            if (request.ExpectedSourceLaneId is { } expectedLaneId && card.LaneId != expectedLaneId)
-                throw new InvalidOperationException(
-                    $"Card {request.CardId} was expected in lane {expectedLaneId} but is now in lane {card.LaneId}.");
+            var targetLane = await db.Lanes.FindAsync([request.ToLaneId], cancellationToken)
+                ?? throw new InvalidOperationException($"Lane {request.ToLaneId} not found.");
 
-            var sourceLaneId = card.LaneId;
-            var movingAcrossLanes = sourceLaneId != request.ToLaneId;
+            if (request.ExpectedSourceLaneId is { } expectedLaneId)
+            {
+                var expectedLane = await db.Lanes.FindAsync([expectedLaneId], cancellationToken);
+                if (expectedLane is null || card.LaneName != expectedLane.Name || card.WorkspaceId != expectedLane.WorkspaceId)
+                    throw new InvalidOperationException(
+                        $"Card {request.CardId} was expected in lane {expectedLaneId} but is in lane '{card.LaneName}'.");
+            }
+
+            var sourceLaneName = card.LaneName;
+            var workspaceId = card.WorkspaceId;
+            var movingAcrossLanes = sourceLaneName != targetLane.Name || workspaceId != targetLane.WorkspaceId;
 
             enteringDone = false;
             leavingDone = false;
 
             if (movingAcrossLanes)
             {
-                var sourceLane = await db.Lanes.FindAsync([sourceLaneId], cancellationToken)
-                    ?? throw new InvalidOperationException($"Lane {sourceLaneId} not found.");
-                var targetLane = await db.Lanes.FindAsync([request.ToLaneId], cancellationToken)
-                    ?? throw new InvalidOperationException($"Lane {request.ToLaneId} not found.");
-
-                var sourceDone = sourceLane.IsSystem && sourceLane.Name == SystemLaneNames.Done;
-                var targetDone = targetLane.IsSystem && targetLane.Name == SystemLaneNames.Done;
+                var sourceDone = sourceLaneName == SystemLaneNames.Done;
+                var targetDone = targetLane.Name == SystemLaneNames.Done;
                 enteringDone = targetDone && !sourceDone;
                 leavingDone = sourceDone && !targetDone;
 
                 // Renumber remaining cards in the source lane.
                 var sourceCards = await db.Cards
-                    .Where(c => c.LaneId == sourceLaneId && c.Id != card.Id)
+                    .Where(c => c.WorkspaceId == workspaceId && c.LaneName == sourceLaneName && c.Id != card.Id)
                     .OrderBy(c => c.Position)
                     .ToListAsync(cancellationToken);
                 for (var i = 0; i < sourceCards.Count; i++)
@@ -62,7 +65,7 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
 
             // Load target lane cards (excluding the card being moved if same lane).
             var targetCards = await db.Cards
-                .Where(c => c.LaneId == request.ToLaneId && c.Id != card.Id)
+                .Where(c => c.WorkspaceId == targetLane.WorkspaceId && c.LaneName == targetLane.Name && c.Id != card.Id)
                 .OrderBy(c => c.Position)
                 .ToListAsync(cancellationToken);
 
@@ -70,7 +73,8 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
             var insertAt = Math.Clamp(request.ToPosition - 1, 0, targetCards.Count);
             targetCards.Insert(insertAt, card);
 
-            card.LaneId = request.ToLaneId;
+            card.LaneName = targetLane.Name;
+            card.WorkspaceId = targetLane.WorkspaceId;
             for (var i = 0; i < targetCards.Count; i++)
                 targetCards[i].Position = i + 1;
 

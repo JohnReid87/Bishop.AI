@@ -71,7 +71,7 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         // Assert
         claimed.Should().NotBeNull();
         claimed!.Id.Should().Be(second.Id);
-        claimed.LaneId.Should().Be(doing.Id);
+        claimed.LaneName.Should().Be(doing.Name);
     }
 
     [Fact]
@@ -100,9 +100,8 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
         // Assert
         claimed.Should().NotBeNull();
         claimed!.Id.Should().Be(tagged.Id);
-        claimed.LaneId.Should().Be(doing.Id);
-        claimed.Tag.Should().NotBeNull();
-        claimed.Tag!.Name.Should().Be("test");
+        claimed.LaneName.Should().Be(doing.Name);
+        claimed.TagName.Should().Be("test");
     }
 
     [Fact]
@@ -124,8 +123,8 @@ public sealed class ClaimCardCommandHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         claimed.Should().BeNull();
-        var todoCount = await _db.Cards.CountAsync(c => c.LaneId == todo.Id);
-        var doingCount = await _db.Cards.CountAsync(c => c.LaneId == doing.Id);
+        var todoCount = await _db.Cards.CountAsync(c => c.WorkspaceId == workspace.Id && c.LaneName == todo.Name);
+        var doingCount = await _db.Cards.CountAsync(c => c.WorkspaceId == workspace.Id && c.LaneName == doing.Name);
         todoCount.Should().Be(2);
         doingCount.Should().Be(0);
     }

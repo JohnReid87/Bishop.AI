@@ -6,7 +6,6 @@ namespace Bishop.UI.ViewModels;
 public sealed class CardViewModel
 {
     public Guid Id { get; init; }
-    public Guid LaneId { get; init; }
     public int Number { get; init; }
     public string Title { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
@@ -21,7 +20,7 @@ public sealed class CardViewModel
     public Visibility TagChipVisibility => TagName is not null ? Visibility.Visible : Visibility.Collapsed;
     public Visibility AddTagButtonVisibility => TagName is null ? Visibility.Visible : Visibility.Collapsed;
     public double CardOpacity => IsClosed ? 0.5 : 1.0;
-    public string CloseReopenGlyph => IsClosed ? "" : "";
+    public string CloseReopenGlyph => IsClosed ? "" : "";
     public string CloseReopenTooltip => IsClosed ? "Reopen card" : "Close card";
 
     public bool IsDoneLane => LaneName == SystemLaneNames.Done;

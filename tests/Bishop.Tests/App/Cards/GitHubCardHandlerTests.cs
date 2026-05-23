@@ -362,7 +362,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         // Assert
         var stored = (await _db.Cards.FindAsync(card.Id))!;
         stored.IsClosed.Should().BeFalse();
-        stored.LaneId.Should().Be(lanes[3].Id);
+        stored.LaneName.Should().Be(lanes[3].Name);
         await sender.DidNotReceive().Send(Arg.Any<CloseCardCommand>(), Arg.Any<CancellationToken>());
     }
 

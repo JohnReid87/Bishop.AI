@@ -79,11 +79,11 @@ public sealed class ClaimCardConcurrencyTests : IDisposable
         winners.Should().HaveCount(1, "exactly one concurrent claim must take the only card");
         losers.Should().HaveCount(1, "the other concurrent claim must see the empty source lane");
         winners[0]!.Id.Should().Be(card.Id);
-        winners[0]!.LaneId.Should().Be(doing.Id);
+        winners[0]!.LaneName.Should().Be(doing.Name);
 
         await using var verify = _factory.CreateDbContext();
-        var inDoing = await verify.Cards.CountAsync(c => c.LaneId == doing.Id);
-        var inTodo = await verify.Cards.CountAsync(c => c.LaneId == todo.Id);
+        var inDoing = await verify.Cards.CountAsync(c => c.LaneName == doing.Name);
+        var inTodo = await verify.Cards.CountAsync(c => c.LaneName == todo.Name);
         inDoing.Should().Be(1, "the claimed card must end up in Doing exactly once");
         inTodo.Should().Be(0, "the source lane must be empty after the claim");
     }

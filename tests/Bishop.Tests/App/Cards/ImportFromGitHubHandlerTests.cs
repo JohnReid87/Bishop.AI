@@ -100,7 +100,7 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
 
         // Cards in Backlog, in issue-number order
         var cards = await _db.Cards
-            .Where(c => c.LaneId == backlogLane.Id)
+            .Where(c => c.WorkspaceId == workspace.Id && c.LaneName == backlogLane.Name)
             .OrderBy(c => c.Position)
             .ToListAsync();
         cards.Should().HaveCount(3);
@@ -225,10 +225,8 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         // Assert
         result.Imported.Should().HaveCount(1);
         var card = await _db.Cards
-            .Include(c => c.Tag)
             .FirstAsync(c => c.Id == result.Imported[0].Id);
-        card.Tag.Should().NotBeNull();
-        card.Tag!.Name.Should().Be("bug");
+        card.TagName.Should().Be("bug");
     }
 
     [Fact]
@@ -249,9 +247,8 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         // Assert
         result.Imported.Should().HaveCount(1);
         var card = await _db.Cards
-            .Include(c => c.Tag)
             .FirstAsync(c => c.Id == result.Imported[0].Id);
-        card.Tag.Should().BeNull();
+        card.TagName.Should().BeNull();
     }
 
     // ── Dry-run ──────────────────────────────────────────────────────────────
@@ -278,7 +275,7 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         result.Failed.Should().BeEmpty();
 
         // No cards actually written
-        var cardCount = await _db.Cards.CountAsync(c => c.LaneId == backlogLane.Id);
+        var cardCount = await _db.Cards.CountAsync(c => c.WorkspaceId == workspace.Id && c.LaneName == backlogLane.Name);
         cardCount.Should().Be(0);
     }
 

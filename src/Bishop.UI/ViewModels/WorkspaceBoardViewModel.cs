@@ -1,5 +1,6 @@
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Lanes.ListLanesByWorkspace;
+using Bishop.App.Tags.ListTagsByWorkspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
@@ -39,7 +40,9 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     {
         var lanes = await _mediator.Send(new ListLanesByWorkspaceQuery(_workspaceId));
         var cards = await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId));
-        var cardsByLane = cards.ToLookup(c => c.LaneId);
+        var tags = await _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
+        var tagColourByName = tags.ToDictionary(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
+        var cardsByLane = cards.ToLookup(c => c.LaneName, StringComparer.OrdinalIgnoreCase);
 
         // When the lane structure is unchanged, update only cards that actually changed so
         // ListView scroll positions are preserved and unnecessary Replace notifications are
@@ -49,13 +52,13 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         {
             foreach (var laneVm in Lanes)
             {
-                var fresh = cardsByLane[laneVm.Id].ToList();
+                var fresh = cardsByLane[laneVm.Name].ToList();
                 for (var i = 0; i < fresh.Count; i++)
                 {
                     var card = fresh[i];
-                    if (i < laneVm.Cards.Count && Matches(laneVm.Cards[i], card))
+                    if (i < laneVm.Cards.Count && Matches(laneVm.Cards[i], card, tagColourByName))
                         continue;
-                    var cardVm = BuildCardViewModel(card, laneVm.Name);
+                    var cardVm = BuildCardViewModel(card, laneVm.Name, tagColourByName);
                     if (i < laneVm.Cards.Count)
                         laneVm.Cards[i] = cardVm;
                     else
@@ -71,8 +74,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         foreach (var lane in lanes)
         {
             var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { Id = lane.Id, Name = lane.Name, IsSystem = lane.IsSystem };
-            foreach (var card in cardsByLane[lane.Id])
-                laneVm.Cards.Add(BuildCardViewModel(card, lane.Name));
+            foreach (var card in cardsByLane[lane.Name])
+                laneVm.Cards.Add(BuildCardViewModel(card, lane.Name, tagColourByName));
             Lanes.Add(laneVm);
         }
 
@@ -83,7 +86,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         }
     }
 
-    private static bool Matches(CardViewModel vm, Bishop.Core.Card card)
+    private static bool Matches(CardViewModel vm, Bishop.Core.Card card, IReadOnlyDictionary<string, string> tagColourByName)
     {
         if (vm.Id != card.Id
             || vm.Title != card.Title
@@ -93,24 +96,25 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             || vm.GitHubPushedAt != card.GitHubPushedAt)
             return false;
 
-        if (vm.TagName != card.Tag?.Name || vm.TagColour != card.Tag?.Colour)
+        var expectedColour = card.TagName is { } name && tagColourByName.TryGetValue(name, out var c) ? c : null;
+        if (vm.TagName != card.TagName || vm.TagColour != expectedColour)
             return false;
 
         return true;
     }
 
-    private static CardViewModel BuildCardViewModel(Bishop.Core.Card card, string laneName)
+    private static CardViewModel BuildCardViewModel(Bishop.Core.Card card, string laneName, IReadOnlyDictionary<string, string> tagColourByName)
     {
+        var tagColour = card.TagName is { } name && tagColourByName.TryGetValue(name, out var c) ? c : null;
         return new CardViewModel
         {
             Id = card.Id,
-            LaneId = card.LaneId,
             Number = card.Number,
             Title = card.Title,
             Description = card.Description,
             LaneName = laneName,
-            TagName = card.Tag?.Name,
-            TagColour = card.Tag?.Colour,
+            TagName = card.TagName,
+            TagColour = tagColour,
             IsClosed = card.IsClosed,
             GitHubIssueNumber = card.GitHubIssueNumber,
             GitHubPushedAt = card.GitHubPushedAt,

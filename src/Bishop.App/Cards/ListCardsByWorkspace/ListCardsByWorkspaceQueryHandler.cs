@@ -14,12 +14,20 @@ public sealed class ListCardsByWorkspaceQueryHandler : IRequestHandler<ListCards
     public async Task<IReadOnlyList<Card>> Handle(ListCardsByWorkspaceQuery request, CancellationToken cancellationToken)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Cards
+
+        var lanePositions = await db.Lanes
             .AsNoTracking()
-            .Include(c => c.Tag)
-            .Where(c => c.Lane.WorkspaceId == request.WorkspaceId)
-            .OrderBy(c => c.Lane.Position)
-            .ThenBy(c => c.Position)
+            .Where(l => l.WorkspaceId == request.WorkspaceId)
+            .ToDictionaryAsync(l => l.Name, l => l.Position, cancellationToken);
+
+        var cards = await db.Cards
+            .AsNoTracking()
+            .Where(c => c.WorkspaceId == request.WorkspaceId)
             .ToListAsync(cancellationToken);
+
+        return cards
+            .OrderBy(c => lanePositions.TryGetValue(c.LaneName, out var p) ? p : int.MaxValue)
+            .ThenBy(c => c.Position)
+            .ToList();
     }
 }

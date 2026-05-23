@@ -12,5 +12,4 @@ public sealed class Lane
 
     [JsonIgnore]
     public Workspace Workspace { get; set; } = null!;
-    public ICollection<Card> Cards { get; set; } = [];
 }

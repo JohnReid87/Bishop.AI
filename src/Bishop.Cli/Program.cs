@@ -287,8 +287,7 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             number = card.Number,
             title = card.Title,
             description = card.Description,
-            laneId = card.LaneId,
-            laneName = card.Lane.Name,
+            laneName = card.LaneName,
             position = card.Position,
             isClosed = card.IsClosed,
             gitHubIssueNumber = card.GitHubIssueNumber,
@@ -298,18 +297,18 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             totalInputTokens = card.TotalInputTokens,
             totalOutputTokens = card.TotalOutputTokens,
             claudeRunCount = card.ClaudeRunCount,
-            tag = card.Tag?.Name,
+            tag = card.TagName,
             commit = commitObj
         }, jsonOpts));
     }
     else
     {
         Console.WriteLine(card.Title);
-        Console.WriteLine($"Lane: {card.Lane.Name}");
+        Console.WriteLine($"Lane: {card.LaneName}");
         if (card.IsClosed)
             Console.WriteLine("Status: closed");
-        if (card.Tag is not null)
-            Console.WriteLine($"Tag: {card.Tag.Name}");
+        if (card.TagName is not null)
+            Console.WriteLine($"Tag: {card.TagName}");
         var claudeLine = ClaudeTotalsFormatter.Format(
             card.TotalInputTokens,
             card.TotalOutputTokens,
@@ -474,19 +473,18 @@ cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, string?
             number = card.Number,
             title = card.Title,
             description = card.Description,
-            laneId = card.LaneId,
-            laneName = card.Lane.Name,
+            laneName = card.LaneName,
             position = card.Position,
             createdAt = card.CreatedAt,
             updatedAt = card.UpdatedAt,
-            tag = card.Tag?.Name
+            tag = card.TagName
         }, jsonOpts));
     }
     else
     {
-        Console.WriteLine($"Claimed #{card.Number} — '{card.Title}' [{sourceLaneName}] → [{card.Lane.Name}]");
-        if (card.Tag is not null)
-            Console.WriteLine($"Tag: {card.Tag.Name}");
+        Console.WriteLine($"Claimed #{card.Number} — '{card.Title}' [{sourceLaneName}] → [{card.LaneName}]");
+        if (card.TagName is not null)
+            Console.WriteLine($"Tag: {card.TagName}");
         if (!string.IsNullOrEmpty(card.Description))
         {
             Console.WriteLine();
@@ -505,7 +503,7 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
     var ws = await resolver.ResolveAsync(workspace);
     var cards = await mediator.Send(new ListCardsByWorkspaceQuery(ws.Id));
     var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
-    var laneById = lanes.ToDictionary(l => l.Id);
+    var lanePositionByName = lanes.ToDictionary(l => l.Name, l => l.Position, StringComparer.OrdinalIgnoreCase);
 
     if (json)
     {
@@ -515,31 +513,31 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
             number = c.Number,
             title = c.Title,
             description = c.Description,
-            laneId = c.LaneId,
-            laneName = laneById.TryGetValue(c.LaneId, out var l) ? l.Name : "",
+            laneName = c.LaneName,
             position = c.Position,
             isClosed = c.IsClosed,
             gitHubIssueNumber = c.GitHubIssueNumber,
             gitHubPushedAt = c.GitHubPushedAt,
-            tag = c.Tag?.Name
+            tag = c.TagName
         });
         Console.WriteLine(JsonSerializer.Serialize(output, jsonOpts));
     }
     else
     {
         var grouped = cards
-            .GroupBy(c => c.LaneId)
+            .GroupBy(c => c.LaneName, StringComparer.OrdinalIgnoreCase)
             .Select(g => (
-                lane: laneById.TryGetValue(g.Key, out var l) ? l : null,
+                name: g.Key,
+                position: lanePositionByName.TryGetValue(g.Key, out var p) ? p : int.MaxValue,
                 cards: g.OrderBy(c => c.Position).ToList()))
-            .OrderBy(t => t.lane?.Position ?? int.MaxValue);
+            .OrderBy(t => t.position);
 
-        foreach (var (lane, laneCards) in grouped)
+        foreach (var (name, _, laneCards) in grouped)
         {
-            Console.WriteLine($"\n[{lane?.Name ?? "?"}]");
+            Console.WriteLine($"\n[{name}]");
             foreach (var c in laneCards)
             {
-                var tagSuffix = c.Tag is not null ? $"  [{c.Tag.Name}]" : "";
+                var tagSuffix = c.TagName is not null ? $"  [{c.TagName}]" : "";
                 var closedMarker = c.IsClosed ? " [closed]" : "";
                 Console.WriteLine($"  #{c.Number,-4}  {c.Title}{closedMarker}{tagSuffix}");
             }

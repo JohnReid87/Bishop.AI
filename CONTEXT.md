@@ -38,7 +38,7 @@ Layered, with strict one-way dependencies. Modify in this order when implementin
 Dependency direction: **Core → Data → App → { UI, Cli }**. UI and Cli go through MediatR handlers in App for everything.
 
 ### Kanban model
-A workspace owns an ordered list of lanes; the three default lanes ("To Do", "Doing", "Done") are seeded on workspace creation. Cards belong to a single lane and carry an ordered position. Tags are workspace-scoped (with optional colour); a card holds at most one tag via a nullable `TagId` FK on the `Cards` table.
+A workspace owns a fixed set of four system lanes — "Backlog", "To Do", "Doing", "Done" — seeded on workspace creation; user-defined lanes are not supported. Cards belong to a workspace (via `WorkspaceId` FK) and carry their lane membership as a `LaneName` string + ordered `Position`. Tags are workspace-scoped (with optional colour); a card carries at most one tag as a nullable `TagName` string on the `Cards` table.
 
 ### CLI surface (`bishop`)
 The `bishop` console executable is the primary integration surface for skills (e.g. `bish-work-on-card`). Unversioned and additive-only — commands and flags are not renamed or removed once shipped.

@@ -61,7 +61,7 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
         issues.Sort((a, b) => a.Number.CompareTo(b.Number));
 
         var existingIssueNumbers = await db.Cards
-            .Where(c => c.Lane.WorkspaceId == request.WorkspaceId && c.GitHubIssueNumber.HasValue)
+            .Where(c => c.WorkspaceId == request.WorkspaceId && c.GitHubIssueNumber.HasValue)
             .Select(c => c.GitHubIssueNumber!.Value)
             .ToHashSetAsync(cancellationToken);
 
@@ -93,7 +93,7 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
 
                 var alreadyPresent = await issueDb.Cards
                     .AnyAsync(
-                        c => c.Lane.WorkspaceId == request.WorkspaceId && c.GitHubIssueNumber == issue.Number,
+                        c => c.WorkspaceId == request.WorkspaceId && c.GitHubIssueNumber == issue.Number,
                         cancellationToken);
 
                 if (alreadyPresent)
@@ -103,7 +103,7 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
                 }
 
                 var maxPosition = await issueDb.Cards
-                    .Where(c => c.LaneId == backlogLane.Id)
+                    .Where(c => c.WorkspaceId == request.WorkspaceId && c.LaneName == backlogLane.Name)
                     .MaxAsync(c => (int?)c.Position, cancellationToken);
                 var newPosition = (maxPosition ?? 0) + 1;
 
@@ -121,10 +121,16 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
                     .Where(n => tagNameSet.Contains(n))
                     .ToList();
 
+                var firstTagName = matchingTagNames
+                    .Select(n => workspaceTags.FirstOrDefault(t => string.Equals(t.Name, n, StringComparison.OrdinalIgnoreCase))?.Name)
+                    .FirstOrDefault(t => t is not null);
+
                 var card = new Card
                 {
                     Id = Guid.NewGuid(),
-                    LaneId = backlogLane.Id,
+                    WorkspaceId = request.WorkspaceId,
+                    LaneName = backlogLane.Name,
+                    TagName = firstTagName,
                     Title = issue.Title,
                     Description = description,
                     Number = number,
@@ -132,12 +138,6 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
                     GitHubIssueNumber = issue.Number,
                 };
                 issueDb.Cards.Add(card);
-
-                var firstTag = matchingTagNames
-                    .Select(n => workspaceTags.FirstOrDefault(t => string.Equals(t.Name, n, StringComparison.OrdinalIgnoreCase)))
-                    .FirstOrDefault(t => t is not null);
-                if (firstTag is not null)
-                    card.TagId = firstTag.Id;
 
                 await issueDb.SaveChangesAsync(cancellationToken);
                 imported.Add(card);
