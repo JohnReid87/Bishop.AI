@@ -193,6 +193,19 @@ public class LaneViewModelTests
     }
 
     [Fact]
+    public void ApplyFilter_Null_ShowsAllCards()
+    {
+        var vm = NewVm(name: "To Do");
+        vm.Cards.Add(new CardViewModel { Title = "A" });
+        vm.Cards.Add(new CardViewModel { Title = "B" });
+        vm.ApplyFilter("A");
+
+        vm.ApplyFilter(null!);
+
+        vm.FilteredCards.Should().HaveCount(2);
+    }
+
+    [Fact]
     public async Task ConfirmAddCardAsync_DoesNothingForBlankTitle()
     {
         var mediator = Substitute.For<IMediator>();
@@ -210,7 +223,7 @@ public class LaneViewModelTests
         var refreshed = false;
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new Card { Id = Guid.NewGuid(), Title = "New card", LaneName = "To Do" });
+            .Returns(default(Card?));
         var vm = NewVm(mediator: mediator, refreshBoard: () => { refreshed = true; return Task.CompletedTask; });
         vm.NewCardTitle = "New card";
 
@@ -234,6 +247,22 @@ public class LaneViewModelTests
         await vm.ConfirmAddCardCommand.ExecuteAsync(null);
 
         vm.AddCardErrorMessage.Should().Be("DB error");
+        vm.IsAddingCard.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ConfirmAddCardAsync_SetsErrorForNonInvalidOperationException()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Card>(new OperationCanceledException("Cancelled by user")));
+        var vm = NewVm(mediator: mediator);
+        vm.BeginAddCardCommand.Execute(null);
+        vm.NewCardTitle = "New card";
+
+        await vm.ConfirmAddCardCommand.ExecuteAsync(null);
+
+        vm.AddCardErrorMessage.Should().Be("Cancelled by user");
         vm.IsAddingCard.Should().BeTrue();
     }
 
