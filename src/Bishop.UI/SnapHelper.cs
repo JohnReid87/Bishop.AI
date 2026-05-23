@@ -18,6 +18,16 @@ internal static class SnapHelper
     [DllImport("dwmapi.dll")]
     private static extern int DwmGetWindowAttribute(nint hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
 
+    // Returns the invisible DWM shadow insets (physical px) so callers can compensate
+    // MoveAndResize coords to make the visible content area cover an exact rect.
+    internal static (int left, int top, int right, int bottom) GetFrameExtents(
+        nint hWnd, int posX, int posY, int sizeW, int sizeH)
+    {
+        if (DwmGetWindowAttribute(hWnd, DWMWA_EXTENDED_FRAME_BOUNDS, out var vis, Marshal.SizeOf<RECT>()) != 0)
+            return (0, 0, 0, 0);
+        return (vis.Left - posX, vis.Top - posY, posX + sizeW - vis.Right, posY + sizeH - vis.Bottom);
+    }
+
     internal static TerminalSnap ComputeSnap()
     {
         var appWindow = App.MainWindow!.AppWindow;

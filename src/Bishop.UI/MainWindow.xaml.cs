@@ -28,7 +28,12 @@ public sealed partial class MainWindow : Window
 
         SetupTitleBar();
         ApplyWindowGeometry();
-        Closed += (_, _) => SaveWindowGeometry();
+        SetupHalfScreenLocking();
+        Closed += (_, _) =>
+        {
+            _snapTimer?.Stop();
+            SaveWindowGeometry();
+        };
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
 
@@ -247,6 +252,8 @@ public sealed partial class MainWindow : Window
     }
 
     private WindowGeometry? _preExpansionGeometry;
+    private bool _isSnapping;
+    private DispatcherTimer? _snapTimer;
 
     public void SetExpandedForViewer(bool expanded)
     {
@@ -264,24 +271,79 @@ public sealed partial class MainWindow : Window
         else if (_preExpansionGeometry is not null)
         {
             var g = _preExpansionGeometry;
-            AppWindow.MoveAndResize(new RectInt32(g.X, g.Y, g.Width, g.Height));
             _preExpansionGeometry = null;
+            AppWindow.MoveAndResize(new RectInt32(g.X, g.Y, g.Width, g.Height));
         }
+    }
+
+    private void SetupHalfScreenLocking()
+    {
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+            presenter.IsResizable = false;
+
+        _snapTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _snapTimer.Tick += (_, _) =>
+        {
+            _snapTimer.Stop();
+            SnapToHalfScreen();
+        };
+
+        AppWindow.Changed += OnAppWindowChanged;
+    }
+
+    private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        if (_isSnapping) return;
+        if (_preExpansionGeometry is not null) return;
+        if (!args.DidPositionChange && !args.DidSizeChange) return;
+
+        _snapTimer?.Stop();
+        _snapTimer?.Start();
+    }
+
+    private void SnapToHalfScreen()
+    {
+        if (_preExpansionGeometry is not null) return;
+        var wa = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        var pos = AppWindow.Position;
+        var sz = AppWindow.Size;
+        var (fL, fT, fR, fB) = SnapHelper.GetFrameExtents(hWnd, pos.X, pos.Y, sz.Width, sz.Height);
+        var x = wa.X - fL;
+        var y = wa.Y - fT;
+        var w = wa.Width / 2 + fL + fR;
+        var h = wa.Height + fT + fB;
+        if (pos.X == x && pos.Y == y && sz.Width == w && sz.Height == h) return;
+        _isSnapping = true;
+        try { AppWindow.MoveAndResize(new RectInt32(x, y, w, h)); }
+        finally { _isSnapping = false; }
     }
 
     private void ApplyWindowGeometry()
     {
         var saved = LoadWindowGeometry();
         if (saved is not null && IsGeometryOnScreen(saved))
-            AppWindow.MoveAndResize(new RectInt32(saved.X, saved.Y, saved.Width, saved.Height));
-        else
-            ApplyDefaultGeometry();
+        {
+            // Use the centre of the saved rect (robust against frame-compensated negative X/Y)
+            // to find which monitor the user last had the window on.
+            var display = GetDisplayForPosition(saved.X + saved.Width / 2, saved.Y + saved.Height / 2);
+            var wa = display.WorkArea;
+            // Rough move so GetFromWindowId in SnapToHalfScreen resolves the right monitor.
+            AppWindow.MoveAndResize(new RectInt32(wa.X, wa.Y, AppWindow.Size.Width, AppWindow.Size.Height));
+        }
+        SnapToHalfScreen();
     }
 
-    private void ApplyDefaultGeometry()
+    private static DisplayArea GetDisplayForPosition(int x, int y)
     {
-        var wa = DisplayArea.Primary.WorkArea;
-        AppWindow.MoveAndResize(new RectInt32(wa.X, wa.Y, wa.Width / 2, wa.Height));
+        var displays = DisplayArea.FindAll();
+        for (var i = 0; i < displays.Count; i++)
+        {
+            var wa = displays[i].WorkArea;
+            if (x >= wa.X && x < wa.X + wa.Width && y >= wa.Y && y < wa.Y + wa.Height)
+                return displays[i];
+        }
+        return DisplayArea.Primary;
     }
 
     private static bool IsGeometryOnScreen(WindowGeometry g)
