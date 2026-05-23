@@ -9,6 +9,7 @@ namespace Bishop.UI;
 [SupportedOSPlatform("windows")]
 internal static class SnapHelper
 {
+#pragma warning disable CA1416
     private const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -39,4 +40,5 @@ internal static class SnapHelper
             pos.X, pos.Y, size.Width, size.Height,
             wa.X, wa.Y, wa.Width, wa.Height);
     }
+#pragma warning restore CA1416
 }
