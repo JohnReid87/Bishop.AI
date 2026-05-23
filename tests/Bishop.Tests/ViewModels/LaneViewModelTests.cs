@@ -49,11 +49,11 @@ public class LaneViewModelTests
     public void WorkNextTooltip_ChangesWithCanWorkNext()
     {
         var vm = NewVm(name: "To Do");
-        vm.WorkNextTooltip.Should().Be("No cards in To Do");
+        vm.WorkNextTooltip.Should().Be("No cards");
 
         vm.Cards.Add(new CardViewModel { Title = "A" });
 
-        vm.WorkNextTooltip.Should().Be("Ralph it");
+        vm.WorkNextTooltip.Should().Be("Loop it");
     }
 
     [Fact]
@@ -119,11 +119,11 @@ public class LaneViewModelTests
     public void StopWorkNextTooltip_ChangesWhileStopping()
     {
         var vm = NewVm();
-        vm.StopWorkNextTooltip.Should().Be("Stop Ralphing");
+        vm.StopWorkNextTooltip.Should().Be("Stop looping");
 
         vm.IsWorkNextStopping = true;
 
-        vm.StopWorkNextTooltip.Should().Be("Stopping Ralph…");
+        vm.StopWorkNextTooltip.Should().Be("Stopping loop…");
     }
 
     [Fact]

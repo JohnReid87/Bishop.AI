@@ -26,7 +26,7 @@ public sealed partial class LaneViewModel : ObservableObject
     public bool IsBacklogLane => Name == SystemLaneNames.Backlog;
     public bool IsDoneLane => Name == SystemLaneNames.Done;
     public bool CanWorkNext => IsToDoLane && Cards.Count > 0;
-    public string WorkNextTooltip => CanWorkNext ? "Ralph it" : "No cards in To Do";
+    public string WorkNextTooltip => CanWorkNext ? "Loop it" : "No cards";
 
     [ObservableProperty]
     public partial bool HasGitHubRepo { get; set; }
@@ -44,7 +44,7 @@ public sealed partial class LaneViewModel : ObservableObject
     public bool CanStopWorkNext => IsWorkNextRunning && !IsWorkNextStopping;
     public bool IsPlayVisible => IsToDoLane && !IsWorkNextRunning;
     public bool IsStopVisible => IsToDoLane && IsWorkNextRunning;
-    public string StopWorkNextTooltip => IsWorkNextStopping ? "Stopping Ralph…" : "Stop Ralphing";
+    public string StopWorkNextTooltip => IsWorkNextStopping ? "Stopping loop…" : "Stop looping";
 
     [ObservableProperty]
     public partial bool IsDropTarget { get; set; }
