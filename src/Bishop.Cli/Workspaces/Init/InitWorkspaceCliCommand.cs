@@ -20,8 +20,32 @@ internal sealed class InitWorkspaceCliCommand : Command
         {
             var dir = path ?? Directory.GetCurrentDirectory();
             var result = await mediator.Send(new InitWorkspaceCommand(dir, name, DetectGitHub: !noGitHubDetect));
+
+            if (result.NeedsArchivedAction)
+            {
+                var archived = result.Workspace;
+                Console.WriteLine($"A removed workspace '{archived.Name}' exists at this path.");
+                Console.Write("Restore it or start fresh? (restore/fresh) ");
+                var choice = Console.ReadLine()?.Trim().ToLowerInvariant();
+
+                InitWorkspaceArchivedAction action;
+                if (choice == "restore")
+                    action = InitWorkspaceArchivedAction.Restore;
+                else if (choice == "fresh")
+                    action = InitWorkspaceArchivedAction.Fresh;
+                else
+                {
+                    Console.WriteLine("Cancelled.");
+                    return;
+                }
+
+                result = await mediator.Send(new InitWorkspaceCommand(dir, name, DetectGitHub: !noGitHubDetect, ArchivedAction: action));
+            }
+
             var ws = result.Workspace;
-            if (result.Created)
+            if (result.Restored)
+                Console.WriteLine($"Workspace '{ws.Name}' restored at {ws.Path}");
+            else if (result.Created)
                 Console.WriteLine($"Initialized workspace '{ws.Name}' at {ws.Path}");
             else
                 Console.WriteLine($"Workspace '{ws.Name}' is already initialized");

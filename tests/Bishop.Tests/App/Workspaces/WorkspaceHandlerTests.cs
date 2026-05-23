@@ -367,6 +367,64 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task InitWorkspace_ArchivedAtPath_NoAction_ReturnsNeedsArchivedAction()
+    {
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\archived-{tag}";
+        var handler = CreateInitHandler();
+        var first = await handler.Handle(new InitWorkspaceCommand(path, "Archived"), default);
+        await new RemoveWorkspaceCommandHandler(_factory).Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
+
+        var result = await handler.Handle(new InitWorkspaceCommand(path), default);
+
+        result.NeedsArchivedAction.Should().BeTrue();
+        result.Workspace.Name.Should().Be("Archived");
+        result.Created.Should().BeFalse();
+        result.Restored.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task InitWorkspace_ArchivedAtPath_Restore_ReactivatesWorkspaceWithHistory()
+    {
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\restore-{tag}";
+        var handler = CreateInitHandler();
+        var first = await handler.Handle(new InitWorkspaceCommand(path, "ToRestore"), default);
+        await new RemoveWorkspaceCommandHandler(_factory).Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
+
+        var result = await handler.Handle(new InitWorkspaceCommand(path, ArchivedAction: InitWorkspaceArchivedAction.Restore), default);
+
+        result.Restored.Should().BeTrue();
+        result.Created.Should().BeFalse();
+        result.NeedsArchivedAction.Should().BeFalse();
+        result.Workspace.Id.Should().Be(first.Workspace.Id);
+        result.Workspace.Name.Should().Be("ToRestore");
+        var ws = await _db.Workspaces.FindAsync(first.Workspace.Id);
+        ws!.IsRemoved.Should().BeFalse();
+        ws.RemovedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task InitWorkspace_ArchivedAtPath_Fresh_PurgesAndCreatesNewWorkspace()
+    {
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var path = $@"C:\projects\fresh-{tag}";
+        var handler = CreateInitHandler();
+        var first = await handler.Handle(new InitWorkspaceCommand(path, "OldWs"), default);
+        await new RemoveWorkspaceCommandHandler(_factory).Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
+
+        var result = await handler.Handle(new InitWorkspaceCommand(path, "NewWs", ArchivedAction: InitWorkspaceArchivedAction.Fresh), default);
+
+        result.Created.Should().BeTrue();
+        result.Restored.Should().BeFalse();
+        result.NeedsArchivedAction.Should().BeFalse();
+        result.Workspace.Id.Should().NotBe(first.Workspace.Id);
+        result.Workspace.Name.Should().Be("NewWs");
+        var old = await _db.Workspaces.FindAsync(first.Workspace.Id);
+        old.Should().BeNull();
+    }
+
+    [Fact]
     public async Task SetWorkspaceGitHubRepo_PlainOwnerRepo_PersistsAndReturnsWorkspace()
     {
         var name = U("Repo");

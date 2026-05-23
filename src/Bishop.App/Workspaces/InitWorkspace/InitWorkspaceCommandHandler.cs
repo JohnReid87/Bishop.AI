@@ -25,35 +25,53 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
 
         var allWorkspaces = await db.Workspaces.ToListAsync(cancellationToken);
 
-        Workspace workspace;
-        bool created;
-
         var existing = allWorkspaces.FirstOrDefault(w =>
+            !w.IsRemoved &&
             string.Equals(Path.GetFullPath(w.Path), normalizedPath, StringComparison.OrdinalIgnoreCase));
 
-        if (existing is null)
+        if (existing is not null)
         {
-            var name = request.Name ?? new DirectoryInfo(normalizedPath).Name;
-            workspace = new Workspace
+            var gitHubLinkedExisting = await DetectGitHubAsync(db, existing, normalizedPath, request.DetectGitHub, cancellationToken);
+            return new InitWorkspaceResult(existing, Created: false, gitHubLinkedExisting);
+        }
+
+        var archived = allWorkspaces.FirstOrDefault(w =>
+            w.IsRemoved &&
+            string.Equals(Path.GetFullPath(w.Path), normalizedPath, StringComparison.OrdinalIgnoreCase));
+
+        if (archived is not null)
+        {
+            if (request.ArchivedAction is null)
+                return new InitWorkspaceResult(archived, Created: false, GitHubLinked: false, NeedsArchivedAction: true);
+
+            if (request.ArchivedAction == InitWorkspaceArchivedAction.Restore)
             {
-                Id = Guid.NewGuid(),
-                Name = name,
-                Path = normalizedPath,
-                Position = allWorkspaces.Count + 1,
-            };
-            db.Workspaces.Add(workspace);
+                archived.IsRemoved = false;
+                archived.RemovedAt = null;
+                await db.SaveChangesAsync(cancellationToken);
+                var gitHubLinkedRestore = await DetectGitHubAsync(db, archived, normalizedPath, request.DetectGitHub, cancellationToken);
+                return new InitWorkspaceResult(archived, Created: false, gitHubLinkedRestore, Restored: true);
+            }
+
+            // Fresh: purge the archived record, then fall through to create new
+            db.Workspaces.Remove(archived);
             await db.SaveChangesAsync(cancellationToken);
-            created = true;
         }
-        else
+
+        var activeCount = allWorkspaces.Count(w => !w.IsRemoved);
+        var name = request.Name ?? new DirectoryInfo(normalizedPath).Name;
+        var workspace = new Workspace
         {
-            workspace = existing;
-            created = false;
-        }
+            Id = Guid.NewGuid(),
+            Name = name,
+            Path = normalizedPath,
+            Position = activeCount + 1,
+        };
+        db.Workspaces.Add(workspace);
+        await db.SaveChangesAsync(cancellationToken);
 
         var gitHubLinked = await DetectGitHubAsync(db, workspace, normalizedPath, request.DetectGitHub, cancellationToken);
-
-        return new InitWorkspaceResult(workspace, created, gitHubLinked);
+        return new InitWorkspaceResult(workspace, Created: true, gitHubLinked);
     }
 
     private async Task<bool> DetectGitHubAsync(
