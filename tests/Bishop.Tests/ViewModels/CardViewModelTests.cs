@@ -197,4 +197,41 @@ public class CardViewModelTests
 
         vm.MatchesSearch("xyz-not-present").Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData("Backlog", false)]
+    [InlineData("To Do", false)]
+    [InlineData("Done", false)]
+    [InlineData("Doing", true)]
+    public void IsAutoRunFailedIndicatorVisible_TrueOnlyWhenFieldSetAndLaneIsDoing(string laneName, bool expected)
+    {
+        var vm = new CardViewModel { LaneName = laneName, LastAutoRunFailedAt = DateTimeOffset.UtcNow };
+
+        vm.IsAutoRunFailedIndicatorVisible.Should().Be(expected);
+    }
+
+    [Fact]
+    public void IsAutoRunFailedIndicatorVisible_FalseWhenFieldNotSet()
+    {
+        var vm = new CardViewModel { LaneName = SystemLaneNames.Doing, LastAutoRunFailedAt = null };
+
+        vm.IsAutoRunFailedIndicatorVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AutoRunFailedTooltip_ContainsFormattedTimestampWhenFieldSet()
+    {
+        var timestamp = new DateTimeOffset(2026, 5, 24, 14, 30, 0, TimeSpan.Zero);
+        var vm = new CardViewModel { LastAutoRunFailedAt = timestamp };
+
+        vm.AutoRunFailedTooltip.Should().Be("Auto-run failed at 2026-05-24 14:30");
+    }
+
+    [Fact]
+    public void AutoRunFailedTooltip_EmptyWhenFieldNotSet()
+    {
+        var vm = new CardViewModel { LastAutoRunFailedAt = null };
+
+        vm.AutoRunFailedTooltip.Should().BeEmpty();
+    }
 }

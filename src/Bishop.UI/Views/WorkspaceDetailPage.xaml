@@ -315,6 +315,13 @@
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1"
                                                                     Orientation="Horizontal">
+                                                            <FontIcon Glyph="&#xE99A;"
+                                                                      Foreground="#ff5555"
+                                                                      FontSize="12"
+                                                                      VerticalAlignment="Center"
+                                                                      Margin="0,0,4,0"
+                                                                      ToolTipService.ToolTip="{x:Bind AutoRunFailedTooltip}"
+                                                                      Visibility="{x:Bind IsAutoRunFailedIndicatorVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                                             <local:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                                                    ToolTipService.ToolTip="Skills"
                                                                                    Click="CardSkillsButton_Click"

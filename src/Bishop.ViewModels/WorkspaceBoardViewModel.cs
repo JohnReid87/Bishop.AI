@@ -93,7 +93,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             || vm.Description != card.Description
             || vm.IsClosed != card.IsClosed
             || vm.GitHubIssueNumber != card.GitHubIssueNumber
-            || vm.GitHubPushedAt != card.GitHubPushedAt)
+            || vm.GitHubPushedAt != card.GitHubPushedAt
+            || vm.LastAutoRunFailedAt != card.LastAutoRunFailedAt)
             return false;
 
         var expectedColour = card.TagName is { } name && tagColourByName.TryGetValue(name, out var c) ? c : null;
@@ -118,6 +119,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             IsClosed = card.IsClosed,
             GitHubIssueNumber = card.GitHubIssueNumber,
             GitHubPushedAt = card.GitHubPushedAt,
+            LastAutoRunFailedAt = card.LastAutoRunFailedAt,
         };
     }
 }

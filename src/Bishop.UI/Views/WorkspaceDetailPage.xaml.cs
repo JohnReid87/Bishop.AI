@@ -632,6 +632,7 @@ public sealed partial class WorkspaceDetailPage : Page
             IsClosed = !card.IsClosed,
             GitHubIssueNumber = card.GitHubIssueNumber,
             GitHubPushedAt = card.GitHubPushedAt,
+            LastAutoRunFailedAt = card.LastAutoRunFailedAt,
         };
     }
 
