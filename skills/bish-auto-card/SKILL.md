@@ -89,7 +89,26 @@ remediation sequence.
 
 3. Read CONTEXT.md to orient yourself in the domain and solution structure.
 
-4. Explore the codebase areas relevant to the card **via the Explore subagent**
+4. **Read recent commit history.** Run:
+   ```
+   git log --oneline -20
+   ```
+   Read the output. This gives context about recent work — what was changed,
+   which cards were completed, and any patterns established by adjacent commits.
+   Use this to inform how you interpret the card and what to look for during
+   exploration.
+
+5. **Load related cards.** Parse the card's description (captured in step 1)
+   for a `### Related` section. Extract every `card #N` or `#N` reference it
+   contains. For each extracted number, run:
+   ```
+   bishop card view <N> --json
+   ```
+   Read the resulting body. This surfaces sibling or predecessor cards whose
+   implementation choices the current card should follow or build on. Both
+   steps execute unconditionally — they are cheap and reliably useful.
+
+6. Explore the codebase areas relevant to the card **via the Explore subagent**
    before writing any code.
    - Use the `Agent` tool with `subagent_type: "Explore"`.
    - The `Agent` tool's own `description` parameter is a **3-to-5-word task
@@ -114,12 +133,12 @@ remediation sequence.
    - Follow any dependency order or architectural conventions in CONTEXT.md.
      Do not modify layers or modules the card does not require.
 
-5. Implement the changes described in the card's description.
+7. Implement the changes described in the card's description.
    - Match the coding style, naming conventions, and patterns already present.
    - Do not add libraries or introduce patterns not already in use.
    - Do not gold-plate — implement exactly what the card describes.
 
-6. **Test coverage check** — before validating, analyse what was changed:
+8. **Test coverage check** — before validating, analyse what was changed:
    - Identify any files added or modified in production projects (paths that do
      NOT contain `.Tests` or `Tests` in a directory segment).
    - If production files were touched, assess whether the new or changed code
@@ -134,7 +153,7 @@ remediation sequence.
    - If the card is already tagged `test`, or only test files changed, skip
      this check entirely.
 
-7. Validate the changes. **Any non-zero exit here aborts the skill — no commit,
+9. Validate the changes. **Any non-zero exit here aborts the skill — no commit,
    no Done move, card stays in "Doing".**
    - Run `dotnet build`. If it exits non-zero, run `dotnet clean` once, then
      re-run `dotnet build`. If the retry still fails, exit non-zero and surface
@@ -144,14 +163,14 @@ remediation sequence.
    - Run `dotnet test`. If any test fails, exit non-zero and surface the
      failure. Do not retry `dotnet test` — test failures are real signals.
 
-8. **Pre-commit workspace-path audit.** Before committing, review every
+10. **Pre-commit workspace-path audit.** Before committing, review every
    `Edit`, `Write`, and `NotebookEdit` tool call made during this session
    and collect the absolute target path of each.
 
    For each path, normalize it (resolve to an absolute path) and verify it
    starts with `$WORKSPACE_PATH`.
 
-   **Clean run** (all paths under `$WORKSPACE_PATH`): proceed to step 9.
+   **Clean run** (all paths under `$WORKSPACE_PATH`): proceed to step 11.
 
    **Violation** (any path is outside `$WORKSPACE_PATH`): take these steps in
    order and then exit non-zero:
@@ -181,7 +200,7 @@ remediation sequence.
       ```
    5. Exit non-zero. Do NOT commit. Do NOT move the card to Done.
 
-9. **Draft Agent notes and derive the commit message.** No prompt.
+11. **Draft Agent notes and derive the commit message.** No prompt.
 
    Silently compose an `### Agent notes` block from the session context.
    Use this template, **omitting any section that has no relevant content** —
@@ -217,7 +236,7 @@ remediation sequence.
    Take the **first** tag from `tags` (the same field captured in step 1).
    Format: `<prefix>: <title> (card N)`.
 
-10. **Commit and update the card, in that order.** No prompt.
+12. **Commit and update the card, in that order.** No prompt.
    ```
    git add -A
    git commit -m "<derived message>"
@@ -239,10 +258,10 @@ remediation sequence.
    already landed and the user can update/move the card manually after
    inspecting.
 
-11. **Never push.** Pushing is out of scope. The parent loop or the user
+13. **Never push.** Pushing is out of scope. The parent loop or the user
     decides when to push after review.
 
-12. On full success, output a concise completion line so the parent log has
+14. On full success, output a concise completion line so the parent log has
     a clear marker:
 
     > **Done — Card #N:** <title> — committed as `<prefix>: <title> (card N)`,
@@ -278,7 +297,7 @@ remediation sequence.
   permitted cache-clear path is `dotnet clean` as documented in step 7.
 - **Workspace-path boundary.** Every `Edit`, `Write`, and `NotebookEdit` call
   must target a path under `$WORKSPACE_PATH`. Any out-of-workspace edit
-  triggers the step 8 remediation: revert in-workspace changes, append an
+  triggers the step 10 remediation: revert in-workspace changes, append an
   inspection note to the card, move the card back to "To Do", exit non-zero.
 
 </guardrails>
