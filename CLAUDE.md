@@ -15,3 +15,15 @@ Claude Code's sandbox hard-refuses certain shell patterns — no allowlist entry
 Host-specific:
 
 - The Python binary on this Windows host is `python`, not `python3`. Prefer PowerShell `ConvertFrom-Json` for parsing JSON output instead of Python one-liners.
+
+## UI conventions
+
+### No nested ContentDialogs
+
+From inside a `ContentDialog`, do not open another `ContentDialog` — WinUI 3 throws a `COMException` when a dialog is shown while another is already active.
+
+Approved substitutes:
+
+- **`Flyout`** — for small inline confirms (precedent: `ManageWorkspacesControl.ConfirmFlyoutAsync` in `src/Bishop.UI/Views/ManageWorkspacesControl.xaml.cs`).
+- **`MarkdownViewerWindow`** — for displaying markdown content in a separate window.
+- **`TeachingTip`** — for transient, non-blocking information.

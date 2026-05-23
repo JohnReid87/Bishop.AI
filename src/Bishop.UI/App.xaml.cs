@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace Bishop.UI;
 
@@ -79,10 +80,14 @@ public partial class App : Application
         {
             await dialog.ShowAsync();
         }
-        catch (Exception)
+        catch (COMException)
         {
             // ShowAsync throws COMException when a ContentDialog is already open.
             // The error is already logged above; swallow to prevent a cascading crash.
+        }
+        catch (Exception showEx)
+        {
+            LogExceptionToFile(showEx);
         }
     }
 
