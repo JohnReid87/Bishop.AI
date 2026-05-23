@@ -122,7 +122,7 @@ Produce a **single combined proposal**:
    tags.
 2. **Follow-up cards** — zero or more new cards spun out of the chat.
 
-Apply the heuristics in [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) before listing follow-ups.
+Apply the heuristics in [bishop context print --section "Card Granularity Rules"](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) (TUNABLE) before listing follow-ups.
 
 Each follow-up card's body uses the template below, plus an auto-included
 `### Related` section linking back to the source card (`#<source-number>`).
@@ -176,7 +176,7 @@ Rules:
 > <new description body, if changed>
 > ```
 >
-> **Follow-up cards** — render per [Task List Preview Format](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable).
+> **Follow-up cards** — render per [bishop context print --section "Task List Preview Format"](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable) (STABLE).
 
 Either side may be empty. If the chat concluded that nothing needs to
 change, print:
@@ -217,7 +217,7 @@ When the user confirms with `push`:
    ```
 
 2. **Add each follow-up card** in order using `bishop card add` per
-   [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable). Push with
+   [bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE). Push with
    `--bottom`.
 
 3. **Print a summary table** covering both the source-card edit (if any)

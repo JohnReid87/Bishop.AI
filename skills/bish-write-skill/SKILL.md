@@ -70,11 +70,11 @@ agent must not paraphrase, reorder, or skip steps. TUNABLE sections are
 voice / copy — paraphrase to fit context. Both are referenced the same
 way (by heading); the label tells the agent how much rope it has.
 
-Reference syntax inside a skill body:
+Reference syntax inside a skill body — use the scoped CLI form:
 
 ```markdown
-…per [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable).
-…apply [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable).
+…per [bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE).
+…apply [bishop context print --section "Card Granularity Rules"](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) (TUNABLE).
 ```
 
 The deterministic mechanics that *every* workspace-level skill needs
@@ -291,8 +291,8 @@ not Read whole files into the conversation. -->
 / "wrap up", checklist complete) and the proposal shape (cards to push,
 source-card edits, etc.). -->
 
-Apply [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) before
-listing follow-ups. Print the preview per [Task List Preview Format](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable). Each card body uses the
+Apply [bishop context print --section "Card Granularity Rules"](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) (TUNABLE) before
+listing follow-ups. Print the preview per [bishop context print --section "Task List Preview Format"](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable) (STABLE). Each card body uses the
 template below.
 
 **Tag** defaults to `<your-tag>` (must be one of `tags[].name`).
@@ -318,7 +318,7 @@ Do NOT push automatically.
 
 ## Push
 
-When the user confirms, add each card per [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable). Push with `--bottom` so cards
+When the user confirms, add each card per [bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE). Push with `--bottom` so cards
 land in agreed order.
 
 Print a summary table:
@@ -332,7 +332,7 @@ Print a summary table:
 ## Closing card-action prompt
 
 If a **source card** was captured at the start (Path 1), prompt per
-[Source Card Closing Prompt](.bishop/BISHOP_CONTEXT.md#source-card-closing-prompt-stable). If
+[bishop context print --section "Source Card Closing Prompt"](.bishop/BISHOP_CONTEXT.md#source-card-closing-prompt-stable) (STABLE). If
 there is no source card (Paths 2 and 3), skip this prompt entirely.
 
 ARGUMENTS: $ARGUMENTS
@@ -413,7 +413,7 @@ single-stack. -->
 
 3. **Echo summary.** One-line overview per finding, severity-ordered.
 
-4. **Triage loop.** Walk findings per [Per-finding Walk Pattern](.bishop/BISHOP_CONTEXT.md#per-finding-walk-pattern-tunable). For each finding, use
+4. **Triage loop.** Walk findings per [bishop context print --section "Per-finding Walk Pattern"](.bishop/BISHOP_CONTEXT.md#per-finding-walk-pattern-tunable) (TUNABLE). For each finding, use
    `AskUserQuestion`: **Card it (new)** (Recommended when high-sev),
    **Cluster with #N**, **Dismiss — context**, **Defer**.
 
@@ -422,13 +422,13 @@ single-stack. -->
    `bishop workspace init` (which restores the canonical tag set) and
    STOP.
 
-6. **Granularity pass.** Apply [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) before previewing.
+6. **Granularity pass.** Apply [bishop context print --section "Card Granularity Rules"](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) (TUNABLE) before previewing.
 
-7. **Print task list** per [Task List Preview Format](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable). Ask:
+7. **Print task list** per [bishop context print --section "Task List Preview Format"](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable) (STABLE). Ask:
 
    > Please review the tasks above. Say **push** to create the Bishop cards.
 
-8. **Push confirmed cards** per [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable). Always `--lane "To Do"`,
+8. **Push confirmed cards** per [bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE). Always `--lane "To Do"`,
    `--tag <tag>`, and `--bottom`.
 
 9. **Print summary table:**

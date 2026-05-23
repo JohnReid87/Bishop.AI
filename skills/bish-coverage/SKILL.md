@@ -172,7 +172,7 @@ makes no assumption about specific namespace prefixes — it works for any
    same theme), offer a fourth option to merge them into one card before pushing.
 
 9. **Push confirmed cards.** For each, call `bishop card add`
-   (see [Card model](.bishop/BISHOP_CONTEXT.md#card-model)) with:
+   (see [bishop context print --section "Card model"](.bishop/BISHOP_CONTEXT.md#card-model)) with:
 
    - `--lane "To Do"`
    - `--title "<Title>"`

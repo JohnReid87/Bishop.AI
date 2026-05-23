@@ -34,7 +34,7 @@ Relentless means:
 
 Cards land on the board only after **two gates**:
 
-1. A **granularity pass** — see [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable).
+1. A **granularity pass** — see [bishop context print --section "Card Granularity Rules"](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) (TUNABLE).
 2. A **preview** the user explicitly confirms with `push`. The agent never
    writes to the board on its own.
 
@@ -96,10 +96,10 @@ pull whole files into this conversation.
 
 ## After shared understanding — granularity pass + preview
 
-Apply the heuristics in [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) to merge or split the proposed cards
+Apply the heuristics in [bishop context print --section "Card Granularity Rules"](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) (TUNABLE) to merge or split the proposed cards
 before previewing them.
 
-Then print the preview in the shape defined by [Task List Preview Format](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable). Each card uses the body template
+Then print the preview in the shape defined by [bishop context print --section "Task List Preview Format"](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable) (STABLE). Each card uses the body template
 below.
 
 **Tag** must be one of `tags[].name` from the bootstrap JSON. If the
@@ -147,7 +147,7 @@ Do NOT push automatically. Wait for the user to say "push".
 ## Push
 
 When the user confirms, add each card in order using `bishop card add` per
-[Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable). Push with `--bottom`
+[bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE). Push with `--bottom`
 so cards land in agreed order.
 
 After all cards are created, print a brief summary:
@@ -161,7 +161,7 @@ After all cards are created, print a brief summary:
 ## Closing card-action prompt
 
 If a **source card** was captured at the start (Path 1), prompt the user
-about it after the summary, per [Source Card Closing Prompt](.bishop/BISHOP_CONTEXT.md#source-card-closing-prompt-stable). If there is no source card
+about it after the summary, per [bishop context print --section "Source Card Closing Prompt"](.bishop/BISHOP_CONTEXT.md#source-card-closing-prompt-stable) (STABLE). If there is no source card
 (Paths 2 and 3), skip this prompt entirely.
 
 ARGUMENTS: $ARGUMENTS

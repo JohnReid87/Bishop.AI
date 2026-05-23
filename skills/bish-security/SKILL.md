@@ -273,7 +273,7 @@ surface, because the same code often gets copy-pasted into production.
      the nearest related card.
 
 10. **Push confirmed cards** in order. For each, call `bishop card add`
-    (see [Card model](.bishop/BISHOP_CONTEXT.md#card-model)) with:
+    (see [bishop context print --section "Card model"](.bishop/BISHOP_CONTEXT.md#card-model)) with:
 
     - `--lane "To Do"`
     - `--title "<Title>"`

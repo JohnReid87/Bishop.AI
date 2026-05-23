@@ -11,6 +11,7 @@ using Bishop.Cli.Cards.Push;
 using Bishop.Cli.Cards.Remove;
 using Bishop.Cli.Cards.Reopen;
 using Bishop.Cli.Cards.View;
+using Bishop.Cli.Context.Print;
 using Bishop.Cli.InstallSkills;
 using Bishop.Cli.Lanes.List;
 using Bishop.Cli.Skills.Bootstrap;
@@ -97,6 +98,12 @@ root.AddCommand(new InstallSkillsCliCommand());
 var skillCmd = new Command("skill", "Skill runtime utilities");
 skillCmd.AddCommand(new BootstrapSkillCliCommand(mediator));
 root.AddCommand(skillCmd);
+
+// ── context ───────────────────────────────────────────────────────────────────
+
+var contextCmd = new Command("context", "Inspect the workspace context file");
+contextCmd.AddCommand(new PrintContextCliCommand(mediator));
+root.AddCommand(contextCmd);
 
 // ── work-next ─────────────────────────────────────────────────────────────────
 
