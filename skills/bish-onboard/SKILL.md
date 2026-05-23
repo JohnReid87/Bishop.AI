@@ -36,7 +36,13 @@ Run `git rev-parse --is-inside-work-tree` (capture stdout, suppress stderr).
 Run `bishop workspace current --json`.
 
 - If it succeeds → parse the JSON and record `workspace: already registered as <name>`. Continue to step 3.
-- If it exits non-zero → run `bishop workspace init` with no arguments. The CLI defaults to cwd, seeds the default lanes (`To Do`, `Doing`, `Done`) and the canonical tag set (`feature`, `bug`, `chore`, `docs`, `arch`, `test`, `spike`), and auto-detects the GitHub remote when one is configured. Then re-run `bishop workspace current --json` to capture the new workspace name. Record `workspace: registered as <name>` and append the GitHub link from the init output if one was detected.
+- If it exits non-zero → resolve the absolute CWD and prompt the user:
+
+  > About to register `<absolute CWD>` as a Bishop workspace. Proceed?
+  > (`y` to initialise / `n` to decline)
+
+  - On `n` → print `Workspace init declined — re-run /bish-onboard from the directory you want to register.` and **stop immediately**. Do NOT continue to step 3 or any later step.
+  - On `y` → run `bishop workspace init` with no arguments. The CLI defaults to cwd, seeds the default lanes (`To Do`, `Doing`, `Done`) and the canonical tag set (`feature`, `bug`, `chore`, `docs`, `arch`, `test`, `spike`), and auto-detects the GitHub remote when one is configured. Then re-run `bishop workspace current --json` to capture the new workspace name. Record `workspace: registered as <name>` and append the GitHub link from the init output if one was detected.
 
 If `bishop workspace init` fails, STOP and surface the stderr as-is. Do not proceed with later steps in a half-initialised state.
 
