@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.Core;
+using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Claude;
 using Bishop.App.Git;
@@ -102,6 +103,7 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                 {
                     await _git.ResetHardAsync(request.WorkspacePath, cancellationToken);
                     await _git.CleanWorkingTreeAsync(request.WorkspacePath, cancellationToken);
+                    await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
                     failedCardNumbers.Add(card.Number);
                     continue;
                 }

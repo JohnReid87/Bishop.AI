@@ -3,6 +3,7 @@ using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.MoveCard;
+using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Claude;
 using Bishop.App.Git;
@@ -82,6 +83,9 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         sender.Send(Arg.Any<RecordClaudeRunCommand>(), Arg.Any<CancellationToken>())
             .Returns(call => new RecordClaudeRunCommandHandler(_factory)
                 .Handle(call.ArgAt<RecordClaudeRunCommand>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<RecordAutoRunFailureCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call => new RecordAutoRunFailureCommandHandler(_factory)
+                .Handle(call.ArgAt<RecordAutoRunFailureCommand>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }
 
@@ -1033,6 +1037,48 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         {
             try { Directory.Delete(repoPath, recursive: true); } catch { }
         }
+    }
+
+    [Fact]
+    public async Task ClaudeNonZeroExit_PersistsLastAutoRunFailedAt()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "test"), default);
+
+        var before = DateTimeOffset.UtcNow;
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeReturnsExitCode(7));
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 10), default);
+
+        // Assert
+        var after = DateTimeOffset.UtcNow;
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.LastAutoRunFailedAt.Should().NotBeNull();
+        saved.LastAutoRunFailedAt!.Value.Should().BeOnOrAfter(before);
+        saved.LastAutoRunFailedAt!.Value.Should().BeOnOrBefore(after);
+    }
+
+    [Fact]
+    public async Task ClaudeSuccessfulRun_DoesNotSetLastAutoRunFailedAt()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "test"), default);
+
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1), default);
+
+        // Assert
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.LastAutoRunFailedAt.Should().BeNull();
     }
 
     private static void RunGit(string workingDir, string[] args)

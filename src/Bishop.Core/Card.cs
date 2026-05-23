@@ -22,6 +22,7 @@ public sealed class Card : IAuditable
     public int TotalCacheCreationTokens { get; set; }
     public int TotalCacheReadTokens { get; set; }
     public int ClaudeRunCount { get; set; }
+    public DateTimeOffset? LastAutoRunFailedAt { get; set; }
 
     [JsonIgnore]
     public Workspace Workspace { get; set; } = null!;

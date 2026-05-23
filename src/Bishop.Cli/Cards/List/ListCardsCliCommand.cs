@@ -43,6 +43,7 @@ internal sealed class ListCardsCliCommand : Command
                     isClosed = c.IsClosed,
                     gitHubIssueNumber = c.GitHubIssueNumber,
                     gitHubPushedAt = c.GitHubPushedAt,
+                    lastAutoRunFailedAt = c.LastAutoRunFailedAt,
                     tag = c.TagName
                 });
                 Console.WriteLine(JsonSerializer.Serialize(output, s_jsonOpts));
