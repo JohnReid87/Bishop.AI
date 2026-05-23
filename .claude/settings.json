@@ -21,7 +21,8 @@
       "Grep",
       "Agent",
       "Bash(wc:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(xxd:*)"
     ]
   }
 }
