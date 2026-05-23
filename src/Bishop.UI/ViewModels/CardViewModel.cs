@@ -11,15 +11,15 @@ public sealed class CardViewModel
     public string Title { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public string LaneName { get; init; } = string.Empty;
-    public IReadOnlyList<CardTagViewModel> Tags { get; init; } = [];
-    public string? FirstTagName { get; init; }
-    public string? FirstTagColour { get; init; }
+    public string? TagName { get; init; }
+    public string? TagColour { get; init; }
     public bool IsClosed { get; init; }
     public int? GitHubIssueNumber { get; init; }
     public DateTimeOffset? GitHubPushedAt { get; init; }
 
     public string NumberDisplay => $"#{Number}";
-    public Visibility TagChipVisibility => FirstTagName is not null ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility TagChipVisibility => TagName is not null ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility AddTagButtonVisibility => TagName is null ? Visibility.Visible : Visibility.Collapsed;
     public double CardOpacity => IsClosed ? 0.5 : 1.0;
     public string CloseReopenGlyph => IsClosed ? "" : "";
     public string CloseReopenTooltip => IsClosed ? "Reopen card" : "Close card";
@@ -35,5 +35,5 @@ public sealed class CardViewModel
 
     public bool MatchesSearch(string searchText) =>
         Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-        Tags.Any(t => t.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase));
+        (TagName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false);
 }

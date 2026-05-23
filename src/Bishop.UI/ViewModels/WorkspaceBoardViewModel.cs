@@ -93,10 +93,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             || vm.GitHubPushedAt != card.GitHubPushedAt)
             return false;
 
-        var cardTagCount = card.Tag is not null ? 1 : 0;
-        if (vm.Tags.Count != cardTagCount)
-            return false;
-        if (card.Tag is not null && (vm.Tags[0].Name != card.Tag.Name || vm.Tags[0].Colour != card.Tag.Colour))
+        if (vm.TagName != card.Tag?.Name || vm.TagColour != card.Tag?.Colour)
             return false;
 
         return true;
@@ -112,11 +109,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             Title = card.Title,
             Description = card.Description,
             LaneName = laneName,
-            Tags = card.Tag is not null
-                ? [new CardTagViewModel { Name = card.Tag.Name, Colour = card.Tag.Colour }]
-                : [],
-            FirstTagName = card.Tag?.Name,
-            FirstTagColour = card.Tag?.Colour,
+            TagName = card.Tag?.Name,
+            TagColour = card.Tag?.Colour,
             IsClosed = card.IsClosed,
             GitHubIssueNumber = card.GitHubIssueNumber,
             GitHubPushedAt = card.GitHubPushedAt,

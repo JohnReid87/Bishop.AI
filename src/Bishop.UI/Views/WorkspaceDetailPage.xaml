@@ -317,15 +317,25 @@
                                                                        Foreground="{StaticResource AppTextTertiaryBrush}"
                                                                        FontFamily="Cascadia Mono"
                                                                        VerticalAlignment="Center"/>
-                                                            <Border Background="{x:Bind FirstTagColour, Converter={StaticResource HexColorToBrushConverter}}"
+                                                            <Border Background="{x:Bind TagColour, Converter={StaticResource HexColorToBrushConverter}}"
                                                                     CornerRadius="3"
                                                                     Padding="5,1"
                                                                     Visibility="{x:Bind TagChipVisibility}">
-                                                                <TextBlock Text="{x:Bind FirstTagName}"
+                                                                <TextBlock Text="{x:Bind TagName}"
                                                                            Style="{StaticResource CaptionTextBlockStyle}"
-                                                                           Foreground="{x:Bind FirstTagColour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
+                                                                           Foreground="{x:Bind TagColour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
                                                                            VerticalAlignment="Center"/>
                                                             </Border>
+                                                            <Button Click="CardAddTagButton_Click"
+                                                                    Visibility="{x:Bind AddTagButtonVisibility}"
+                                                                    Padding="5,1"
+                                                                    BorderThickness="0"
+                                                                    CornerRadius="3"
+                                                                    Background="{StaticResource AppDividerBrush}">
+                                                                <TextBlock Text="+ tag"
+                                                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                                                           VerticalAlignment="Center"/>
+                                                            </Button>
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1"
                                                                     Orientation="Horizontal">

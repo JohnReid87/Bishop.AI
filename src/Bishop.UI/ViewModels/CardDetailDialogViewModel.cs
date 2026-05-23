@@ -153,8 +153,8 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         LaneName = card.LaneName;
         IsClosed = card.IsClosed;
         GitHubIssueNumber = card.GitHubIssueNumber;
-        foreach (var t in card.Tags)
-            Tags.Add(t);
+        if (card.TagName is not null)
+            Tags.Add(new CardTagViewModel { Name = card.TagName, Colour = card.TagColour ?? BrandTagPalette.DefaultColour });
         SkillsButtonVisibility = cardSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 

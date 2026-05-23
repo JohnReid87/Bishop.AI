@@ -1,4 +1,5 @@
 using Bishop.App.Cards.CloseCard;
+using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Cards.ImportFromGitHub;
 using Bishop.App.GitHub;
 using Bishop.App.Cards.MoveCard;
@@ -610,13 +611,36 @@ public sealed partial class WorkspaceDetailPage : Page
             Title = card.Title,
             Description = card.Description,
             LaneName = card.LaneName,
-            Tags = card.Tags,
-            FirstTagName = card.FirstTagName,
-            FirstTagColour = card.FirstTagColour,
+            TagName = card.TagName,
+            TagColour = card.TagColour,
             IsClosed = !card.IsClosed,
             GitHubIssueNumber = card.GitHubIssueNumber,
             GitHubPushedAt = card.GitHubPushedAt,
         };
+    }
+
+    private async void CardAddTagButton_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+        if (_item is null) return;
+
+        var mediator = App.Services.GetRequiredService<IMediator>();
+        IReadOnlyList<Bishop.Core.Tag> allTags;
+        try
+        {
+            allTags = await mediator.Send(new ListTagsByWorkspaceQuery(_item.Id));
+        }
+        catch
+        {
+            return;
+        }
+
+        var flyout = TagPickerFlyout.Build(allTags, [], async (name, _) =>
+        {
+            await mediator.Send(new UpdateCardCommand(card.Id, null, null, true, name));
+            await Board.RefreshCommand.ExecuteAsync(null);
+        });
+        flyout.ShowAt((FrameworkElement)sender);
     }
 
     private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath, CardViewModel? card, string? modelId = null)
