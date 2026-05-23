@@ -19,6 +19,7 @@ using Bishop.Cli.WorkNext;
 using Bishop.Cli.Workspaces.Current;
 using Bishop.Cli.Workspaces.Init;
 using Bishop.Cli.Workspaces.List;
+using Bishop.Cli.Workspaces.Purge;
 using Bishop.Cli.Workspaces.Remove;
 using Bishop.Cli.Workspaces.SetGitHub;
 using Bishop.Cli.Workspaces.UnsetGitHub;
@@ -55,6 +56,7 @@ workspaceCmd.AddCommand(new InitWorkspaceCliCommand(mediator));
 workspaceCmd.AddCommand(new SetGitHubCliCommand(mediator));
 workspaceCmd.AddCommand(new UnsetGitHubCliCommand(mediator));
 workspaceCmd.AddCommand(new RemoveWorkspaceCliCommand(mediator));
+workspaceCmd.AddCommand(new PurgeWorkspaceCliCommand(mediator));
 root.AddCommand(workspaceCmd);
 
 

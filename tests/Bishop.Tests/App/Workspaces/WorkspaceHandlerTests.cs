@@ -9,6 +9,7 @@ using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.ReorderWorkspaces;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
+using Bishop.App.Workspaces.PurgeWorkspace;
 using Bishop.App.Workspaces.RemoveWorkspace;
 using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
 using Bishop.App.Workspaces.UpdateWorkspace;
@@ -653,6 +654,64 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var result = await handler.Handle(new ListWorkspacesQuery(IncludeRemoved: true), default);
 
         result.Should().Contain(w => w.Id == created.Id);
+    }
+
+    [Fact]
+    public async Task PurgeWorkspace_RemovedWorkspace_DeletesFromDb()
+    {
+        var name = U("ToPurge");
+        var created = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        await new RemoveWorkspaceCommandHandler(_factory)
+            .Handle(new RemoveWorkspaceCommand(created.Id), default);
+        var handler = new PurgeWorkspaceCommandHandler(_factory);
+
+        await handler.Handle(new PurgeWorkspaceCommand(created.Id), default);
+
+        var ws = await _db.Workspaces.FindAsync(created.Id);
+        ws.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PurgeWorkspace_ActiveWorkspace_Throws()
+    {
+        var name = U("ActivePurge");
+        var created = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        var handler = new PurgeWorkspaceCommandHandler(_factory);
+
+        var act = () => handler.Handle(new PurgeWorkspaceCommand(created.Id), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*active*");
+    }
+
+    [Fact]
+    public async Task PurgeWorkspace_WorkspaceNotFound_Throws()
+    {
+        var handler = new PurgeWorkspaceCommandHandler(_factory);
+
+        var act = () => handler.Handle(new PurgeWorkspaceCommand(Guid.NewGuid()), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [Fact]
+    public async Task PurgeWorkspace_RemovedWorkspace_ExcludedFromListAfterPurge()
+    {
+        var name = U("PurgeList");
+        var created = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        await new RemoveWorkspaceCommandHandler(_factory)
+            .Handle(new RemoveWorkspaceCommand(created.Id), default);
+        await new PurgeWorkspaceCommandHandler(_factory)
+            .Handle(new PurgeWorkspaceCommand(created.Id), default);
+
+        var result = await new ListWorkspacesQueryHandler(_factory)
+            .Handle(new ListWorkspacesQuery(IncludeRemoved: true), default);
+
+        result.Should().NotContain(w => w.Id == created.Id);
     }
 
     private sealed class ThrowingSaveChangesInterceptor : SaveChangesInterceptor
