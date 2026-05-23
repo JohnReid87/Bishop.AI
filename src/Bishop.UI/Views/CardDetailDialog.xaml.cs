@@ -121,7 +121,7 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     // ── Description editing ───────────────────────────────────────────────────
 
-    private void DescriptionView_Tapped(object sender, TappedRoutedEventArgs e)
+    private void DescriptionEdit_Click(object sender, RoutedEventArgs e)
     {
         DescriptionTextBox.Text = ViewModel.Description;
         ViewModel.StartDescriptionEdit();
