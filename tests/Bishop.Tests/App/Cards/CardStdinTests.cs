@@ -5,7 +5,9 @@ using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace Bishop.Tests.App.Cards;
 
@@ -76,7 +78,7 @@ public sealed class CardStdinTests : IClassFixture<DbFixture>
             Console.SetIn(new StringReader(UnicodeBody));
             var desc = await Console.In.ReadToEndAsync();
 
-            var updated = await new UpdateCardCommandHandler(_factory)
+            var updated = await new UpdateCardCommandHandler(_factory, Substitute.For<ISender>())
                 .Handle(new UpdateCardCommand(card.Id, null, desc, false, null), default);
 
             updated.Description.Should().Be(UnicodeBody);

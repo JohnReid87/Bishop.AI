@@ -8,4 +8,6 @@ public sealed record UpdateCardCommand(
     string? Title,
     string? Description,
     bool UpdateTag,
-    string? TagName) : IRequest<Card>;
+    string? TagName,
+    string? AppendDescription = null,
+    Guid? ToLaneId = null) : IRequest<Card>;

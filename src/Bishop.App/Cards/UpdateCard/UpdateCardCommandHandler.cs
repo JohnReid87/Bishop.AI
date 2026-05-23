@@ -1,3 +1,4 @@
+using Bishop.App.Cards.MoveCard;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
@@ -8,12 +9,18 @@ namespace Bishop.App.Cards.UpdateCard;
 public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand, Card>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly ISender _sender;
 
-    public UpdateCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
+    public UpdateCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, ISender sender)
+    {
+        _dbFactory = dbFactory;
+        _sender = sender;
+    }
 
     public async Task<Card> Handle(UpdateCardCommand request, CancellationToken cancellationToken)
     {
-        if (request.Title is null && request.Description is null && !request.UpdateTag)
+        if (request.Title is null && request.Description is null && request.AppendDescription is null
+            && !request.UpdateTag && request.ToLaneId is null)
             throw new InvalidOperationException("At least one field (--title, --description, or --tag) must be supplied.");
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -28,6 +35,13 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
 
         if (request.Description is not null)
             card.Description = request.Description;
+
+        if (request.AppendDescription is not null)
+        {
+            card.Description = string.IsNullOrEmpty(card.Description)
+                ? request.AppendDescription
+                : $"{card.Description}\n\n---\n\n{request.AppendDescription}";
+        }
 
         if (request.UpdateTag)
         {
@@ -50,6 +64,10 @@ public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        if (request.ToLaneId.HasValue)
+            card = await _sender.Send(new MoveCardCommand(card.Id, request.ToLaneId.Value, 1), cancellationToken);
+
         return card;
     }
 }

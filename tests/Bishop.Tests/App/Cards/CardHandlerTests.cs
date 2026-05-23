@@ -1,10 +1,12 @@
 using Bishop.App.Cards.AddCard;
+using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.UpdateCard;
+using Bishop.App.GitHub;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
@@ -345,7 +347,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Original"), default);
-        var handler = new UpdateCardCommandHandler(_factory);
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
 
         // Act
         var result = await handler.Handle(
@@ -364,7 +366,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Task", "Old desc"), default);
-        var handler = new UpdateCardCommandHandler(_factory);
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
 
         // Act
         var result = await handler.Handle(
@@ -382,7 +384,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Task", TagName: "bug"), default);
-        var handler = new UpdateCardCommandHandler(_factory);
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
 
         // Act
         await handler.Handle(
@@ -402,7 +404,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Task", TagName: "bug"), default);
-        var handler = new UpdateCardCommandHandler(_factory);
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
 
         // Act
         await handler.Handle(
@@ -421,7 +423,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var (_, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
-        var handler = new UpdateCardCommandHandler(_factory);
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
 
         // Act
         var act = async () => await handler.Handle(
@@ -431,6 +433,82 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*At least one field*");
+    }
+
+    [Fact]
+    public async Task EditCard_AppendDescription_ToExistingDescription_AppendsWithSeparator()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task", "Existing"), default);
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
+
+        // Act
+        var result = await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: false, TagName: null,
+                AppendDescription: "Appended"),
+            default);
+
+        // Assert
+        result.Description.Should().Be("Existing\n\n---\n\nAppended");
+        (await _db.Cards.FindAsync(card.Id))!.Description.Should().Be("Existing\n\n---\n\nAppended");
+    }
+
+    [Fact]
+    public async Task EditCard_AppendDescription_ToEmptyDescription_SetsDescriptionWithNoSeparator()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(lanes[0].Id, "Task"), default);
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
+
+        // Act
+        var result = await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: false, TagName: null,
+                AppendDescription: "First content"),
+            default);
+
+        // Assert
+        result.Description.Should().Be("First content");
+        (await _db.Cards.FindAsync(card.Id))!.Description.Should().Be("First content");
+    }
+
+    [Fact]
+    public async Task EditCard_AppendDescriptionWithToLane_MovesCardAndAutoCloses()
+    {
+        // Arrange
+        var (_, lanes) = await CreateWorkspaceWithLanesAsync();
+        var doneLane = lanes.Single(l => l.Name == "Done");
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(lanes.Single(l => l.Name == "To Do").Id, "Task", "Existing"), default);
+        var handler = new UpdateCardCommandHandler(_factory, CreateSender());
+
+        // Act
+        var result = await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: false, TagName: null,
+                AppendDescription: "### Agent notes\nDone.", ToLaneId: doneLane.Id),
+            default);
+
+        // Assert — description appended, card moved to Done and auto-closed
+        var persisted = await _db.Cards.FindAsync(card.Id);
+        persisted!.Description.Should().Be("Existing\n\n---\n\n### Agent notes\nDone.");
+        persisted.LaneId.Should().Be(doneLane.Id);
+        persisted.IsClosed.Should().BeTrue();
+    }
+
+    private ISender CreateSender()
+    {
+        var ghCli = Substitute.For<IGhCli>();
+        var sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call => new MoveCardCommandHandler(_factory, sender)
+                .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<CloseCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call => new CloseCardCommandHandler(_factory, ghCli)
+                .Handle(call.ArgAt<CloseCardCommand>(0), call.ArgAt<CancellationToken>(1)));
+        return sender;
     }
 
     [Fact]
