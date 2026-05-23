@@ -6,11 +6,24 @@ namespace Bishop.Tests.App.Git;
 public sealed class GetRecentCommitsTests : IDisposable
 {
     private readonly string _tempDir;
+    private readonly string? _gitPath = ResolveGitPath();
 
     public GetRecentCommitsTests()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(_tempDir);
+    }
+
+    private static string? ResolveGitPath()
+    {
+        var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        foreach (var dir in pathEnv.Split(Path.PathSeparator))
+        {
+            var gitCandidate = Path.Combine(dir, "git.exe");
+            if (File.Exists(gitCandidate))
+                return gitCandidate;
+        }
+        return null;
     }
 
     public void Dispose()
@@ -21,9 +34,12 @@ public sealed class GetRecentCommitsTests : IDisposable
         Directory.Delete(_tempDir, recursive: true);
     }
 
-    private static void Git(string workingDir, params string[] args)
+    private void Git(params string[] args) => GitInDir(_tempDir, args);
+
+    private void GitInDir(string workingDir, params string[] args)
     {
-        var psi = new System.Diagnostics.ProcessStartInfo("git")
+        var gitExe = _gitPath ?? "git";
+        var psi = new System.Diagnostics.ProcessStartInfo(gitExe)
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -36,12 +52,12 @@ public sealed class GetRecentCommitsTests : IDisposable
 
     private void InitRepoWithCommit(string subject = "Initial commit")
     {
-        Git(_tempDir, "init");
-        Git(_tempDir, "config", "user.email", "test@example.com");
-        Git(_tempDir, "config", "user.name", "Test");
+        Git("init");
+        Git("config", "user.email", "test@example.com");
+        Git("config", "user.name", "Test");
         File.WriteAllText(Path.Combine(_tempDir, "file.txt"), "content");
-        Git(_tempDir, "add", ".");
-        Git(_tempDir, "commit", "-m", subject);
+        Git("add", ".");
+        Git("commit", "-m", subject);
     }
 
     [Fact]
@@ -68,12 +84,12 @@ public sealed class GetRecentCommitsTests : IDisposable
     public async Task GetRecentCommitsAsync_PopulatesBody_WhenCommitHasMultiParagraphMessage()
     {
         // Arrange
-        Git(_tempDir, "init");
-        Git(_tempDir, "config", "user.email", "test@example.com");
-        Git(_tempDir, "config", "user.name", "Test");
+        Git("init");
+        Git("config", "user.email", "test@example.com");
+        Git("config", "user.name", "Test");
         File.WriteAllText(Path.Combine(_tempDir, "file.txt"), "content");
-        Git(_tempDir, "add", ".");
-        Git(_tempDir, "commit", "-m", "Add the thing\n\nThis explains why.\n\nCo-Authored-By: Test <t@t.com>");
+        Git("add", ".");
+        Git("commit", "-m", "Add the thing\n\nThis explains why.\n\nCo-Authored-By: Test <t@t.com>");
         var sut = new GitCli();
 
         // Act
@@ -89,7 +105,7 @@ public sealed class GetRecentCommitsTests : IDisposable
     public async Task GetRecentCommitsAsync_ReturnsNoCommits_WhenRepoIsEmpty()
     {
         // Arrange
-        Git(_tempDir, "init");
+        Git("init");
         var sut = new GitCli();
 
         // Act
@@ -120,8 +136,8 @@ public sealed class GetRecentCommitsTests : IDisposable
         for (var i = 2; i <= 7; i++)
         {
             File.WriteAllText(Path.Combine(_tempDir, $"file{i}.txt"), $"content {i}");
-            Git(_tempDir, "add", ".");
-            Git(_tempDir, "commit", "-m", $"Commit {i}");
+            Git("add", ".");
+            Git("commit", "-m", $"Commit {i}");
         }
         var sut = new GitCli();
 
@@ -140,9 +156,9 @@ public sealed class GetRecentCommitsTests : IDisposable
         InitRepoWithCommit("Initial commit");
         var barePath = Path.Combine(_tempDir, "remote.git");
         Directory.CreateDirectory(barePath);
-        Git(barePath, "init", "--bare");
-        Git(_tempDir, "remote", "add", "origin", barePath);
-        Git(_tempDir, "push", "-u", "origin", "HEAD");
+        GitInDir(barePath, "init", "--bare");
+        Git("remote", "add", "origin", barePath);
+        Git("push", "-u", "origin", "HEAD");
         var sut = new GitCli();
 
         // Act
@@ -161,13 +177,13 @@ public sealed class GetRecentCommitsTests : IDisposable
         InitRepoWithCommit("Initial commit");
         var barePath = Path.Combine(_tempDir, "remote.git");
         Directory.CreateDirectory(barePath);
-        Git(barePath, "init", "--bare");
-        Git(_tempDir, "remote", "add", "origin", barePath);
-        Git(_tempDir, "push", "-u", "origin", "HEAD");
+        GitInDir(barePath, "init", "--bare");
+        Git("remote", "add", "origin", barePath);
+        Git("push", "-u", "origin", "HEAD");
 
         File.WriteAllText(Path.Combine(_tempDir, "extra.txt"), "extra");
-        Git(_tempDir, "add", ".");
-        Git(_tempDir, "commit", "-m", "Unpushed commit");
+        Git("add", ".");
+        Git("commit", "-m", "Unpushed commit");
 
         var sut = new GitCli();
 
