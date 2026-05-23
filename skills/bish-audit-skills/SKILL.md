@@ -56,8 +56,8 @@ via §6 of `SKILL_FAMILY.md` when judging an edge case.
    it runs); the exception must carry a one-line comment explaining
    why. Bishop-level / meta skills must **not** call bootstrap.
 
-4. **Card push** — skills that push cards reference
-   `BISHOP_CONTEXT.md → ## Card Push Procedure (STABLE)` rather than
+4. **Card push** — skills that push cards link to
+   [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) rather than
    restating the `bishop card add` heredoc.
 
 5. **Task-list preview** — skills that emit a multi-card preview
@@ -215,8 +215,7 @@ Item 11 is a family-wide check, not per-skill:
    If a skill has no findings, list it under a `Clean:` heading at the
    bottom so the user can see what was checked.
 
-6. **Walk findings one at a time** per
-   `BISHOP_CONTEXT.md → ## Per-finding Walk Pattern (TUNABLE)`. For
+6. **Walk findings one at a time** per [Per-finding Walk Pattern](.bishop/BISHOP_CONTEXT.md#per-finding-walk-pattern-tunable). For
    each finding, print the full body (skill, item, severity, what,
    location, suggested-action, plus your recommended verdict) and use
    `AskUserQuestion` with the standard options:
@@ -230,8 +229,7 @@ Item 11 is a family-wide check, not per-skill:
      in this codebase.
    - **Defer** — note but do not card now.
 
-7. **Granularity pass** per
-   `BISHOP_CONTEXT.md → ## Card Granularity Rules (TUNABLE)`. Common
+7. **Granularity pass** per [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable). Common
    clustering patterns for this skill:
 
    - Multiple item-3 violations across review skills → one card
@@ -245,8 +243,7 @@ Item 11 is a family-wide check, not per-skill:
      `README.md`, `CONTEXT.md`, `DIRECTION.md`, and
      `BishopContext.static.md`", not per doc.
 
-8. **Print the preview** per
-   `BISHOP_CONTEXT.md → ## Task List Preview Format (STABLE)`. Each
+8. **Print the preview** per [Task List Preview Format](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable). Each
    card body uses the template below. Cards default to
    `--lane "To Do"` and `--tag chore`; switch to `--tag docs` when
    the finding is about drift in a documentation file
@@ -258,8 +255,7 @@ Item 11 is a family-wide check, not per-skill:
 
    > Please review the tasks above. Say **push** to create the Bishop cards.
 
-9. **Push confirmed cards** per
-   `BISHOP_CONTEXT.md → ## Card Push Procedure (STABLE)`. Always
+9. **Push confirmed cards** per [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable). Always
    `--bottom` so the audit batch does not jump ahead of manually
    prioritised work.
 

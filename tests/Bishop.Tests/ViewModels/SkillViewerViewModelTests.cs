@@ -346,6 +346,178 @@ public class SkillViewerViewModelTests
         vm.PanelWidth.Should().Be(650);
     }
 
+    // NavigateLinkAsync
+
+    [Fact]
+    public async Task LoadAsync_ClearsHistoryAndCanGoBack()
+    {
+        var vm = NewVm();
+        var skill = MakeSkill("bish-arch");
+        await vm.OpenAsync(skill);
+        var mdPath = TempPath(".md");
+        await File.WriteAllTextAsync(mdPath, "# Doc\ncontent\n");
+        var workspaceDir = Path.GetDirectoryName(mdPath)!;
+        await vm.LoadAsync(Guid.NewGuid(), workspaceDir);
+        await vm.NavigateLinkAsync(Path.GetFileName(mdPath));
+        await vm.LoadAsync(Guid.NewGuid(), workspaceDir);
+
+        vm.CanGoBack.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NavigateLinkAsync_LoadsFileAndPushesHistory()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"svnav-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        var mdPath = Path.Combine(dir, "target.md");
+        await File.WriteAllTextAsync(mdPath, "# Target\ncontent\n");
+        var skill = MakeSkill("bish-arch", sourcePath: Path.Combine(dir, "SKILL.md"));
+
+        var vm = NewVm();
+        await vm.LoadAsync(Guid.NewGuid(), dir);
+        await vm.OpenAsync(skill);
+        vm.MarkdownBody = "original body";
+
+        await vm.NavigateLinkAsync("target.md");
+
+        vm.MarkdownBody.Should().Be("# Target\ncontent\n");
+        vm.Skill.Should().BeNull();
+        vm.CanGoBack.Should().BeTrue();
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public async Task NavigateLinkAsync_ResolvesBishopContextMdAgainstWorkspace()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"svnav-{Guid.NewGuid():N}");
+        var bishopDir = Path.Combine(dir, ".bishop");
+        Directory.CreateDirectory(bishopDir);
+        var contextPath = Path.Combine(bishopDir, "BISHOP_CONTEXT.md");
+        await File.WriteAllTextAsync(contextPath, "# Context\ncontent\n");
+
+        var vm = NewVm();
+        await vm.LoadAsync(Guid.NewGuid(), dir);
+        var skill = MakeSkill("bish-arch", sourcePath: Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".claude", "skills", "bish-arch", "SKILL.md"));
+        await vm.OpenAsync(skill);
+
+        await vm.NavigateLinkAsync(".bishop/BISHOP_CONTEXT.md");
+
+        vm.MarkdownBody.Should().Be("# Context\ncontent\n");
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public async Task NavigateLinkAsync_IgnoresFragment_WhenLoadingFile()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"svnav-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        var mdPath = Path.Combine(dir, "target.md");
+        await File.WriteAllTextAsync(mdPath, "# Target\ncontent\n");
+
+        var vm = NewVm();
+        await vm.LoadAsync(Guid.NewGuid(), dir);
+        var skill = MakeSkill("bish-arch", sourcePath: Path.Combine(dir, "SKILL.md"));
+        await vm.OpenAsync(skill);
+
+        await vm.NavigateLinkAsync("target.md#some-section");
+
+        vm.MarkdownBody.Should().Be("# Target\ncontent\n");
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public async Task NavigateLinkAsync_DoesNothing_WhenFileDoesNotExist()
+    {
+        var vm = NewVm();
+        await vm.LoadAsync(Guid.NewGuid(), @"C:\does\not\exist");
+        var skill = MakeSkill("bish-arch");
+        await vm.OpenAsync(skill);
+        vm.MarkdownBody = "unchanged";
+
+        await vm.NavigateLinkAsync("nonexistent.md");
+
+        vm.MarkdownBody.Should().Be("unchanged");
+        vm.CanGoBack.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GoBackCommand_RestoresPreviousState()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"svnav-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        var mdPath = Path.Combine(dir, "target.md");
+        await File.WriteAllTextAsync(mdPath, "# Target\ncontent\n");
+        var skill = MakeSkill("bish-arch", sourcePath: Path.Combine(dir, "SKILL.md"));
+
+        var vm = NewVm();
+        await vm.LoadAsync(Guid.NewGuid(), dir);
+        await vm.OpenAsync(skill);
+        vm.MarkdownBody = "original";
+
+        await vm.NavigateLinkAsync("target.md");
+
+        vm.GoBackCommand.Execute(null);
+
+        vm.Skill.Should().Be(skill);
+        vm.MarkdownBody.Should().Be("original");
+        vm.CanGoBack.Should().BeFalse();
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public async Task GoBackCommand_SupportsMultipleNavigationLevels()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"svnav-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "a.md"), "A\n");
+        await File.WriteAllTextAsync(Path.Combine(dir, "b.md"), "B\n");
+
+        var vm = NewVm();
+        await vm.LoadAsync(Guid.NewGuid(), dir);
+        var skill = MakeSkill("bish-arch", sourcePath: Path.Combine(dir, "SKILL.md"));
+        await vm.OpenAsync(skill);
+        vm.MarkdownBody = "root";
+
+        await vm.NavigateLinkAsync("a.md");
+        await vm.NavigateLinkAsync("b.md");
+
+        vm.CanGoBack.Should().BeTrue();
+        vm.GoBackCommand.Execute(null);
+        vm.MarkdownBody.Should().Be("A\n");
+        vm.CanGoBack.Should().BeTrue();
+        vm.GoBackCommand.Execute(null);
+        vm.MarkdownBody.Should().Be("root");
+        vm.CanGoBack.Should().BeFalse();
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public async Task OpenAsync_ClearsHistory()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"svnav-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "target.md"), "T\n");
+        var skill = MakeSkill("bish-arch", sourcePath: Path.Combine(dir, "SKILL.md"));
+
+        var vm = NewVm();
+        await vm.LoadAsync(Guid.NewGuid(), dir);
+        await vm.OpenAsync(skill);
+        await vm.NavigateLinkAsync("target.md");
+
+        await vm.OpenAsync(skill);
+
+        vm.CanGoBack.Should().BeFalse();
+
+        Directory.Delete(dir, true);
+    }
+
     // ExtractBody edge cases
 
     [Fact]

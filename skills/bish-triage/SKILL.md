@@ -250,8 +250,7 @@ When the user chose "split into spike + fix-stub" in Phase 3, produce
 
 ## Push
 
-Add the card(s) using `bishop card add` per BISHOP_CONTEXT.md →
-`## Card Push Procedure (STABLE)`. Always `--tag bug` (or `--tag spike`
+Add the card(s) using `bishop card add` per [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable). Always `--tag bug` (or `--tag spike`
 for the spike half of a split) and `--lane "To Do"`.
 
 For the spike-split, push the **spike first** (`--tag spike`), capture
@@ -276,8 +275,7 @@ fix-stub.
 ## Closing card-action prompt
 
 If a **source card** was captured at the start (Path 1), prompt the user
-about it after the summary, per BISHOP_CONTEXT.md →
-`## Source Card Closing Prompt (STABLE)`. For the spike-split shape, the
+about it after the summary, per [Source Card Closing Prompt](.bishop/BISHOP_CONTEXT.md#source-card-closing-prompt-stable). For the spike-split shape, the
 prompt fires once for the original source card (independent of the newly
 created spike + fix-stub pair).
 

@@ -16,7 +16,9 @@ public sealed partial class SkillViewerViewModel : ObservableObject
     private readonly IAppSettings _appSettings;
     private readonly string _prefsFilePath;
     private Guid _workspaceId;
+    private string _workspacePath = string.Empty;
     private bool _isLoadingPrefs;
+    private readonly Stack<(string MarkdownBody, InstalledSkill? Skill)> _history = new();
 
     public SkillViewerViewModel(IAppSettings appSettings)
         : this(appSettings, DefaultPrefsFilePath()) { }
@@ -39,6 +41,9 @@ public sealed partial class SkillViewerViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool IsOpen { get; set; }
+
+    [ObservableProperty]
+    public partial bool CanGoBack { get; set; }
 
     [ObservableProperty]
     public partial double PanelWidth { get; set; } = DefaultPanelWidth;
@@ -69,17 +74,22 @@ public sealed partial class SkillViewerViewModel : ObservableObject
             _ = SavePrefsAsync();
     }
 
-    public async Task LoadAsync(Guid workspaceId)
+    public async Task LoadAsync(Guid workspaceId, string workspacePath = "")
     {
         _workspaceId = workspaceId;
+        _workspacePath = workspacePath;
         IsOpen = false;
         Skill = null;
         MarkdownBody = string.Empty;
+        _history.Clear();
+        CanGoBack = false;
         await LoadPrefsAsync();
     }
 
     public async Task OpenAsync(InstalledSkill skill)
     {
+        _history.Clear();
+        CanGoBack = false;
         Skill = skill;
         MarkdownBody = skill.MarkdownBody;
         var savedModel = await _appSettings.GetAsync($"skill.{skill.Name}.last_model")
@@ -116,6 +126,61 @@ public sealed partial class SkillViewerViewModel : ObservableObject
         {
             Debug.WriteLine($"[Bishop] SkillViewer.Refresh: {ex.Message}");
         }
+    }
+
+    public async Task NavigateLinkAsync(string href)
+    {
+        var hashIndex = href.IndexOf('#');
+        var filePart = hashIndex >= 0 ? href[..hashIndex] : href;
+        if (string.IsNullOrEmpty(filePart)) return;
+
+        var resolvedPath = ResolveMarkdownPath(filePart);
+        if (resolvedPath is null || !File.Exists(resolvedPath)) return;
+
+        string content;
+        try { content = await File.ReadAllTextAsync(resolvedPath); }
+        catch (Exception ex) { Debug.WriteLine($"[Bishop] SkillViewer.Navigate: {ex.Message}"); return; }
+
+        _history.Push((MarkdownBody, Skill));
+        CanGoBack = true;
+        Skill = null;
+        MarkdownBody = content.TrimStart().StartsWith("---") ? ExtractBody(content) : content;
+    }
+
+    [RelayCommand]
+    private void GoBack()
+    {
+        if (!_history.TryPop(out var entry)) return;
+        Skill = entry.Skill;
+        MarkdownBody = entry.MarkdownBody;
+        CanGoBack = _history.Count > 0;
+    }
+
+    private string? ResolveMarkdownPath(string relativePath)
+    {
+        if (relativePath.Contains("BISHOP_CONTEXT.md"))
+        {
+            var contextPath = Path.Combine(_workspacePath, ".bishop", "BISHOP_CONTEXT.md");
+            return File.Exists(contextPath) ? contextPath : null;
+        }
+
+        if (Skill is not null && !string.IsNullOrEmpty(Skill.SourcePath))
+        {
+            var dir = Path.GetDirectoryName(Skill.SourcePath);
+            if (dir is not null)
+            {
+                var candidate = Path.GetFullPath(Path.Combine(dir, relativePath));
+                if (File.Exists(candidate)) return candidate;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(_workspacePath))
+        {
+            var candidate = Path.GetFullPath(Path.Combine(_workspacePath, relativePath));
+            if (File.Exists(candidate)) return candidate;
+        }
+
+        return null;
     }
 
     [RelayCommand]

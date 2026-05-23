@@ -1,3 +1,4 @@
+using CommunityToolkit.WinUI.Controls;
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Cards.ImportFromGitHub;
@@ -69,6 +70,7 @@ public sealed partial class WorkspaceDetailPage : Page
         _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         InitializeComponent();
         InitSkillViewerModelMenu();
+        SkillViewerMarkdown.OnLinkClicked += SkillViewerMarkdown_OnLinkClicked;
         SkillViewer.PropertyChanged += OnSkillViewerPropertyChanged;
         Board.Lanes.CollectionChanged += (_, _) => ApplyWorkNextStateToToDoLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
@@ -221,7 +223,7 @@ public sealed partial class WorkspaceDetailPage : Page
         await LoadSkillsAsync();
         SetupWorkNextWatcher(vm.Path);
         _skillViewerCard = null;
-        _ = SkillViewer.LoadAsync(vm.Id);
+        _ = SkillViewer.LoadAsync(vm.Id, vm.Path);
         _ = Board.LoadAsync(vm.Id);
         _ = Notes.LoadAsync(vm.Id, vm.Path);
     }
@@ -779,6 +781,15 @@ public sealed partial class WorkspaceDetailPage : Page
         if (e.Key != VirtualKey.Escape) return;
         e.Handled = true;
         SkillViewer.IsOpen = false;
+    }
+
+    private async void SkillViewerMarkdown_OnLinkClicked(object? sender, LinkClickedEventArgs e)
+    {
+        if (e.Uri.IsAbsoluteUri && e.Uri.Scheme is "http" or "https")
+            return;
+
+        e.Handled = true;
+        await SkillViewer.NavigateLinkAsync(e.Uri.OriginalString);
     }
 
     private void KanbanSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)

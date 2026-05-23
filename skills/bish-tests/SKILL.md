@@ -184,8 +184,7 @@ are shallow.
    gap, same module/folder), offer a fourth option to merge them into one
    card before pushing.
 
-   Push confirmed cards by calling `bishop card add` (see BISHOP_CONTEXT.md
-   `Card` section) with:
+   Push confirmed cards by calling `bishop card add` (see [Card model](.bishop/BISHOP_CONTEXT.md#card-model)) with:
 
    - `--lane "To Do"`
    - `--title "<Title>"`

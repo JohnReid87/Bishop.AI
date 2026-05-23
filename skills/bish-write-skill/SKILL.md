@@ -73,8 +73,8 @@ way (by heading); the label tells the agent how much rope it has.
 Reference syntax inside a skill body:
 
 ```markdown
-…per BISHOP_CONTEXT.md → `## Card Push Procedure (STABLE)`.
-…apply BISHOP_CONTEXT.md → `## Card Granularity Rules (TUNABLE)`.
+…per [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable).
+…apply [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable).
 ```
 
 The deterministic mechanics that *every* workspace-level skill needs
@@ -291,9 +291,8 @@ not Read whole files into the conversation. -->
 / "wrap up", checklist complete) and the proposal shape (cards to push,
 source-card edits, etc.). -->
 
-Apply BISHOP_CONTEXT.md → `## Card Granularity Rules (TUNABLE)` before
-listing follow-ups. Print the preview per BISHOP_CONTEXT.md →
-`## Task List Preview Format (STABLE)`. Each card body uses the
+Apply [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) before
+listing follow-ups. Print the preview per [Task List Preview Format](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable). Each card body uses the
 template below.
 
 **Tag** defaults to `<your-tag>` (must be one of `tags[].name`).
@@ -319,8 +318,7 @@ Do NOT push automatically.
 
 ## Push
 
-When the user confirms, add each card per BISHOP_CONTEXT.md →
-`## Card Push Procedure (STABLE)`. Push with `--bottom` so cards
+When the user confirms, add each card per [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable). Push with `--bottom` so cards
 land in agreed order.
 
 Print a summary table:
@@ -334,7 +332,7 @@ Print a summary table:
 ## Closing card-action prompt
 
 If a **source card** was captured at the start (Path 1), prompt per
-BISHOP_CONTEXT.md → `## Source Card Closing Prompt (STABLE)`. If
+[Source Card Closing Prompt](.bishop/BISHOP_CONTEXT.md#source-card-closing-prompt-stable). If
 there is no source card (Paths 2 and 3), skip this prompt entirely.
 
 ARGUMENTS: $ARGUMENTS
@@ -415,8 +413,7 @@ single-stack. -->
 
 3. **Echo summary.** One-line overview per finding, severity-ordered.
 
-4. **Triage loop.** Walk findings per BISHOP_CONTEXT.md →
-   `## Per-finding Walk Pattern (TUNABLE)`. For each finding, use
+4. **Triage loop.** Walk findings per [Per-finding Walk Pattern](.bishop/BISHOP_CONTEXT.md#per-finding-walk-pattern-tunable). For each finding, use
    `AskUserQuestion`: **Card it (new)** (Recommended when high-sev),
    **Cluster with #N**, **Dismiss — context**, **Defer**.
 
@@ -425,16 +422,13 @@ single-stack. -->
    `bishop workspace init` (which restores the canonical tag set) and
    STOP.
 
-6. **Granularity pass.** Apply BISHOP_CONTEXT.md →
-   `## Card Granularity Rules (TUNABLE)` before previewing.
+6. **Granularity pass.** Apply [Card Granularity Rules](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) before previewing.
 
-7. **Print task list** per BISHOP_CONTEXT.md →
-   `## Task List Preview Format (STABLE)`. Ask:
+7. **Print task list** per [Task List Preview Format](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable). Ask:
 
    > Please review the tasks above. Say **push** to create the Bishop cards.
 
-8. **Push confirmed cards** per BISHOP_CONTEXT.md →
-   `## Card Push Procedure (STABLE)`. Always `--lane "To Do"`,
+8. **Push confirmed cards** per [Card Push Procedure](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable). Always `--lane "To Do"`,
    `--tag <tag>`, and `--bottom`.
 
 9. **Print summary table:**
