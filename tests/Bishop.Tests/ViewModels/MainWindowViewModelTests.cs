@@ -1,6 +1,7 @@
+using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
-using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.DeleteWorkspace;
+using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.ReorderWorkspaces;
 using Bishop.App.Workspaces.UpdateWorkspace;
@@ -230,11 +231,13 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task AddWorkspaceAsync_SendsCreateWorkspaceCommand_WithDialogValues()
+    public async Task AddWorkspaceAsync_SendsInitWorkspaceCommand_WithRestoreAction()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<CreateWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new Workspace { Id = Guid.NewGuid(), Name = "New", Path = @"C:\new", Position = 1 });
+        mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new InitWorkspaceResult(
+                new Workspace { Id = Guid.NewGuid(), Name = "New", Path = @"C:\new", Position = 1 },
+                Created: true, GitHubLinked: false));
         var vm = NewVm(mediator: mediator);
         var dialog = new AddWorkspaceDialogViewModel
         {
@@ -246,7 +249,10 @@ public class MainWindowViewModelTests
         await vm.AddWorkspaceAsync(dialog);
 
         await mediator.Received(1).Send(
-            Arg.Is<CreateWorkspaceCommand>(c => c.Name == "New" && c.Path == @"C:\new" && c.InitGit == true),
+            Arg.Is<InitWorkspaceCommand>(c =>
+                c.Path == @"C:\new" &&
+                c.Name == "New" &&
+                c.ArchivedAction == InitWorkspaceArchivedAction.Restore),
             Arg.Any<CancellationToken>());
     }
 
@@ -255,8 +261,10 @@ public class MainWindowViewModelTests
     {
         var newId = Guid.NewGuid();
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<CreateWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new Workspace { Id = newId, Name = "New", Path = @"C:\new", Position = 1 });
+        mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new InitWorkspaceResult(
+                new Workspace { Id = newId, Name = "New", Path = @"C:\new", Position = 1 },
+                Created: true, GitHubLinked: false));
         var vm = NewVm(mediator: mediator);
         var dialog = new AddWorkspaceDialogViewModel { Name = "New", FolderPath = @"C:\new" };
 
@@ -265,6 +273,23 @@ public class MainWindowViewModelTests
         vm.Workspaces.Should().HaveCount(1);
         vm.Workspaces[0].Id.Should().Be(newId);
         vm.SelectedWorkspace.Should().BeSameAs(vm.Workspaces[0]);
+    }
+
+    [Fact]
+    public async Task AddWorkspaceAsync_RaisesWorkspacesChangedNotifier()
+    {
+        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new InitWorkspaceResult(
+                new Workspace { Id = Guid.NewGuid(), Name = "New", Path = @"C:\new", Position = 1 },
+                Created: true, GitHubLinked: false));
+        var vm = NewVm(mediator: mediator, notifier: notifier);
+        var dialog = new AddWorkspaceDialogViewModel { Name = "New", FolderPath = @"C:\new" };
+
+        await vm.AddWorkspaceAsync(dialog);
+
+        notifier.Received(1).NotifyChanged();
     }
 
     [Fact]
@@ -414,9 +439,13 @@ public class MainWindowViewModelTests
     private static MainWindowViewModel NewVm(
         IMediator? mediator = null,
         ICatModeService? catMode = null,
+        IWorkspaceChangeNotifier? notifier = null,
+        IUiDispatcher? dispatcher = null,
         string? navPrefsFilePath = null) =>
         new(
             mediator ?? Substitute.For<IMediator>(),
             catMode ?? new CatModeService(),
+            notifier ?? Substitute.For<IWorkspaceChangeNotifier>(),
+            dispatcher ?? Substitute.For<IUiDispatcher>(),
             navPrefsFilePath ?? Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json"));
 }

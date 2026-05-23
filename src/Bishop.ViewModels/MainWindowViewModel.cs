@@ -1,6 +1,7 @@
+using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
-using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.DeleteWorkspace;
+using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.ReorderWorkspaces;
 using Bishop.App.Workspaces.UpdateWorkspace;
@@ -16,6 +17,8 @@ namespace Bishop.ViewModels;
 public sealed partial class MainWindowViewModel : ObservableObject
 {
     private readonly IMediator _mediator;
+    private readonly IWorkspaceChangeNotifier _notifier;
+    private readonly IUiDispatcher _dispatcher;
 
     public ICatModeService CatMode { get; }
 
@@ -37,15 +40,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private readonly string _navPrefsFilePath;
 
-    public MainWindowViewModel(IMediator mediator, ICatModeService catMode)
-        : this(mediator, catMode, Path.Combine(
+    public MainWindowViewModel(IMediator mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher)
+        : this(mediator, catMode, notifier, dispatcher, Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Bishop.AI", "nav-prefs.json"))
     { }
 
-    internal MainWindowViewModel(IMediator mediator, ICatModeService catMode, string navPrefsFilePath)
+    internal MainWindowViewModel(IMediator mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, string navPrefsFilePath)
     {
         _mediator = mediator;
+        _notifier = notifier;
+        _dispatcher = dispatcher;
         CatMode = catMode;
         _navPrefsFilePath = navPrefsFilePath;
         Workspaces.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsWorkspaceListEmpty));
@@ -54,6 +59,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (e.PropertyName == nameof(ICatModeService.IsActive))
                 OnPropertyChanged(nameof(IsCatModeActive));
         };
+        _notifier.WorkspacesChanged += OnWorkspacesChanged;
+    }
+
+    private void OnWorkspacesChanged()
+    {
+        _dispatcher.TryEnqueue(async () =>
+        {
+            var currentId = SelectedWorkspace?.Id;
+            await ReloadWorkspacesListAsync();
+            if (currentId is not null && !Workspaces.Any(w => w.Id == currentId))
+                SelectedWorkspace = Workspaces.FirstOrDefault();
+        });
     }
 
     [RelayCommand]
@@ -62,12 +79,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public async Task LoadAsync()
     {
         var prefs = await LoadNavPrefsAsync();
+        await ReloadWorkspacesListAsync();
+        if (prefs?.LastSelectedWorkspaceId is { } id)
+            SelectedWorkspace = Workspaces.FirstOrDefault(w => w.Id == id);
+    }
+
+    private async Task ReloadWorkspacesListAsync()
+    {
         var workspaces = await _mediator.Send(new ListWorkspacesQuery());
         Workspaces.Clear();
         foreach (var w in workspaces)
             Workspaces.Add(ToViewModel(w));
-        if (prefs?.LastSelectedWorkspaceId is { } id)
-            SelectedWorkspace = Workspaces.FirstOrDefault(w => w.Id == id);
     }
 
     partial void OnSelectedWorkspaceChanged(WorkspaceItemViewModel? value)
@@ -84,10 +106,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     public async Task AddWorkspaceAsync(AddWorkspaceDialogViewModel dialogVm)
     {
-        var workspace = await _mediator.Send(
-            new CreateWorkspaceCommand(dialogVm.Name, dialogVm.FolderPath, !dialogVm.IsPickExisting));
-        Workspaces.Add(ToViewModel(workspace));
-        SelectedWorkspace = Workspaces[^1];
+        var result = await _mediator.Send(
+            new InitWorkspaceCommand(dialogVm.FolderPath, dialogVm.Name,
+                ArchivedAction: InitWorkspaceArchivedAction.Restore));
+        var vm = ToViewModel(result.Workspace);
+        Workspaces.Add(vm);
+        SelectedWorkspace = vm;
+        _notifier.NotifyChanged();
     }
 
     [RelayCommand]

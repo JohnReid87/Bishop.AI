@@ -12,6 +12,6 @@ internal sealed class WorkspaceConfiguration : IEntityTypeConfiguration<Workspac
         builder.Property(w => w.Name).HasMaxLength(200).IsRequired();
         builder.Property(w => w.Path).HasMaxLength(500).IsRequired();
         builder.Property(w => w.GitHubRepo).HasMaxLength(200);
-        builder.HasIndex(w => w.Name).IsUnique();
+        builder.HasIndex(w => w.Name).IsUnique().HasFilter("IsRemoved = 0");
     }
 }

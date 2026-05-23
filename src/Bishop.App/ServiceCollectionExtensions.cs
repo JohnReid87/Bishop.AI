@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
 using Bishop.App.Services.Claude;
 using Bishop.App.Git;
@@ -36,6 +37,7 @@ public static class ServiceCollectionExtensions
 #pragma warning restore CA1416
         services.AddSingleton<IWorkspaceContextSeeder, WorkspaceContextSeeder>();
         services.AddSingleton<ICatModeService, CatModeService>();
+        services.AddSingleton<IWorkspaceChangeNotifier, WorkspaceChangeNotifier>();
         return services;
     }
 }

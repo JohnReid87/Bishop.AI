@@ -1,3 +1,4 @@
+using Bishop.App.Services;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.PurgeWorkspace;
 using Bishop.App.Workspaces.RemoveWorkspace;
@@ -10,10 +11,15 @@ namespace Bishop.ViewModels;
 public sealed partial class WorkspaceManagerViewModel : ObservableObject
 {
     private readonly IMediator _mediator;
+    private readonly IWorkspaceChangeNotifier _notifier;
 
     public ObservableCollection<WorkspaceManagerItemViewModel> Workspaces { get; } = [];
 
-    public WorkspaceManagerViewModel(IMediator mediator) => _mediator = mediator;
+    public WorkspaceManagerViewModel(IMediator mediator, IWorkspaceChangeNotifier notifier)
+    {
+        _mediator = mediator;
+        _notifier = notifier;
+    }
 
     public async Task LoadAsync()
     {
@@ -36,11 +42,13 @@ public sealed partial class WorkspaceManagerViewModel : ObservableObject
     {
         await _mediator.Send(new RemoveWorkspaceCommand(id));
         await LoadAsync();
+        _notifier.NotifyChanged();
     }
 
     public async Task PurgeAsync(Guid id)
     {
         await _mediator.Send(new PurgeWorkspaceCommand(id));
         await LoadAsync();
+        _notifier.NotifyChanged();
     }
 }

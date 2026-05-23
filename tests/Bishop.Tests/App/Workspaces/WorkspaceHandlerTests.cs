@@ -791,6 +791,23 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task InitWorkspace_SameNameAsRemovedWorkspace_DifferentPath_Succeeds()
+    {
+        var name = U("SharedName");
+        var first = await CreateInitHandler()
+            .Handle(new InitWorkspaceCommand($@"C:\first-{name}", name), default);
+        await new RemoveWorkspaceCommandHandler(_factory)
+            .Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
+
+        var result = await CreateInitHandler()
+            .Handle(new InitWorkspaceCommand($@"C:\second-{name}", name), default);
+
+        result.Created.Should().BeTrue();
+        result.Workspace.Name.Should().Be(name);
+        result.Workspace.Id.Should().NotBe(first.Workspace.Id);
+    }
+
+    [Fact]
     public async Task PurgeWorkspace_CascadesAssociatedCards()
     {
         var name = U("PurgeCascade");
