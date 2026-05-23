@@ -21,7 +21,8 @@ public static class ServiceCollectionExtensions
         services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(PingQueryHandler).Assembly));
         services.AddDbContextFactory<BishopDbContext>(options =>
-            options.UseSqlite(dbConnectionString));
+            options.UseSqlite(dbConnectionString)
+                   .AddInterceptors(new SqliteForeignKeyInterceptor()));
         services.AddHostedService(sp => new DatabaseInitializer(
             sp.GetRequiredService<IDbContextFactory<BishopDbContext>>(),
             stampPath));

@@ -1,4 +1,6 @@
+using Bishop.App.Cards.AddCard;
 using Bishop.App.Git;
+using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Terminal;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.DeleteWorkspace;
@@ -770,6 +772,40 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
             .Handle(new ListWorkspacesQuery(IncludeRemoved: true), default);
 
         result.Should().NotContain(w => w.Id == created.Id);
+    }
+
+    [Fact]
+    public async Task DeleteWorkspace_CascadesAssociatedCards()
+    {
+        var name = U("DelCascade");
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Cascade test card"), default);
+
+        await new DeleteWorkspaceCommandHandler(_factory)
+            .Handle(new DeleteWorkspaceCommand(workspace.Id), default);
+
+        var cardsExist = await _db.Cards.AnyAsync(c => c.WorkspaceId == workspace.Id);
+        cardsExist.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PurgeWorkspace_CascadesAssociatedCards()
+    {
+        var name = U("PurgeCascade");
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Cascade test card"), default);
+        await new RemoveWorkspaceCommandHandler(_factory)
+            .Handle(new RemoveWorkspaceCommand(workspace.Id), default);
+
+        await new PurgeWorkspaceCommandHandler(_factory)
+            .Handle(new PurgeWorkspaceCommand(workspace.Id), default);
+
+        var cardsExist = await _db.Cards.AnyAsync(c => c.WorkspaceId == workspace.Id);
+        cardsExist.Should().BeFalse();
     }
 
     private sealed class ThrowingSaveChangesInterceptor : SaveChangesInterceptor

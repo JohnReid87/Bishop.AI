@@ -23,6 +23,7 @@ public sealed class DbFixture : IDisposable
 
         _options = new DbContextOptionsBuilder<BishopDbContext>()
             .UseSqlite(connectionString)
+            .AddInterceptors(new SqliteForeignKeyInterceptor())
             .Options;
 
         Db = new BishopDbContext(_options);
