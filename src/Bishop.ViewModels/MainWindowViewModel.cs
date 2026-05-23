@@ -35,10 +35,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public bool IsCatModeActive => CatMode.IsActive;
 
+    private readonly string _navPrefsFilePath;
+
     public MainWindowViewModel(IMediator mediator, ICatModeService catMode)
+        : this(mediator, catMode, Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Bishop.AI", "nav-prefs.json"))
+    { }
+
+    internal MainWindowViewModel(IMediator mediator, ICatModeService catMode, string navPrefsFilePath)
     {
         _mediator = mediator;
         CatMode = catMode;
+        _navPrefsFilePath = navPrefsFilePath;
         Workspaces.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsWorkspaceListEmpty));
         CatMode.PropertyChanged += (_, e) =>
         {
@@ -143,9 +152,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         catch (Exception ex) { Debug.WriteLine($"[Bishop] SaveNavPrefsAsync: {ex.Message}"); }
     }
 
-    private static string NavPrefsFilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Bishop.AI", "nav-prefs.json");
+    private string NavPrefsFilePath => _navPrefsFilePath;
 
     private sealed record NavPrefs(bool IsPaneOpen, Guid? LastSelectedWorkspaceId = null);
 }
