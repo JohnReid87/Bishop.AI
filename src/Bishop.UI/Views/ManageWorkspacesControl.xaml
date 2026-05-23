@@ -24,10 +24,9 @@
         </ListView.ItemContainerStyle>
         <ListView.ItemTemplate>
             <DataTemplate x:DataType="vm:WorkspaceManagerItemViewModel">
-                <Grid ColumnSpacing="12" Padding="8,6" MaxWidth="480">
+                <Grid ColumnSpacing="12" Padding="8,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Spacing="2">
@@ -38,17 +37,13 @@
                         <TextBlock Text="{x:Bind Path}"
                                    FontSize="11"
                                    Opacity="0.5"
-                                   TextTrimming="CharacterEllipsis"
-                                   MaxWidth="280"/>
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{x:Bind StatusText}"
+                                   FontSize="11"
+                                   Opacity="0.6"
+                                   TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1"
-                               Text="{x:Bind StatusText}"
-                               FontSize="11"
-                               Opacity="0.6"
-                               TextTrimming="CharacterEllipsis"
-                               MaxWidth="120"
-                               VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="2"
+                    <StackPanel Grid.Column="1"
                                 Orientation="Horizontal"
                                 Spacing="4"
                                 VerticalAlignment="Center">
