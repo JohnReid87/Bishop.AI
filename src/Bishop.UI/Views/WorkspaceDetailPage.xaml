@@ -99,21 +99,35 @@
 
         <!-- Content area -->
         <Grid Grid.Row="1">
-            <!-- Left column: kanban + notes -->
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-            <!-- Notification bars — collapsed when no InfoBar is open -->
-            <StackPanel x:Name="NotificationPanel"
-                        Grid.Row="0"
-                        Padding="16,12,16,0"
-                        Spacing="8"
-                        Visibility="Collapsed">
+            <!-- Board + Monitoring tabs -->
+            <TabView Grid.Row="0"
+                     IsAddTabButtonVisible="False"
+                     CanDragTabs="False"
+                     CanReorderTabs="False"
+                     HorizontalAlignment="Stretch"
+                     VerticalAlignment="Stretch">
+
+                <TabViewItem Header="Board" IsClosable="False">
+                    <TabViewItem.Content>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                        <!-- Notification bars — collapsed when no InfoBar is open -->
+                        <StackPanel x:Name="NotificationPanel"
+                                    Grid.Row="0"
+                                    Padding="16,12,16,0"
+                                    Spacing="8"
+                                    Visibility="Collapsed">
                 <InfoBar x:Name="PathWarningBar"
                          IsOpen="False"
                          IsClosable="False"
@@ -361,8 +375,105 @@
                 </ListView>
             </ScrollViewer>
 
+                        </Grid>
+                    </TabViewItem.Content>
+                </TabViewItem>
+
+                <TabViewItem Header="Monitoring" IsClosable="False">
+                    <TabViewItem.Content>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Table header -->
+                            <Grid Grid.Row="0"
+                                  Padding="16,12,16,8"
+                                  BorderBrush="{StaticResource AppDividerBrush}"
+                                  BorderThickness="0,0,0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="50"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Skill"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBlock Grid.Column="1" Text="Last run"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBlock Grid.Column="2" Text="Commits since"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBlock Grid.Column="3" Text="Status"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                            </Grid>
+
+                            <!-- Skill run rows -->
+                            <ListView Grid.Row="1"
+                                      ItemsSource="{x:Bind Monitoring.Rows}"
+                                      SelectionMode="None"
+                                      Padding="0,4,0,12">
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="Margin" Value="0"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SkillRunRowViewModel">
+                                        <Grid Padding="16,8"
+                                              BorderBrush="{StaticResource AppDividerBrush}"
+                                              BorderThickness="0,0,0,1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="160"/>
+                                                <ColumnDefinition Width="130"/>
+                                                <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="50"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{x:Bind SkillName}"
+                                                       FontFamily="Cascadia Mono"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{x:Bind LastRunText}"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{x:Bind CommitsSinceText}"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"/>
+                                            <Ellipse Grid.Column="3"
+                                                     Width="10"
+                                                     Height="10"
+                                                     Fill="{x:Bind StatusDotColor, Converter={StaticResource HexColorToBrushConverter}}"
+                                                     VerticalAlignment="Center"
+                                                     ToolTipService.ToolTip="{x:Bind StatusTooltip}"/>
+                                            <Button Grid.Column="4"
+                                                    Content="Run now"
+                                                    Padding="8,4"
+                                                    FontSize="12"
+                                                    Click="RunNowSkillButton_Click"
+                                                    VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Grid>
+                    </TabViewItem.Content>
+                </TabViewItem>
+            </TabView>
+
             <!-- Notes splitter -->
-            <local:NotesSplitter Grid.Row="2"
+            <local:NotesSplitter Grid.Row="1"
                                  Height="6"
                                  Background="{StaticResource AppDividerBrush}"
                                  Visibility="{x:Bind Notes.IsExpanded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -372,7 +483,7 @@
                                  PointerCaptureLost="NotesSplitter_PointerCaptureLost"/>
 
             <!-- Notes panel -->
-            <Grid Grid.Row="3"
+            <Grid Grid.Row="2"
                   BorderBrush="{StaticResource AppDividerBrush}"
                   BorderThickness="0,1,0,0">
                 <Grid.RowDefinitions>

@@ -19,4 +19,6 @@ public interface IGitCli
     Task ResetHardAsync(string workspacePath, CancellationToken cancellationToken = default);
 
     Task CleanWorkingTreeAsync(string workspacePath, CancellationToken cancellationToken = default);
+
+    Task<int?> GetCommitCountSinceAsync(string sha, string workspacePath, CancellationToken cancellationToken = default);
 }

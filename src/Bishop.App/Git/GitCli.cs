@@ -490,4 +490,44 @@ public sealed class GitCli : IGitCli
                 : new GetWorkingTreeStatusResult.Dirty(paths);
         }
     }
+
+    public async Task<int?> GetCommitCountSinceAsync(
+        string sha, string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("rev-list");
+        psi.ArgumentList.Add("--count");
+        psi.ArgumentList.Add($"{sha}..HEAD");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            return null;
+        }
+
+        if (proc is null)
+            return null;
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                return null;
+
+            return int.TryParse(stdout.Trim(), out var count) ? count : null;
+        }
+    }
 }

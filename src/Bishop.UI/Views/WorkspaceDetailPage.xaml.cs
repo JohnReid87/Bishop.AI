@@ -57,11 +57,13 @@ public sealed partial class WorkspaceDetailPage : Page
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
+    public WorkspaceMonitoringViewModel Monitoring { get; }
 
     public WorkspaceDetailPage()
     {
         Board = App.Services.GetRequiredService<WorkspaceBoardViewModel>();
         Notes = App.Services.GetRequiredService<WorkspaceNotesViewModel>();
+        Monitoring = App.Services.GetRequiredService<WorkspaceMonitoringViewModel>();
         _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         InitializeComponent();
         Board.Lanes.CollectionChanged += (_, _) => ApplyWorkNextStateToToDoLane();
@@ -184,6 +186,7 @@ public sealed partial class WorkspaceDetailPage : Page
         SetupWorkNextWatcher(vm.Path);
         _ = Board.LoadAsync(vm.Id);
         _ = Notes.LoadAsync(vm.Id, vm.Path);
+        _ = Monitoring.LoadAsync(vm.Id, vm.Path);
     }
 
     private async Task LoadSkillsAsync()
@@ -639,6 +642,16 @@ public sealed partial class WorkspaceDetailPage : Page
 
         var mediator = App.Services.GetRequiredService<IMediator>();
         await mediator.Send(new LaunchSkillCommand(workspacePath, rendered, SnapHelper.ComputeSnap(), modelId));
+    }
+
+    private async void RunNowSkillButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null) return;
+        if ((sender as FrameworkElement)?.DataContext is not SkillRunRowViewModel row) return;
+        var skillItem = _workspaceSkills.FirstOrDefault(s => string.Equals(s.Skill.Name, row.SkillName, StringComparison.OrdinalIgnoreCase));
+        if (skillItem is null) return;
+        var rendered = SkillCommandRenderer.Render(skillItem.Skill.Command!, null, null, null, _item.Path);
+        await LaunchSkillAsync(skillItem.Skill, rendered, _item.Path, card: null);
     }
 
     private static FrameworkElement MakeCategoryHeader(string text) =>
