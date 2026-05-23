@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bishop.App\Bishop.App.csproj" />
+    <ProjectReference Include="..\..\src\Bishop.Cli\Bishop.Cli.csproj" />
     <ProjectReference Include="..\..\src\Bishop.Data\Bishop.Data.csproj" />
     <ProjectReference Include="..\..\src\Bishop.ViewModels\Bishop.ViewModels.csproj" />
   </ItemGroup>

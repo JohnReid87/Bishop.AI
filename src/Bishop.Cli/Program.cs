@@ -55,23 +55,14 @@ await host.StartAsync();
 
 var mediator = host.Services.GetRequiredService<IMediator>();
 var resolver = new WorkspaceResolver(mediator);
+var cardResolver = new CardResolver(mediator);
 
 var root = new RootCommand("Bishop AI — kanban CLI");
-
-// ── shared options ──────────────────────────────────────────────────────────
-
-var workspaceOpt = new Option<string?>(
-    aliases: ["--workspace", "-w"],
-    description: "Workspace name or path (defaults to CWD ancestor match)");
-
-var jsonOpt = new Option<bool>(
-    name: "--json",
-    description: "Emit JSON output");
 
 // ── workspace list ──────────────────────────────────────────────────────────
 
 var workspaceListCmd = new Command("list", "List all workspaces");
-workspaceListCmd.AddOption(jsonOpt);
+workspaceListCmd.AddOption(CommonOptions.JsonOption);
 workspaceListCmd.SetHandler(async (bool json) =>
 {
     var workspaces = await mediator.Send(new ListWorkspacesQuery());
@@ -84,12 +75,12 @@ workspaceListCmd.SetHandler(async (bool json) =>
         foreach (var w in workspaces.OrderBy(w => w.Position))
             Console.WriteLine($"{w.Name,-30} {w.Path}");
     }
-}, jsonOpt);
+}, CommonOptions.JsonOption);
 
 // ── workspace current ───────────────────────────────────────────────────────
 
 var workspaceCurrentCmd = new Command("current", "Show the workspace whose path is an ancestor of cwd");
-workspaceCurrentCmd.AddOption(jsonOpt);
+workspaceCurrentCmd.AddOption(CommonOptions.JsonOption);
 workspaceCurrentCmd.SetHandler(async (bool json) =>
 {
     try
@@ -104,7 +95,7 @@ workspaceCurrentCmd.SetHandler(async (bool json) =>
     {
         Environment.ExitCode = 1;
     }
-}, jsonOpt);
+}, CommonOptions.JsonOption);
 
 // ── workspace init ──────────────────────────────────────────────────────────
 
@@ -135,7 +126,7 @@ var setGithubRepoArg = new Argument<string>("repo", "GitHub repo in owner/repo f
 
 var workspaceSetGithubCmd = new Command("set-github", "Associate workspace with a GitHub repo");
 workspaceSetGithubCmd.AddArgument(setGithubRepoArg);
-workspaceSetGithubCmd.AddOption(workspaceOpt);
+workspaceSetGithubCmd.AddOption(CommonOptions.WorkspaceOption);
 workspaceSetGithubCmd.SetHandler(async (string repo, string? workspace) =>
 {
     if (!repo.Contains('/') || repo.StartsWith('/') || repo.EndsWith('/'))
@@ -147,18 +138,18 @@ workspaceSetGithubCmd.SetHandler(async (string repo, string? workspace) =>
     var ws = await resolver.ResolveAsync(workspace);
     await mediator.Send(new SetWorkspaceGitHubRepoCommand(ws.Id, repo));
     Console.WriteLine($"Workspace '{ws.Name}' linked to GitHub repo '{repo}'");
-}, setGithubRepoArg, workspaceOpt);
+}, setGithubRepoArg, CommonOptions.WorkspaceOption);
 
 // ── workspace unset-github ──────────────────────────────────────────────────
 
 var workspaceUnsetGithubCmd = new Command("unset-github", "Remove the GitHub repo association from a workspace");
-workspaceUnsetGithubCmd.AddOption(workspaceOpt);
+workspaceUnsetGithubCmd.AddOption(CommonOptions.WorkspaceOption);
 workspaceUnsetGithubCmd.SetHandler(async (string? workspace) =>
 {
     var ws = await resolver.ResolveAsync(workspace);
     await mediator.Send(new UnsetWorkspaceGitHubRepoCommand(ws.Id));
     Console.WriteLine($"Removed GitHub repo association from workspace '{ws.Name}'");
-}, workspaceOpt);
+}, CommonOptions.WorkspaceOption);
 
 var workspaceCmd = new Command("workspace", "Manage workspaces");
 workspaceCmd.AddCommand(workspaceListCmd);
@@ -179,7 +170,7 @@ var descFileOpt = new Option<string?>("--description-file", "Read description fr
 var bottomOpt = new Option<bool>("--bottom", "Insert at the bottom of the lane instead of the top");
 
 var cardAddCmd = new Command("add", "Add a card to a lane");
-cardAddCmd.AddOption(workspaceOpt);
+cardAddCmd.AddOption(CommonOptions.WorkspaceOption);
 cardAddCmd.AddOption(laneNameOpt);
 cardAddCmd.AddOption(titleOpt);
 cardAddCmd.AddOption(descOpt);
@@ -199,40 +190,7 @@ cardAddCmd.SetHandler(async (string? workspace, string lane, string title, strin
     var card = await mediator.Send(new AddCardCommand(ws.Id, lane, title, desc, tag, insertPosition));
     var tagSuffix = !string.IsNullOrEmpty(tag) ? $"  [{tag}]" : "";
     Console.WriteLine($"Added card #{card.Number} — '{card.Title}' → [{card.LaneName}]{tagSuffix}");
-}, workspaceOpt, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt, bottomOpt);
-
-// ── card short-ID prefix resolver ─────────────────────────────────────────────
-// Returns null (exit code already set) for ambiguous prefix; throws for no match.
-
-async Task<(Guid cardId, int cardNumber, Bishop.Core.Workspace ws)?> resolveCardByPrefixAsync(string? workspaceOption, string prefix)
-{
-    var ws = await resolver.ResolveAsync(workspaceOption);
-    var stripped = prefix.TrimStart('#');
-
-    if (stripped.Length > 0 && stripped.All(char.IsDigit) && int.TryParse(stripped, out var number))
-    {
-        var card = await mediator.Send(new GetCardByNumberQuery(number, ws.Id));
-        if (card is null)
-            throw new InvalidOperationException($"No card found matching '#{number}'.");
-        return (card.Id, card.Number, ws);
-    }
-
-    var cards = await mediator.Send(new ListCardsByWorkspaceQuery(ws.Id));
-    var matches = cards
-        .Where(c => c.Id.ToString("N").StartsWith(stripped, StringComparison.OrdinalIgnoreCase))
-        .ToList();
-    if (matches.Count == 0)
-        throw new InvalidOperationException($"No card found matching '{stripped}'.");
-    if (matches.Count > 1)
-    {
-        Console.Error.WriteLine($"Ambiguous prefix '{stripped}' — {matches.Count} matches:");
-        foreach (var c in matches)
-            Console.Error.WriteLine($"  {c.Id.ToString("N")[..8]}  {c.Title}");
-        Environment.ExitCode = 1;
-        return null;
-    }
-    return (matches[0].Id, matches[0].Number, ws);
-}
+}, CommonOptions.WorkspaceOption, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt, bottomOpt);
 
 // ── card view ─────────────────────────────────────────────────────────────────
 
@@ -240,11 +198,11 @@ var cardViewIdArg = new Argument<string>("card-id", "Card short ID or prefix");
 
 var cardViewCmd = new Command("view", "Show details of a card");
 cardViewCmd.AddArgument(cardViewIdArg);
-cardViewCmd.AddOption(workspaceOpt);
-cardViewCmd.AddOption(jsonOpt);
+cardViewCmd.AddOption(CommonOptions.WorkspaceOption);
+cardViewCmd.AddOption(CommonOptions.JsonOption);
 cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
 {
-    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    var resolved = await cardResolver.ResolveAsync(workspace, prefix);
     if (resolved is null) return;
     var (cardId, _, ws) = resolved.Value;
 
@@ -306,7 +264,7 @@ cardViewCmd.SetHandler(async (string prefix, string? workspace, bool json) =>
             Console.WriteLine(card.Description);
         }
     }
-}, cardViewIdArg, workspaceOpt, jsonOpt);
+}, cardViewIdArg, CommonOptions.WorkspaceOption, CommonOptions.JsonOption);
 
 // ── card move ─────────────────────────────────────────────────────────────────
 
@@ -317,18 +275,18 @@ var noCloseOpt = new Option<bool>("--no-close", "Skip auto-close when moving int
 
 var cardMoveCmd = new Command("move", "Move a card to another lane or position");
 cardMoveCmd.AddArgument(cardIdArg);
-cardMoveCmd.AddOption(workspaceOpt);
+cardMoveCmd.AddOption(CommonOptions.WorkspaceOption);
 cardMoveCmd.AddOption(toLaneOpt);
 cardMoveCmd.AddOption(toPositionOpt);
 cardMoveCmd.AddOption(noCloseOpt);
 cardMoveCmd.SetHandler(async (string prefix, string? workspace, string toLane, int toPosition, bool noClose) =>
 {
-    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    var resolved = await cardResolver.ResolveAsync(workspace, prefix);
     if (resolved is null) return;
     var (cardId, _, _) = resolved.Value;
     var card = await mediator.Send(new MoveCardCommand(cardId, toLane, toPosition, noClose));
     Console.WriteLine($"Moved card #{card.Number} → [{card.LaneName}] position {card.Position}");
-}, cardIdArg, workspaceOpt, toLaneOpt, toPositionOpt, noCloseOpt);
+}, cardIdArg, CommonOptions.WorkspaceOption, toLaneOpt, toPositionOpt, noCloseOpt);
 
 // ── card remove ───────────────────────────────────────────────────────────────
 
@@ -336,15 +294,15 @@ var cardRemoveIdArg = new Argument<string>("card-id", "Card short ID or prefix")
 
 var cardRemoveCmd = new Command("remove", "Remove a card");
 cardRemoveCmd.AddArgument(cardRemoveIdArg);
-cardRemoveCmd.AddOption(workspaceOpt);
+cardRemoveCmd.AddOption(CommonOptions.WorkspaceOption);
 cardRemoveCmd.SetHandler(async (string prefix, string? workspace) =>
 {
-    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    var resolved = await cardResolver.ResolveAsync(workspace, prefix);
     if (resolved is null) return;
     var (cardId, cardNumber, _) = resolved.Value;
     await mediator.Send(new RemoveCardCommand(cardId));
     Console.WriteLine($"Removed card #{cardNumber}");
-}, cardRemoveIdArg, workspaceOpt);
+}, cardRemoveIdArg, CommonOptions.WorkspaceOption);
 
 // ── card edit ─────────────────────────────────────────────────────────────────
 
@@ -359,7 +317,7 @@ var editNoCloseOpt = new Option<bool>("--no-close", "Skip auto-close when moving
 
 var cardEditCmd = new Command("edit", "Edit a card's title, description, or tag");
 cardEditCmd.AddArgument(cardEditIdArg);
-cardEditCmd.AddOption(workspaceOpt);
+cardEditCmd.AddOption(CommonOptions.WorkspaceOption);
 cardEditCmd.AddOption(editTitleOpt);
 cardEditCmd.AddOption(editDescOpt);
 cardEditCmd.AddOption(editDescFileOpt);
@@ -370,7 +328,7 @@ cardEditCmd.AddOption(editNoCloseOpt);
 cardEditCmd.SetHandler(async (InvocationContext ctx) =>
 {
     var prefix = ctx.ParseResult.GetValueForArgument(cardEditIdArg);
-    var workspace = ctx.ParseResult.GetValueForOption(workspaceOpt);
+    var workspace = ctx.ParseResult.GetValueForOption(CommonOptions.WorkspaceOption);
     var title = ctx.ParseResult.GetValueForOption(editTitleOpt);
     var description = ctx.ParseResult.GetValueForOption(editDescOpt);
     var descFile = ctx.ParseResult.GetValueForOption(editDescFileOpt);
@@ -387,7 +345,7 @@ cardEditCmd.SetHandler(async (InvocationContext ctx) =>
         return;
     }
 
-    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    var resolved = await cardResolver.ResolveAsync(workspace, prefix);
     if (resolved is null) return;
     var (cardId, _, _) = resolved.Value;
 
@@ -417,10 +375,10 @@ var claimSourceLaneOpt = new Option<string>("--lane", () => SystemLaneNames.ToDo
 var claimTagOpt = new Option<string?>("--tag", "Only claim the first card carrying this tag");
 
 var cardClaimCmd = new Command("claim", "Pick the top card from a lane and move it to Doing");
-cardClaimCmd.AddOption(workspaceOpt);
+cardClaimCmd.AddOption(CommonOptions.WorkspaceOption);
 cardClaimCmd.AddOption(claimSourceLaneOpt);
 cardClaimCmd.AddOption(claimTagOpt);
-cardClaimCmd.AddOption(jsonOpt);
+cardClaimCmd.AddOption(CommonOptions.JsonOption);
 cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, string? tagName, bool json) =>
 {
     var ws = await resolver.ResolveAsync(workspace);
@@ -462,13 +420,13 @@ cardClaimCmd.SetHandler(async (string? workspace, string sourceLaneName, string?
             Console.WriteLine(card.Description);
         }
     }
-}, workspaceOpt, claimSourceLaneOpt, claimTagOpt, jsonOpt);
+}, CommonOptions.WorkspaceOption, claimSourceLaneOpt, claimTagOpt, CommonOptions.JsonOption);
 
 // ── card list ─────────────────────────────────────────────────────────────────
 
 var cardListCmd = new Command("list", "List cards in a workspace");
-cardListCmd.AddOption(workspaceOpt);
-cardListCmd.AddOption(jsonOpt);
+cardListCmd.AddOption(CommonOptions.WorkspaceOption);
+cardListCmd.AddOption(CommonOptions.JsonOption);
 cardListCmd.SetHandler(async (string? workspace, bool json) =>
 {
     var ws = await resolver.ResolveAsync(workspace);
@@ -514,13 +472,13 @@ cardListCmd.SetHandler(async (string? workspace, bool json) =>
             }
         }
     }
-}, workspaceOpt, jsonOpt);
+}, CommonOptions.WorkspaceOption, CommonOptions.JsonOption);
 
 // ── tag list ──────────────────────────────────────────────────────────────────
 
 var tagListCmd = new Command("list", "List tags in a workspace");
-tagListCmd.AddOption(workspaceOpt);
-tagListCmd.AddOption(jsonOpt);
+tagListCmd.AddOption(CommonOptions.WorkspaceOption);
+tagListCmd.AddOption(CommonOptions.JsonOption);
 tagListCmd.SetHandler(async (string? workspace, bool json) =>
 {
     var ws = await resolver.ResolveAsync(workspace);
@@ -530,7 +488,7 @@ tagListCmd.SetHandler(async (string? workspace, bool json) =>
     else
         foreach (var t in tags)
             Console.WriteLine(t.Name);
-}, workspaceOpt, jsonOpt);
+}, CommonOptions.WorkspaceOption, CommonOptions.JsonOption);
 
 // ── wire tag command ──────────────────────────────────────────────────────────
 
@@ -551,7 +509,7 @@ var cardPushCmd = new Command("push", "Push a card to GitHub Issues");
 cardPushCmd.AddArgument(cardPushIdArg);
 cardPushCmd.AddOption(cardPushLaneOpt);
 cardPushCmd.AddOption(cardPushDryRunOpt);
-cardPushCmd.AddOption(workspaceOpt);
+cardPushCmd.AddOption(CommonOptions.WorkspaceOption);
 cardPushCmd.SetHandler(async (string? prefix, string? lane, bool dryRun, string? workspace) =>
 {
     if (prefix is not null && lane is not null)
@@ -583,13 +541,13 @@ cardPushCmd.SetHandler(async (string? prefix, string? lane, bool dryRun, string?
             Environment.ExitCode = 1;
         return;
     }
-    var resolved = await resolveCardByPrefixAsync(workspace, prefix!);
+    var resolved = await cardResolver.ResolveAsync(workspace, prefix!);
     if (resolved is null) return;
     var (cardId, _, wsResolved) = resolved.Value;
     var card = await mediator.Send(new PushCardCommand(cardId));
     var singleIssueUrl = $"https://github.com/{wsResolved.GitHubRepo}/issues/{card.GitHubIssueNumber}";
     Console.WriteLine($"Pushed card #{card.Number} → {singleIssueUrl}");
-}, cardPushIdArg, cardPushLaneOpt, cardPushDryRunOpt, workspaceOpt);
+}, cardPushIdArg, cardPushLaneOpt, cardPushDryRunOpt, CommonOptions.WorkspaceOption);
 
 // ── card import-from-github ───────────────────────────────────────────────────
 
@@ -601,8 +559,8 @@ var cardImportFromGitHubCmd = new Command("import-from-github", "Import open Git
 cardImportFromGitHubCmd.AddOption(importLabelOpt);
 cardImportFromGitHubCmd.AddOption(importLimitOpt);
 cardImportFromGitHubCmd.AddOption(importDryRunOpt);
-cardImportFromGitHubCmd.AddOption(jsonOpt);
-cardImportFromGitHubCmd.AddOption(workspaceOpt);
+cardImportFromGitHubCmd.AddOption(CommonOptions.JsonOption);
+cardImportFromGitHubCmd.AddOption(CommonOptions.WorkspaceOption);
 cardImportFromGitHubCmd.SetHandler(async (string? label, int limit, bool dryRun, bool json, string? workspace) =>
 {
     var ws = await resolver.ResolveAsync(workspace);
@@ -620,7 +578,7 @@ cardImportFromGitHubCmd.SetHandler(async (string? label, int limit, bool dryRun,
         Console.WriteLine($"  {(dryRun ? "would skip" : "skipped")}   #{n}");
     foreach (var f in result.Failed)
         Console.WriteLine($"  failed    #{f.IssueNumber}  {f.Error}");
-}, importLabelOpt, importLimitOpt, importDryRunOpt, jsonOpt, workspaceOpt);
+}, importLabelOpt, importLimitOpt, importDryRunOpt, CommonOptions.JsonOption, CommonOptions.WorkspaceOption);
 
 // ── card close ────────────────────────────────────────────────────────────────
 
@@ -628,15 +586,15 @@ var cardCloseIdArg = new Argument<string>("card-id", "Card short ID or prefix");
 
 var cardCloseCmd = new Command("close", "Mark a card as closed");
 cardCloseCmd.AddArgument(cardCloseIdArg);
-cardCloseCmd.AddOption(workspaceOpt);
+cardCloseCmd.AddOption(CommonOptions.WorkspaceOption);
 cardCloseCmd.SetHandler(async (string prefix, string? workspace) =>
 {
-    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    var resolved = await cardResolver.ResolveAsync(workspace, prefix);
     if (resolved is null) return;
     var (cardId, cardNumber, _) = resolved.Value;
     await mediator.Send(new CloseCardCommand(cardId));
     Console.WriteLine($"Closed card #{cardNumber}");
-}, cardCloseIdArg, workspaceOpt);
+}, cardCloseIdArg, CommonOptions.WorkspaceOption);
 
 // ── card reopen ───────────────────────────────────────────────────────────────
 
@@ -644,15 +602,15 @@ var cardReopenIdArg = new Argument<string>("card-id", "Card short ID or prefix")
 
 var cardReopenCmd = new Command("reopen", "Reopen a closed card");
 cardReopenCmd.AddArgument(cardReopenIdArg);
-cardReopenCmd.AddOption(workspaceOpt);
+cardReopenCmd.AddOption(CommonOptions.WorkspaceOption);
 cardReopenCmd.SetHandler(async (string prefix, string? workspace) =>
 {
-    var resolved = await resolveCardByPrefixAsync(workspace, prefix);
+    var resolved = await cardResolver.ResolveAsync(workspace, prefix);
     if (resolved is null) return;
     var (cardId, cardNumber, _) = resolved.Value;
     await mediator.Send(new ReopenCardCommand(cardId));
     Console.WriteLine($"Reopened card #{cardNumber}");
-}, cardReopenIdArg, workspaceOpt);
+}, cardReopenIdArg, CommonOptions.WorkspaceOption);
 
 // ── wire card command ─────────────────────────────────────────────────────────
 
@@ -673,8 +631,8 @@ root.AddCommand(cardCmd);
 // ── lane list ─────────────────────────────────────────────────────────────────
 
 var laneListCmd = new Command("list", "List lanes in a workspace");
-laneListCmd.AddOption(workspaceOpt);
-laneListCmd.AddOption(jsonOpt);
+laneListCmd.AddOption(CommonOptions.WorkspaceOption);
+laneListCmd.AddOption(CommonOptions.JsonOption);
 laneListCmd.SetHandler(async (string? workspace, bool json) =>
 {
     var ws = await resolver.ResolveAsync(workspace);
@@ -684,7 +642,7 @@ laneListCmd.SetHandler(async (string? workspace, bool json) =>
     else
         foreach (var l in lanes)
             Console.WriteLine($"  {l.Position}  {l.Name}");
-}, workspaceOpt, jsonOpt);
+}, CommonOptions.WorkspaceOption, CommonOptions.JsonOption);
 
 // ── wire lane command ─────────────────────────────────────────────────────────
 
@@ -750,10 +708,10 @@ root.AddCommand(installSkillsCmd);
 var skillBootstrapCmd = new Command(
     "bootstrap",
     "Emit workspace + tag/lane info for a skill preamble. Non-zero exit if not in a workspace.");
-skillBootstrapCmd.AddOption(jsonOpt);
+skillBootstrapCmd.AddOption(CommonOptions.JsonOption);
 skillBootstrapCmd.SetHandler(async (InvocationContext context) =>
 {
-    var json = context.ParseResult.GetValueForOption(jsonOpt);
+    var json = context.ParseResult.GetValueForOption(CommonOptions.JsonOption);
 
     Workspace ws;
     try
@@ -803,7 +761,7 @@ var workNextMaxOpt = new Option<int>("--max", () => 10, "Max cards to process; 0
 var workNextModelOpt = new Option<string?>("--model", () => null, "Claude model ID to pass to claude (omit to use claude's default)");
 
 var workNextCmd = new Command("work-next", "Loop: claim a tagged card and run claude on it until exhaustion, failure, or cap");
-workNextCmd.AddOption(workspaceOpt);
+workNextCmd.AddOption(CommonOptions.WorkspaceOption);
 workNextCmd.AddOption(workNextTagOpt);
 workNextCmd.AddOption(workNextMaxOpt);
 workNextCmd.AddOption(workNextModelOpt);
@@ -850,7 +808,7 @@ workNextCmd.SetHandler(async (string? workspace, string? tag, int max, string? m
             Environment.ExitCode = 1;
             break;
     }
-}, workspaceOpt, workNextTagOpt, workNextMaxOpt, workNextModelOpt);
+}, CommonOptions.WorkspaceOption, workNextTagOpt, workNextMaxOpt, workNextModelOpt);
 root.AddCommand(workNextCmd);
 
 // ── run ───────────────────────────────────────────────────────────────────────
