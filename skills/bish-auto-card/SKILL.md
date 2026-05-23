@@ -2,6 +2,7 @@
 name: bish-auto-card
 description: Unattended sibling of /bish-work-on-card. Accepts a single card Number, implements the card, runs build + tests, commits, and moves the card to "Done" with --no-close. No prompts. Exits non-zero on any failure so a parent loop (bishop work-next) can react. Use when invoked by automation, not interactively.
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(git diff:*), Bash(git log:*), Read, Edit, Write, Glob, Grep, Agent
+bishop.category: execute
 ---
 
 **Orientation:** if `.bishop/BISHOP_CONTEXT.md` exists in the workspace, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.

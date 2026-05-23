@@ -6,6 +6,7 @@ bishop.scope: card,workspace
 bishop.command: /bish-grill-me {{card_number}}
 bishop.stage: true
 bishop.stage_prompt: "What do you want me to grill you on?"
+bishop.category: discuss
 ---
 
 **Orientation:** if `.bishop/BISHOP_CONTEXT.md` exists in the workspace, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.

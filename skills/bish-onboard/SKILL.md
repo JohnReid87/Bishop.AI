@@ -2,6 +2,7 @@
 name: bish-onboard
 description: Adopt Bishop in any project in one interview — detects git/workspace/skills/CLAUDE.md state and runs only the missing steps. Idempotent — re-running only performs missing steps. Use when the user wants to set up Bishop in this directory, mentions "onboard Bishop", or invokes `/bish-onboard`.
 allowed-tools: Bash(bishop:*), Bash(git:*), Read, Write, Edit, Glob, Grep, AskUserQuestion
+bishop.category: setup
 ---
 
 **Goal:** Adopt Bishop in the current directory in one interview. Each step gates on detected state — if a step has already been done, report it and move on without prompting. Re-running this skill on an already-onboarded project is a no-op.

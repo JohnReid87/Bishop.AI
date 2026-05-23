@@ -187,6 +187,9 @@ public sealed partial class CardDetailDialog : ContentDialog
 
         foreach (var item in _cardSkills)
         {
+            if (item.GroupHeader is not null)
+                panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
+
             var skill = item.Skill;
             var rendered = SkillCommandRenderer.Render(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath);
             var settingKey = $"skill.{skill.Name}.last_model";
@@ -213,6 +216,17 @@ public sealed partial class CardDetailDialog : ContentDialog
         var mediator = App.Services.GetRequiredService<IMediator>();
         await mediator.Send(new LaunchSkillCommand(_workspacePath, rendered, SnapHelper.ComputeSnap(), modelId));
     }
+
+    private static FrameworkElement MakeCategoryHeader(string text) =>
+        new TextBlock
+        {
+            Text = text,
+            FontSize = 10,
+            Opacity = 0.5,
+            Margin = new Thickness(4, 6, 4, 2),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            CharacterSpacing = 75,
+        };
 
     private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch)
     {

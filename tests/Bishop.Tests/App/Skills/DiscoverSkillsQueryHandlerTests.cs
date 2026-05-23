@@ -409,6 +409,87 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_KnownCategory_ParsedToCorrectEnum()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            "---\nname: my-skill\nbishop.category: review\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Category.Should().Be(Bishop.Core.Skills.SkillCategory.Review);
+    }
+
+    [Theory]
+    [InlineData("Review")]
+    [InlineData("REVIEW")]
+    [InlineData("  review  ")]
+    public async Task Handle_CategoryVariantCasing_MapsToSameEnum(string rawCategory)
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            $"---\nname: my-skill\nbishop.category: {rawCategory}\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Category.Should().Be(Bishop.Core.Skills.SkillCategory.Review);
+    }
+
+    [Fact]
+    public async Task Handle_MissingCategory_DefaultsToOther()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Category.Should().Be(Bishop.Core.Skills.SkillCategory.Other);
+    }
+
+    [Fact]
+    public async Task Handle_UnknownCategory_DefaultsToOther()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            "---\nname: my-skill\nbishop.category: totally-made-up\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Category.Should().Be(Bishop.Core.Skills.SkillCategory.Other);
+    }
+
+    [Theory]
+    [InlineData("discuss",   Bishop.Core.Skills.SkillCategory.Discuss)]
+    [InlineData("execute",   Bishop.Core.Skills.SkillCategory.Execute)]
+    [InlineData("setup",     Bishop.Core.Skills.SkillCategory.Setup)]
+    [InlineData("other",     Bishop.Core.Skills.SkillCategory.Other)]
+    public async Task Handle_AllCategoryValues_ParsedCorrectly(string raw, Bishop.Core.Skills.SkillCategory expected)
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            $"---\nname: my-skill\nbishop.category: {raw}\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].Category.Should().Be(expected);
+    }
+
+    [Fact]
     public void ParameterlessConstructor_ResolvesUserProfileSkillsPath()
     {
         // Arrange

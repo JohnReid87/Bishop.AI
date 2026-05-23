@@ -4,49 +4,55 @@ Bishop ships with a family of Claude Code skills (`bish-*`) that collaborate
 through the kanban board. Each skill plays one role; pick the right one for
 the task instead of doing everything inside a single session.
 
-### Planning skills — produce cards
+### Review skills — analyse and produce cards
 
-- `bish-grill-me` — relentlessly interviews the user about a plan or design,
-  then pushes the agreed-on tasks as cards on the board. Use when work is
-  **not yet on the board** — you have an idea and need it stress-tested and
-  broken down into trackable items.
-- `bish-triage` — interrogates a free-text bug description, validates the
-  suspected cause against the repo via the Explore subagent, and pushes a
-  structured `bug` card (or a `spike` + fix-stub pair when root cause is
-  unconfirmed).
 - `bish-arch` — architectural / SOLID review of the current .NET solution.
   Walks findings one at a time; agreed items become cards tagged `arch`.
+- `bish-audit-docs` — audits Markdown docs in the repo for drift against the
+  code and edits the docs in place per agreed finding.
 - `bish-coverage` — runs the coverage script, identifies classes below the
   line threshold, and pushes test-gap cards tagged `test`.
-- `bish-tests` — audits the quality of existing tests (shallow asserts,
-  brittle mocks, missing edge cases, untested public methods) and pushes
-  cards tagged `test`.
 - `bish-security` — security audit of the current .NET solution. Scans for
   injection, weak crypto and hardcoded secrets, unsafe deserialization,
   missing authn/authz, plus stack-conditional checks and GitHub Actions
   workflow misconfig. Also runs `dotnet list package --vulnerable`. Walks
   findings one at a time; agreed items become cards tagged `security`.
-- `bish-audit-docs` — audits Markdown docs in the repo for drift against the
-  code and edits the docs in place per agreed finding.
+- `bish-tests` — audits the quality of existing tests (shallow asserts,
+  brittle mocks, missing edge cases, untested public methods) and pushes
+  cards tagged `test`.
+- `bish-triage` — interrogates a free-text bug description, validates the
+  suspected cause against the repo via the Explore subagent, and pushes a
+  structured `bug` card (or a `spike` + fix-stub pair when root cause is
+  unconfirmed).
 
-### Discussion skill — operates on one existing card
+### Discuss skills — explore and plan
 
 - `bish-chat` — quick open-ended chat about a single card. Accepts a card
   Number, loads it, and opens a conversation; the wrap-up can edit the
   source card and/or spin out follow-up cards. Lighter than `bish-grill-me`,
   and never moves the source card. Use when you have a card in hand that
   needs more thinking before it's actionable.
+- `bish-grill-me` — relentlessly interviews the user about a plan or design,
+  then pushes the agreed-on tasks as cards on the board. Use when work is
+  **not yet on the board** — you have an idea and need it stress-tested and
+  broken down into trackable items.
 
-### Execution skills — consume cards
+### Execute skills — implement cards
 
+- `bish-auto-card` — unattended sibling of `bish-work-on-card`, intended
+  for automation (e.g. a parent loop driving `bishop card claim`). Same
+  contract, but no prompts and non-zero exit on any failure.
 - `bish-work-on-card` — interactive. Accepts a single card Number
   (e.g. `42` or `#42`), moves it to "Doing", implements it, then prompts
   before moving it to "Done" and committing. **One card per session** —
   long-running sessions accumulate context that hurts cost and quality.
   Use when work is **already a card** and you want it implemented now.
-- `bish-auto-card` — unattended sibling of `bish-work-on-card`, intended
-  for automation (e.g. a parent loop driving `bishop card claim`). Same
-  contract, but no prompts and non-zero exit on any failure.
+
+### Setup skills — onboard and configure
+
+- `bish-onboard` — adopt Bishop in any project in one interview. Detects
+  git/workspace/skills/CLAUDE.md state and runs only the missing steps.
+  Idempotent — re-running only performs missing steps.
 
 ### Choosing between `bish-grill-me` and `bish-work-on-card`
 

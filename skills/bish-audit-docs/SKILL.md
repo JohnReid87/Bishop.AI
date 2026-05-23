@@ -5,6 +5,7 @@ allowed-tools: Read, Glob, Grep, Edit, Write, Agent, AskUserQuestion, Bash(bisho
 bishop.scope: workspace
 bishop.command: /bish-audit-docs
 bishop.stage: false
+bishop.category: review
 ---
 
 **Orientation:** if `.bishop/BISHOP_CONTEXT.md` exists in the workspace, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.

@@ -9,4 +9,5 @@ public sealed record InstalledSkill(
     string? StagePrompt = null,
     string? StagePrefill = null,
     string MarkdownBody = "",
-    string SourcePath = "");
+    string SourcePath = "",
+    SkillCategory Category = SkillCategory.Other);

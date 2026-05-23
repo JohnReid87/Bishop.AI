@@ -1,5 +1,6 @@
 using Bishop.Core.Skills;
 using MediatR;
+using static Bishop.Core.Skills.SkillCategory;
 
 namespace Bishop.App.Skills.DiscoverSkills;
 
@@ -40,6 +41,7 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
             fm.TryGetValue("bishop.stage", out var stage);
             fm.TryGetValue("bishop.stage_prompt", out var stagePrompt);
             fm.TryGetValue("bishop.stage_prefill", out var stagePrefill);
+            fm.TryGetValue("bishop.category", out var category);
 
             skills.Add(new InstalledSkill(
                 name,
@@ -50,7 +52,8 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
                 string.IsNullOrWhiteSpace(stagePrompt) ? null : stagePrompt,
                 ParseStagePrefill(stagePrefill),
                 body,
-                skillFile));
+                skillFile,
+                ParseCategory(category)));
         }
 
         return Task.FromResult<IReadOnlyList<InstalledSkill>>(skills);
@@ -64,6 +67,21 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
         return raw
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
+    }
+
+    private static SkillCategory ParseCategory(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return Other;
+
+        return raw.Trim().ToLowerInvariant() switch
+        {
+            "review"    => Review,
+            "discuss"   => Discuss,
+            "execute"   => Execute,
+            "setup"     => Setup,
+            _           => Other,
+        };
     }
 
     private static string? ParseStagePrefill(string? raw)

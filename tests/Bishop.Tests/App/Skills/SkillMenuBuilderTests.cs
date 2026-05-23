@@ -1,6 +1,7 @@
 using Bishop.App.Skills;
 using Bishop.Core.Skills;
 using FluentAssertions;
+using static Bishop.Core.Skills.SkillCategory;
 
 namespace Bishop.Tests.App.Skills;
 
@@ -55,7 +56,7 @@ public sealed class SkillMenuBuilderTests
     }
 
     [Fact]
-    public void Build_MultipleSkills_LastItemHasNoSeparator()
+    public void Build_MultipleSkillsInSameGroup_NoSeparatorsWithinGroup()
     {
         var skills = new[]
         {
@@ -67,18 +68,18 @@ public sealed class SkillMenuBuilderTests
         var result = SkillMenuBuilder.Build(skills, "card");
 
         result.Should().HaveCount(3);
-        result[0].HasSeparatorAfter.Should().BeTrue();
-        result[1].HasSeparatorAfter.Should().BeTrue();
+        result[0].HasSeparatorAfter.Should().BeFalse();
+        result[1].HasSeparatorAfter.Should().BeFalse();
         result[2].HasSeparatorAfter.Should().BeFalse();
     }
 
     [Fact]
-    public void Build_MultipleSkills_PreservesInputOrder()
+    public void Build_MultipleSkills_SortedAlphabeticallyWithinGroup()
     {
         var skills = new[]
         {
-            new InstalledSkill("first",  "", ["card"], "claude /first"),
             new InstalledSkill("second", "", ["card"], "claude /second"),
+            new InstalledSkill("first",  "", ["card"], "claude /first"),
         };
 
         var result = SkillMenuBuilder.Build(skills, "card");
@@ -112,5 +113,88 @@ public sealed class SkillMenuBuilderTests
 
         cardResult.Should().ContainSingle();
         workspaceResult.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Build_SkillsAcrossTwoGroups_SeparatorAfterLastItemOfFirstGroup()
+    {
+        var skills = new[]
+        {
+            new InstalledSkill("review-skill", "", ["card"], "claude /review-skill", Category: Review),
+            new InstalledSkill("exec-skill",   "", ["card"], "claude /exec-skill",   Category: Execute),
+        };
+
+        var result = SkillMenuBuilder.Build(skills, "card");
+
+        result.Should().HaveCount(2);
+        result[0].HasSeparatorAfter.Should().BeTrue();
+        result[1].HasSeparatorAfter.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Build_GroupHeader_SetOnFirstItemOfEachGroup()
+    {
+        var skills = new[]
+        {
+            new InstalledSkill("b-review", "", ["card"], "claude /b-review", Category: Review),
+            new InstalledSkill("a-review", "", ["card"], "claude /a-review", Category: Review),
+            new InstalledSkill("exec",     "", ["card"], "claude /exec",     Category: Execute),
+        };
+
+        var result = SkillMenuBuilder.Build(skills, "card");
+
+        result.Should().HaveCount(3);
+        result[0].GroupHeader.Should().Be("REVIEW");
+        result[1].GroupHeader.Should().BeNull();
+        result[2].GroupHeader.Should().Be("EXECUTE");
+    }
+
+    [Fact]
+    public void Build_FixedCategoryOrder_ReviewBeforeDiscussBeforeExecuteBeforeSetupBeforeOther()
+    {
+        var skills = new[]
+        {
+            new InstalledSkill("other",     "", ["card"], "claude /other",     Category: Other),
+            new InstalledSkill("setup",     "", ["card"], "claude /setup",     Category: Setup),
+            new InstalledSkill("execution", "", ["card"], "claude /execution", Category: Execute),
+            new InstalledSkill("discuss",   "", ["card"], "claude /discuss",   Category: Discuss),
+            new InstalledSkill("review",    "", ["card"], "claude /review",    Category: Review),
+        };
+
+        var result = SkillMenuBuilder.Build(skills, "card");
+
+        result.Select(m => m.Name).Should().Equal("review", "discuss", "execution", "setup", "other");
+    }
+
+    [Fact]
+    public void Build_MultipleSkillsInGroup_SeparatorOnlyAfterLastInNonFinalGroup()
+    {
+        var skills = new[]
+        {
+            new InstalledSkill("r1", "", ["card"], "claude /r1", Category: Review),
+            new InstalledSkill("r2", "", ["card"], "claude /r2", Category: Review),
+            new InstalledSkill("e1", "", ["card"], "claude /e1", Category: Execute),
+        };
+
+        var result = SkillMenuBuilder.Build(skills, "card");
+
+        result.Should().HaveCount(3);
+        result[0].HasSeparatorAfter.Should().BeFalse();
+        result[1].HasSeparatorAfter.Should().BeTrue();
+        result[2].HasSeparatorAfter.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Build_SingleGroup_NoSeparatorsAnywhere()
+    {
+        var skills = new[]
+        {
+            new InstalledSkill("a", "", ["card"], "claude /a", Category: Review),
+            new InstalledSkill("b", "", ["card"], "claude /b", Category: Review),
+        };
+
+        var result = SkillMenuBuilder.Build(skills, "card");
+
+        result.Should().AllSatisfy(m => m.HasSeparatorAfter.Should().BeFalse());
     }
 }

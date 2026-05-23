@@ -273,6 +273,9 @@ public sealed partial class WorkspaceDetailPage : Page
 
         foreach (var item in _workspaceSkills)
         {
+            if (item.GroupHeader is not null)
+                panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
+
             var skill = item.Skill;
             var rendered = SkillCommandRenderer.Render(skill.Command!, null, null, null, _item.Path);
             var workspacePath = _item.Path;
@@ -564,6 +567,9 @@ public sealed partial class WorkspaceDetailPage : Page
 
         foreach (var item in _cardSkills)
         {
+            if (item.GroupHeader is not null)
+                panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
+
             var skill = item.Skill;
             var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, _item.Path);
             var workspacePath = _item.Path;
@@ -664,6 +670,17 @@ public sealed partial class WorkspaceDetailPage : Page
         var mediator = App.Services.GetRequiredService<IMediator>();
         await mediator.Send(new LaunchSkillCommand(workspacePath, rendered, SnapHelper.ComputeSnap(), modelId));
     }
+
+    private static FrameworkElement MakeCategoryHeader(string text) =>
+        new TextBlock
+        {
+            Text = text,
+            FontSize = 10,
+            Opacity = 0.5,
+            Margin = new Thickness(4, 6, 4, 2),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            CharacterSpacing = 75,
+        };
 
     private static FrameworkElement MakeSkillRow(string skillName, string selectedModelId, Func<string, Task> onLaunch, Func<Task>? onView = null)
     {

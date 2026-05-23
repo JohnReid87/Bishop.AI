@@ -5,6 +5,7 @@ allowed-tools: Read, Glob, Grep, Agent, AskUserQuestion, Bash(bishop:*)
 bishop.scope: workspace
 bishop.command: /bish-arch
 bishop.stage: false
+bishop.category: review
 ---
 
 **Before anything else — detect the active Bishop workspace:**

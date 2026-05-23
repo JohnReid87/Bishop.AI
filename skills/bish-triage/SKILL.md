@@ -6,6 +6,7 @@ bishop.scope: card,workspace
 bishop.command: /bish-triage {{card_number}}
 bishop.stage: true
 bishop.stage_prompt: "Describe the bug — symptom, repro if known, and any stack trace."
+bishop.category: review
 ---
 
 **Orientation:** if `.bishop/BISHOP_CONTEXT.md` exists in the workspace, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.
