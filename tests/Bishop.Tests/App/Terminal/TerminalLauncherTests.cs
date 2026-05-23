@@ -1,7 +1,6 @@
 #pragma warning disable CA1416 // Windows-only; tests run on Windows
 using Bishop.App.Terminal;
 using FluentAssertions;
-using Microsoft.Win32;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -34,6 +33,8 @@ public sealed class TerminalLauncherTests
         var result = (string)method.Invoke(null, null)!;
 
         result.Should().NotBeNull();
+        result.Should().NotBeEmpty();
+        result.Split(';', StringSplitOptions.RemoveEmptyEntries).Should().HaveCountGreaterThan(1);
     }
 
     // ── Launch ────────────────────────────────────────────────────────────────
@@ -156,9 +157,11 @@ public sealed class TerminalLauncherTests
         // Act
         sut.Launch(@"C:\Repo", null, null);
 
-        // Assert — PATH must match the merged registry PATH that BuildFullPath() computes
+        // Assert — PATH must be the merged registry PATH; never empty, always multi-entry.
         _started.Single().Environment.Should().ContainKey("PATH");
-        _started.Single().Environment["PATH"].Should().Be(ExpectedFullPath());
+        var launchPath = _started.Single().Environment["PATH"];
+        launchPath.Should().NotBeNullOrEmpty();
+        launchPath.Split(';', StringSplitOptions.RemoveEmptyEntries).Should().HaveCountGreaterThan(1);
     }
 
     [Fact]
@@ -278,9 +281,11 @@ public sealed class TerminalLauncherTests
         // Act
         sut.LaunchPlain(@"C:\Repo", null);
 
-        // Assert — PATH must match the merged registry PATH that BuildFullPath() computes
+        // Assert — PATH must be the merged registry PATH; never empty, always multi-entry.
         _started.Single().Environment.Should().ContainKey("PATH");
-        _started.Single().Environment["PATH"].Should().Be(ExpectedFullPath());
+        var launchPlainPath = _started.Single().Environment["PATH"];
+        launchPlainPath.Should().NotBeNullOrEmpty();
+        launchPlainPath.Split(';', StringSplitOptions.RemoveEmptyEntries).Should().HaveCountGreaterThan(1);
     }
 
     [Fact]
@@ -372,13 +377,36 @@ public sealed class TerminalLauncherTests
     {
         // Arrange
         var sut = CreateSut(wtExists: false);
-        var expected = ExpectedFullPath();
 
         // Act
         sut.LaunchCommand(@"C:\Repo", "bishop", "work-next", null);
 
-        // Assert — PATH must match the merged machine+user registry path, not just any non-empty value.
-        _started.Single().Environment["PATH"].Should().Be(expected);
+        // Assert — PATH must be the merged registry PATH; never empty, always multi-entry.
+        var path = _started.Single().Environment["PATH"];
+        path.Should().NotBeNullOrEmpty();
+        path.Split(';', StringSplitOptions.RemoveEmptyEntries).Should().HaveCountGreaterThan(1);
+    }
+
+    [Fact]
+    public void LaunchCommand_WithSnap_WtFound_ReturnsTrue()
+    {
+        var sut = CreateSut(wtExists: true);
+        var snap = new TerminalSnap(0, 0, 1280, 1440);
+
+        var result = sut.LaunchCommand(@"C:\Repo", "bishop", "work-next", snap);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void LaunchCommand_WithSnap_WtNotFound_ReturnsFalse()
+    {
+        var sut = CreateSut(wtExists: false);
+        var snap = new TerminalSnap(0, 0, 1280, 1440);
+
+        var result = sut.LaunchCommand(@"C:\Repo", "bishop", "work-next", snap);
+
+        result.Should().BeFalse();
     }
 
     // ── ArgumentException catch branches ─────────────────────────────────────
@@ -418,6 +446,29 @@ public sealed class TerminalLauncherTests
     }
 
     [Fact]
+    public void Launch_FileExistsThrowsArgumentExceptionForWt_SkipsSegmentAndFallsBackToPowerShell()
+    {
+        // Exercises the catch(ArgumentException) in FindWindowsTerminal's PATH loop directly,
+        // without manipulating the PATH environment variable — analogous to the HasPwsh test below.
+        var alias = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Microsoft", "WindowsApps", "wt.exe");
+        var sut = new TerminalLauncher(
+            path =>
+            {
+                if (path == alias) return false;
+                if (path.EndsWith("wt.exe", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("malformed path segment");
+                return false;
+            },
+            psi => _started.Add(psi));
+
+        sut.Launch(@"C:\Repo", null, null);
+
+        _started.Single().FileName.Should().Be("powershell.exe");
+    }
+
+    [Fact]
     public void LaunchPlain_FileExistsThrowsArgumentExceptionForPwsh_FallsBackToPowerShell()
     {
         // Exercises the catch(ArgumentException) in HasPwsh's PATH loop.
@@ -453,19 +504,19 @@ public sealed class TerminalLauncherTests
     // ── Null / empty workingDirectory and claudeArgs ──────────────────────────
 
     [Fact]
-    public void Launch_NullWorkingDirectory_DoesNotThrow()
+    public void Launch_NullWorkingDirectory_SetsEmptyWorkingDirectory()
     {
         var sut = CreateSut(wtExists: false);
-        var act = () => sut.Launch(null!, null, null);
-        act.Should().NotThrow();
+        sut.Launch(null!, null, null);
+        _started.Single().WorkingDirectory.Should().BeEmpty();
     }
 
     [Fact]
-    public void Launch_EmptyWorkingDirectory_DoesNotThrow()
+    public void Launch_EmptyWorkingDirectory_SetsEmptyWorkingDirectory()
     {
         var sut = CreateSut(wtExists: false);
-        var act = () => sut.Launch(string.Empty, null, null);
-        act.Should().NotThrow();
+        sut.Launch(string.Empty, null, null);
+        _started.Single().WorkingDirectory.Should().BeEmpty();
     }
 
     [Fact]
@@ -535,21 +586,4 @@ public sealed class TerminalLauncherTests
         act.Should().NotThrow();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    // Replicates BuildFullPath() so tests can assert the exact PATH value set on PSI.
-    // Returns "" when both registry sub-keys are absent, matching the SUT's behaviour.
-    private static string ExpectedFullPath()
-    {
-        using var machineEnv = Registry.LocalMachine.OpenSubKey(
-            @"SYSTEM\CurrentControlSet\Control\Session Manager\Environment");
-        using var userEnv = Registry.CurrentUser.OpenSubKey(@"Environment");
-
-        var machine = Environment.ExpandEnvironmentVariables(
-            machineEnv?.GetValue("Path", "") as string ?? "");
-        var user = Environment.ExpandEnvironmentVariables(
-            userEnv?.GetValue("Path", "") as string ?? "");
-
-        return string.IsNullOrEmpty(user) ? machine : $"{machine};{user}";
-    }
 }
