@@ -230,6 +230,8 @@ bishop.stage_prompt: "<staging prompt if stage:true>"
 bishop.category: discuss
 ---
 
+> Recommended model: <tier> — <one-line reason>
+
 ## What this skill is
 
 A **<one-phrase contract>** (e.g. "relentless interview", "non-mutating
@@ -354,6 +356,8 @@ bishop.command: /<name>
 bishop.stage: false
 bishop.category: review
 ---
+
+> Recommended model: <tier> — <one-line reason>
 
 **Before anything else — initialize from `bishop skill bootstrap`:**
 
@@ -482,6 +486,8 @@ bishop.stage: false
 bishop.category: <setup|execute>
 ---
 
+> Recommended model: <tier> — <one-line reason>
+
 **Goal:** <one sentence — what this procedure accomplishes and the
 end state on success>.
 
@@ -565,6 +571,8 @@ allowed-tools: Read, Glob, Grep, Write, Edit, AskUserQuestion
 bishop.category: meta
 ---
 
+> Recommended model: <tier> — <one-line reason>
+
 ## What this skill is
 
 A **Bishop-level meta-skill**. It operates on `skills/` (or wherever the
@@ -595,7 +603,7 @@ checklist items walked one at a time against each skill found in
 3. <!-- TODO: produce the output (write a file, print a report). -->
 
 4. **Self-check** — walk the audit checklist in
-   [`docs/SKILL_FAMILY.md`](../../docs/SKILL_FAMILY.md) §6 against
+   [`docs/SKILL_FAMILY.md`](../../docs/SKILL_FAMILY.md) §7 against
    the file(s) produced or reviewed.
 
 </what-to-do>

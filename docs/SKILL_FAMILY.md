@@ -92,7 +92,46 @@ A short STABLE/TUNABLE convention note belongs at the top of BISHOP_CONTEXT.md s
 
 ---
 
-## 6. Audit checklist
+## 6. Recommended-model convention
+
+Every `SKILL.md` carries a `> Recommended model:` line immediately after the
+frontmatter closing `---`, above the first heading or body paragraph. This
+makes the preferred model visible at the point of running each skill and
+prevents it drifting across new skills as the family grows.
+
+### Format
+
+```markdown
+> Recommended model: <model> — <one-line reason>
+```
+
+The line is a Markdown blockquote so it renders visually distinct from body
+text. The reason is mandatory and must be a single clause — no line breaks,
+no restatement of the model name.
+
+### Allowed values
+
+| Value | Use when |
+|---|---|
+| `Sonnet 4.6` | The skill follows a structured procedure or performs retrieval and formatting — extended reasoning is not required. |
+| `Opus 4.7` | The skill requires sustained multi-step judgement: interviewing, heuristic-catalogue review, architectural critique, or anything where the model must hold many considerations in flight simultaneously. |
+
+### Examples
+
+```markdown
+> Recommended model: Sonnet 4.6 — procedure-following; extended reasoning not required.
+> Recommended model: Opus 4.7 — relentless interview requires sustained multi-step judgement.
+```
+
+### Placement
+
+- **Below** the closing `---` of the frontmatter block.
+- **Above** the first heading or body paragraph.
+- Applies to every category — Conversational, Review, Setup-Execute, and Bishop-level / meta.
+
+---
+
+## 7. Audit checklist
 
 Run through this list when auditing the skill family (the future `bish-audit-skills` skill walks it with the user).
 
