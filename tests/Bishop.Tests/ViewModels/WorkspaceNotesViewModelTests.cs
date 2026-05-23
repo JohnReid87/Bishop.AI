@@ -3,6 +3,7 @@ using FluentAssertions;
 
 namespace Bishop.Tests.ViewModels;
 
+[Collection("EnvVar")]
 public class WorkspaceNotesViewModelTests
 {
     [Fact]
