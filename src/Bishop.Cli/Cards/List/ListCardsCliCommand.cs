@@ -19,14 +19,18 @@ internal sealed class ListCardsCliCommand : Command
     public ListCardsCliCommand(IMediator mediator) : base("list", "List cards in a workspace")
     {
         var resolver = new WorkspaceResolver(mediator);
+        var tagOption = new Option<string?>("--tag", "Return only cards with this tag");
+        var laneOption = new Option<string?>("--lane", "Return only cards in this lane");
 
         AddOption(CommonOptions.WorkspaceOption);
         AddOption(CommonOptions.JsonOption);
+        AddOption(tagOption);
+        AddOption(laneOption);
 
-        this.SetHandler(async (string? workspace, bool json) =>
+        this.SetHandler(async (string? workspace, bool json, string? tag, string? lane) =>
         {
             var ws = await resolver.ResolveAsync(workspace);
-            var cards = await mediator.Send(new ListCardsByWorkspaceQuery(ws.Id));
+            var cards = await mediator.Send(new ListCardsByWorkspaceQuery(ws.Id, tag, lane));
             var lanes = await mediator.Send(new ListLanesByWorkspaceQuery(ws.Id));
             var lanePositionByName = lanes.ToDictionary(l => l.Name, l => l.Position, StringComparer.OrdinalIgnoreCase);
 
@@ -69,6 +73,6 @@ internal sealed class ListCardsCliCommand : Command
                     }
                 }
             }
-        }, CommonOptions.WorkspaceOption, CommonOptions.JsonOption);
+        }, CommonOptions.WorkspaceOption, CommonOptions.JsonOption, tagOption, laneOption);
     }
 }

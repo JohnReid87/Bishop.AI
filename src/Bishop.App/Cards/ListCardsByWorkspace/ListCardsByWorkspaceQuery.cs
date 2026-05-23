@@ -3,4 +3,4 @@ using MediatR;
 
 namespace Bishop.App.Cards.ListCardsByWorkspace;
 
-public sealed record ListCardsByWorkspaceQuery(Guid WorkspaceId) : IRequest<IReadOnlyList<Card>>;
+public sealed record ListCardsByWorkspaceQuery(Guid WorkspaceId, string? TagName = null, string? LaneName = null) : IRequest<IReadOnlyList<Card>>;

@@ -19,10 +19,17 @@ public sealed class ListCardsByWorkspaceQueryHandler : IRequestHandler<ListCards
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
-        var cards = await db.Cards
+        var query = db.Cards
             .AsNoTracking()
-            .Where(c => c.WorkspaceId == request.WorkspaceId)
-            .ToListAsync(cancellationToken);
+            .Where(c => c.WorkspaceId == request.WorkspaceId);
+
+        if (request.TagName is not null)
+            query = query.Where(c => c.TagName == request.TagName);
+
+        if (request.LaneName is not null)
+            query = query.Where(c => c.LaneName == request.LaneName);
+
+        var cards = await query.ToListAsync(cancellationToken);
 
         return cards
             .OrderBy(c => LanePositions.TryGetValue(c.LaneName, out var p) ? p : int.MaxValue)
