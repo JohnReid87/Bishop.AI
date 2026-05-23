@@ -308,7 +308,7 @@ public sealed partial class WorkspaceDetailPage : Page
         var result = await mediator.Send(new GetRecentCommitsQuery(workspacePath));
 
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4), MinWidth = 360 };
+        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4), MinWidth = 360, MaxWidth = 480 };
 
         switch (result)
         {
@@ -467,7 +467,6 @@ public sealed partial class WorkspaceDetailPage : Page
             FontSize = 12,
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxWidth = 200,
         };
 
         var timeBlock = new TextBlock
@@ -475,20 +474,23 @@ public sealed partial class WorkspaceDetailPage : Page
             Text = GetRelativeTime(commit.Timestamp),
             FontSize = 11,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0),
+            MinWidth = 56,
+            TextAlignment = TextAlignment.Right,
+            Margin = new Thickness(0, 0, 4, 0),
             Foreground = secondaryBrush,
         };
 
-        var textPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        textPanel.Children.Add(hashBlock);
-        textPanel.Children.Add(subjectBlock);
-        textPanel.Children.Add(timeBlock);
-
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(textPanel, 0);
-        grid.Children.Add(textPanel);
+        var grid = new Grid { ColumnSpacing = 8 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });          // hash
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // subject
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });          // time
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });          // iconHost
+        Grid.SetColumn(hashBlock, 0);
+        Grid.SetColumn(subjectBlock, 1);
+        Grid.SetColumn(timeBlock, 2);
+        grid.Children.Add(hashBlock);
+        grid.Children.Add(subjectBlock);
+        grid.Children.Add(timeBlock);
 
         var accentBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppAccentBrush"];
         var cloudUpData = (string)Application.Current.Resources["IconCloudUpData"];
@@ -508,11 +510,10 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0)),
             Padding = new Thickness(2),
-            Margin = new Thickness(4, 0, 0, 0),
             Child = icon,
         };
         ToolTipService.SetToolTip(iconHost, iconTooltip);
-        Grid.SetColumn(iconHost, 1);
+        Grid.SetColumn(iconHost, 3);
         grid.Children.Add(iconHost);
 
         var btn = new Button
