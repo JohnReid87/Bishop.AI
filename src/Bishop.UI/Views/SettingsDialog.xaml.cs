@@ -3,7 +3,6 @@ using Bishop.App.Skills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.Core.Skills;
 using Bishop.ViewModels;
-using CommunityToolkit.WinUI.Controls;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -80,30 +79,9 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
 
-    private async Task ShowSkillContentAsync(InstalledSkill skill)
+    private Task ShowSkillContentAsync(InstalledSkill skill)
     {
-        var markdown = new MarkdownTextBlock
-        {
-            Text = skill.MarkdownBody,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppTextPrimaryBrush"],
-        };
-
-        var scrollViewer = new ScrollViewer
-        {
-            Content = markdown,
-            MaxHeight = 480,
-            Padding = new Thickness(0, 8, 0, 0),
-        };
-
-        var dialog = new ContentDialog
-        {
-            Title = skill.Name,
-            Content = scrollViewer,
-            CloseButtonText = "Close",
-            XamlRoot = XamlRoot,
-            RequestedTheme = RequestedTheme,
-        };
-
-        await dialog.ShowAsync();
+        App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
+        return Task.CompletedTask;
     }
 }

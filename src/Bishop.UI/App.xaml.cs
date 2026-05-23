@@ -1,5 +1,6 @@
 using Bishop.App;
 using Bishop.UI.Services;
+using Bishop.UI.Views;
 using Bishop.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -18,6 +19,8 @@ public partial class App : Application
     public static IServiceProvider Services { get; private set; } = null!;
 
     public static MainWindow? MainWindow { get; private set; }
+
+    public static MarkdownViewerWindow? MarkdownViewer { get; private set; }
 
     public App()
     {
@@ -53,6 +56,8 @@ public partial class App : Application
 
         MainWindow = new MainWindow(_host.Services.GetRequiredService<MainWindowViewModel>());
         MainWindow.Activate();
+
+        MarkdownViewer = new MarkdownViewerWindow();
     }
 
     private static async void OnAppUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
