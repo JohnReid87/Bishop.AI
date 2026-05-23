@@ -1,6 +1,7 @@
 using Bishop.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace Bishop.UI.Views;
 
@@ -21,7 +22,6 @@ internal static class SkillRowFactory
             Text = skillName,
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            Width = 120,
             FontSize = 12,
         };
 
@@ -50,8 +50,16 @@ internal static class SkillRowFactory
         }
         modelBtn.Flyout = modelFlyout;
 
-        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var row = new Grid { VerticalAlignment = VerticalAlignment.Center };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        Grid.SetColumn(nameText, 0);
         row.Children.Add(nameText);
+
+        Grid.SetColumn(modelBtn, 1);
         row.Children.Add(modelBtn);
 
         if (onView is not null)
@@ -66,6 +74,7 @@ internal static class SkillRowFactory
             };
             ToolTipService.SetToolTip(viewBtn, "View SKILL.md");
             viewBtn.Click += async (_, _) => await onView();
+            Grid.SetColumn(viewBtn, 2);
             row.Children.Add(viewBtn);
         }
 
@@ -77,8 +86,16 @@ internal static class SkillRowFactory
             FontSize = 12,
         };
         launchBtn.Click += async (_, _) => await onLaunch(currentModelId);
+        Grid.SetColumn(launchBtn, 3);
         row.Children.Add(launchBtn);
 
-        return row;
+        var dividerBrush = Application.Current.Resources["AppDividerBrush"] as Brush;
+        return new Border
+        {
+            BorderBrush = dividerBrush,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(0, 4, 0, 4),
+            Child = row,
+        };
     }
 }

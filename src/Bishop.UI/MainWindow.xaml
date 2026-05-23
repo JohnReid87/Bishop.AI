@@ -96,10 +96,10 @@
                                        VerticalAlignment="Center"/>
                             <Button Grid.Column="1"
                                     x:Name="AddWorkspaceButton"
-                                    Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                    Style="{StaticResource SubtleIconButtonStyle}"
                                     Click="AddWorkspaceButton_Click"
                                     ToolTipService.ToolTip="Add workspace">
-                                <FontIcon Glyph="&#xE710;" FontSize="12"/>
+                                <FontIcon Glyph="&#xE710;" FontSize="12" Foreground="{StaticResource AppTextPrimaryBrush}"/>
                             </Button>
                         </Grid>
 

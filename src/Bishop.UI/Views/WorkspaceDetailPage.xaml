@@ -90,9 +90,9 @@
                 </Button>
                 <Button x:Name="WorkspaceSettingsButton"
                         ToolTipService.ToolTip="Workspace settings"
-                        Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                        Style="{StaticResource SubtleIconButtonStyle}"
                         Click="WorkspaceSettingsButton_Click">
-                    <FontIcon Glyph="&#xE713;" FontSize="14"/>
+                    <FontIcon Glyph="&#xE713;" FontSize="14" Foreground="{StaticResource AppTextPrimaryBrush}"/>
                 </Button>
             </StackPanel>
         </Grid>
