@@ -71,7 +71,15 @@ public partial class App : Application
             CloseButtonText = "OK",
             XamlRoot = root,
         };
-        await dialog.ShowAsync();
+        try
+        {
+            await dialog.ShowAsync();
+        }
+        catch (Exception)
+        {
+            // ShowAsync throws COMException when a ContentDialog is already open.
+            // The error is already logged above; swallow to prevent a cascading crash.
+        }
     }
 
     private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
