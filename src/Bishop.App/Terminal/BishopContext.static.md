@@ -233,6 +233,28 @@ they resolve from the current working directory.
 
 - `bishop tag list`
 
+### Skill
+
+- `bishop skill bootstrap [--json]`
+
+Returns a single JSON object containing:
+
+| Field | Type | Description |
+|---|---|---|
+| `workspaceName` | string | Canonical name of the current workspace |
+| `tags[].name` | string | Each workspace-scoped tag name |
+| `lanes[].name` | string | Each lane name, in board order |
+
+Skills call `bootstrap` as their mandatory first step rather than chaining
+`workspace current` + `tag list` + `lane list` because it is a single
+round-trip that returns everything an agent needs to initialise correctly —
+workspace name, the full tag set, and the lane list — in one command.
+
+**Error contract:** a non-zero exit means the workspace is not ready (no
+workspace registered at the current path, or the Bishop database is
+unavailable). Surface the stderr output verbatim and stop — the message
+already explains the remediation.
+
 Prefer `--json` output for any command an agent will parse. Pipe multi-line
 descriptions via `--description-file -` (stdin) to avoid quote escaping.
 
