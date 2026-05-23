@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Bishop.App.WorkNext;
 using FluentAssertions;
 
@@ -119,5 +120,57 @@ public sealed class WorkNextHeartbeatTests : IDisposable
     public void IsProcessAlive_NegativePid_ReturnsFalse()
     {
         WorkNextHeartbeat.IsProcessAlive(-1).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ReadState_HeartbeatFileLocked_TreatsAsRunning()
+    {
+        File.WriteAllText(_runningFile, $"1234{Environment.NewLine}2026-05-22T00:00:00Z{Environment.NewLine}");
+
+        using var lockStream = new FileStream(_runningFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+        var state = WorkNextHeartbeat.ReadState(_bishopDir, _ => true);
+
+        state.IsRunning.Should().BeTrue();
+        state.IsStopping.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsProcessAlive_NonExistentPid_ReturnsFalse()
+    {
+        // int.MaxValue is far beyond any real OS PID; Process.GetProcessById throws ArgumentException
+        WorkNextHeartbeat.IsProcessAlive(int.MaxValue).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsProcessAlive_ProcessThatHasExited_ReturnsFalse()
+    {
+        using var proc = Process.Start(new ProcessStartInfo("cmd.exe", "/c exit 0")
+        {
+            CreateNoWindow = true,
+            UseShellExecute = false,
+        })!;
+        var pid = proc.Id;
+        proc.WaitForExit();
+
+        WorkNextHeartbeat.IsProcessAlive(pid).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ReadState_WhenRunningFileIsReadOnlyAndPidIsDead_DoesNotThrow()
+    {
+        File.WriteAllText(_runningFile, $"9999{Environment.NewLine}2026-05-22T00:00:00Z{Environment.NewLine}");
+        File.SetAttributes(_runningFile, FileAttributes.ReadOnly);
+
+        try
+        {
+            var act = () => WorkNextHeartbeat.ReadState(_bishopDir, _ => false);
+            act.Should().NotThrow();
+            File.Exists(_runningFile).Should().BeTrue();
+        }
+        finally
+        {
+            File.SetAttributes(_runningFile, FileAttributes.Normal);
+        }
     }
 }
