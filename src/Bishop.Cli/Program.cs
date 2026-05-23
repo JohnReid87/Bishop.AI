@@ -1,5 +1,4 @@
 using Bishop.App;
-using Bishop.App.WorkNext;
 using Bishop.Cli;
 using Bishop.Cli.Cards.Add;
 using Bishop.Cli.Cards.Claim;
@@ -12,9 +11,11 @@ using Bishop.Cli.Cards.Push;
 using Bishop.Cli.Cards.Remove;
 using Bishop.Cli.Cards.Reopen;
 using Bishop.Cli.Cards.View;
+using Bishop.Cli.InstallSkills;
 using Bishop.Cli.Lanes.List;
 using Bishop.Cli.Skills.Bootstrap;
 using Bishop.Cli.Tags.List;
+using Bishop.Cli.WorkNext;
 using Bishop.Cli.Workspaces.Current;
 using Bishop.Cli.Workspaces.Init;
 using Bishop.Cli.Workspaces.List;
@@ -40,7 +41,6 @@ using var host = builder.Build();
 await host.StartAsync();
 
 var mediator = host.Services.GetRequiredService<IMediator>();
-var resolver = new WorkspaceResolver(mediator);
 var cardResolver = new CardResolver(mediator);
 
 var root = new RootCommand("Bishop AI — kanban CLI");
@@ -86,56 +86,7 @@ root.AddCommand(laneCmd);
 
 // ── install-skills ────────────────────────────────────────────────────────────
 
-var installSkillsCmd = new Command(
-    "install-skills",
-    "Copy bundled skills to ~/.claude/skills/ (overwrites existing).");
-installSkillsCmd.SetHandler(() =>
-{
-    var sourceDir = Path.Combine(AppContext.BaseDirectory, "skills");
-    if (!Directory.Exists(sourceDir))
-    {
-        Console.Error.WriteLine($"No skills/ directory bundled with bishop (expected at {sourceDir}).");
-        Environment.ExitCode = 1;
-        return;
-    }
-
-    var destRoot = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ".claude",
-        "skills");
-    Directory.CreateDirectory(destRoot);
-
-    var installed = 0;
-    foreach (var skillSourceDir in Directory.GetDirectories(sourceDir))
-    {
-        var name = Path.GetFileName(skillSourceDir);
-        var sourceFiles = Directory.GetFiles(skillSourceDir, "*", SearchOption.AllDirectories);
-        if (sourceFiles.Length == 0)
-        {
-            // Empty husk left in bin/ output by MSBuild after a skill rename — content-copy
-            // semantics don't delete files removed from source. Skip silently rather than
-            // print a misleading "Installed" line for a directory with nothing in it.
-            continue;
-        }
-
-        var skillDestDir = Path.Combine(destRoot, name);
-        foreach (var file in sourceFiles)
-        {
-            var relative = Path.GetRelativePath(skillSourceDir, file);
-            var destFile = Path.Combine(skillDestDir, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
-            File.Copy(file, destFile, overwrite: true);
-        }
-        Console.WriteLine($"Installed skill '{name}' to {skillDestDir}");
-        installed++;
-    }
-
-    if (installed == 0)
-    {
-        Console.WriteLine("No skills found to install.");
-    }
-});
-root.AddCommand(installSkillsCmd);
+root.AddCommand(new InstallSkillsCliCommand());
 
 // ── skill ─────────────────────────────────────────────────────────────────────
 
@@ -145,60 +96,7 @@ root.AddCommand(skillCmd);
 
 // ── work-next ─────────────────────────────────────────────────────────────────
 
-var workNextTagOpt = new Option<string?>("--tag", () => null, "Only claim cards carrying this tag (omit for any tag)");
-var workNextMaxOpt = new Option<int>("--max", () => 10, "Max cards to process; 0 means uncapped");
-var workNextModelOpt = new Option<string?>("--model", () => null, "Claude model ID to pass to claude (omit to use claude's default)");
-
-var workNextCmd = new Command("work-next", "Loop: claim a tagged card and run claude on it until exhaustion, failure, or cap");
-workNextCmd.AddOption(CommonOptions.WorkspaceOption);
-workNextCmd.AddOption(workNextTagOpt);
-workNextCmd.AddOption(workNextMaxOpt);
-workNextCmd.AddOption(workNextModelOpt);
-workNextCmd.SetHandler(async (string? workspace, string? tag, int max, string? model) =>
-{
-    if (max < 0)
-    {
-        Console.Error.WriteLine("--max must be >= 0 (0 means uncapped).");
-        Environment.ExitCode = 1;
-        return;
-    }
-
-    var ws = await resolver.ResolveAsync(workspace);
-    var result = await mediator.Send(new WorkNextCommand(ws.Id, ws.Path, tag, max, model));
-
-    var stamp = DateTimeOffset.Now.ToString("HH:mm:ss");
-    var summary = $"[{stamp}] Processed {result.CardsProcessed} card(s). Stopped: {result.StopReason}";
-    if (result.FailedCardNumber is { } failed)
-        summary += $" on card #{failed}";
-    Console.Out.WriteLine(summary + ".");
-
-    switch (result.StopReason)
-    {
-        case WorkNextStopReason.EmptyLane:
-        case WorkNextStopReason.CapReached:
-        case WorkNextStopReason.Cancelled:
-            break;
-        case WorkNextStopReason.DirtyWorkingTree:
-            Console.Error.WriteLine($"Working tree at '{ws.Path}' is dirty:");
-            foreach (var path in result.DirtyPaths ?? Array.Empty<string>())
-                Console.Error.WriteLine($"  {path}");
-            Environment.ExitCode = 1;
-            break;
-        case WorkNextStopReason.ClaudeFailed:
-            Console.Error.WriteLine($"Card #{result.FailedCardNumber} left in 'Doing'.");
-            Environment.ExitCode = 1;
-            break;
-        case WorkNextStopReason.NotAGitRepo:
-            Console.Error.WriteLine($"Workspace '{ws.Path}' is not a git repository.");
-            Environment.ExitCode = 1;
-            break;
-        case WorkNextStopReason.GitNotFound:
-            Console.Error.WriteLine("'git' executable not found on PATH.");
-            Environment.ExitCode = 1;
-            break;
-    }
-}, CommonOptions.WorkspaceOption, workNextTagOpt, workNextMaxOpt, workNextModelOpt);
-root.AddCommand(workNextCmd);
+root.AddCommand(new WorkNextCliCommand(mediator));
 
 // ── run ───────────────────────────────────────────────────────────────────────
 
