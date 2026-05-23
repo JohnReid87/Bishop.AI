@@ -159,4 +159,42 @@ public class CardViewModelTests
 
         vm.MatchesSearch("query").Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData(273, "27", true)]
+    [InlineData(27, "27", true)]
+    [InlineData(270, "27", true)]
+    [InlineData(100, "27", false)]
+    public void MatchesSearch_MatchesNumberSubstring(int number, string search, bool expected)
+    {
+        var vm = new CardViewModel { Number = number };
+
+        vm.MatchesSearch(search).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("#273", true)]
+    [InlineData("273", true)]
+    public void MatchesSearch_StripsSingleLeadingHashBeforeNumberMatch(string search, bool expected)
+    {
+        var vm = new CardViewModel { Number = 273 };
+
+        vm.MatchesSearch(search).Should().Be(expected);
+    }
+
+    [Fact]
+    public void MatchesSearch_MatchesDescriptionSubstring()
+    {
+        var vm = new CardViewModel { Title = "irrelevant", Description = "some detailed description text" };
+
+        vm.MatchesSearch("detailed").Should().BeTrue();
+    }
+
+    [Fact]
+    public void MatchesSearch_NoMatchWhenQueryAbsentFromAllFields()
+    {
+        var vm = new CardViewModel { Number = 42, Title = "Add lane CRUD", TagName = "feature", Description = "Create the lane endpoints." };
+
+        vm.MatchesSearch("xyz-not-present").Should().BeFalse();
+    }
 }

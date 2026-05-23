@@ -29,7 +29,12 @@ public sealed class CardViewModel
     public static bool IsCardSkillsButtonVisible { get; set; }
     public bool IsSkillsButtonVisible => IsCardSkillsButtonVisible;
 
-    public bool MatchesSearch(string searchText) =>
-        Title.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-        (TagName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false);
+    public bool MatchesSearch(string searchText)
+    {
+        var query = searchText.StartsWith('#') ? searchText[1..] : searchText;
+        return Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+               (TagName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+               Number.ToString().Contains(query, StringComparison.OrdinalIgnoreCase) ||
+               Description.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
 }
