@@ -55,4 +55,31 @@ public class WorkNextOptionsDialogViewModelTests
         vm.CanConfirm.Should().Be(canConfirm);
         vm.MaxValue.Should().Be(maxValue);
     }
+
+    [Fact]
+    public void ParameterlessConstructor_PopulatesDefaults()
+    {
+        var vm = new WorkNextOptionsDialogViewModel();
+
+        vm.Tags.Should().ContainSingle().Which.Should().Be(WorkNextOptionsDialogViewModel.AnyTagSentinel);
+        WorkNextOptionsDialogViewModel.Models.Should().NotBeEmpty();
+        vm.SelectedModel.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void AvailableModels_ReturnsSameCollectionAsModels()
+    {
+        var vm = new WorkNextOptionsDialogViewModel();
+
+        vm.AvailableModels.Should().BeSameAs(WorkNextOptionsDialogViewModel.Models);
+    }
+
+    [Fact]
+    public void SelectedModelId_FallsBackToDefaultModelIdWhenSelectedModelIsNull()
+    {
+        var vm = new WorkNextOptionsDialogViewModel();
+        vm.SelectedModel = null!;
+
+        vm.SelectedModelId.Should().Be(WorkNextOptionsDialogViewModel.DefaultModelId);
+    }
 }
