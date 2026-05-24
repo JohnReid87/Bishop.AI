@@ -158,7 +158,7 @@
                           HorizontalScrollMode="Auto"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Disabled"
-                          Padding="8,4,8,12">
+                          Padding="8,4,0,12">
                 <ListView x:Name="LanesListView"
                           ItemsSource="{x:Bind Board.Lanes}"
                           SelectionMode="None">
