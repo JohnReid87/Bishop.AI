@@ -779,4 +779,142 @@ public sealed class GitCli : IGitCli
             return stdout.Trim();
         }
     }
+
+    public async Task<bool> LocalBranchExistsAsync(
+        string workspacePath, string branchName, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("show-ref");
+        psi.ArgumentList.Add("--verify");
+        psi.ArgumentList.Add("--quiet");
+        psi.ArgumentList.Add($"refs/heads/{branchName}");
+
+        Process? proc;
+        try { proc = Process.Start(psi); }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return false; }
+
+        if (proc is null) return false;
+
+        using (proc)
+        {
+            await proc.WaitForExitAsync(cancellationToken);
+            return proc.ExitCode == 0;
+        }
+    }
+
+    public async Task<IReadOnlyList<string>> GetWorktreeBranchesAsync(
+        string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("worktree");
+        psi.ArgumentList.Add("list");
+        psi.ArgumentList.Add("--porcelain");
+
+        Process? proc;
+        try { proc = Process.Start(psi); }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return []; }
+
+        if (proc is null) return [];
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0) return [];
+
+            const string prefix = "branch refs/heads/";
+            var branches = new List<string>();
+            foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var trimmed = line.TrimEnd('\r');
+                if (trimmed.StartsWith(prefix, StringComparison.Ordinal))
+                    branches.Add(trimmed[prefix.Length..]);
+            }
+            return branches;
+        }
+    }
+
+    public async Task<int?> GetBranchCommitCountAsync(
+        string workspacePath, string branchName, string baseBranch, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("rev-list");
+        psi.ArgumentList.Add("--count");
+        psi.ArgumentList.Add($"{baseBranch}..{branchName}");
+
+        Process? proc;
+        try { proc = Process.Start(psi); }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return null; }
+
+        if (proc is null) return null;
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0) return null;
+            return int.TryParse(stdout.Trim(), out var count) ? count : null;
+        }
+    }
+
+    public async Task DeleteLocalBranchAsync(
+        string workspacePath, string branchName, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("branch");
+        psi.ArgumentList.Add("-D");
+        psi.ArgumentList.Add(branchName);
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            throw new InvalidOperationException("git executable not found", ex);
+        }
+
+        if (proc is null)
+            throw new InvalidOperationException("Failed to start git process");
+
+        using (proc)
+        {
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git branch -D exited {proc.ExitCode}: {stderr.Trim()}");
+        }
+    }
 }

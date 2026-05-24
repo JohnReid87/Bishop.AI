@@ -29,4 +29,12 @@ public interface IGitCli
     Task RemoveWorktreeAsync(string workspacePath, string worktreePath, CancellationToken cancellationToken = default);
 
     Task<string> GetCurrentBranchAsync(string worktreePath, CancellationToken cancellationToken = default);
+
+    Task<bool> LocalBranchExistsAsync(string workspacePath, string branchName, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<string>> GetWorktreeBranchesAsync(string workspacePath, CancellationToken cancellationToken = default);
+
+    Task<int?> GetBranchCommitCountAsync(string workspacePath, string branchName, string baseBranch, CancellationToken cancellationToken = default);
+
+    Task DeleteLocalBranchAsync(string workspacePath, string branchName, CancellationToken cancellationToken = default);
 }
