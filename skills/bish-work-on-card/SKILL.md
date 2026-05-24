@@ -8,8 +8,6 @@ bishop.stage: false
 bishop.category: execute
 ---
 
-**Orientation:** if `.bishop/BISHOP_CONTEXT.md` exists in the workspace, read it first — it documents this workspace's lanes, tags, and the safe `bishop` CLI subcommands. Bishop regenerates it on every launch so the content is current.
-
 Shell tool selection (Bash vs PowerShell) — follow [bishop context print --section "Shell selection"](.bishop/BISHOP_CONTEXT.md#shell-selection-stable) (STABLE).
 
 ---
