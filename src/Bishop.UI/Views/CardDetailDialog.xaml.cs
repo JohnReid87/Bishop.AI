@@ -1,4 +1,5 @@
 using Bishop.App.Cards.GetCard;
+using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Git;
 using Bishop.App.Git.GetCardCommit;
 using Bishop.App.Services.Settings;
@@ -6,6 +7,7 @@ using Bishop.App.Skills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.Core;
 using Bishop.ViewModels;
+using CommunityToolkit.WinUI.Controls;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Input;
@@ -25,6 +27,7 @@ public sealed partial class CardDetailDialog : ContentDialog
     private readonly SkillMenuItem[] _cardSkills;
     private readonly string _workspacePath;
     private readonly Guid _workspaceId;
+    private readonly Stack<CardViewModel> _backStack = new();
 
     public CardDetailDialogViewModel ViewModel { get; }
 
@@ -38,6 +41,7 @@ public sealed partial class CardDetailDialog : ContentDialog
         InitializeComponent();
         PreviewKeyDown += CardDetailDialog_PreviewKeyDown;
         Loaded += CardDetailDialog_Loaded;
+        DescriptionMarkdown.OnLinkClicked += DescriptionMarkdown_LinkClicked;
         ViewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(CardDetailDialogViewModel.Deleted) && ViewModel.Deleted)
@@ -47,10 +51,17 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     private async void CardDetailDialog_Loaded(object sender, RoutedEventArgs e)
     {
+        await Task.WhenAll(
+            ViewModel.LoadCardNumbersAsync(),
+            LoadCardExtrasAsync(ViewModel.CardId, ViewModel.Number));
+    }
+
+    private async Task LoadCardExtrasAsync(Guid cardId, int cardNumber)
+    {
         try
         {
             var mediator = App.Services.GetRequiredService<IMediator>();
-            var card = await mediator.Send(new GetCardQuery(ViewModel.CardId));
+            var card = await mediator.Send(new GetCardQuery(cardId));
             if (card is null) return;
 
             ViewModel.SetClaudeTotals(
@@ -58,7 +69,7 @@ public sealed partial class CardDetailDialog : ContentDialog
                 card.TotalOutputTokens,
                 card.ClaudeRunCount);
 
-            var commitResult = await mediator.Send(new GetCardCommitQuery(ViewModel.Number, _workspacePath));
+            var commitResult = await mediator.Send(new GetCardCommitQuery(cardNumber, _workspacePath));
             if (commitResult is GetCardCommitResult.Found found)
                 ViewModel.SetCommit(found.Commit);
         }
@@ -67,6 +78,77 @@ public sealed partial class CardDetailDialog : ContentDialog
             // Silent fail — row stays hidden.
         }
     }
+
+    private async void DescriptionMarkdown_LinkClicked(object? sender, LinkClickedEventArgs e)
+    {
+        const string scheme = "bishop://card/";
+        var url = e.Uri.OriginalString;
+        if (!url.StartsWith(scheme, StringComparison.Ordinal)) return;
+        if (!int.TryParse(url[scheme.Length..], out var targetNumber)) return;
+
+        e.Handled = true;
+
+        var snapshot = BuildCurrentCardSnapshot();
+        _backStack.Push(snapshot);
+
+        try
+        {
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            var card = await mediator.Send(new GetCardByNumberQuery(targetNumber, _workspaceId));
+            if (card is null)
+            {
+                _backStack.TryPop(out _);
+                return;
+            }
+
+            var tags = await ViewModel.GetWorkspaceTagsAsync();
+            var tagColour = card.TagName is { } tagName
+                ? tags.FirstOrDefault(t => t.Name == tagName)?.Colour
+                : null;
+
+            var targetVm = new CardViewModel
+            {
+                Id = card.Id,
+                Number = card.Number,
+                Title = card.Title,
+                Description = card.Description,
+                LaneName = card.LaneName,
+                TagName = card.TagName,
+                TagColour = tagColour,
+                IsClosed = card.IsClosed,
+                GitHubIssueNumber = card.GitHubIssueNumber,
+                GitHubPushedAt = card.GitHubPushedAt,
+                LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+            };
+
+            ViewModel.NavigateTo(targetVm, canGoBack: true);
+            await LoadCardExtrasAsync(card.Id, card.Number);
+        }
+        catch
+        {
+            _backStack.TryPop(out _);
+        }
+    }
+
+    private async void BackButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_backStack.TryPop(out var previous)) return;
+        ViewModel.NavigateTo(previous, canGoBack: _backStack.Count > 0);
+        await LoadCardExtrasAsync(previous.Id, previous.Number);
+    }
+
+    private CardViewModel BuildCurrentCardSnapshot() => new()
+    {
+        Id = ViewModel.CardId,
+        Number = ViewModel.Number,
+        Title = ViewModel.Title,
+        Description = ViewModel.Description,
+        LaneName = ViewModel.LaneName,
+        TagName = ViewModel.TagName,
+        TagColour = ViewModel.TagColour,
+        IsClosed = ViewModel.IsClosed,
+        GitHubIssueNumber = ViewModel.GitHubIssueNumber,
+    };
 
     private void CardDetailDialog_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {

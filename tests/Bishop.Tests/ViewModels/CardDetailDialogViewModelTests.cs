@@ -1,4 +1,5 @@
 using Bishop.App.Cards.CloseCard;
+using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
@@ -446,6 +447,139 @@ public class CardDetailDialogViewModelTests
             Arg.Is<RemoveCardCommand>(c => c.CardId == vm.CardId),
             Arg.Any<CancellationToken>());
     }
+
+    // ── LinkableDescription ───────────────────────────────────────────────────
+
+    [Fact]
+    public void LinkableDescription_BeforeLoadCardNumbers_ReturnsRawDescription()
+    {
+        var vm = NewVm(NewCard(description: "See #42 for details"));
+
+        vm.LinkableDescription.Should().Be("See #42 for details");
+    }
+
+    [Fact]
+    public async Task LinkableDescription_AfterLoadCardNumbers_LinksValidCardRefs()
+    {
+        var mediator = Substitute.For<IMediator>();
+        IReadOnlyList<Card> cards = [new Card { Id = Guid.NewGuid(), Number = 42, LaneName = "To Do" }];
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>()).Returns(cards);
+        var vm = NewVm(NewCard(description: "See #42 for details"), mediator: mediator);
+
+        await vm.LoadCardNumbersAsync();
+
+        vm.LinkableDescription.Should().Be("See [#42](bishop://card/42) for details");
+    }
+
+    [Fact]
+    public async Task LinkableDescription_UnknownCardRef_RendersAsStrikethrough()
+    {
+        var mediator = Substitute.For<IMediator>();
+        IReadOnlyList<Card> cards = [new Card { Id = Guid.NewGuid(), Number = 99, LaneName = "To Do" }];
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>()).Returns(cards);
+        var vm = NewVm(NewCard(description: "See #42 for details"), mediator: mediator);
+
+        await vm.LoadCardNumbersAsync();
+
+        vm.LinkableDescription.Should().Be("See ~~#42~~ for details");
+    }
+
+    [Fact]
+    public async Task LinkableDescription_EscapedRef_NotConverted()
+    {
+        var mediator = Substitute.For<IMediator>();
+        IReadOnlyList<Card> cards = [new Card { Id = Guid.NewGuid(), Number = 42, LaneName = "To Do" }];
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>()).Returns(cards);
+        var vm = NewVm(NewCard(description: @"\#42"), mediator: mediator);
+
+        await vm.LoadCardNumbersAsync();
+
+        vm.LinkableDescription.Should().Be(@"\#42");
+    }
+
+    [Fact]
+    public async Task LinkableDescription_RefInsideCodeSpan_NotConverted()
+    {
+        var mediator = Substitute.For<IMediator>();
+        IReadOnlyList<Card> cards = [new Card { Id = Guid.NewGuid(), Number = 42, LaneName = "To Do" }];
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>()).Returns(cards);
+        var vm = NewVm(NewCard(description: "See `#42` for details"), mediator: mediator);
+
+        await vm.LoadCardNumbersAsync();
+
+        vm.LinkableDescription.Should().Be("See `#42` for details");
+    }
+
+    [Fact]
+    public async Task LinkableDescription_RefInsideFencedCodeBlock_NotConverted()
+    {
+        var mediator = Substitute.For<IMediator>();
+        IReadOnlyList<Card> cards = [new Card { Id = Guid.NewGuid(), Number = 42, LaneName = "To Do" }];
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>()).Returns(cards);
+        var vm = NewVm(NewCard(description: "```\n#42\n```"), mediator: mediator);
+
+        await vm.LoadCardNumbersAsync();
+
+        vm.LinkableDescription.Should().Be("```\n#42\n```");
+    }
+
+    // ── NavigateTo ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void NavigateTo_UpdatesAllCardProperties()
+    {
+        var vm = NewVm();
+        vm.StartTitleEdit();
+        vm.StartDescriptionEdit();
+        vm.RequestDeleteCommand.Execute(null);
+        vm.EditError = "old error";
+        vm.SetCommit(new CommitInfo("abc", "abcdef", "msg", "", DateTimeOffset.UtcNow, IsPushed: false));
+        vm.SetClaudeTotals(100, 50, 1);
+
+        var newId = Guid.NewGuid();
+        var target = new CardViewModel
+        {
+            Id = newId,
+            Number = 77,
+            Title = "New Title",
+            Description = "New desc",
+            LaneName = "Done",
+            TagName = "bug",
+            TagColour = "#ff0000",
+            IsClosed = true,
+            GitHubIssueNumber = 5,
+        };
+
+        vm.NavigateTo(target, canGoBack: true);
+
+        vm.CardId.Should().Be(newId);
+        vm.Number.Should().Be(77);
+        vm.Title.Should().Be("New Title");
+        vm.Description.Should().Be("New desc");
+        vm.LaneName.Should().Be("Done");
+        vm.TagName.Should().Be("bug");
+        vm.TagColour.Should().Be("#ff0000");
+        vm.IsClosed.Should().BeTrue();
+        vm.GitHubIssueNumber.Should().Be(5);
+        vm.IsTitleEditing.Should().BeFalse();
+        vm.IsDescriptionEditing.Should().BeFalse();
+        vm.ShowDeleteConfirm.Should().BeFalse();
+        vm.EditError.Should().BeNull();
+        vm.CommitShortHash.Should().BeNull();
+        vm.ClaudeTotalsText.Should().BeNull();
+        vm.CanGoBack.Should().BeTrue();
+    }
+
+    [Fact]
+    public void NavigateTo_CanGoBack_False_ClearsBack()
+    {
+        var vm = NewVm();
+        vm.NavigateTo(NewCard(), canGoBack: false);
+
+        vm.CanGoBack.Should().BeFalse();
+    }
+
+    // ── GetWorkspaceTagsAsync ─────────────────────────────────────────────────
 
     [Fact]
     public async Task GetWorkspaceTagsAsync_DelegatesToMediatorWithWorkspaceId()

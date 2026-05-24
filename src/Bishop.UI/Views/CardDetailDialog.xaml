@@ -24,7 +24,14 @@
                         Orientation="Horizontal"
                         Spacing="6"
                         VerticalAlignment="Center">
-                <TextBlock Text="{x:Bind ViewModel.NumberDisplay}"
+                <Button Click="BackButton_Click"
+                        Style="{StaticResource SubtleIconButtonStyle}"
+                        ToolTipService.ToolTip="Back"
+                        Visibility="{x:Bind ViewModel.CanGoBack, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                        VerticalAlignment="Center">
+                    <FontIcon Glyph="&#xE72B;" FontSize="12" Foreground="{StaticResource AppTextPrimaryBrush}"/>
+                </Button>
+                <TextBlock Text="{x:Bind ViewModel.NumberDisplay, Mode=OneWay}"
                            Style="{StaticResource CaptionTextBlockStyle}"
                            Foreground="{StaticResource AppTextTertiaryBrush}"
                            FontFamily="Cascadia Mono"
@@ -32,7 +39,7 @@
                 <Border Background="{StaticResource AppCardBackgroundBrush}"
                         CornerRadius="3"
                         Padding="5,1">
-                    <TextBlock Text="{x:Bind ViewModel.LaneName}"
+                    <TextBlock Text="{x:Bind ViewModel.LaneName, Mode=OneWay}"
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{StaticResource AppTextSecondaryBrush}"
                                VerticalAlignment="Center"/>
@@ -123,10 +130,11 @@
                           VerticalScrollBarVisibility="Auto">
                 <Grid Padding="0,0,32,0">
                     <controls:MarkdownTextBlock
-                        Text="{x:Bind ViewModel.Description, Mode=OneWay}"
+                        x:Name="DescriptionMarkdown"
+                        Text="{x:Bind ViewModel.LinkableDescription, Mode=OneWay}"
                         Foreground="{StaticResource AppTextPrimaryBrush}"
                         Visibility="{x:Bind ViewModel.HasDescription, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                        IsHitTestVisible="False"/>
+                        UseEmphasisExtras="True"/>
                     <TextBlock
                         Text="No description."
                         FontStyle="Italic"

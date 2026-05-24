@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using Bishop.App.Cards.CloseCard;
+using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
@@ -16,16 +18,30 @@ namespace Bishop.ViewModels;
 
 public sealed partial class CardDetailDialogViewModel : ObservableObject
 {
+    private static readonly Regex CardRefRegex = new(
+        @"(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`]*`)|(\\#\d+)|((?<!\w)#(\d+)\b)",
+        RegexOptions.Compiled);
+
     private readonly IMediator _mediator;
     private readonly Guid _workspaceId;
     private readonly string? _workspaceGitHubRepo;
+    private HashSet<int>? _validCardNumbers;
+    private Guid _cardId;
 
-    public Guid CardId { get; }
-    public int Number { get; }
-    public string LaneName { get; }
+    public Guid CardId => _cardId;
     public bool IsSkillsButtonVisible { get; }
     public bool IsPushSectionVisible => _workspaceGitHubRepo is not null;
     public bool Updated { get; private set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NumberDisplay))]
+    public partial int Number { get; set; }
+
+    [ObservableProperty]
+    public partial string LaneName { get; set; }
+
+    [ObservableProperty]
+    public partial bool CanGoBack { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTagVisible), nameof(IsAddTagButtonVisible))]
@@ -47,7 +63,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public partial string Title { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasDescription))]
+    [NotifyPropertyChangedFor(nameof(HasDescription), nameof(LinkableDescription))]
     public partial string Description { get; set; }
 
     [ObservableProperty]
@@ -119,6 +135,19 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
     public bool HasEditError => !string.IsNullOrEmpty(EditError);
 
+    public string LinkableDescription =>
+        _validCardNumbers is null
+            ? Description
+            : CardRefRegex.Replace(Description ?? string.Empty, match =>
+            {
+                if (match.Groups[1].Success || match.Groups[2].Success)
+                    return match.Value;
+                var number = int.Parse(match.Groups[4].Value);
+                return _validCardNumbers.Contains(number)
+                    ? $"[#{number}](bishop://card/{number})"
+                    : $"~~#{number}~~";
+            });
+
     [ObservableProperty]
     public partial bool ShowDeleteConfirm { get; set; }
 
@@ -130,16 +159,53 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         _mediator = mediator;
         _workspaceId = workspaceId;
         _workspaceGitHubRepo = gitHubRepo;
-        CardId = card.Id;
+        _cardId = card.Id;
         Number = card.Number;
+        LaneName = card.LaneName;
         Title = card.Title;
         Description = card.Description;
-        LaneName = card.LaneName;
         IsClosed = card.IsClosed;
         GitHubIssueNumber = card.GitHubIssueNumber;
         TagName = card.TagName;
         TagColour = card.TagColour;
         IsSkillsButtonVisible = cardSkills.Length > 0;
+    }
+
+    public async Task LoadCardNumbersAsync()
+    {
+        try
+        {
+            var cards = await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId));
+            _validCardNumbers = cards.Select(c => c.Number).ToHashSet();
+            OnPropertyChanged(nameof(LinkableDescription));
+        }
+        catch
+        {
+            // Description stays unlinked if load fails.
+        }
+    }
+
+    public void NavigateTo(CardViewModel card, bool canGoBack)
+    {
+        _cardId = card.Id;
+        Number = card.Number;
+        LaneName = card.LaneName;
+        Title = card.Title;
+        Description = card.Description;
+        IsClosed = card.IsClosed;
+        GitHubIssueNumber = card.GitHubIssueNumber;
+        TagName = card.TagName;
+        TagColour = card.TagColour;
+        IsTitleEditing = false;
+        IsDescriptionEditing = false;
+        ShowDeleteConfirm = false;
+        EditError = null;
+        PushError = null;
+        CommitShortHash = null;
+        CommitHash = null;
+        CommitIsPushed = false;
+        ClaudeTotalsText = null;
+        CanGoBack = canGoBack;
     }
 
     public Task<IReadOnlyList<TagInfo>> GetWorkspaceTagsAsync() =>
