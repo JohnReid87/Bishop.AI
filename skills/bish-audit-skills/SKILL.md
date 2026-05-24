@@ -52,11 +52,14 @@ via §7 of `SKILL_FAMILY.md` when judging an edge case.
    opens with workspace-detection prose is a violation here.
 
 3. **Workspace detection** — Conversational / Review / Setup-Execute
-   skills call `bishop skill bootstrap`. No inline
-   `bishop workspace current --json` preamble. The only documented
-   exception is `bish-onboard` (the workspace does not yet exist when
-   it runs); the exception must carry a one-line comment explaining
-   why. Bishop-level / meta skills must **not** call bootstrap.
+   skills use one of the two accepted patterns: `bishop context-pack
+   <skill-name>` (preferred — see item 12) or `bishop skill bootstrap`
+   (legacy, valid for skills not yet migrated to context-pack). No
+   inline `bishop workspace current --json` preamble. The only
+   documented exception is `bish-onboard` (the workspace does not yet
+   exist when it runs); the exception must carry a one-line comment
+   explaining why. Bishop-level / meta skills must **not** call
+   bootstrap or context-pack.
 
 4. **Card push** — skills that push cards reference
    [bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE) rather than
@@ -255,7 +258,7 @@ Item 13 is a family-wide check, not per-skill:
    clustering patterns for this skill:
 
    - Multiple item-3 violations across review skills → one card
-     "Migrate review skills to `bishop skill bootstrap`", not five.
+     "Migrate [category] skills to `bishop context-pack`", not five.
    - Multiple item-7 paraphrases of the same STABLE section → one
      card per section across all affected skills, not per skill.
    - Item-10 frontmatter gaps across many skills → one card
