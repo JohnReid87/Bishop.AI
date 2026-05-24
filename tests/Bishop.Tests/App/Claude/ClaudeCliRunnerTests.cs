@@ -148,7 +148,6 @@ public sealed class ClaudeCliRunnerTests
             var proc = Process.Start(psi)!;
             proc.StandardInput.WriteLine("{\"type\":\"assistant\",\"message\":{\"usage\":{\"input_tokens\":1200,\"output_tokens\":340},\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{}}]}}");
             proc.StandardInput.WriteLine("{\"type\":\"result\",\"total_cost_usd\":0.05}");
-            proc.StandardInput.Close();
             return proc;
         };
         var sut = new ClaudeCliRunner(resolver, starter);
@@ -180,7 +179,6 @@ public sealed class ClaudeCliRunnerTests
             proc.StandardInput.WriteLine("not-valid-json");
             proc.StandardInput.WriteLine("{broken");
             proc.StandardInput.WriteLine("{\"type\":\"result\",\"total_cost_usd\":0.01}");
-            proc.StandardInput.Close();
             return proc;
         };
         var sut = new ClaudeCliRunner(resolver, starter);
@@ -201,6 +199,7 @@ public sealed class ClaudeCliRunnerTests
             {
                 UseShellExecute = false,
                 CreateNoWindow = true,
+                RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
@@ -315,7 +314,6 @@ public sealed class ClaudeCliRunnerTests
                 var proc = Process.Start(psi)!;
                 proc.StandardInput.WriteLine("{\"type\":\"system\",\"subtype\":\"permission_denied\",\"tool\":\"Bash\",\"toolInput\":{\"command\":\"git push\"},\"message\":\"denied\"}");
                 proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":100}");
-                proc.StandardInput.Close();
                 return proc;
             };
             var sut = new ClaudeCliRunner(resolver, starter);
@@ -363,7 +361,6 @@ public sealed class ClaudeCliRunnerTests
                 var proc = Process.Start(psi)!;
                 proc.StandardInput.WriteLine("{\"type\":\"system\",\"subtype\":\"permission_denied\",\"tool\":\"Bash\",\"toolInput\":{\"command\":\"rm -rf /\"},\"message\":\"denied\"}");
                 proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":100}");
-                proc.StandardInput.Close();
                 return proc;
             };
             var sut = new ClaudeCliRunner(resolver, starter);
@@ -407,7 +404,6 @@ public sealed class ClaudeCliRunnerTests
                 proc.StandardInput.WriteLine("{\"type\":\"system\",\"subtype\":\"permission_denied\",\"tool\":\"Bash\",\"toolInput\":{\"command\":\"git push\"},\"message\":\"denied1\"}");
                 proc.StandardInput.WriteLine("{\"type\":\"system\",\"subtype\":\"permission_denied\",\"tool\":\"Bash\",\"toolInput\":{\"command\":\"curl https://x\"},\"message\":\"denied2\"}");
                 proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":100}");
-                proc.StandardInput.Close();
                 return proc;
             };
             var sut = new ClaudeCliRunner(resolver, starter);
@@ -426,12 +422,50 @@ public sealed class ClaudeCliRunnerTests
         }
     }
 
+    [Fact]
+    public async Task RunPromptAsync_RedirectsStdinAndWritesPromptToProcess()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        ProcessStartInfo? capturedPsi = null;
+        var capturedOutput = new List<string>();
+
+        Func<ProcessStartInfo, Process?> starter = psi =>
+        {
+            capturedPsi = psi;
+            var procPsi = new ProcessStartInfo("cmd.exe")
+            {
+                Arguments = "/c more",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            var proc = Process.Start(procPsi)!;
+            proc.OutputDataReceived += (_, e) =>
+            {
+                if (e.Data is not null)
+                    capturedOutput.Add(e.Data);
+            };
+            return proc;
+        };
+        var sut = new ClaudeCliRunner(resolver, starter);
+
+        await sut.RunPromptAsync("C:\\ws", "my-test-prompt");
+
+        capturedPsi.Should().NotBeNull();
+        capturedPsi!.RedirectStandardInput.Should().BeTrue();
+        capturedOutput.Should().Contain("my-test-prompt");
+    }
+
     private static Process CmdProcess(string arguments) =>
         Process.Start(new ProcessStartInfo("cmd.exe")
         {
             Arguments = arguments,
             UseShellExecute = false,
             CreateNoWindow = true,
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         })!;

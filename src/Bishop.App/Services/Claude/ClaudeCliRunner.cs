@@ -43,13 +43,13 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         {
             UseShellExecute = false,
             CreateNoWindow = true,
+            RedirectStandardInput = true,
+            StandardInputEncoding = Encoding.UTF8,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             WorkingDirectory = workspacePath,
         };
         psi.EnvironmentVariables["BISHOP_AUTO_CARD"] = "1";
-        psi.ArgumentList.Add("-p");
-        psi.ArgumentList.Add(prompt);
         psi.ArgumentList.Add("--output-format");
         psi.ArgumentList.Add("stream-json");
         psi.ArgumentList.Add("--verbose");
@@ -97,6 +97,9 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
                     {
                         if (e.Data is not null) AnsiConsole.WriteLine(e.Data);
                     };
+
+                    await proc.StandardInput.WriteAsync(prompt);
+                    proc.StandardInput.Close();
 
                     proc.BeginOutputReadLine();
                     proc.BeginErrorReadLine();

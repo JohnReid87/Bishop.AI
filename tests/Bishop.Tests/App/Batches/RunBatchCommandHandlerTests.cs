@@ -9,6 +9,7 @@ using Bishop.App.Git;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Services.Claude;
 using Bishop.App.Workspaces.CreateWorkspace;
+using Bishop.App.Workspaces.GetWorkspace;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
@@ -82,6 +83,9 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         sender.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
             .Returns(call => new UpdateCardCommandHandler(_factory, sender)
                 .Handle(call.ArgAt<UpdateCardCommand>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<GetWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new GetWorkspaceQueryHandler(_factory)
+                .Handle(call.ArgAt<GetWorkspaceQuery>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }
 
@@ -379,7 +383,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         await claude.Received(1).RunPromptAsync(
             _worktreePath,
-            $"/bish-auto-card #{card.Number}",
+            Arg.Is<string>(p => p.Contains($"/bish-auto-card #{card.Number}")),
             Arg.Any<string?>(),
             Arg.Any<int?>(),
             Arg.Any<CancellationToken>());
@@ -480,7 +484,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         await claude.Received(1).RunPromptAsync(
             _worktreePath,
-            $"/bish-auto-card #{c2.Number}",
+            Arg.Is<string>(p => p.Contains($"/bish-auto-card #{c2.Number}")),
             Arg.Any<string?>(),
             Arg.Any<int?>(),
             Arg.Any<CancellationToken>());
