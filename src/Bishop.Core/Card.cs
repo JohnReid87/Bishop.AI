@@ -26,6 +26,9 @@ public sealed class Card : IAuditable
 
     public Guid? BatchId { get; set; }
 
+    public string? CommitHash { get; set; }
+    public string? BranchName { get; set; }
+
     [JsonIgnore]
     public Workspace Workspace { get; set; } = null!;
 

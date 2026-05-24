@@ -10,6 +10,7 @@ using Bishop.Cli.Cards.Move;
 using Bishop.Cli.Cards.Push;
 using Bishop.Cli.Cards.Remove;
 using Bishop.Cli.Cards.Reopen;
+using Bishop.Cli.Cards.SetCommit;
 using Bishop.Cli.Cards.View;
 using Bishop.Cli.Context.Print;
 using Bishop.Cli.InstallSkills;
@@ -83,6 +84,7 @@ cardCmd.AddCommand(new PushCardCliCommand(mediator, cardResolver));
 cardCmd.AddCommand(new ImportFromGitHubCliCommand(mediator));
 cardCmd.AddCommand(new CloseCardCliCommand(mediator, cardResolver));
 cardCmd.AddCommand(new ReopenCardCliCommand(mediator, cardResolver));
+cardCmd.AddCommand(new SetCommitCardCliCommand(mediator, cardResolver));
 root.AddCommand(cardCmd);
 
 // ── lane ──────────────────────────────────────────────────────────────────────

@@ -14,6 +14,8 @@ internal sealed class CardConfiguration : IEntityTypeConfiguration<Card>
         builder.Property(c => c.LaneName).HasMaxLength(200).IsRequired();
         builder.Property(c => c.TagName).HasMaxLength(100);
         builder.Property(c => c.IsClosed).HasDefaultValue(false);
+        builder.Property(c => c.CommitHash).HasMaxLength(40);
+        builder.Property(c => c.BranchName).HasMaxLength(300);
         builder.Property(c => c.TotalInputTokens).HasDefaultValue(0);
         builder.Property(c => c.TotalOutputTokens).HasDefaultValue(0);
         builder.Property(c => c.ClaudeRunCount).HasDefaultValue(0);

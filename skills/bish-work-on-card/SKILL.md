@@ -210,6 +210,16 @@ destination before any further work begins:
         ```
         git add -A && git commit -m "<message>"
         ```
+     3. On a successful commit, capture the hash and branch then record them —
+        run each git command separately, capture the output, and pass the literal
+        values to `set-commit` (do not use shell variable expansion):
+        ```
+        git log -1 --format=%H
+        git rev-parse --abbrev-ref HEAD
+        bishop card set-commit <number> --hash <full-sha> --branch <branch>
+        ```
+        If `set-commit` exits non-zero, continue — it is non-fatal; the commit
+        has already landed.
      If the commit fails (e.g. pre-commit hook), do NOT roll the card back —
      surface the error and let the user re-run the commit manually.
    - On `n` → leave the card in "Doing" and the working tree as-is. Do not

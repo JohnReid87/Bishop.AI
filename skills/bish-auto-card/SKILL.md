@@ -1,7 +1,7 @@
 ---
 name: bish-auto-card
 description: Unattended sibling of /bish-work-on-card. Accepts a single card Number, implements the card, runs build + tests, commits, and moves the card to "Done" with --no-close. No prompts. Exits non-zero on any failure so a parent loop (bishop work-next) can react. Use when invoked by automation, not interactively.
-allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(git diff:*), Bash(git log:*), Read, Edit, Write, Glob, Grep, Agent
+allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(git diff:*), Bash(git log:*), Bash(git rev-parse:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.category: execute
 ---
 
@@ -244,7 +244,18 @@ remediation sequence.
    leave it in "Doing" and let the staged changes (if any) sit in
    the working tree for the user to inspect.
 
-   On a successful commit, pipe the drafted `### Agent notes` block to
+   On a successful commit, capture the hash and branch then record them —
+   run each git command separately, capture the output, and pass the literal
+   values to `set-commit` (do not use shell variable expansion):
+   ```
+   git log -1 --format=%H
+   git rev-parse --abbrev-ref HEAD
+   bishop card set-commit <number> --hash <full-sha> --branch <branch>
+   ```
+   If `set-commit` exits non-zero, continue anyway — it is non-fatal; the
+   commit has already landed.
+
+   Then pipe the drafted `### Agent notes` block to
    `card edit` via stdin:
    ```
    bishop card edit <number> --append-description-file - --to-lane "Done" --no-close

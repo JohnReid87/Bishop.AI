@@ -12,6 +12,8 @@ public interface IGitCli
 
     Task<GetCardCommitResult> GetCardCommitAsync(int cardNumber, string workspacePath, CancellationToken cancellationToken = default);
 
+    Task<GetCardCommitResult> GetCommitByHashAsync(string fullHash, string workspacePath, CancellationToken cancellationToken = default);
+
     Task<string?> GetOriginUrlAsync(string workspacePath, CancellationToken cancellationToken = default);
 
     Task<PushResult> PushAsync(string workspacePath, CancellationToken cancellationToken = default);

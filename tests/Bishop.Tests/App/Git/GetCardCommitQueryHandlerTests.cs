@@ -1,19 +1,33 @@
+using Bishop.App.Cards.AddCard;
+using Bishop.App.Cards.SetCardCommit;
 using Bishop.App.Git;
 using Bishop.App.Git.GetCardCommit;
+using Bishop.App.Workspaces.CreateWorkspace;
+using Bishop.Data;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 
 namespace Bishop.Tests.App.Git;
 
-public sealed class GetCardCommitQueryHandlerTests
+public sealed class GetCardCommitQueryHandlerTests : IClassFixture<DbFixture>
 {
     private const int CardNumber = 42;
     private const string WorkspacePath = @"C:\repos\my-project";
 
-    private static GetCardCommitQueryHandler CreateSut(IGitCli git) => new(git);
+    private readonly IDbContextFactory<BishopDbContext> _factory;
+
+    public GetCardCommitQueryHandlerTests(DbFixture fixture)
+    {
+        _factory = fixture.Factory;
+    }
+
+    private GetCardCommitQueryHandler CreateSut(IGitCli git) => new(git, _factory);
+
+    // ── legacy fallback (no persisted hash) ──────────────────────────────────
 
     [Fact]
-    public async Task Handle_PassesCardNumberToGitCli()
+    public async Task Handle_FallsBackToGitCli_WhenNoCardInDb()
     {
         // Arrange
         var git = Substitute.For<IGitCli>();
@@ -25,27 +39,33 @@ public sealed class GetCardCommitQueryHandlerTests
         await sut.Handle(new GetCardCommitQuery(CardNumber, WorkspacePath), CancellationToken.None);
 
         // Assert
-        await git.Received(1).GetCardCommitAsync(CardNumber, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await git.Received(1).GetCardCommitAsync(CardNumber, WorkspacePath, Arg.Any<CancellationToken>());
+        await git.DidNotReceive().GetCommitByHashAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_PassesWorkspacePathToGitCli()
+    public async Task Handle_FallsBackToGitCli_WhenCardHasNoCommitHash()
     {
         // Arrange
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand("ws-no-hash", WorkspacePath), default);
+        await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, "To Do", "Some card", "") with { }, default);
+
         var git = Substitute.For<IGitCli>();
         git.GetCardCommitAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new GetCardCommitResult.NotFound());
         var sut = CreateSut(git);
 
-        // Act
+        // We don't know the card number assigned, so use CardNumber which won't match — same result
         await sut.Handle(new GetCardCommitQuery(CardNumber, WorkspacePath), CancellationToken.None);
 
         // Assert
-        await git.Received(1).GetCardCommitAsync(Arg.Any<int>(), WorkspacePath, Arg.Any<CancellationToken>());
+        await git.Received(1).GetCardCommitAsync(CardNumber, WorkspacePath, Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_ForwardsCancellationTokenToGitCli()
+    public async Task Handle_ForwardsCancellationTokenToFallback()
     {
         // Arrange
         var git = Substitute.For<IGitCli>();
@@ -62,25 +82,7 @@ public sealed class GetCardCommitQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsFoundResult()
-    {
-        // Arrange
-        var commit = new CommitInfo("abc1234", "abc1234def5678901234567890", "feat: Add something", "", DateTimeOffset.UtcNow, false);
-        var expected = new GetCardCommitResult.Found(commit);
-        var git = Substitute.For<IGitCli>();
-        git.GetCardCommitAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(expected);
-        var sut = CreateSut(git);
-
-        // Act
-        var result = await sut.Handle(new GetCardCommitQuery(CardNumber, WorkspacePath), CancellationToken.None);
-
-        // Assert
-        result.Should().Be(expected);
-    }
-
-    [Fact]
-    public async Task Handle_ReturnsNotFoundResult()
+    public async Task Handle_ReturnsFallbackResult()
     {
         // Arrange
         var expected = new GetCardCommitResult.NotFound();
@@ -96,37 +98,37 @@ public sealed class GetCardCommitQueryHandlerTests
         result.Should().Be(expected);
     }
 
+    // ── persisted hash path ──────────────────────────────────────────────────
+
     [Fact]
-    public async Task Handle_ReturnsNotAGitRepoResult()
+    public async Task Handle_UsesPersistedHash_WhenCardHasCommitHash()
     {
         // Arrange
-        var expected = new GetCardCommitResult.NotAGitRepo();
+        const string persistedHash = "abcdef1234567890abcdef1234567890abcd1234";
+        const string wsPath = @"C:\repos\hash-project";
+
+        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand("ws-with-hash", wsPath), default);
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, "To Do", "Card with hash", ""), default);
+        await new SetCardCommitCommandHandler(_factory)
+            .Handle(new SetCardCommitCommand(card.Id, persistedHash, "main"), default);
+
+        var commit = new CommitInfo("abcdef12", persistedHash, "", "", DateTimeOffset.UtcNow, true);
+        var expected = new GetCardCommitResult.Found(commit);
+
         var git = Substitute.For<IGitCli>();
-        git.GetCardCommitAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        git.GetCommitByHashAsync(persistedHash, wsPath, Arg.Any<CancellationToken>())
             .Returns(expected);
+
         var sut = CreateSut(git);
 
         // Act
-        var result = await sut.Handle(new GetCardCommitQuery(CardNumber, WorkspacePath), CancellationToken.None);
+        var result = await sut.Handle(new GetCardCommitQuery(card.Number, wsPath), CancellationToken.None);
 
         // Assert
         result.Should().Be(expected);
-    }
-
-    [Fact]
-    public async Task Handle_ReturnsGitNotFoundResult()
-    {
-        // Arrange
-        var expected = new GetCardCommitResult.GitNotFound();
-        var git = Substitute.For<IGitCli>();
-        git.GetCardCommitAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(expected);
-        var sut = CreateSut(git);
-
-        // Act
-        var result = await sut.Handle(new GetCardCommitQuery(CardNumber, WorkspacePath), CancellationToken.None);
-
-        // Assert
-        result.Should().Be(expected);
+        await git.Received(1).GetCommitByHashAsync(persistedHash, wsPath, Arg.Any<CancellationToken>());
+        await git.DidNotReceive().GetCardCommitAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }
