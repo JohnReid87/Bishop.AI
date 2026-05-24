@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Controls;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Bishop.UI;
 
@@ -72,14 +73,30 @@ public partial class App : Application
 
         var dialog = new ContentDialog
         {
-            Title = "Unexpected Error",
-            Content = $"{ex.GetType().Name}: {ex.Message}",
-            CloseButtonText = "OK",
+            Title = "I'm sorry, Dave. I'm afraid I can't do that.",
+            Content = ExceptionDialogHelper.BuildErrorDialogText(ex),
+            PrimaryButtonText = "Copy details",
+            SecondaryButtonText = "Open log folder",
+            CloseButtonText = "Dismiss",
+            DefaultButton = ContentDialogButton.Close,
             XamlRoot = root,
         };
         try
         {
-            await dialog.ShowAsync();
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                var pkg = new DataPackage();
+                pkg.SetText($"{ex.GetType().FullName}\n{ex.Message}\n\n{ex}");
+                Clipboard.SetContent(pkg);
+            }
+            else if (result == ContentDialogResult.Secondary)
+            {
+                var logDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "Bishop.AI");
+                Process.Start("explorer.exe", logDir);
+            }
         }
         catch (COMException)
         {
