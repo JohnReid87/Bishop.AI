@@ -173,4 +173,58 @@ public sealed class WorkNextHeartbeatTests : IDisposable
             File.SetAttributes(_runningFile, FileAttributes.Normal);
         }
     }
+
+    [Fact]
+    public void ReadState_HeartbeatFileLockedAndStopFilePresent_ReportsRunningAndStopping()
+    {
+        File.WriteAllText(_runningFile, $"1234{Environment.NewLine}2026-05-22T00:00:00Z{Environment.NewLine}");
+        File.WriteAllText(_stopFile, "");
+
+        using var lockStream = new FileStream(_runningFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+        var state = WorkNextHeartbeat.ReadState(_bishopDir, _ => true);
+
+        state.IsRunning.Should().BeTrue();
+        state.IsStopping.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ReadState_WhenDeleteThrowsUnauthorizedAccess_DoesNotThrow()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        File.WriteAllText(_runningFile, $"9999{Environment.NewLine}2026-05-22T00:00:00Z{Environment.NewLine}");
+
+        // Deny DELETE on the file and DELETE_CHILD on the parent dir.
+        // FILE_DELETE_CHILD on the parent would otherwise bypass the file-level deny.
+        RunIcacls($"\"{_runningFile}\" /deny Everyone:(DE)");
+        RunIcacls($"\"{_bishopDir}\" /deny Everyone:(DC)");
+
+        try
+        {
+            var act = () => WorkNextHeartbeat.ReadState(_bishopDir, _ => false);
+            act.Should().NotThrow();
+            File.Exists(_runningFile).Should().BeTrue();
+        }
+        finally
+        {
+            RunIcacls($"\"{_runningFile}\" /reset");
+            RunIcacls($"\"{_bishopDir}\" /remove:d Everyone");
+        }
+    }
+
+    private static void RunIcacls(string args)
+    {
+        using var proc = Process.Start(new ProcessStartInfo("icacls", args)
+        {
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        })!;
+        var output = proc.StandardOutput.ReadToEnd();
+        proc.WaitForExit();
+        if (proc.ExitCode != 0)
+            throw new InvalidOperationException($"icacls failed (exit {proc.ExitCode}): {output}");
+    }
 }
