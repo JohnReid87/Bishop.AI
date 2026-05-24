@@ -383,14 +383,18 @@
                     <TabViewItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <TextBlock Text="Monitoring" VerticalAlignment="Center"/>
-                            <InfoBadge Value="{x:Bind Monitoring.BadgeCount, Mode=OneWay}"
-                                       Style="{StaticResource AttentionValueInfoBadgeStyle}"
-                                       Visibility="{x:Bind Monitoring.BadgeIsRed, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                       ToolTipService.ToolTip="{x:Bind Monitoring.BadgeTooltip, Mode=OneWay}"/>
-                            <InfoBadge Value="{x:Bind Monitoring.BadgeCount, Mode=OneWay}"
-                                       Style="{StaticResource CautionValueInfoBadgeStyle}"
-                                       Visibility="{x:Bind Monitoring.BadgeIsAmber, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                       ToolTipService.ToolTip="{x:Bind Monitoring.BadgeTooltip, Mode=OneWay}"/>
+                            <Grid MinWidth="16" MinHeight="16"
+                                  Visibility="{x:Bind Monitoring.BadgeIsVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                  ToolTipService.ToolTip="{x:Bind Monitoring.BadgeTooltip, Mode=OneWay}">
+                                <Rectangle RadiusX="8" RadiusY="8"
+                                           Fill="{x:Bind Monitoring.BadgeColor, Mode=OneWay, Converter={StaticResource HexColorToBrushConverter}}"/>
+                                <TextBlock Text="{x:Bind Monitoring.BadgeCount, Mode=OneWay}"
+                                           Foreground="White"
+                                           FontSize="11"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Margin="6,1"/>
+                            </Grid>
                         </StackPanel>
                     </TabViewItem.Header>
                     <TabViewItem.Content>

@@ -138,8 +138,8 @@ public class WorkspaceMonitoringViewModelTests
         await _vm.LoadAsync(workspaceId, @"C:\fake");
 
         _vm.BadgeCount.Should().Be(0);
-        _vm.BadgeIsRed.Should().BeFalse();
-        _vm.BadgeIsAmber.Should().BeFalse();
+        _vm.BadgeIsVisible.Should().BeFalse();
+        _vm.BadgeColor.Should().BeEmpty();
     }
 
     [Fact]
@@ -147,8 +147,8 @@ public class WorkspaceMonitoringViewModelTests
     {
         await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
 
-        _vm.BadgeIsRed.Should().BeTrue();
-        _vm.BadgeIsAmber.Should().BeFalse();
+        _vm.BadgeIsVisible.Should().BeTrue();
+        _vm.BadgeColor.Should().Be("#ff5555");
         _vm.BadgeCount.Should().Be(TrackedSkills.Length);
         _vm.BadgeTooltip.Should().Be($"{TrackedSkills.Length} of 5 reviews need attention");
     }
@@ -169,8 +169,8 @@ public class WorkspaceMonitoringViewModelTests
 
         await _vm.LoadAsync(workspaceId, @"C:\fake");
 
-        _vm.BadgeIsRed.Should().BeFalse();
-        _vm.BadgeIsAmber.Should().BeTrue();
+        _vm.BadgeIsVisible.Should().BeTrue();
+        _vm.BadgeColor.Should().Be("#c4944f");
         _vm.BadgeCount.Should().Be(TrackedSkills.Length);
     }
 
@@ -192,7 +192,7 @@ public class WorkspaceMonitoringViewModelTests
 
         await _vm.LoadAsync(workspaceId, @"C:\fake");
 
-        _vm.BadgeIsRed.Should().BeTrue();
-        _vm.BadgeIsAmber.Should().BeFalse();
+        _vm.BadgeIsVisible.Should().BeTrue();
+        _vm.BadgeColor.Should().Be("#ff5555");
     }
 }

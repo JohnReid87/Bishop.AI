@@ -29,10 +29,10 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     private int _badgeCount;
 
     [ObservableProperty]
-    private bool _badgeIsRed;
+    private string _badgeColor = string.Empty;
 
     [ObservableProperty]
-    private bool _badgeIsAmber;
+    private bool _badgeIsVisible;
 
     [ObservableProperty]
     private string _badgeTooltip = string.Empty;
@@ -85,8 +85,8 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         var hasRed = Rows.Any(r => r.SeverityRank >= 2);
 
         BadgeCount = attentionCount;
-        BadgeIsRed = hasRed;
-        BadgeIsAmber = !hasRed && attentionCount > 0;
+        BadgeColor = hasRed ? "#ff5555" : attentionCount > 0 ? "#c4944f" : string.Empty;
+        BadgeIsVisible = attentionCount > 0;
         BadgeTooltip = attentionCount > 0
             ? $"{attentionCount} of {TrackedSkills.Length} reviews need attention"
             : string.Empty;
