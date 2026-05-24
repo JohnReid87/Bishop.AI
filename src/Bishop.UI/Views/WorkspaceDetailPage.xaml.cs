@@ -787,8 +787,8 @@ public sealed partial class WorkspaceDetailPage : Page
         if (scrollViewer is not null)
         {
             const double EdgeZone = 48.0;
-            const double MinSpeed = 80.0;
-            const double MaxSpeed = 600.0;
+            const double MinSpeed = 400.0;
+            const double MaxSpeed = 3000.0;
             const double TickMs = 16.0;
 
             var pos = e.GetPosition(scrollViewer);
