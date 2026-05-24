@@ -153,14 +153,20 @@ public sealed partial class WorkspaceDetailPage : Page
     private void OnDatabaseChanged(object? sender, EventArgs e)
     {
         DispatcherQueue.TryEnqueue(async () =>
-            await Board.RefreshCommand.ExecuteAsync(null));
+        {
+            await Board.RefreshCommand.ExecuteAsync(null);
+            await Monitoring.RefreshCommand.ExecuteAsync(null);
+        });
     }
 
     private void OnWindowActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == Microsoft.UI.Xaml.WindowActivationState.Deactivated) return;
         DispatcherQueue.TryEnqueue(async () =>
-            await Board.RefreshCommand.ExecuteAsync(null));
+        {
+            await Board.RefreshCommand.ExecuteAsync(null);
+            await Monitoring.RefreshCommand.ExecuteAsync(null);
+        });
     }
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
