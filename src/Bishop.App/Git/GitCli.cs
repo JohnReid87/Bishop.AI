@@ -658,4 +658,125 @@ public sealed class GitCli : IGitCli
             return int.TryParse(stdout.Trim(), out var count) ? count : null;
         }
     }
+
+    public async Task CreateWorktreeAsync(
+        string workspacePath, string branchName, string baseBranch, string worktreePath,
+        CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("worktree");
+        psi.ArgumentList.Add("add");
+        psi.ArgumentList.Add("-b");
+        psi.ArgumentList.Add(branchName);
+        psi.ArgumentList.Add(worktreePath);
+        psi.ArgumentList.Add(baseBranch);
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            throw new InvalidOperationException("git executable not found", ex);
+        }
+
+        if (proc is null)
+            throw new InvalidOperationException("Failed to start git process");
+
+        using (proc)
+        {
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git worktree add exited {proc.ExitCode}: {stderr.Trim()}");
+        }
+    }
+
+    public async Task RemoveWorktreeAsync(
+        string workspacePath, string worktreePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("worktree");
+        psi.ArgumentList.Add("remove");
+        psi.ArgumentList.Add(worktreePath);
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            throw new InvalidOperationException("git executable not found", ex);
+        }
+
+        if (proc is null)
+            throw new InvalidOperationException("Failed to start git process");
+
+        using (proc)
+        {
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git worktree remove exited {proc.ExitCode}: {stderr.Trim()}");
+        }
+    }
+
+    public async Task<string> GetCurrentBranchAsync(
+        string worktreePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = worktreePath,
+        };
+        psi.ArgumentList.Add("rev-parse");
+        psi.ArgumentList.Add("--abbrev-ref");
+        psi.ArgumentList.Add("HEAD");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            throw new InvalidOperationException("git executable not found", ex);
+        }
+
+        if (proc is null)
+            throw new InvalidOperationException("Failed to start git process");
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git rev-parse exited {proc.ExitCode}: {stderr.Trim()}");
+
+            return stdout.Trim();
+        }
+    }
 }

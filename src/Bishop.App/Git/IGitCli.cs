@@ -23,4 +23,10 @@ public interface IGitCli
     Task CleanWorkingTreeAsync(string workspacePath, CancellationToken cancellationToken = default);
 
     Task<int?> GetCommitCountSinceAsync(string sha, string workspacePath, CancellationToken cancellationToken = default);
+
+    Task CreateWorktreeAsync(string workspacePath, string branchName, string baseBranch, string worktreePath, CancellationToken cancellationToken = default);
+
+    Task RemoveWorktreeAsync(string workspacePath, string worktreePath, CancellationToken cancellationToken = default);
+
+    Task<string> GetCurrentBranchAsync(string worktreePath, CancellationToken cancellationToken = default);
 }
