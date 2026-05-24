@@ -13,7 +13,7 @@ internal sealed class WorkNextCliCommand : Command
 
         var tagOpt = new Option<string?>("--tag", () => null, "Only claim cards carrying this tag (omit for any tag)");
         var maxOpt = new Option<int>("--max", () => 10, "Max cards to process; 0 means uncapped");
-        var modelOpt = new Option<string?>("--model", () => null, "Claude model ID to pass to claude (omit to use claude's default)");
+        var modelOpt = new Option<string?>("--model", () => "claude-sonnet-4-6", "Claude model ID to pass to claude (default: claude-sonnet-4-6)");
 
         AddOption(CommonOptions.WorkspaceOption);
         AddOption(tagOpt);

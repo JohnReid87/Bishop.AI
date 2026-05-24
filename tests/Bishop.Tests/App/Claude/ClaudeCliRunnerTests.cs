@@ -254,6 +254,44 @@ public sealed class ClaudeCliRunnerTests
         capturedPsi!.ArgumentList.Should().NotContain("--model");
     }
 
+    [Fact]
+    public async Task RunPromptAsync_AlwaysAppendsPermissionModeBypassPermissions()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        ProcessStartInfo? capturedPsi = null;
+        Func<ProcessStartInfo, Process?> starter = psi =>
+        {
+            capturedPsi = psi;
+            return CmdProcess("/c exit 0");
+        };
+        var sut = new ClaudeCliRunner(resolver, starter);
+
+        await sut.RunPromptAsync("C:\\ws", "hello");
+
+        capturedPsi.Should().NotBeNull();
+        capturedPsi!.ArgumentList.Should().ContainInOrder("--permission-mode", "bypassPermissions");
+    }
+
+    [Fact]
+    public async Task RunPromptAsync_AlwaysSetsAutoCardEnvVar()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        ProcessStartInfo? capturedPsi = null;
+        Func<ProcessStartInfo, Process?> starter = psi =>
+        {
+            capturedPsi = psi;
+            return CmdProcess("/c exit 0");
+        };
+        var sut = new ClaudeCliRunner(resolver, starter);
+
+        await sut.RunPromptAsync("C:\\ws", "hello");
+
+        capturedPsi.Should().NotBeNull();
+        capturedPsi!.EnvironmentVariables["BISHOP_AUTO_CARD"].Should().Be("1");
+    }
+
     private static Process CmdProcess(string arguments) =>
         Process.Start(new ProcessStartInfo("cmd.exe")
         {

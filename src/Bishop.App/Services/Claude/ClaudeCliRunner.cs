@@ -45,11 +45,14 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
             RedirectStandardError = true,
             WorkingDirectory = workspacePath,
         };
+        psi.EnvironmentVariables["BISHOP_AUTO_CARD"] = "1";
         psi.ArgumentList.Add("-p");
         psi.ArgumentList.Add(prompt);
         psi.ArgumentList.Add("--output-format");
         psi.ArgumentList.Add("stream-json");
         psi.ArgumentList.Add("--verbose");
+        psi.ArgumentList.Add("--permission-mode");
+        psi.ArgumentList.Add("bypassPermissions");
         if (model is not null)
         {
             psi.ArgumentList.Add("--model");
