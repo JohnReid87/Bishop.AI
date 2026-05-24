@@ -8,6 +8,7 @@ using System.CommandLine;
 
 namespace Bishop.Tests.Cli.Workspaces.List;
 
+[Collection("ConsoleTests")]
 public sealed class ListWorkspacesCliCommandTests
 {
     [Fact]
