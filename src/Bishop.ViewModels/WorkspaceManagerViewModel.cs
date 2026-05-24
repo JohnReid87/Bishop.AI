@@ -10,12 +10,12 @@ namespace Bishop.ViewModels;
 
 public sealed partial class WorkspaceManagerViewModel : ObservableObject
 {
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
     private readonly IWorkspaceChangeNotifier _notifier;
 
     public ObservableCollection<WorkspaceManagerItemViewModel> Workspaces { get; } = [];
 
-    public WorkspaceManagerViewModel(IMediator mediator, IWorkspaceChangeNotifier notifier)
+    public WorkspaceManagerViewModel(ISender mediator, IWorkspaceChangeNotifier notifier)
     {
         _mediator = mediator;
         _notifier = notifier;

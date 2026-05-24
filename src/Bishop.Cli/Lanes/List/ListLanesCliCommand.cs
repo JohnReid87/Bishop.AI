@@ -15,7 +15,7 @@ internal sealed class ListLanesCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ListLanesCliCommand(IMediator mediator) : base("list", "List lanes in a workspace")
+    public ListLanesCliCommand(ISender mediator) : base("list", "List lanes in a workspace")
     {
         var resolver = new WorkspaceResolver(mediator);
 

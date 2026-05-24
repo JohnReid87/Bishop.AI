@@ -6,7 +6,7 @@ namespace Bishop.Cli.Workspaces.Init;
 
 internal sealed class InitWorkspaceCliCommand : Command
 {
-    public InitWorkspaceCliCommand(IMediator mediator) : base("init", "Register a directory as a workspace")
+    public InitWorkspaceCliCommand(ISender mediator) : base("init", "Register a directory as a workspace")
     {
         var pathOpt = new Option<string?>("--path", "Directory to initialise (defaults to cwd)");
         var nameOpt = new Option<string?>("--name", "Workspace name (defaults to directory name)");

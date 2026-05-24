@@ -6,7 +6,7 @@ namespace Bishop.Cli.Context.Print;
 
 internal sealed class PrintContextCliCommand : Command
 {
-    public PrintContextCliCommand(IMediator mediator)
+    public PrintContextCliCommand(ISender mediator)
         : base("print", "Print the workspace context file, or a single named section")
     {
         var resolver = new WorkspaceResolver(mediator);

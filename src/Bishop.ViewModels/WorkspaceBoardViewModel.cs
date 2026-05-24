@@ -10,7 +10,7 @@ namespace Bishop.ViewModels;
 
 public sealed partial class WorkspaceBoardViewModel : ObservableObject
 {
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
     private Guid _workspaceId;
 
     public ObservableCollection<LaneViewModel> Lanes { get; } = [];
@@ -27,7 +27,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         OnPropertyChanged(nameof(IsSearchEmpty));
     }
 
-    public WorkspaceBoardViewModel(IMediator mediator) => _mediator = mediator;
+    public WorkspaceBoardViewModel(ISender mediator) => _mediator = mediator;
 
     public async Task LoadAsync(Guid workspaceId)
     {

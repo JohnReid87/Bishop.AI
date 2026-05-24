@@ -12,12 +12,12 @@ public sealed partial class ImportFromGitHubDialog : ContentDialog
 {
     private readonly Guid _workspaceId;
     private readonly string _repo;
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
     private readonly IGhCli _ghCli;
 
     public ImportFromGitHubDialogViewModel ViewModel { get; } = new();
 
-    public ImportFromGitHubDialog(Guid workspaceId, string repo, IMediator mediator, IGhCli ghCli)
+    public ImportFromGitHubDialog(Guid workspaceId, string repo, ISender mediator, IGhCli ghCli)
     {
         _workspaceId = workspaceId;
         _repo = repo;

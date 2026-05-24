@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Bishop.Cli;
 
-internal sealed class CardResolver(IMediator mediator)
+internal sealed class CardResolver(ISender mediator)
 {
     private readonly WorkspaceResolver _workspaceResolver = new(mediator);
 

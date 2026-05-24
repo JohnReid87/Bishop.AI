@@ -198,7 +198,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private async Task LoadSkillsAsync()
     {
-        var mediator = App.Services.GetRequiredService<IMediator>();
+        var mediator = App.Services.GetRequiredService<ISender>();
         var skills = await mediator.Send(new DiscoverSkillsQuery());
         _cardSkills = SkillMenuBuilder.Build(skills, "card");
         _workspaceSkills = SkillMenuBuilder.Build(skills, "workspace");
@@ -229,7 +229,7 @@ public sealed partial class WorkspaceDetailPage : Page
         => await SafeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
-            var mediator = App.Services.GetRequiredService<IMediator>();
+            var mediator = App.Services.GetRequiredService<ISender>();
             var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path, SnapHelper.ComputeSnap()));
             FallbackWarningBar.IsOpen = !launchedWithTerminal;
             UpdateNotificationPanel();
@@ -239,7 +239,7 @@ public sealed partial class WorkspaceDetailPage : Page
         => await SafeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
-            var mediator = App.Services.GetRequiredService<IMediator>();
+            var mediator = App.Services.GetRequiredService<ISender>();
             await mediator.Send(new LaunchPlainTerminalCommand(_item.Path, SnapHelper.ComputeSnap()));
         });
 
@@ -290,7 +290,7 @@ public sealed partial class WorkspaceDetailPage : Page
         if (_item is null) return;
         var workspacePath = _item.Path;
         var gitHubRepo = _item.GitHubRepo;
-        var mediator = App.Services.GetRequiredService<IMediator>();
+        var mediator = App.Services.GetRequiredService<ISender>();
         var result = await mediator.Send(new GetRecentCommitsQuery(workspacePath));
 
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
@@ -586,7 +586,7 @@ public sealed partial class WorkspaceDetailPage : Page
         => await SafeAsync.RunAsync(async () =>
         {
             if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
-            var mediator = App.Services.GetRequiredService<IMediator>();
+            var mediator = App.Services.GetRequiredService<ISender>();
 
             if (card.IsClosed)
                 await mediator.Send(new ReopenCardCommand(card.Id));
@@ -631,7 +631,7 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         if (_item is null) return;
 
-        var mediator = App.Services.GetRequiredService<IMediator>();
+        var mediator = App.Services.GetRequiredService<ISender>();
         IReadOnlyList<Bishop.Core.TagInfo> allTags;
         try
         {
@@ -667,7 +667,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 rendered = $"{rendered} {input}";
         }
 
-        var mediator = App.Services.GetRequiredService<IMediator>();
+        var mediator = App.Services.GetRequiredService<ISender>();
         await mediator.Send(new LaunchSkillCommand(workspacePath, rendered, SnapHelper.ComputeSnap(), modelId));
     }
 
@@ -725,7 +725,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
             if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
-            var mediator = App.Services.GetRequiredService<IMediator>();
+            var mediator = App.Services.GetRequiredService<ISender>();
             var repo = repoBox.Text.Trim();
             if (string.IsNullOrEmpty(repo))
             {
@@ -799,7 +799,7 @@ public sealed partial class WorkspaceDetailPage : Page
             _draggedCard = null;
             _dragSourceLane = null;
 
-            var mediator = App.Services.GetRequiredService<IMediator>();
+            var mediator = App.Services.GetRequiredService<ISender>();
             await mediator.Send(new MoveCardCommand(card.Id, targetLaneName, position));
             await Board.RefreshCommand.ExecuteAsync(null);
         });
@@ -826,7 +826,7 @@ public sealed partial class WorkspaceDetailPage : Page
             if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
             if (!lane.CanWorkNext) return;
 
-            var mediator = App.Services.GetRequiredService<IMediator>();
+            var mediator = App.Services.GetRequiredService<ISender>();
             var appSettings = App.Services.GetRequiredService<IAppSettings>();
             var tags = await mediator.Send(new ListTagsByWorkspaceQuery(_item.Id));
             var lastModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync("workNext.last_model"));
@@ -856,7 +856,7 @@ public sealed partial class WorkspaceDetailPage : Page
         => await SafeAsync.RunAsync(async () =>
         {
             if (_item?.GitHubRepo is not { } repo) return;
-            var mediator = App.Services.GetRequiredService<IMediator>();
+            var mediator = App.Services.GetRequiredService<ISender>();
             var ghCli = App.Services.GetRequiredService<IGhCli>();
             var dialog = new ImportFromGitHubDialog(_item.Id, repo, mediator, ghCli) { XamlRoot = XamlRoot };
             await dialog.ShowAsync();
@@ -870,7 +870,7 @@ public sealed partial class WorkspaceDetailPage : Page
             if (_item?.GitHubRepo is null) return;
             var doneLane = Board.Lanes.FirstOrDefault(l => l.IsDoneLane);
             if (doneLane is null) return;
-            var mediator = App.Services.GetRequiredService<IMediator>();
+            var mediator = App.Services.GetRequiredService<ISender>();
             var dialog = new PushLaneToGitHubDialog(_item.Id, doneLane.Name, doneLane.Cards.ToList(), mediator) { XamlRoot = XamlRoot };
             await dialog.ShowAsync();
             if (dialog.ViewModel.WasPushed)

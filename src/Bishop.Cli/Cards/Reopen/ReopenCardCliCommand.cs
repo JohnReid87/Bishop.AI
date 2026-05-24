@@ -6,7 +6,7 @@ namespace Bishop.Cli.Cards.Reopen;
 
 internal sealed class ReopenCardCliCommand : Command
 {
-    public ReopenCardCliCommand(IMediator mediator, CardResolver cardResolver)
+    public ReopenCardCliCommand(ISender mediator, CardResolver cardResolver)
         : base("reopen", "Reopen a closed card")
     {
         var cardIdArg = new Argument<string>("card-id", "Card short ID or prefix");

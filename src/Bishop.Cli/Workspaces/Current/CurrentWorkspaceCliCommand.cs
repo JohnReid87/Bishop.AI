@@ -14,7 +14,7 @@ internal sealed class CurrentWorkspaceCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public CurrentWorkspaceCliCommand(IMediator mediator)
+    public CurrentWorkspaceCliCommand(ISender mediator)
         : base("current", "Show the workspace whose path is an ancestor of cwd")
     {
         var resolver = new WorkspaceResolver(mediator);

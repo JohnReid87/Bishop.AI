@@ -15,7 +15,7 @@ internal sealed class ListTagsCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ListTagsCliCommand(IMediator mediator) : base("list", "List tags in a workspace")
+    public ListTagsCliCommand(ISender mediator) : base("list", "List tags in a workspace")
     {
         var resolver = new WorkspaceResolver(mediator);
 

@@ -7,7 +7,7 @@ namespace Bishop.Cli.Cards.Add;
 
 internal sealed class AddCardCliCommand : Command
 {
-    public AddCardCliCommand(IMediator mediator) : base("add", "Add a card to a lane")
+    public AddCardCliCommand(ISender mediator) : base("add", "Add a card to a lane")
     {
         var resolver = new WorkspaceResolver(mediator);
         var laneNameOpt = new Option<string>("--lane", "Lane name") { IsRequired = true };

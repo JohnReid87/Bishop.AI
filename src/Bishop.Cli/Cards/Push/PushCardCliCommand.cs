@@ -7,7 +7,7 @@ namespace Bishop.Cli.Cards.Push;
 
 internal sealed class PushCardCliCommand : Command
 {
-    public PushCardCliCommand(IMediator mediator, CardResolver cardResolver)
+    public PushCardCliCommand(ISender mediator, CardResolver cardResolver)
         : base("push", "Push a card to GitHub Issues")
     {
         var resolver = new WorkspaceResolver(mediator);

@@ -18,7 +18,7 @@ internal sealed class ViewCardCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ViewCardCliCommand(IMediator mediator, CardResolver cardResolver)
+    public ViewCardCliCommand(ISender mediator, CardResolver cardResolver)
         : base("view", "Show details of a card")
     {
         var cardViewIdArg = new Argument<string>("card-id", "Card short ID or prefix");

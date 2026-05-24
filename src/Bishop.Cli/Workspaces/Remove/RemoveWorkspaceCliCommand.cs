@@ -6,7 +6,7 @@ namespace Bishop.Cli.Workspaces.Remove;
 
 internal sealed class RemoveWorkspaceCliCommand : Command
 {
-    public RemoveWorkspaceCliCommand(IMediator mediator)
+    public RemoveWorkspaceCliCommand(ISender mediator)
         : base("remove", "Archive a workspace (soft-delete); card data is preserved")
     {
         var resolver = new WorkspaceResolver(mediator);

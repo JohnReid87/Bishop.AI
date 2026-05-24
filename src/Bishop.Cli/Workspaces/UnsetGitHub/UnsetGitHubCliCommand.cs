@@ -6,7 +6,7 @@ namespace Bishop.Cli.Workspaces.UnsetGitHub;
 
 internal sealed class UnsetGitHubCliCommand : Command
 {
-    public UnsetGitHubCliCommand(IMediator mediator)
+    public UnsetGitHubCliCommand(ISender mediator)
         : base("unset-github", "Remove the GitHub repo association from a workspace")
     {
         var resolver = new WorkspaceResolver(mediator);

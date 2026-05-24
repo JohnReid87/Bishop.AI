@@ -16,7 +16,7 @@ internal sealed class ListCardsCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ListCardsCliCommand(IMediator mediator) : base("list", "List cards in a workspace")
+    public ListCardsCliCommand(ISender mediator) : base("list", "List cards in a workspace")
     {
         var resolver = new WorkspaceResolver(mediator);
         var tagOption = new Option<string?>("--tag", "Return only cards with this tag");

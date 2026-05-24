@@ -10,9 +10,9 @@ namespace Bishop.App.Skills.GetSkillBootstrapInfo;
 public sealed class GetSkillBootstrapInfoQueryHandler : IRequestHandler<GetSkillBootstrapInfoQuery, SkillBootstrapInfo>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
 
-    public GetSkillBootstrapInfoQueryHandler(IDbContextFactory<BishopDbContext> dbFactory, IMediator mediator)
+    public GetSkillBootstrapInfoQueryHandler(IDbContextFactory<BishopDbContext> dbFactory, ISender mediator)
     {
         _dbFactory = dbFactory;
         _mediator = mediator;

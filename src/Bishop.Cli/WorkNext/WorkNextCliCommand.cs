@@ -6,7 +6,7 @@ namespace Bishop.Cli.WorkNext;
 
 internal sealed class WorkNextCliCommand : Command
 {
-    public WorkNextCliCommand(IMediator mediator)
+    public WorkNextCliCommand(ISender mediator)
         : base("work-next", "Loop: claim a tagged card and run claude on it until exhaustion, failure, or cap")
     {
         var resolver = new WorkspaceResolver(mediator);

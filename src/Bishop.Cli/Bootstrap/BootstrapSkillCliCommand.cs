@@ -16,7 +16,7 @@ internal sealed class BootstrapSkillCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public BootstrapSkillCliCommand(IMediator mediator)
+    public BootstrapSkillCliCommand(ISender mediator)
         : base("bootstrap", "Emit workspace + tag/lane info for a skill preamble. Non-zero exit if not in a workspace.")
     {
         var resolver = new WorkspaceResolver(mediator);

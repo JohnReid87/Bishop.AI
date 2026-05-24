@@ -22,7 +22,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         @"(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`]*`)|(\\#\d+)|((?<!\w)#(\d+)\b)",
         RegexOptions.Compiled);
 
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
     private readonly Guid _workspaceId;
     private readonly string? _workspaceGitHubRepo;
     private HashSet<int>? _validCardNumbers;
@@ -154,7 +154,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     [ObservableProperty]
     public partial bool Deleted { get; set; }
 
-    public CardDetailDialogViewModel(CardViewModel card, SkillMenuItem[] cardSkills, Guid workspaceId, string? gitHubRepo, IMediator mediator)
+    public CardDetailDialogViewModel(CardViewModel card, SkillMenuItem[] cardSkills, Guid workspaceId, string? gitHubRepo, ISender mediator)
     {
         _mediator = mediator;
         _workspaceId = workspaceId;

@@ -33,7 +33,7 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     public CardDetailDialog(CardViewModel card, SkillMenuItem[] cardSkills, string workspacePath, Guid workspaceId, string? gitHubRepo)
     {
-        var mediator = App.Services.GetRequiredService<IMediator>();
+        var mediator = App.Services.GetRequiredService<ISender>();
         _cardSkills = cardSkills;
         _workspacePath = workspacePath;
         _workspaceId = workspaceId;
@@ -58,7 +58,7 @@ public sealed partial class CardDetailDialog : ContentDialog
     {
         try
         {
-            var mediator = App.Services.GetRequiredService<IMediator>();
+            var mediator = App.Services.GetRequiredService<ISender>();
             var card = await mediator.Send(new GetCardQuery(cardId));
             if (card is null) return;
 
@@ -92,7 +92,7 @@ public sealed partial class CardDetailDialog : ContentDialog
 
             try
             {
-                var mediator = App.Services.GetRequiredService<IMediator>();
+                var mediator = App.Services.GetRequiredService<ISender>();
                 var card = await mediator.Send(new GetCardByNumberQuery(targetNumber, _workspaceId));
                 if (card is null)
                 {
@@ -312,7 +312,7 @@ public sealed partial class CardDetailDialog : ContentDialog
     {
         // Card-context launch: skip the stage dialog. The rendered command already
         // has {{card_number}} substituted, so any stage_prompt would be redundant.
-        var mediator = App.Services.GetRequiredService<IMediator>();
+        var mediator = App.Services.GetRequiredService<ISender>();
         await mediator.Send(new LaunchSkillCommand(_workspacePath, rendered, SnapHelper.ComputeSnap(), modelId));
     }
 

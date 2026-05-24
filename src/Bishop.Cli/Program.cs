@@ -44,7 +44,7 @@ using var host = builder.Build();
 
 await host.StartAsync();
 
-var mediator = host.Services.GetRequiredService<IMediator>();
+var mediator = host.Services.GetRequiredService<ISender>();
 var cardResolver = new CardResolver(mediator);
 
 var root = new RootCommand("Bishop AI — kanban CLI");

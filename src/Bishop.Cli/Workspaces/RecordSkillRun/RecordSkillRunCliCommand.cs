@@ -6,7 +6,7 @@ namespace Bishop.Cli.Workspaces.RecordSkillRun;
 
 internal sealed class RecordSkillRunCliCommand : Command
 {
-    public RecordSkillRunCliCommand(IMediator mediator)
+    public RecordSkillRunCliCommand(ISender mediator)
         : base("record-skill-run", "Record that a review skill ran on the current workspace")
     {
         var resolver = new WorkspaceResolver(mediator);

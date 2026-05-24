@@ -7,7 +7,7 @@ namespace Bishop.Cli.Cards.Edit;
 
 internal sealed class EditCardCliCommand : Command
 {
-    public EditCardCliCommand(IMediator mediator, CardResolver cardResolver)
+    public EditCardCliCommand(ISender mediator, CardResolver cardResolver)
         : base("edit", "Edit a card's title, description, or tag")
     {
         var cardEditIdArg = new Argument<string>("card-id", "Card short ID or prefix");

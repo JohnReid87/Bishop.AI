@@ -10,7 +10,7 @@ namespace Bishop.ViewModels;
 
 public sealed partial class LaneViewModel : ObservableObject
 {
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
     private readonly Func<Task> _refreshBoard;
 
     private string _currentFilter = string.Empty;
@@ -61,7 +61,7 @@ public sealed partial class LaneViewModel : ObservableObject
 
     public bool HasAddCardError => AddCardErrorMessage is not null;
 
-    public LaneViewModel(IMediator mediator, Func<Task> refreshBoard)
+    public LaneViewModel(ISender mediator, Func<Task> refreshBoard)
     {
         _mediator = mediator;
         _refreshBoard = refreshBoard;

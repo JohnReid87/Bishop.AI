@@ -16,7 +16,7 @@ internal sealed class ClaimCardCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ClaimCardCliCommand(IMediator mediator) : base("claim", "Pick the top card from a lane and move it to Doing")
+    public ClaimCardCliCommand(ISender mediator) : base("claim", "Pick the top card from a lane and move it to Doing")
     {
         var resolver = new WorkspaceResolver(mediator);
         var claimSourceLaneOpt = new Option<string>("--lane", () => SystemLaneNames.ToDo, "Source lane to claim from");

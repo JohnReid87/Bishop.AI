@@ -8,7 +8,7 @@ namespace Bishop.Cli.Workspaces.Purge;
 
 internal sealed class PurgeWorkspaceCliCommand : Command
 {
-    public PurgeWorkspaceCliCommand(IMediator mediator)
+    public PurgeWorkspaceCliCommand(ISender mediator)
         : base("purge", "Hard-delete an archived workspace and all its cards")
     {
         var pathOpt = new Option<string?>("--path", "Path of the archived workspace to purge");

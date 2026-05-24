@@ -9,13 +9,13 @@ namespace Bishop.ViewModels;
 
 public sealed partial class BishopSettingsViewModel : ObservableObject
 {
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
 
     public string WorkspacePath { get; set; } = string.Empty;
 
     public ObservableCollection<InstalledSkill> MetaSkills { get; } = [];
 
-    public BishopSettingsViewModel(IMediator mediator) => _mediator = mediator;
+    public BishopSettingsViewModel(ISender mediator) => _mediator = mediator;
 
     public async Task LoadAsync()
     {

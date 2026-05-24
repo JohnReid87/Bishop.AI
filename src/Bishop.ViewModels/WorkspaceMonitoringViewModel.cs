@@ -20,7 +20,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         "bish-security",
     ];
 
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
     private readonly IGitCli _gitCli;
     private readonly IAppSettings _appSettings;
     private Guid _workspaceId;
@@ -40,7 +40,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     [ObservableProperty]
     private string _badgeTooltip = string.Empty;
 
-    public WorkspaceMonitoringViewModel(IMediator mediator, IGitCli gitCli, IAppSettings appSettings)
+    public WorkspaceMonitoringViewModel(ISender mediator, IGitCli gitCli, IAppSettings appSettings)
     {
         _mediator = mediator;
         _gitCli = gitCli;

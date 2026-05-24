@@ -6,7 +6,7 @@ namespace Bishop.Cli.Workspaces.SetGitHub;
 
 internal sealed class SetGitHubCliCommand : Command
 {
-    public SetGitHubCliCommand(IMediator mediator)
+    public SetGitHubCliCommand(ISender mediator)
         : base("set-github", "Associate workspace with a GitHub repo")
     {
         var resolver = new WorkspaceResolver(mediator);

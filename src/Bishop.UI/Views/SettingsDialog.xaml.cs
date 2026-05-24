@@ -73,7 +73,7 @@ public sealed partial class SettingsDialog : ContentDialog
             if (input.Length > 0) command = $"{command} {input}";
         }
 
-        var mediator = App.Services.GetRequiredService<IMediator>();
+        var mediator = App.Services.GetRequiredService<ISender>();
         await mediator.Send(new LaunchSkillCommand(workspacePath, command, SnapHelper.ComputeSnap(), modelId));
     }
 

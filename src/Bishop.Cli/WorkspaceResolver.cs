@@ -4,7 +4,7 @@ using MediatR;
 
 namespace Bishop.Cli;
 
-internal sealed class WorkspaceResolver(IMediator mediator)
+internal sealed class WorkspaceResolver(ISender mediator)
 {
     public async Task<Workspace> ResolveAsync(string? workspaceOption, CancellationToken cancellationToken = default)
     {

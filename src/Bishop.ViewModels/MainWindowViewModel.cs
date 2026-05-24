@@ -16,7 +16,7 @@ namespace Bishop.ViewModels;
 
 public sealed partial class MainWindowViewModel : ObservableObject
 {
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
     private readonly IWorkspaceChangeNotifier _notifier;
     private readonly IUiDispatcher _dispatcher;
 
@@ -40,13 +40,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private readonly string _navPrefsFilePath;
 
-    public MainWindowViewModel(IMediator mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher)
+    public MainWindowViewModel(ISender mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher)
         : this(mediator, catMode, notifier, dispatcher, Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Bishop.AI", "nav-prefs.json"))
     { }
 
-    internal MainWindowViewModel(IMediator mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, string navPrefsFilePath)
+    internal MainWindowViewModel(ISender mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, string navPrefsFilePath)
     {
         _mediator = mediator;
         _notifier = notifier;

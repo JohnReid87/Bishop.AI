@@ -6,7 +6,7 @@ namespace Bishop.Cli.Cards.Remove;
 
 internal sealed class RemoveCardCliCommand : Command
 {
-    public RemoveCardCliCommand(IMediator mediator, CardResolver cardResolver)
+    public RemoveCardCliCommand(ISender mediator, CardResolver cardResolver)
         : base("remove", "Remove a card")
     {
         var cardRemoveIdArg = new Argument<string>("card-id", "Card short ID or prefix");

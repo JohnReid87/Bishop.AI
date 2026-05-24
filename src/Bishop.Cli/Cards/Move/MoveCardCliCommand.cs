@@ -6,7 +6,7 @@ namespace Bishop.Cli.Cards.Move;
 
 internal sealed class MoveCardCliCommand : Command
 {
-    public MoveCardCliCommand(IMediator mediator, CardResolver cardResolver)
+    public MoveCardCliCommand(ISender mediator, CardResolver cardResolver)
         : base("move", "Move a card to another lane or position")
     {
         var cardIdArg = new Argument<string>("card-id", "Card short ID or prefix");

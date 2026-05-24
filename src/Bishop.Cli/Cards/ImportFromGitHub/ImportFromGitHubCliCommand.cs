@@ -15,7 +15,7 @@ internal sealed class ImportFromGitHubCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ImportFromGitHubCliCommand(IMediator mediator) : base("import-from-github", "Import open GitHub issues as cards in the To Do lane")
+    public ImportFromGitHubCliCommand(ISender mediator) : base("import-from-github", "Import open GitHub issues as cards in the To Do lane")
     {
         var resolver = new WorkspaceResolver(mediator);
         var importLabelOpt = new Option<string?>("--label", "Filter to issues carrying this GitHub label");

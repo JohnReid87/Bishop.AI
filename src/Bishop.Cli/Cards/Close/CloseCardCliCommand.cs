@@ -6,7 +6,7 @@ namespace Bishop.Cli.Cards.Close;
 
 internal sealed class CloseCardCliCommand : Command
 {
-    public CloseCardCliCommand(IMediator mediator, CardResolver cardResolver)
+    public CloseCardCliCommand(ISender mediator, CardResolver cardResolver)
         : base("close", "Mark a card as closed")
     {
         var cardIdArg = new Argument<string>("card-id", "Card short ID or prefix");

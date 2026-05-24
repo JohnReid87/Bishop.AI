@@ -9,11 +9,11 @@ public sealed partial class PushLaneToGitHubDialog : ContentDialog
 {
     private readonly Guid _workspaceId;
     private readonly string _laneName;
-    private readonly IMediator _mediator;
+    private readonly ISender _mediator;
 
     public PushLaneToGitHubDialogViewModel ViewModel { get; }
 
-    public PushLaneToGitHubDialog(Guid workspaceId, string laneName, IReadOnlyList<CardViewModel> cards, IMediator mediator)
+    public PushLaneToGitHubDialog(Guid workspaceId, string laneName, IReadOnlyList<CardViewModel> cards, ISender mediator)
     {
         _workspaceId = workspaceId;
         _laneName = laneName;

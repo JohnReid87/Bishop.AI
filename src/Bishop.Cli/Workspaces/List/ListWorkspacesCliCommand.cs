@@ -18,7 +18,7 @@ internal sealed class ListWorkspacesCliCommand : Command
     private static readonly Option<bool> s_includeRemovedOpt =
         new("--include-removed", "Include archived (removed) workspaces in the output");
 
-    public ListWorkspacesCliCommand(IMediator mediator) : base("list", "List all workspaces")
+    public ListWorkspacesCliCommand(ISender mediator) : base("list", "List all workspaces")
     {
         AddOption(CommonOptions.JsonOption);
         AddOption(s_includeRemovedOpt);
