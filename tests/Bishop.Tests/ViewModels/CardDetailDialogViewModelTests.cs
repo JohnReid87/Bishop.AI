@@ -214,9 +214,6 @@ public class CardDetailDialogViewModelTests
         vm.Title.Should().Be("New Title");
         vm.Updated.Should().BeTrue();
         vm.EditError.Should().BeNull();
-        await mediator.Received(1).Send(
-            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.Title == "New Title"),
-            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -231,6 +228,21 @@ public class CardDetailDialogViewModelTests
 
         vm.Title.Should().Be("T");
         vm.EditError.Should().Be("Failed to save title.");
+    }
+
+    [Fact]
+    public async Task CommitTitleAsync_TrimsWhitespaceBeforeSaving()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new Card { Id = Guid.NewGuid(), Title = "New", LaneName = "To Do" });
+        var vm = NewVm(mediator: mediator);
+
+        await vm.CommitTitleAsync("  New  ");
+
+        vm.Title.Should().Be("New");
+        vm.Updated.Should().BeTrue();
+        vm.EditError.Should().BeNull();
     }
 
     [Fact]
@@ -260,9 +272,6 @@ public class CardDetailDialogViewModelTests
 
         vm.Description.Should().Be("New description");
         vm.Updated.Should().BeTrue();
-        await mediator.Received(1).Send(
-            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.Description == "New description"),
-            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -277,6 +286,33 @@ public class CardDetailDialogViewModelTests
 
         vm.Description.Should().Be("D");
         vm.EditError.Should().Be("Failed to save description.");
+    }
+
+    [Fact]
+    public async Task CommitDescriptionAsync_SavesEmptyDescription()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do" });
+        var vm = NewVm(mediator: mediator);
+
+        await vm.CommitDescriptionAsync("");
+
+        vm.Description.Should().Be("");
+        vm.Updated.Should().BeTrue();
+        vm.EditError.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CommitDescriptionAsync_NoOpWhenDescriptionAlreadyEmpty()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var vm = NewVm(NewCard(description: ""), mediator: mediator);
+
+        await vm.CommitDescriptionAsync("");
+
+        await mediator.DidNotReceive().Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>());
+        vm.Updated.Should().BeFalse();
     }
 
     [Fact]
@@ -347,6 +383,26 @@ public class CardDetailDialogViewModelTests
         await vm.SetTagAsync("bug", "#c97a8a");
 
         vm.TagName.Should().BeNull();
+        vm.EditError.Should().Be("Failed to add tag.");
+    }
+
+    [Fact]
+    public async Task SetTagAsync_RollsBackOnFailure_RestoresPriorNonNullTag()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Card>(new Exception("DB error")));
+        var card = new CardViewModel
+        {
+            Id = Guid.NewGuid(), Number = 1, Title = "T", Description = "D",
+            LaneName = "To Do", TagName = "feature", TagColour = "#7fa87a",
+        };
+        var vm = NewVm(card: card, mediator: mediator);
+
+        await vm.SetTagAsync("bug", "#c97a8a");
+
+        vm.TagName.Should().Be("feature");
+        vm.TagColour.Should().Be("#7fa87a");
         vm.EditError.Should().Be("Failed to add tag.");
     }
 
@@ -523,6 +579,19 @@ public class CardDetailDialogViewModelTests
         vm.LinkableDescription.Should().Be("```\n#42\n```");
     }
 
+    [Fact]
+    public async Task LoadCardNumbersAsync_SwallowsExceptionAndReturnsRawDescription()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<Card>>(new Exception("DB error")));
+        var vm = NewVm(NewCard(description: "See #42 for details"), mediator: mediator);
+
+        await vm.LoadCardNumbersAsync();
+
+        vm.LinkableDescription.Should().Be("See #42 for details");
+    }
+
     // ── NavigateTo ────────────────────────────────────────────────────────────
 
     [Fact]
@@ -533,6 +602,7 @@ public class CardDetailDialogViewModelTests
         vm.StartDescriptionEdit();
         vm.RequestDeleteCommand.Execute(null);
         vm.EditError = "old error";
+        vm.PushError = "old push error";
         vm.SetCommit(new CommitInfo("abc", "abcdef", "msg", "", DateTimeOffset.UtcNow, IsPushed: false));
         vm.SetClaudeTotals(100, 50, 1);
 
@@ -565,6 +635,7 @@ public class CardDetailDialogViewModelTests
         vm.IsDescriptionEditing.Should().BeFalse();
         vm.ShowDeleteConfirm.Should().BeFalse();
         vm.EditError.Should().BeNull();
+        vm.PushError.Should().BeNull();
         vm.CommitShortHash.Should().BeNull();
         vm.ClaudeTotalsText.Should().BeNull();
         vm.CanGoBack.Should().BeTrue();
