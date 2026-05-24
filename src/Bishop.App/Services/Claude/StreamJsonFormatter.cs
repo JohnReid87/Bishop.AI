@@ -8,11 +8,13 @@ public sealed class StreamJsonFormatter
     private const int MaxSummaryLength = 120;
 
     private readonly Action<string>? _onStatus;
+    private readonly Action<PermissionDeniedEvent>? _onDenial;
     private int _toolUseCount;
 
-    public StreamJsonFormatter(Action<string>? onStatus = null)
+    public StreamJsonFormatter(Action<string>? onStatus = null, Action<PermissionDeniedEvent>? onDenial = null)
     {
         _onStatus = onStatus;
+        _onDenial = onDenial;
     }
 
     public ClaudeRunTotals? Totals { get; private set; }
@@ -55,6 +57,7 @@ public sealed class StreamJsonFormatter
                 "assistant" => FormatAssistant(root),
                 "user" => FormatUser(root),
                 "result" => FormatResult(root),
+                "system" => FormatSystem(root),
                 _ => null,
             };
         }
@@ -195,6 +198,35 @@ public sealed class StreamJsonFormatter
         };
 
         return string.Join(", ", parts);
+    }
+
+    private string? FormatSystem(JsonElement root)
+    {
+        if (!root.TryGetProperty("subtype", out var subtypeProp)
+            || subtypeProp.GetString() != "permission_denied")
+            return null;
+
+        if (_onDenial is null) return null;
+
+        var tool = root.TryGetProperty("tool", out var toolProp) && toolProp.ValueKind == JsonValueKind.String
+            ? toolProp.GetString()
+            : null;
+        var command = ExtractDeniedCommand(root);
+        var message = root.TryGetProperty("message", out var msgProp) && msgProp.ValueKind == JsonValueKind.String
+            ? msgProp.GetString()
+            : null;
+
+        _onDenial(new PermissionDeniedEvent(tool, command, message));
+        return null;
+    }
+
+    private static string? ExtractDeniedCommand(JsonElement root)
+    {
+        if (!root.TryGetProperty("toolInput", out var ti) || ti.ValueKind != JsonValueKind.Object)
+            return null;
+        return ti.TryGetProperty("command", out var cmd) && cmd.ValueKind == JsonValueKind.String
+            ? cmd.GetString()
+            : null;
     }
 
     private static int ReadInt(JsonElement obj, string name)

@@ -6,5 +6,6 @@ public interface IClaudeCliRunner
         string workspacePath,
         string prompt,
         string? model = null,
+        int? cardNumber = null,
         CancellationToken cancellationToken = default);
 }

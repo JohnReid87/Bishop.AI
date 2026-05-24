@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using Spectre.Console;
 
 namespace Bishop.App.Services.Claude;
@@ -25,6 +26,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         string workspacePath,
         string prompt,
         string? model = null,
+        int? cardNumber = null,
         CancellationToken cancellationToken = default)
     {
         string claudePath;
@@ -82,7 +84,9 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("Working...", async ctx =>
                 {
-                    var formatter = new StreamJsonFormatter(label => ctx.Status(label));
+                    var formatter = new StreamJsonFormatter(
+                        onStatus: label => ctx.Status(label),
+                        onDenial: ev => AppendDenial(workspacePath, cardNumber, ev));
                     proc.OutputDataReceived += (_, e) =>
                     {
                         if (e.Data is null) return;
@@ -105,6 +109,32 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
             return new ClaudeRunResult(proc.ExitCode, totals, toolUseCount);
         }
     }
+
+    private static readonly JsonSerializerOptions DenialSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
+
+    private static void AppendDenial(string workspacePath, int? cardNumber, PermissionDeniedEvent ev)
+    {
+        var bishopDir = Path.Combine(workspacePath, ".bishop");
+        Directory.CreateDirectory(bishopDir);
+        var entry = new DenialLogEntry(
+            DateTimeOffset.UtcNow.ToString("o"),
+            cardNumber,
+            ev.Tool,
+            ev.Command,
+            ev.Message);
+        var json = JsonSerializer.Serialize(entry, DenialSerializerOptions);
+        File.AppendAllText(Path.Combine(bishopDir, "denials.jsonl"), json + "\n");
+    }
+
+    private sealed record DenialLogEntry(
+        string Timestamp,
+        int? CardNumber,
+        string? Tool,
+        string? Command,
+        string? Message);
 
     private static string BuildNotFoundMessage(ClaudeNotFoundException ex)
     {

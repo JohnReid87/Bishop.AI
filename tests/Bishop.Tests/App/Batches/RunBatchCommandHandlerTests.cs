@@ -90,7 +90,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     private static IClaudeCliRunner ClaudeAlwaysSucceeds()
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(0, null, 0));
         return claude;
     }
@@ -98,7 +98,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     private static IClaudeCliRunner ClaudeReturnsExitCode(int exitCode)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(exitCode, null, 0));
         return claude;
     }
@@ -290,7 +290,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         result.StopReason.Should().Be(RunBatchStopReason.DirtyWorktree);
         result.DirtyPaths.Should().Equal("src/foo.cs");
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
 
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
         saved.Status.Should().Be(BatchStatus.Working);
@@ -312,7 +312,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
         result.StopReason.Should().Be(RunBatchStopReason.NotAGitRepo);
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -331,7 +331,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
         result.StopReason.Should().Be(RunBatchStopReason.GitNotFound);
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     // ── Claude invocation ──────────────────────────────────────────────────────
@@ -350,6 +350,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             WorktreePath,
             Arg.Any<string>(),
             Arg.Any<string?>(),
+            Arg.Any<int?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -367,6 +368,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             WorktreePath,
             $"/bish-auto-card #{card.Number}",
             Arg.Any<string?>(),
+            Arg.Any<int?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -384,6 +386,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             Arg.Any<string>(),
             Arg.Any<string>(),
             "claude-sonnet-4-6",
+            Arg.Any<int?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -397,7 +400,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var batch = await CreateBatchAsync(card.Id);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(0, new ClaudeRunTotals(1000, 250), 0));
 
         await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
@@ -478,6 +481,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             WorktreePath,
             $"/bish-auto-card #{c2.Number}",
             Arg.Any<string?>(),
+            Arg.Any<int?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -500,7 +504,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         result.StopReason.Should().Be(RunBatchStopReason.Finished);
         result.Succeeded.Should().Be(0);
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
 
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
         saved.Status.Should().Be(BatchStatus.Closed);

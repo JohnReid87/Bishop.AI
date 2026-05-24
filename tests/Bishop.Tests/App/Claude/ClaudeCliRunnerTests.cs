@@ -124,7 +124,7 @@ public sealed class ClaudeCliRunnerTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => sut.RunPromptAsync("C:\\ws", "hello", null, cts.Token);
+        var act = () => sut.RunPromptAsync("C:\\ws", "hello", null, null, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -290,6 +290,140 @@ public sealed class ClaudeCliRunnerTests
 
         capturedPsi.Should().NotBeNull();
         capturedPsi!.EnvironmentVariables["BISHOP_AUTO_CARD"].Should().Be("1");
+    }
+
+    [Fact]
+    public async Task RunPromptAsync_WithPermissionDeniedEvent_AppendsLineToDenialsJsonl()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            Func<ProcessStartInfo, Process?> starter = _ =>
+            {
+                var psi = new ProcessStartInfo("cmd.exe")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    Arguments = "/c more",
+                };
+                var proc = Process.Start(psi)!;
+                proc.StandardInput.WriteLine("{\"type\":\"system\",\"subtype\":\"permission_denied\",\"tool\":\"Bash\",\"toolInput\":{\"command\":\"git push\"},\"message\":\"denied\"}");
+                proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":100}");
+                proc.StandardInput.Close();
+                return proc;
+            };
+            var sut = new ClaudeCliRunner(resolver, starter);
+
+            await sut.RunPromptAsync(tempDir, "hello", cardNumber: 99);
+
+            var denialsPath = Path.Combine(tempDir, ".bishop", "denials.jsonl");
+            File.Exists(denialsPath).Should().BeTrue();
+            var lines = File.ReadAllLines(denialsPath).Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+            lines.Should().HaveCount(1);
+            using var doc = System.Text.Json.JsonDocument.Parse(lines[0]);
+            var root = doc.RootElement;
+            root.GetProperty("card_number").GetInt32().Should().Be(99);
+            root.GetProperty("tool").GetString().Should().Be("Bash");
+            root.GetProperty("command").GetString().Should().Be("git push");
+            root.GetProperty("message").GetString().Should().Be("denied");
+            root.TryGetProperty("timestamp", out _).Should().BeTrue();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RunPromptAsync_WithPermissionDeniedEvent_AndNullCardNumber_WritesNullCardNumber()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            Func<ProcessStartInfo, Process?> starter = _ =>
+            {
+                var psi = new ProcessStartInfo("cmd.exe")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    Arguments = "/c more",
+                };
+                var proc = Process.Start(psi)!;
+                proc.StandardInput.WriteLine("{\"type\":\"system\",\"subtype\":\"permission_denied\",\"tool\":\"Bash\",\"toolInput\":{\"command\":\"rm -rf /\"},\"message\":\"denied\"}");
+                proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":100}");
+                proc.StandardInput.Close();
+                return proc;
+            };
+            var sut = new ClaudeCliRunner(resolver, starter);
+
+            await sut.RunPromptAsync(tempDir, "hello");
+
+            var denialsPath = Path.Combine(tempDir, ".bishop", "denials.jsonl");
+            File.Exists(denialsPath).Should().BeTrue();
+            var lines = File.ReadAllLines(denialsPath).Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+            lines.Should().HaveCount(1);
+            using var doc = System.Text.Json.JsonDocument.Parse(lines[0]);
+            doc.RootElement.GetProperty("card_number").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RunPromptAsync_WithMultipleDeniedEvents_AppendsOneLineEach()
+    {
+        var resolver = Substitute.For<IClaudeExecutableResolver>();
+        resolver.Resolve().Returns("claude");
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            Func<ProcessStartInfo, Process?> starter = _ =>
+            {
+                var psi = new ProcessStartInfo("cmd.exe")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    Arguments = "/c more",
+                };
+                var proc = Process.Start(psi)!;
+                proc.StandardInput.WriteLine("{\"type\":\"system\",\"subtype\":\"permission_denied\",\"tool\":\"Bash\",\"toolInput\":{\"command\":\"git push\"},\"message\":\"denied1\"}");
+                proc.StandardInput.WriteLine("{\"type\":\"system\",\"subtype\":\"permission_denied\",\"tool\":\"Bash\",\"toolInput\":{\"command\":\"curl https://x\"},\"message\":\"denied2\"}");
+                proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":100}");
+                proc.StandardInput.Close();
+                return proc;
+            };
+            var sut = new ClaudeCliRunner(resolver, starter);
+
+            await sut.RunPromptAsync(tempDir, "hello", cardNumber: 7);
+
+            var denialsPath = Path.Combine(tempDir, ".bishop", "denials.jsonl");
+            var lines = File.ReadAllLines(denialsPath).Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+            lines.Should().HaveCount(2);
+            foreach (var line in lines)
+                System.Text.Json.JsonDocument.Parse(line).Dispose();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
     }
 
     private static Process CmdProcess(string arguments) =>

@@ -100,7 +100,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
     private static IClaudeCliRunner ClaudeAlwaysSucceeds(ClaudeRunTotals? totals = null, int toolUseCount = 0)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(0, totals, toolUseCount));
         return claude;
     }
@@ -108,7 +108,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
     private static IClaudeCliRunner ClaudeReturnsExitCode(int exitCode)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(exitCode, null, 0));
         return claude;
     }
@@ -153,7 +153,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         // Assert
         result.Succeeded.Should().Be(2);
         result.StopReason.Should().Be(WorkNextStopReason.EmptyLane);
-        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         // Assert
         result.Succeeded.Should().Be(2);
         result.StopReason.Should().Be(WorkNextStopReason.CapReached);
-        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
 
         var callCount = 0;
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 callCount++;
@@ -213,7 +213,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         result.Succeeded.Should().Be(1);
         result.StopReason.Should().Be(WorkNextStopReason.EmptyLane);
         result.FailedCardNumbers.Should().Equal(second.Number);
-        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.Received(2).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -287,7 +287,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         result.StopReason.Should().Be(WorkNextStopReason.DirtyWorkingTree);
         result.DirtyPaths.Should().Equal("src/foo.cs", "README.md");
         result.FailedCardNumbers.Should().BeNull();
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -312,6 +312,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             WorkspacePath,
             $"/bish-auto-card #{card.Number}",
             Arg.Any<string?>(),
+            Arg.Any<int?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -573,7 +574,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         // Assert
         result.Succeeded.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.NotAGitRepo);
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -598,7 +599,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         // Assert
         result.Succeeded.Should().Be(0);
         result.StopReason.Should().Be(WorkNextStopReason.GitNotFound);
-        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -610,7 +611,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(workspace.Id, todo.Name,"T1", TagName: "test"), default);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<ClaudeRunResult>(new InvalidOperationException("runner failed")));
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
 
@@ -660,6 +661,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             WorkspacePath,
             Arg.Any<string>(),
             "claude-sonnet-4-6",
+            Arg.Any<int?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -738,7 +740,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         await add.Handle(new AddCardCommand(workspace.Id, todo.Name,"T1", TagName: "test"), default);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 // Drop a stop file mid-run, after the first card finishes.
@@ -756,7 +758,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         result.StopReason.Should().Be(WorkNextStopReason.Cancelled);
         result.Succeeded.Should().Be(1);
         File.Exists(StopFile).Should().BeFalse();
-        await claude.Received(1).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await claude.Received(1).RunPromptAsync(WorkspacePath, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -795,7 +797,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
 
         var heartbeatExistedDuringRun = false;
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 heartbeatExistedDuringRun = File.Exists(RunningFile);
@@ -823,7 +825,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
 
         string? captured = null;
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 captured = File.ReadAllText(RunningFile);
@@ -963,7 +965,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(workspace.Id, todo.Name,"T2", TagName: "test"), default);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 File.WriteAllText(StopFile, "");
@@ -988,7 +990,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         await new AddCardCommandHandler(_factory).Handle(new AddCardCommand(workspace.Id, todo.Name,"T1", TagName: "test"), default);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<ClaudeRunResult>(new InvalidOperationException("boom")));
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
 

@@ -94,7 +94,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
             Console.Out.WriteLine(startLine);
 
             var prompt = $"/bish-auto-card #{card.Number}";
-            var runResult = await _claude.RunPromptAsync(batch.WorktreePath, prompt, request.Model, cancellationToken);
+            var runResult = await _claude.RunPromptAsync(batch.WorktreePath, prompt, request.Model, card.Number, cancellationToken);
 
             Console.Out.WriteLine($"exit {runResult.ExitCode}");
 

@@ -27,6 +27,72 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
+    public void Format_System_PermissionDenied_InvokesOnDenialCallback_WithToolCommandMessage()
+    {
+        PermissionDeniedEvent? captured = null;
+        var sut = new StreamJsonFormatter(onDenial: ev => captured = ev);
+
+        sut.Format("""{"type":"system","subtype":"permission_denied","tool":"Bash","toolInput":{"command":"git push"},"message":"denied"}""");
+
+        captured.Should().NotBeNull();
+        captured!.Tool.Should().Be("Bash");
+        captured.Command.Should().Be("git push");
+        captured.Message.Should().Be("denied");
+    }
+
+    [Fact]
+    public void Format_System_PermissionDenied_ReturnsNull()
+    {
+        var sut = new StreamJsonFormatter(onDenial: _ => { });
+        var result = sut.Format("""{"type":"system","subtype":"permission_denied","tool":"Bash","toolInput":{"command":"git push"},"message":"denied"}""");
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_System_PermissionDenied_DoesNotInvokeCallback_WhenOnDenialIsNull()
+    {
+        var sut = new StreamJsonFormatter();
+        var act = () => sut.Format("""{"type":"system","subtype":"permission_denied","tool":"Bash","toolInput":{"command":"git push"},"message":"denied"}""");
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Format_System_NonDenialSubtype_DoesNotInvokeCallback()
+    {
+        var callbackHits = 0;
+        var sut = new StreamJsonFormatter(onDenial: _ => callbackHits++);
+        sut.Format("""{"type":"system","subtype":"init"}""");
+        callbackHits.Should().Be(0);
+    }
+
+    [Fact]
+    public void Format_System_PermissionDenied_MissingFields_InvokesCallbackWithNulls()
+    {
+        PermissionDeniedEvent? captured = null;
+        var sut = new StreamJsonFormatter(onDenial: ev => captured = ev);
+
+        sut.Format("""{"type":"system","subtype":"permission_denied"}""");
+
+        captured.Should().NotBeNull();
+        captured!.Tool.Should().BeNull();
+        captured.Command.Should().BeNull();
+        captured.Message.Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_System_PermissionDenied_ToolInputWithoutCommand_ProducesNullCommand()
+    {
+        PermissionDeniedEvent? captured = null;
+        var sut = new StreamJsonFormatter(onDenial: ev => captured = ev);
+
+        sut.Format("""{"type":"system","subtype":"permission_denied","tool":"Read","toolInput":{"file_path":"x.txt"}}""");
+
+        captured.Should().NotBeNull();
+        captured!.Command.Should().BeNull();
+        captured.Tool.Should().Be("Read");
+    }
+
+    [Fact]
     public void Format_Returns_Null_When_Json_Is_Not_Object()
     {
         new StreamJsonFormatter().Format("[1,2,3]").Should().BeNull();

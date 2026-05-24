@@ -80,7 +80,7 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
 
                 var prompt = $"/bish-auto-card #{card.Number}";
                 var claudeSw = Stopwatch.StartNew();
-                var runResult = await _claude.RunPromptAsync(request.WorkspacePath, prompt, request.Model, cancellationToken);
+                var runResult = await _claude.RunPromptAsync(request.WorkspacePath, prompt, request.Model, card.Number, cancellationToken);
                 claudeSw.Stop();
 
                 var recordElapsed = TimeSpan.Zero;
