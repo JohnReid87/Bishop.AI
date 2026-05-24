@@ -21,5 +21,10 @@ internal sealed class CardConfiguration : IEntityTypeConfiguration<Card>
                .WithMany(w => w.Cards)
                .HasForeignKey(c => c.WorkspaceId)
                .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(c => c.Batch)
+               .WithMany(b => b.Cards)
+               .HasForeignKey(c => c.BatchId)
+               .OnDelete(DeleteBehavior.SetNull)
+               .IsRequired(false);
     }
 }

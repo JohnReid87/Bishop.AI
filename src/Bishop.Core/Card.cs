@@ -24,6 +24,11 @@ public sealed class Card : IAuditable
     public int ClaudeRunCount { get; set; }
     public DateTimeOffset? LastAutoRunFailedAt { get; set; }
 
+    public Guid? BatchId { get; set; }
+
     [JsonIgnore]
     public Workspace Workspace { get; set; } = null!;
+
+    [JsonIgnore]
+    public Batch? Batch { get; set; }
 }
