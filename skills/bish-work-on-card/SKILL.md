@@ -8,7 +8,9 @@ bishop.stage: false
 bishop.category: execute
 ---
 
-Shell tool selection (Bash vs PowerShell) — follow [bishop context print --section "Shell selection"](.bishop/BISHOP_CONTEXT.md#shell-selection-stable) (STABLE).
+> Recommended model: Sonnet 4.6 — procedure-following; extended reasoning not required.
+
+The context-pack below bundles workspace metadata, task data (card body), recent git history, and Bishop convention procedures (including shell tool selection) used by both Bishop CLI and Claude — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---
 
@@ -23,73 +25,71 @@ and start a fresh session for each subsequent card.
 
 <what-to-do>
 
-**Before anything else — initialize from `bishop skill bootstrap`:**
+**Before anything else — load the context-pack:**
 
-Run `bishop skill bootstrap`. If it exits non-zero, surface the stderr line
-verbatim to the user and STOP — the helper already explains the remediation.
-On success, echo the workspace name back so the user can confirm the
-destination before any further work begins:
+**Path A — user supplied a Number:**
+```
+bishop context-pack work-on-card --card <number>
+```
+If the command exits non-zero, surface the stderr message as-is and STOP.
+Do NOT guess which card the user meant.
 
-> **Workspace:** <name>
+**Path B — no Number supplied:** claim the top of "To Do" first:
+```
+bishop card claim --json
+```
+If the command exits non-zero (empty source lane), STOP and surface the
+stderr message as-is — do not invent a card.
 
----
+Parse the claim JSON and ask the user to confirm:
 
-**For the card:**
+> Claimed `#N` — '<title>' from [To Do]. Work on this card?
+> (`y` to proceed / paste a different Number / `n` to skip)
 
-1. **Fetch the card.** Two paths depending on what the user supplied.
+- On `y` → proceed. Then call:
+  ```
+  bishop context-pack work-on-card --card <N>
+  ```
+- On a different Number → revert the claim first:
+  ```
+  bishop card move <claimed-number> --to-lane "To Do" --to-position 1
+  ```
+  Then call:
+  ```
+  bishop context-pack work-on-card --card <user-number>
+  ```
+- On `n` → revert the claim and STOP:
+  ```
+  bishop card move <claimed-number> --to-lane "To Do" --to-position 1
+  ```
 
-   **Path A — user supplied a Number:**
-   ```
-   bishop card view <number> --json
-   ```
-   If the command exits non-zero (no match), STOP and surface the stderr
-   message as-is. Do NOT guess which card the user meant.
+**Parse the context-pack JSON** (applies to both paths):
+- `workspace.name` — echo back so the user can confirm the destination:
+  > **Workspace:** <name>
+- `skillSpecific.card` — card metadata (`number`, `title`, `description`,
+  `laneName`, `tag`, `isClosed`). If this is `null`, the card was not found — STOP.
+- `workspace.contextMd` — project orientation text (used in step 2 below).
+- `conventions` — STABLE procedure sections. Use `conventions["Shell selection"]`
+  when choosing the Bash vs PowerShell tool throughout this run.
+- `git.commits` — recent commit history.
 
-   **Path B — no Number supplied:** claim the top of "To Do":
-   ```
-   bishop card claim --json
-   ```
-   If the command exits non-zero (empty source lane), STOP and surface the
-   stderr message as-is — do not invent a card.
+**Closed-card guard:** If `isClosed` is `true`:
+- If you are on Path B (the card was just claimed), revert the claim first:
+  ```
+  bishop card move <claimed-number> --to-lane "To Do" --to-position 1
+  ```
+- STOP and output this error:
+  > Card #N is already closed — run `bishop card reopen <number>` first if
+  > you want to work on it.
 
-   Parse the JSON and ask the user to confirm:
+Do NOT echo the title, move the card to "Doing", or begin any implementation.
 
-   > Claimed `#N` — '<title>' from [To Do]. Work on this card?
-   > (`y` to proceed / paste a different Number / `n` to skip)
+Echo the card title back on its own line so the user can confirm the right
+card was loaded before any move or implementation:
 
-   - On `y` → proceed. The card is already in "Doing", so step 2 is a no-op.
-   - On a different Number → revert the claim, then restart this step
-     using their Number (Path A):
-     ```
-     bishop card move <claimed-number> --to-lane "To Do" --to-position 1
-     ```
-   - On `n` → revert the claim and STOP:
-     ```
-     bishop card move <claimed-number> --to-lane "To Do" --to-position 1
-     ```
+> **Card #N:** <title>
 
-   Parse the JSON of the final chosen card and capture:
-   - `number` — the canonical `#N` reference (used in commit messages and
-     headings, regardless of what the user typed)
-   - `title`, `description`, `laneName`, `tags`, `isClosed`
-
-   **Closed-card guard:** If `isClosed` is `true`:
-   - If you are on Path B (the card was just claimed), revert the claim first:
-     ```
-     bishop card move <claimed-number> --to-lane "To Do" --to-position 1
-     ```
-   - STOP and output this error (exit non-zero):
-     > Card #N is already closed — run `bishop card reopen <number>` first if
-     > you want to work on it.
-
-   Do NOT echo the title, move the card to "Doing", or begin any implementation.
-
-   Echo the card title back on its own line so the user can confirm the right
-   card was loaded before any move or implementation:
-
-   > **Card #N:** <title>
-
-2. **Auto-move the card to "Doing"** (no prompt — mirrors the work-on-issue
+1. **Auto-move the card to "Doing"** (no prompt — mirrors the work-on-issue
    contract of "start work without asking"):
    ```
    bishop card move <number> --to-lane "Doing" --to-position 0
@@ -98,30 +98,29 @@ destination before any further work begins:
    If the move fails (e.g. the workspace has no "Doing" lane), STOP and surface
    the error. Do not invent a substitute lane name.
 
-   Skip this step if `laneName` from step 1 is already "Doing" (this includes
-   the Path B happy-path, where `card claim` already moved the card).
+   Skip this step if `laneName` from the context-pack is already "Doing" (this
+   includes the Path B happy-path, where `card claim` already moved the card).
 
-3. Read CONTEXT.md to orient yourself in the domain and solution structure.
-
-4. Explore the codebase areas relevant to the card **via the Explore subagent**
+2. Explore the codebase areas relevant to the card **via the Explore subagent**
    before writing any code.
    - Use the `Agent` tool with `subagent_type: "Explore"`.
-   - Brief it with: the card title + description, relevant CONTEXT.md sections,
-     and the specific questions you need answered ("where is X defined", "which
-     files would need to change to add Y", "what existing patterns handle Z").
+   - Brief it with: the card title + description, relevant `workspace.contextMd`
+     sections from the context-pack, and the specific questions you need answered
+     ("where is X defined", "which files would need to change to add Y", "what
+     existing patterns handle Z").
    - Ask it to return file paths + line numbers + short excerpts, NOT to dump
      whole files. Keep large file contents out of the main context.
    - Only fall back to direct Read/Grep when the Explore agent's findings need
      a targeted follow-up on a specific file/line range you already know about.
-   - Follow any dependency order or architectural conventions in CONTEXT.md.
+   - Follow any dependency order or architectural conventions in `workspace.contextMd`.
      Do not modify layers or modules the card does not require.
 
-5. Implement the changes described in the card's description.
+3. Implement the changes described in the card's description.
    - Match the coding style, naming conventions, and patterns already present.
    - Do not add libraries or introduce patterns not already in use.
    - Do not gold-plate — implement exactly what the card describes.
 
-6. **Test coverage check** — before validating, analyse what was changed:
+4. **Test coverage check** — before validating, analyse what was changed:
    - Identify any files added or modified in production projects (paths that do
      NOT contain `.Tests` or `Tests` in a directory segment).
    - If production files were touched, assess whether the new or changed code
@@ -141,11 +140,11 @@ destination before any further work begins:
    - If the card is already tagged `test`, or only test files changed, skip
      this check entirely.
 
-7. Validate the changes:
+5. Validate the changes:
    - Run the build (`dotnet build`) and confirm it succeeds.
    - Run the tests (`dotnet test`) and confirm none are broken.
 
-8. Output a concise completion summary:
+6. Output a concise completion summary:
 
    ## Done — Card #N: <title>
    **Files changed:**
@@ -157,7 +156,7 @@ destination before any further work begins:
    **Follow-up cards to consider:**
    - <anything discovered that is out of scope but worth tracking>
 
-9. **Draft Agent notes**, then ask the user to confirm finalizing the card.
+7. **Draft Agent notes**, then ask the user to confirm finalizing the card.
 
    Before the prompt, silently compose an `### Agent notes` block from the
    session context. Use this template, **omitting any section that has no
@@ -179,8 +178,8 @@ destination before any further work begins:
    - <what ran, what was added>
    ````
 
-   Derive a pre-filled Conventional Commits proposal from the card's first tag
-   (captured in step 1) and title:
+   Derive a pre-filled Conventional Commits proposal from the card's `tag`
+   (from the context-pack) and title:
 
    Tag → prefix mapping:
    - `feature` → `feat`
