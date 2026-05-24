@@ -55,6 +55,16 @@
                         Spacing="4"
                         VerticalAlignment="Center"
                         Margin="16,0,0,0">
+                <Button x:Name="CreateBatchButton"
+                        Padding="8,4"
+                        Visibility="{x:Bind Board.HasSelection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                        Click="CreateBatch_Click"
+                        ToolTipService.ToolTip="Create a batch from the selected cards">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE8F1;" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="{x:Bind Board.SelectionLabel, Mode=OneWay}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <Button x:Name="WorkspaceSkillsButton"
                         Padding="8,4"
                         Visibility="Collapsed"
@@ -281,6 +291,7 @@
                                                               Tag="{x:Bind}">
                                                             <Border Background="{StaticResource AppCardBackgroundBrush}"
                                                                     CornerRadius="4">
+
                                                             <StackPanel>
                                                                 <!-- Card header: drag handle -->
                                                                 <local:SizeAllCursorGrid Padding="{x:Bind IsDoneLane, Converter={StaticResource BoolToThicknessConverter}, ConverterParameter='10,2,4,2|10,4,4,4'}"
@@ -366,6 +377,13 @@
                                                                 </local:HandCursorGrid>
                                                             </StackPanel>
                                                             </Border>
+                                                            <!-- Selection highlight overlay -->
+                                                            <Border CornerRadius="4"
+                                                                    IsHitTestVisible="False"
+                                                                    BorderBrush="{StaticResource AppCardSelectionBorderBrush}"
+                                                                    BorderThickness="2"
+                                                                    Background="{StaticResource AppCardSelectionBrush}"
+                                                                    Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                                         </Grid>
                                                     </DataTemplate>
                                                 </ItemsRepeater.ItemTemplate>
@@ -383,6 +401,7 @@
                                         BorderThickness="2"
                                         Background="{StaticResource AppDragTargetBrush}"
                                         Visibility="{x:Bind IsDropTarget, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>
@@ -525,6 +544,123 @@
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
                             </ListView>
+                        </Grid>
+                    </TabViewItem.Content>
+                </TabViewItem>
+
+                <TabViewItem Header="Batches" IsClosable="False">
+                    <TabViewItem.Content>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Table header -->
+                            <Grid Grid.Row="0"
+                                  Padding="16,12,16,8"
+                                  BorderBrush="{StaticResource AppDividerBrush}"
+                                  BorderThickness="0,0,0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Name"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBlock Grid.Column="1" Text="Branch"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBlock Grid.Column="2" Text="Status"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBlock Grid.Column="3" Text="Cards"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                            </Grid>
+
+                            <!-- Batch rows -->
+                            <Grid Grid.Row="1">
+                                <TextBlock Text="No open batches."
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"
+                                           Visibility="{x:Bind Batches.HasBatches, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                <ListView ItemsSource="{x:Bind Batches.Batches}"
+                                          SelectionMode="None"
+                                          Padding="0,4,0,12"
+                                          Visibility="{x:Bind Batches.HasBatches, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="Margin" Value="0"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:BatchItemViewModel">
+                                            <Grid Padding="16,8"
+                                                  BorderBrush="{StaticResource AppDividerBrush}"
+                                                  BorderThickness="0,0,0,1">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="70"/>
+                                                    <ColumnDefinition Width="60"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{x:Bind Name}"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{x:Bind BranchName}"
+                                                           FontFamily="Cascadia Mono"
+                                                           FontSize="11"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{StaticResource AppTextSecondaryBrush}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{x:Bind StatusLabel}"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{x:Bind CardCountLabel}"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                                <StackPanel Grid.Column="4"
+                                                            Orientation="Horizontal"
+                                                            Spacing="6"
+                                                            VerticalAlignment="Center">
+                                                    <Button Content="Run"
+                                                            Padding="8,4"
+                                                            FontSize="12"
+                                                            Click="BatchRun_Click"
+                                                            Visibility="{x:Bind CanRun, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                            ToolTipService.ToolTip="Launch batch run in terminal"/>
+                                                    <Button Content="Finish"
+                                                            Padding="8,4"
+                                                            FontSize="12"
+                                                            Click="BatchFinish_Click"
+                                                            Visibility="{x:Bind CanFinish, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                            ToolTipService.ToolTip="Push branch and create PR"/>
+                                                    <Button Content="Abandon"
+                                                            Padding="8,4"
+                                                            FontSize="12"
+                                                            Click="BatchAbandon_Click"
+                                                            Visibility="{x:Bind CanAbandon, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                            ToolTipService.ToolTip="Restore cards to To Do and remove worktree"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Grid>
                         </Grid>
                     </TabViewItem.Content>
                 </TabViewItem>

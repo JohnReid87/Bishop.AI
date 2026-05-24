@@ -509,4 +509,133 @@ public class WorkspaceBoardViewModelTests
 
         vm.Lanes.Should().HaveCount(1);
     }
+
+    [Fact]
+    public void HasSelection_FalseWhenNoCardsSelected()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        lane.Cards.Add(new CardViewModel { Title = "Alpha" });
+        vm.Lanes.Add(lane);
+
+        vm.HasSelection.Should().BeFalse();
+        vm.SelectionCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void ToggleCardSelection_SelectsUnselectedCard()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card = new CardViewModel { Title = "Alpha" };
+        lane.Cards.Add(card);
+        vm.Lanes.Add(lane);
+
+        vm.ToggleCardSelection(card);
+
+        card.IsSelected.Should().BeTrue();
+        vm.HasSelection.Should().BeTrue();
+        vm.SelectionCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void ToggleCardSelection_DeselectsSelectedCard()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card = new CardViewModel { Title = "Alpha" };
+        lane.Cards.Add(card);
+        vm.Lanes.Add(lane);
+        vm.ToggleCardSelection(card);
+
+        vm.ToggleCardSelection(card);
+
+        card.IsSelected.Should().BeFalse();
+        vm.HasSelection.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ClearSelection_DeselectsAllCards()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card1 = new CardViewModel { Title = "Alpha" };
+        var card2 = new CardViewModel { Title = "Beta" };
+        lane.Cards.Add(card1);
+        lane.Cards.Add(card2);
+        vm.Lanes.Add(lane);
+        vm.ToggleCardSelection(card1);
+        vm.ToggleCardSelection(card2);
+
+        vm.ClearSelection();
+
+        card1.IsSelected.Should().BeFalse();
+        card2.IsSelected.Should().BeFalse();
+        vm.HasSelection.Should().BeFalse();
+        vm.SelectionCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void SelectedCards_ReturnsOnlySelectedCards()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card1 = new CardViewModel { Title = "Alpha" };
+        var card2 = new CardViewModel { Title = "Beta" };
+        lane.Cards.Add(card1);
+        lane.Cards.Add(card2);
+        vm.Lanes.Add(lane);
+
+        vm.ToggleCardSelection(card1);
+
+        vm.SelectedCards.Should().ContainSingle().Which.Title.Should().Be("Alpha");
+    }
+
+    [Fact]
+    public void SelectionLabel_ShowsCountWithSingularForOneCard()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card = new CardViewModel { Title = "Alpha" };
+        lane.Cards.Add(card);
+        vm.Lanes.Add(lane);
+
+        vm.ToggleCardSelection(card);
+
+        vm.SelectionLabel.Should().Be("1 selected");
+    }
+
+    [Fact]
+    public void SelectionLabel_ShowsPluralForMultipleCards()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card1 = new CardViewModel { Title = "Alpha" };
+        var card2 = new CardViewModel { Title = "Beta" };
+        lane.Cards.Add(card1);
+        lane.Cards.Add(card2);
+        vm.Lanes.Add(lane);
+
+        vm.ToggleCardSelection(card1);
+        vm.ToggleCardSelection(card2);
+
+        vm.SelectionLabel.Should().Be("2 selected");
+    }
+
+    [Fact]
+    public void ToggleCardSelection_RaisesPropertyChangedForHasSelection()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card = new CardViewModel { Title = "Alpha" };
+        lane.Cards.Add(card);
+        vm.Lanes.Add(lane);
+        var changed = new List<string?>();
+        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.ToggleCardSelection(card);
+
+        changed.Should().Contain(nameof(WorkspaceBoardViewModel.HasSelection));
+        changed.Should().Contain(nameof(WorkspaceBoardViewModel.SelectionCount));
+    }
 }

@@ -49,6 +49,7 @@ public partial class App : Application
                 services.AddTransient<WorkspaceMonitoringViewModel>();
                 services.AddTransient<WorkspaceManagerViewModel>();
                 services.AddTransient<BishopSettingsViewModel>();
+                services.AddTransient<WorkspaceBatchesViewModel>();
             })
             .Build();
 

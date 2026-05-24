@@ -27,6 +27,35 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         OnPropertyChanged(nameof(IsSearchEmpty));
     }
 
+    public IEnumerable<CardViewModel> SelectedCards =>
+        Lanes.SelectMany(l => l.Cards).Where(c => c.IsSelected);
+
+    public int SelectionCount => SelectedCards.Count();
+
+    public bool HasSelection => SelectionCount > 0;
+
+    public string SelectionLabel => SelectionCount == 1 ? "1 selected" : $"{SelectionCount} selected";
+
+    public void ToggleCardSelection(CardViewModel card)
+    {
+        card.IsSelected = !card.IsSelected;
+        OnPropertyChanged(nameof(SelectedCards));
+        OnPropertyChanged(nameof(SelectionCount));
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(SelectionLabel));
+    }
+
+    public void ClearSelection()
+    {
+        foreach (var lane in Lanes)
+            foreach (var c in lane.Cards)
+                c.IsSelected = false;
+        OnPropertyChanged(nameof(SelectedCards));
+        OnPropertyChanged(nameof(SelectionCount));
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(SelectionLabel));
+    }
+
     public WorkspaceBoardViewModel(ISender mediator) => _mediator = mediator;
 
     public async Task LoadAsync(Guid workspaceId)

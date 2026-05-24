@@ -15,8 +15,10 @@
     <SolidColorBrush x:Key="AppDividerBrush"          Color="#1AFFFFFF"/>
     <SolidColorBrush x:Key="AppLaneBackgroundBrush"   Color="#141414"/>
     <SolidColorBrush x:Key="AppCardBackgroundBrush"   Color="#1E1E1E"/>
-    <SolidColorBrush x:Key="AppDragTargetBrush"       Color="#3300FF41"/>
-    <SolidColorBrush x:Key="AppDragTargetBorderBrush" Color="#00FF41"/>
-    <SolidColorBrush x:Key="AppSurfaceSelectedBrush"  Color="#A000FF41"/>
+    <SolidColorBrush x:Key="AppDragTargetBrush"          Color="#3300FF41"/>
+    <SolidColorBrush x:Key="AppDragTargetBorderBrush"   Color="#00FF41"/>
+    <SolidColorBrush x:Key="AppSurfaceSelectedBrush"    Color="#A000FF41"/>
+    <SolidColorBrush x:Key="AppCardSelectionBrush"      Color="#1A00FF41"/>
+    <SolidColorBrush x:Key="AppCardSelectionBorderBrush" Color="#8000FF41"/>
 
 </ResourceDictionary>

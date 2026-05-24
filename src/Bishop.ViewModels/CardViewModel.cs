@@ -1,8 +1,9 @@
 using Bishop.Core;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Bishop.ViewModels;
 
-public sealed class CardViewModel
+public sealed partial class CardViewModel : ObservableObject
 {
     public Guid Id { get; init; }
     public int Number { get; init; }
@@ -13,6 +14,9 @@ public sealed class CardViewModel
     public string? TagColour { get; init; }
     public bool IsClosed { get; init; }
     public int? GitHubIssueNumber { get; init; }
+
+    [ObservableProperty]
+    private bool _isSelected;
     public DateTimeOffset? GitHubPushedAt { get; init; }
     public DateTimeOffset? LastAutoRunFailedAt { get; init; }
 

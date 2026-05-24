@@ -1,4 +1,7 @@
 using CommunityToolkit.WinUI.Controls;
+using Bishop.App.Batches.AbandonBatch;
+using Bishop.App.Batches.CreateBatch;
+using Bishop.App.Batches.FinishBatch;
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Cards.ImportFromGitHub;
@@ -12,10 +15,10 @@ using Bishop.App.Git.Push;
 using Bishop.UI.Services;
 using Bishop.ViewModels;
 using Bishop.App.Services.Settings;
+using Bishop.App.Services.Terminal;
 using Bishop.App.Skills;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
-using Bishop.App.Services.Terminal;
 using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.App.Workspaces.LaunchPlainTerminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
@@ -26,6 +29,7 @@ using Bishop.App.WorkNext.LaunchWorkNext;
 using Bishop.Core.Skills;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using System.IO;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -62,12 +66,14 @@ public sealed partial class WorkspaceDetailPage : Page
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
     public WorkspaceMonitoringViewModel Monitoring { get; }
+    public WorkspaceBatchesViewModel Batches { get; }
 
     public WorkspaceDetailPage()
     {
         Board = App.Services.GetRequiredService<WorkspaceBoardViewModel>();
         Notes = App.Services.GetRequiredService<WorkspaceNotesViewModel>();
         Monitoring = App.Services.GetRequiredService<WorkspaceMonitoringViewModel>();
+        Batches = App.Services.GetRequiredService<WorkspaceBatchesViewModel>();
         _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         InitializeComponent();
         Board.Lanes.CollectionChanged += (_, _) => ApplyWorkNextStateToToDoLane();
@@ -161,6 +167,7 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             await Board.RefreshCommand.ExecuteAsync(null);
             await Monitoring.RefreshCommand.ExecuteAsync(null);
+            await Batches.RefreshCommand.ExecuteAsync(null);
         });
     }
 
@@ -171,6 +178,7 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             await Board.RefreshCommand.ExecuteAsync(null);
             await Monitoring.RefreshCommand.ExecuteAsync(null);
+            await Batches.RefreshCommand.ExecuteAsync(null);
         });
     }
 
@@ -199,6 +207,7 @@ public sealed partial class WorkspaceDetailPage : Page
             _ = Board.LoadAsync(vm.Id);
             _ = Notes.LoadAsync(vm.Id, vm.Path);
             _ = Monitoring.LoadAsync(vm.Id, vm.Path);
+            _ = Batches.LoadAsync();
         });
 
     private async Task LoadSkillsAsync()
@@ -539,11 +548,91 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             if (GetCardFromSender(sender) is not CardViewModel card) return;
 
+            var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
+            if (ctrl.HasFlag(CoreVirtualKeyStates.Down))
+            {
+                Board.ToggleCardSelection(card);
+                return;
+            }
+
             var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty, _item?.GitHubRepo) { XamlRoot = XamlRoot };
             await dialog.ShowAsync();
             if (dialog.ViewModel.Deleted || dialog.ViewModel.Updated)
                 await Board.RefreshCommand.ExecuteAsync(null);
         });
+
+    private async void CreateBatch_Click(object sender, RoutedEventArgs e)
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            var selectedCards = Board.SelectedCards.ToList();
+            if (selectedCards.Count == 0) return;
+
+            var nameBox = new TextBox
+            {
+                PlaceholderText = "Batch name",
+                Width = 300,
+            };
+            var branchBox = new TextBox
+            {
+                Width = 300,
+                PlaceholderText = $"bishop/{Slugify("batch")} (auto-derived from name)",
+            };
+            nameBox.TextChanged += (_, _) =>
+            {
+                var slug = Slugify(nameBox.Text.Trim());
+                branchBox.PlaceholderText = slug.Length > 0 ? $"bishop/{slug}" : "bishop/<slug>";
+            };
+
+            var cardCount = selectedCards.Count;
+            var dialog = new ContentDialog
+            {
+                Title = $"Create batch from {cardCount} card{(cardCount == 1 ? "" : "s")}",
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new TextBlock { Text = "Batch name" },
+                        nameBox,
+                        new TextBlock { Text = "Branch (optional — leave blank to auto-derive)", Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(153, 255, 255, 255)) },
+                        branchBox,
+                    }
+                },
+                PrimaryButtonText = "Create",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+            };
+
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+            var name = nameBox.Text.Trim();
+            if (string.IsNullOrEmpty(name)) return;
+
+            var slug = Slugify(name);
+            var branchName = string.IsNullOrEmpty(branchBox.Text.Trim())
+                ? $"bishop/{slug}"
+                : branchBox.Text.Trim();
+
+            var workspacePath = _item.Path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var repoName = Path.GetFileName(workspacePath);
+            var parentDir = Path.GetDirectoryName(workspacePath)!;
+            var worktreePath = Path.Combine(parentDir, $"{repoName}-bishop-worktrees", slug);
+
+            var mediator = App.Services.GetRequiredService<ISender>();
+            await mediator.Send(new CreateBatchCommand(
+                _item.Id, _item.Path, name, branchName, null, worktreePath,
+                selectedCards.Select(c => c.Number).ToArray(), null, null));
+
+            Board.ClearSelection();
+            await Board.RefreshCommand.ExecuteAsync(null);
+            await Batches.RefreshCommand.ExecuteAsync(null);
+        });
+
+    private static string Slugify(string name) =>
+        System.Text.RegularExpressions.Regex.Replace(
+            name.ToLowerInvariant().Replace(' ', '-'), "[^a-z0-9-]", "");
 
     private async void CardSkillsButton_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>
@@ -697,6 +786,56 @@ public sealed partial class WorkspaceDetailPage : Page
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             CharacterSpacing = 75,
         };
+
+    private static BatchItemViewModel? GetBatchFromSender(object sender) =>
+        (sender as FrameworkElement)?.DataContext as BatchItemViewModel;
+
+    private void BatchRun_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null) return;
+        if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
+        var launcher = App.Services.GetRequiredService<ITerminalLauncher>();
+        launcher.LaunchCommand(_item.Path, "bishop", $"batch run \"{batch.Name}\"", SnapHelper.ComputeSnap());
+    }
+
+    private async void BatchFinish_Click(object sender, RoutedEventArgs e)
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
+
+            if (string.IsNullOrEmpty(_item.GitHubRepo))
+            {
+                var errDialog = new ContentDialog
+                {
+                    Title = "No GitHub repo linked",
+                    Content = "Link a GitHub repository in Workspace Settings before finishing a batch.",
+                    CloseButtonText = "OK",
+                    XamlRoot = XamlRoot,
+                };
+                await errDialog.ShowAsync();
+                return;
+            }
+
+            var mediator = App.Services.GetRequiredService<ISender>();
+            var result = await mediator.Send(new FinishBatchCommand(batch.Name, _item.Path, _item.GitHubRepo));
+
+            await Board.RefreshCommand.ExecuteAsync(null);
+            await Batches.RefreshCommand.ExecuteAsync(null);
+
+            await Launcher.LaunchUriAsync(new Uri(result.PrUrl));
+        });
+
+    private async void BatchAbandon_Click(object sender, RoutedEventArgs e)
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
+            var mediator = App.Services.GetRequiredService<ISender>();
+            await mediator.Send(new AbandonBatchCommand(batch.Name, _item.Path));
+            await Board.RefreshCommand.ExecuteAsync(null);
+            await Batches.RefreshCommand.ExecuteAsync(null);
+        });
 
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>

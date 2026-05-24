@@ -234,4 +234,34 @@ public class CardViewModelTests
 
         vm.AutoRunFailedTooltip.Should().BeEmpty();
     }
+
+    [Fact]
+    public void IsSelected_DefaultsFalse()
+    {
+        var vm = new CardViewModel();
+
+        vm.IsSelected.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsSelected_CanBeSetToTrue()
+    {
+        var vm = new CardViewModel();
+
+        vm.IsSelected = true;
+
+        vm.IsSelected.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsSelected_RaisesPropertyChangedNotification()
+    {
+        var vm = new CardViewModel();
+        var changed = new List<string?>();
+        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.IsSelected = true;
+
+        changed.Should().Contain(nameof(CardViewModel.IsSelected));
+    }
 }
