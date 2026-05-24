@@ -18,6 +18,9 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     [ObservableProperty]
     private string _selectedModelLabel = "Sonnet 4.6 ▾";
 
+    [ObservableProperty]
+    private string _modelSelectionReason = string.Empty;
+
     [RelayCommand]
     private void SelectModel(string modelId)
     {

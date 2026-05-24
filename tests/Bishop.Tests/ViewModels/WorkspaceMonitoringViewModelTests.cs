@@ -1,7 +1,8 @@
 using Bishop.App.Git;
-using Bishop.App.Services.Settings;
+using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 using Bishop.Core;
+using Bishop.Core.Skills;
 using Bishop.ViewModels;
 using FluentAssertions;
 using MediatR;
@@ -22,21 +23,20 @@ public class WorkspaceMonitoringViewModelTests
 
     private readonly IMediator _mediator = Substitute.For<IMediator>();
     private readonly IGitCli _gitCli = Substitute.For<IGitCli>();
-    private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
     private readonly WorkspaceMonitoringViewModel _vm;
 
     public WorkspaceMonitoringViewModelTests()
     {
-        _vm = new WorkspaceMonitoringViewModel(_mediator, _gitCli, _appSettings);
+        _vm = new WorkspaceMonitoringViewModel(_mediator, _gitCli);
         _mediator
             .Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>([]));
+        _mediator
+            .Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<InstalledSkill>>([]));
         _gitCli
             .GetCommitCountSinceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(0));
-        _appSettings
-            .GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<string?>(null));
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public class WorkspaceMonitoringViewModelTests
     }
 
     [Fact]
-    public async Task LoadAsync_NoSavedModel_SeedsDefaultSonnet()
+    public async Task LoadAsync_NoSkillMetadata_DefaultsToSonnet()
     {
         await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
 
@@ -214,30 +214,64 @@ public class WorkspaceMonitoringViewModelTests
     }
 
     [Fact]
-    public async Task LoadAsync_SavedOpusModel_SeedsOpusOnMatchingRow()
+    public async Task LoadAsync_NoPriorRun_UsesFirstRunModel()
     {
-        _appSettings
-            .GetAsync("skill.bish-arch.last_model", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<string?>("claude-opus-4-7"));
+        _mediator
+            .Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<InstalledSkill>>(
+            [
+                new InstalledSkill("bish-arch", "", [], null, FirstRunModel: "claude-opus-4-7", ReRunModel: "claude-sonnet-4-6"),
+            ]));
 
         await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
 
         var row = _vm.Rows.First(r => r.SkillName == "bish-arch");
         row.SelectedModelId.Should().Be("claude-opus-4-7");
         row.SelectedModelLabel.Should().Be("Opus 4.7 ▾");
+        row.ModelSelectionReason.Should().Be("(first run)");
     }
 
     [Fact]
-    public async Task SelectModel_PersistsChoiceToAppSettings()
+    public async Task LoadAsync_WithPriorRun_UsesReRunModel()
     {
+        var workspaceId = Guid.NewGuid();
+        _mediator
+            .Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<InstalledSkill>>(
+            [
+                new InstalledSkill("bish-arch", "", [], null, FirstRunModel: "claude-opus-4-7", ReRunModel: "claude-sonnet-4-6"),
+            ]));
+        _mediator
+            .Send(Arg.Is<GetWorkspaceSkillRunsQuery>(q => q.WorkspaceId == workspaceId), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>(
+            [
+                new WorkspaceSkillRun { Id = Guid.NewGuid(), WorkspaceId = workspaceId, SkillName = "bish-arch", RecordedAt = DateTimeOffset.UtcNow.AddDays(-1), GitSha = "abc" },
+            ]));
+
+        await _vm.LoadAsync(workspaceId, @"C:\fake");
+
+        var row = _vm.Rows.First(r => r.SkillName == "bish-arch");
+        row.SelectedModelId.Should().Be("claude-sonnet-4-6");
+        row.ModelSelectionReason.Should().Be("(re-run default)");
+    }
+
+    [Fact]
+    public async Task LoadAsync_ModelChangeDoesNotPersistAcrossRefresh()
+    {
+        _mediator
+            .Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<InstalledSkill>>(
+            [
+                new InstalledSkill("bish-arch", "", [], null, FirstRunModel: "claude-opus-4-7", ReRunModel: "claude-sonnet-4-6"),
+            ]));
+
         await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
         var row = _vm.Rows.First(r => r.SkillName == "bish-arch");
-
         row.SelectModelCommand.Execute("claude-haiku-4-5-20251001");
 
-        await _appSettings.Received(1).SetAsync(
-            "skill.bish-arch.last_model",
-            "claude-haiku-4-5-20251001",
-            Arg.Any<CancellationToken>());
+        await _vm.RefreshCommand.ExecuteAsync(null);
+
+        var refreshedRow = _vm.Rows.First(r => r.SkillName == "bish-arch");
+        refreshedRow.SelectedModelId.Should().Be("claude-opus-4-7");
     }
 }

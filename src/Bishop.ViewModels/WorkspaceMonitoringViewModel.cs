@@ -1,6 +1,6 @@
 using Bishop.App.Git;
-using Bishop.App.Services.Settings;
 using Bishop.App.Skills;
+using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -22,7 +22,6 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
 
     private readonly ISender _mediator;
     private readonly IGitCli _gitCli;
-    private readonly IAppSettings _appSettings;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
 
@@ -40,11 +39,10 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     [ObservableProperty]
     private string _badgeTooltip = string.Empty;
 
-    public WorkspaceMonitoringViewModel(ISender mediator, IGitCli gitCli, IAppSettings appSettings)
+    public WorkspaceMonitoringViewModel(ISender mediator, IGitCli gitCli)
     {
         _mediator = mediator;
         _gitCli = gitCli;
-        _appSettings = appSettings;
     }
 
     public async Task LoadAsync(Guid workspaceId, string workspacePath)
@@ -60,6 +58,9 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         var runs = await _mediator.Send(new GetWorkspaceSkillRunsQuery(_workspaceId));
         var runsBySkill = runs.ToDictionary(r => r.SkillName, StringComparer.OrdinalIgnoreCase);
 
+        var skills = await _mediator.Send(new DiscoverSkillsQuery());
+        var skillsByName = skills.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
         var rows = new List<SkillRunRowViewModel>();
         foreach (var skillName in TrackedSkills)
         {
@@ -73,14 +74,15 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
                 shaUnreachable = commitsSince is null;
             }
 
-            var savedModelId = SkillModelOptions.ResolveModelId(await _appSettings.GetAsync($"skill.{skillName}.last_model"));
+            skillsByName.TryGetValue(skillName, out var skill);
+            var isFirstRun = run is null;
+            var defaultModelId = isFirstRun
+                ? SkillModelOptions.ResolveModelId(skill?.FirstRunModel)
+                : SkillModelOptions.ResolveModelId(skill?.ReRunModel);
+
             var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable);
-            row.SelectModelCommand.Execute(savedModelId);
-            row.PropertyChanged += (sender, args) =>
-            {
-                if (args.PropertyName == nameof(SkillRunRowViewModel.SelectedModelId) && sender is SkillRunRowViewModel r)
-                    _ = SafeAsync.RunAsync(() => _appSettings.SetAsync($"skill.{r.SkillName}.last_model", r.SelectedModelId));
-            };
+            row.SelectModelCommand.Execute(defaultModelId);
+            row.ModelSelectionReason = isFirstRun ? "(first run)" : "(re-run default)";
             rows.Add(row);
         }
 

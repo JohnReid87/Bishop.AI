@@ -6,6 +6,8 @@ bishop.scope: workspace
 bishop.command: /bish-coverage
 bishop.stage: false
 bishop.category: review
+firstRunModel: claude-sonnet-4-6
+reRunModel: claude-sonnet-4-6
 ---
 
 > Recommended model: Sonnet 4.6 — procedure-following; extended reasoning not required.

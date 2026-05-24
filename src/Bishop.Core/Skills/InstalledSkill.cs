@@ -10,4 +10,6 @@ public sealed record InstalledSkill(
     string? StagePrefill = null,
     string MarkdownBody = "",
     string SourcePath = "",
-    SkillCategory Category = SkillCategory.Other);
+    SkillCategory Category = SkillCategory.Other,
+    string? FirstRunModel = null,
+    string? ReRunModel = null);

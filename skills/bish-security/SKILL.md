@@ -6,6 +6,8 @@ bishop.scope: workspace
 bishop.command: /bish-security
 bishop.stage: false
 bishop.category: review
+firstRunModel: claude-opus-4-7
+reRunModel: claude-sonnet-4-6
 ---
 
 > Recommended model: Opus 4.7 — security heuristic catalogue requires sustained multi-step judgement.
