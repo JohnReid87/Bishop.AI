@@ -25,7 +25,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     private void SelectModel(string modelId)
     {
         SelectedModelId = modelId;
-        var label = WorkNextOptionsDialogViewModel.Models.FirstOrDefault(m => m.Id == modelId)?.Label ?? "Sonnet 4.6";
+        var label = SkillModels.All.FirstOrDefault(m => m.Id == modelId)?.Label ?? "Sonnet 4.6";
         SelectedModelLabel = $"{label} ▾";
     }
 

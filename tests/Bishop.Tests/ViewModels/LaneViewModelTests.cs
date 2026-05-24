@@ -48,28 +48,6 @@ public class LaneViewModelTests
     }
 
     [Fact]
-    public void CanWorkNext_TrueForToDoLaneWithCards()
-    {
-        var vm = NewVm(name: "To Do");
-        vm.CanWorkNext.Should().BeFalse();
-
-        vm.Cards.Add(new CardViewModel { Title = "A" });
-
-        vm.CanWorkNext.Should().BeTrue();
-    }
-
-    [Fact]
-    public void WorkNextTooltip_ChangesWithCanWorkNext()
-    {
-        var vm = NewVm(name: "To Do");
-        vm.WorkNextTooltip.Should().Be("No cards");
-
-        vm.Cards.Add(new CardViewModel { Title = "A" });
-
-        vm.WorkNextTooltip.Should().Be("Loop it");
-    }
-
-    [Fact]
     public void IsImportVisible_TrueForBacklogWithGitHubRepo()
     {
         var vm = NewVm(name: "Backlog");
@@ -89,54 +67,6 @@ public class LaneViewModelTests
         vm.HasGitHubRepo = true;
 
         vm.IsPushToGitHubVisible.Should().BeTrue();
-    }
-
-    [Fact]
-    public void IsPlayVisible_TrueForToDoWhenNotRunning()
-    {
-        var vm = NewVm(name: "To Do");
-        vm.IsPlayVisible.Should().BeTrue();
-        vm.IsStopVisible.Should().BeFalse();
-
-        vm.IsWorkNextRunning = true;
-
-        vm.IsPlayVisible.Should().BeFalse();
-        vm.IsStopVisible.Should().BeTrue();
-    }
-
-    [Fact]
-    public void CanPlayWorkNext_FalseWhileRunning()
-    {
-        var vm = NewVm(name: "To Do");
-        vm.Cards.Add(new CardViewModel { Title = "A" });
-        vm.CanPlayWorkNext.Should().BeTrue();
-
-        vm.IsWorkNextRunning = true;
-
-        vm.CanPlayWorkNext.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanStopWorkNext_TrueOnlyWhileRunningAndNotStopping()
-    {
-        var vm = NewVm();
-        vm.IsWorkNextRunning = true;
-        vm.CanStopWorkNext.Should().BeTrue();
-
-        vm.IsWorkNextStopping = true;
-
-        vm.CanStopWorkNext.Should().BeFalse();
-    }
-
-    [Fact]
-    public void StopWorkNextTooltip_ChangesWhileStopping()
-    {
-        var vm = NewVm();
-        vm.StopWorkNextTooltip.Should().Be("Stop looping");
-
-        vm.IsWorkNextStopping = true;
-
-        vm.StopWorkNextTooltip.Should().Be("Stopping loop…");
     }
 
     [Fact]

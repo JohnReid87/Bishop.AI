@@ -196,7 +196,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().Contain("git push");
         output.Should().Contain("dotnet publish");
         output.Should().Contain("gh:*");
-        output.Should().Contain("bishop work-next --max 1");
     }
 
     [Fact]

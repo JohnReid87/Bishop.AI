@@ -1,6 +1,6 @@
 ---
 name: bish-auto-card
-description: Unattended sibling of /bish-work-on-card. Accepts a single card Number, implements the card, runs build + tests, then writes .bishop/handoff.json for the host to commit and move to Done. No prompts. Exits non-zero on any failure so a parent loop (bishop work-next) can react. Use when invoked by automation, not interactively.
+description: Unattended sibling of /bish-work-on-card. Accepts a single card Number, implements the card, runs build + tests, then writes .bishop/handoff.json for the host to commit and move to Done. No prompts. Exits non-zero on any failure. Use when invoked by automation, not interactively.
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git status:*), Bash(git diff:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.category: execute
 ---
@@ -10,9 +10,9 @@ Shell tool selection (Bash vs PowerShell) — follow [bishop context print --sec
 ---
 
 Accepts **exactly one** card Number (`bish-auto-card 42` or `bish-auto-card #42`).
-This is the unattended sibling of `/bish-work-on-card`, designed to be spawned
-by `bishop work-next` once per claimed card. The bishop loop has already
-claimed the card and moved it to "Doing" before invoking this skill.
+This is the unattended sibling of `/bish-work-on-card`, designed to be invoked
+by automation. The caller has already claimed the card and moved it to "Doing"
+before invoking this skill.
 
 If the user (or caller) passes zero or multiple IDs, exit non-zero with a
 short message — there is no claim fallback and no multi-card mode.
@@ -27,7 +27,7 @@ exists.
 **Pre-supplied context block**
 
 The initial message that invoked this skill includes a `<bishop-context>` JSON
-block pre-assembled by `bishop work-next`. Read it now:
+block pre-assembled by the calling automation. Read it now:
 
 - `workspace.path` — set this as `$WORKSPACE_PATH` (the workspace boundary
   enforced throughout this run)
@@ -155,10 +155,9 @@ sequence.
    bullets as the body — you supply the bullets, not the subject line.
 
 7. **Write `.bishop/handoff.json` as your final action.** No prompt. This is
-   the signal to `bishop work-next` that the skill completed cleanly. The host
-   reads this file after `claude -p` exits with code 0, commits, updates the
-   card, and moves it to Done. Exiting without writing the file is treated as
-   failure by the host.
+   the signal that the skill completed cleanly. The host reads this file after
+   `claude -p` exits with code 0, commits, updates the card, and moves it to
+   Done. Exiting without writing the file is treated as failure by the host.
 
    Write the file using the `Write` tool with this exact schema:
 
@@ -171,7 +170,7 @@ sequence.
    ```
 
    - `commit_body_bullets` — the bullet strings for the git commit body. Each
-     string should be concise (one line), e.g. `"Add HandoffPayload record"`.
+     string should be concise (one line), e.g. `"Remove work-next CLI command"`.
      Do NOT include leading `- ` dashes; the host formats the body.
    - `touched_files` — every file path written or edited during this session,
      relative to `$WORKSPACE_PATH`.
@@ -198,17 +197,17 @@ sequence.
 
 - **No prompts, ever.** Any place `/bish-work-on-card` would ask the user a
   question, take the documented default or exit non-zero. The caller is a
-  non-interactive `claude -p` session spawned by `bishop work-next`.
+  non-interactive `claude -p` session.
 - **Non-zero exit on any deviation.** Failed build, failed test, closed-card
-  guard, missing lane, missing card — all exit non-zero. The parent loop stops
-  on non-zero exits per the `bishop work-next` contract.
+  guard, missing lane, missing card — all exit non-zero. The caller stops on
+  non-zero exits.
 - **Card stays in "Doing" on failure.** Only on a clean build + tests +
   handoff.json write does the host move the card to "Done". The `KeepOpen`
   flag preserves the human review gate on success.
 - **No multi-card mode.** Exactly one Number per invocation. Exit non-zero if
   zero or more than one is supplied.
-- **No claim path.** This skill never claims a card. The `bishop work-next`
-  loop always claims and moves the card to "Doing" before invoking the skill.
+- **No claim path.** This skill never claims a card. The calling automation
+  always claims and moves the card to "Doing" before invoking the skill.
 - **No direct git or card commit/move calls.** Do NOT run `git add`, `git
   commit`, `bishop card set-commit`, or `bishop card edit --to-lane Done`. The
   host performs all of those after reading handoff.json.

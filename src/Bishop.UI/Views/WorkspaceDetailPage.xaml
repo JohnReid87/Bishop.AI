@@ -350,22 +350,6 @@
                                                Padding="12,10,12,8"/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                                         <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                Click="WorkNext_Click"
-                                                Visibility="{x:Bind IsPlayVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                IsEnabled="{x:Bind CanPlayWorkNext, Mode=OneWay}"
-                                                ToolTipService.ToolTip="{x:Bind WorkNextTooltip, Mode=OneWay}"
-                                                Margin="0,0,4,0">
-                                            <FontIcon Glyph="&#xE768;" FontSize="12"/>
-                                        </Button>
-                                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                Click="WorkNextStop_Click"
-                                                Visibility="{x:Bind IsStopVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                IsEnabled="{x:Bind CanStopWorkNext, Mode=OneWay}"
-                                                ToolTipService.ToolTip="{x:Bind StopWorkNextTooltip, Mode=OneWay}"
-                                                Margin="0,0,4,0">
-                                            <FontIcon Glyph="&#xE71A;" FontSize="12"/>
-                                        </Button>
-                                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                 Click="ImportFromGitHub_Click"
                                                 Visibility="{x:Bind IsImportVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                                 ToolTipService.ToolTip="Import from GitHub"

@@ -128,9 +128,9 @@ the work that produced a change.
 
 ## Auto-card permission contract
 
-`bish-auto-card` (and its parent loop `bishop work-next`) runs unattended inside
-a permission scope defined in the project's `.claude/settings.json`. This section
-documents what is and is not permitted so you can audit the loop without source-diving.
+`bish-auto-card` runs unattended inside a permission scope defined in the project's
+`.claude/settings.json`. This section documents what is and is not permitted so you
+can audit the loop without source-diving.
 
 ### Allowlist (`.claude/settings.json`)
 
@@ -158,19 +158,6 @@ The following are **not** on the allowlist and will prompt for user confirmation
 - `git push` — no remote pushes; pushing is out of scope for automated loops
 - `dotnet publish` — no deployment artefacts
 - `gh:*` — no GitHub CLI calls (issue creation, PR management, etc.)
-
-### Smoke-test
-
-To verify the scope before running an extended unattended session:
-
-```
-bishop work-next --max 1
-```
-
-Run this with a trivial card in "To Do" and confirm the loop completes without
-prompting for unexpected permissions. For a stricter check, temporarily rename
-`.claude/settings.json` — every tool call will then require explicit approval,
-revealing exactly what the agent needs.
 
 ## Card model
 

@@ -361,7 +361,7 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: true);
 
         // Act
-        var result = sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next", "--max", "10"], null);
+        var result = sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run"], null);
 
         // Assert
         result.Should().BeTrue();
@@ -374,11 +374,11 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: true);
 
         // Act
-        sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next", "--tag", "test", "--max", "5"], null);
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run", "--tag", "test", "--max", "5"], null);
 
         // Assert
         _started.Single().ArgumentList.Should().Equal(
-            "-d", @"C:\Repo", "cmd.exe", "/k", "bishop", "work-next", "--tag", "test", "--max", "5");
+            "-d", @"C:\Repo", "cmd.exe", "/k", "bishop", "batch", "run", "--tag", "test", "--max", "5");
     }
 
     [Fact]
@@ -388,11 +388,11 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: false);
 
         // Act
-        sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next", "--max", "10"], null);
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run", "--max", "10"], null);
 
         // Assert
         _started.Single().FileName.Should().Be("powershell.exe");
-        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "bishop", "work-next", "--max", "10");
+        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "bishop", "batch", "run", "--max", "10");
         _started.Single().WorkingDirectory.Should().Be(@"C:\Repo");
     }
 
@@ -413,7 +413,7 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: false);
 
         // Act
-        sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next"], null);
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run"], null);
 
         // Assert — PATH must be the merged registry PATH; never empty, always multi-entry.
         var path = _started.Single().Environment["PATH"];
@@ -427,7 +427,7 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: true);
         var snap = new TerminalSnap(0, 0, 1280, 1440);
 
-        var result = sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next"], snap);
+        var result = sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run"], snap);
 
         result.Should().BeTrue();
     }
@@ -438,7 +438,7 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: false);
         var snap = new TerminalSnap(0, 0, 1280, 1440);
 
-        var result = sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next"], snap);
+        var result = sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run"], snap);
 
         result.Should().BeFalse();
     }
@@ -450,7 +450,7 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: true);
         var path = @"C:\My ""Repo"" Path";
 
-        sut.LaunchCommand(path, "bishop", ["work-next"], null);
+        sut.LaunchCommand(path, "bishop", ["batch", "run"], null);
 
         _started.Single().ArgumentList[1].Should().Be(path);
     }

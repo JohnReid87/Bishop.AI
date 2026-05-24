@@ -14,7 +14,7 @@ internal static class SkillRowFactory
         Func<Task>? onView = null)
     {
         var currentModelId = selectedModelId;
-        var currentLabel = WorkNextOptionsDialogViewModel.Models
+        var currentLabel = SkillModels.All
             .FirstOrDefault(m => m.Id == selectedModelId)?.Label ?? "Sonnet 4.6";
 
         var nameText = new TextBlock
@@ -36,7 +36,7 @@ internal static class SkillRowFactory
         };
 
         var modelFlyout = new MenuFlyout();
-        foreach (var (id, label) in WorkNextOptionsDialogViewModel.Models)
+        foreach (var (id, label) in SkillModels.All)
         {
             var capturedId = id;
             var capturedLabel = label;

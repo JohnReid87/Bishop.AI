@@ -9,7 +9,7 @@ public interface ITerminalLauncher
     // Returns true when launched in Windows Terminal, false when launched directly.
     bool LaunchPlain(string workingDirectory, TerminalSnap? snap);
 
-    // Launches an arbitrary CLI command (e.g. `bishop work-next ...`) in Windows Terminal
-    // (or PowerShell as a fallback). Returns true when launched in Windows Terminal.
+    // Launches an arbitrary CLI command in Windows Terminal (or PowerShell as a fallback).
+    // Returns true when launched in Windows Terminal.
     bool LaunchCommand(string workingDirectory, string command, string[] args, TerminalSnap? snap);
 }

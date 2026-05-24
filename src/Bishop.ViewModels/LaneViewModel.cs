@@ -26,26 +26,12 @@ public sealed partial class LaneViewModel : ObservableObject
     public bool IsToDoLane => Name == SystemLaneNames.ToDo;
     public bool IsBacklogLane => Name == SystemLaneNames.Backlog;
     public bool IsDoneLane => Name == SystemLaneNames.Done;
-    public bool CanWorkNext => IsToDoLane && Cards.Count > 0;
-    public string WorkNextTooltip => CanWorkNext ? "Loop it" : "No cards";
 
     [ObservableProperty]
     public partial bool HasGitHubRepo { get; set; }
 
     public bool IsImportVisible => IsBacklogLane && HasGitHubRepo;
     public bool IsPushToGitHubVisible => IsDoneLane && HasGitHubRepo;
-
-    [ObservableProperty]
-    public partial bool IsWorkNextRunning { get; set; }
-
-    [ObservableProperty]
-    public partial bool IsWorkNextStopping { get; set; }
-
-    public bool CanPlayWorkNext => CanWorkNext && !IsWorkNextRunning;
-    public bool CanStopWorkNext => IsWorkNextRunning && !IsWorkNextStopping;
-    public bool IsPlayVisible => IsToDoLane && !IsWorkNextRunning;
-    public bool IsStopVisible => IsToDoLane && IsWorkNextRunning;
-    public string StopWorkNextTooltip => IsWorkNextStopping ? "Stopping loop…" : "Stop looping";
 
     [ObservableProperty]
     public partial bool IsDropTarget { get; set; }
@@ -139,30 +125,13 @@ public sealed partial class LaneViewModel : ObservableObject
     private void OnCardsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         OnPropertyChanged(nameof(DisplayName));
-        OnPropertyChanged(nameof(CanWorkNext));
-        OnPropertyChanged(nameof(CanPlayWorkNext));
-        OnPropertyChanged(nameof(WorkNextTooltip));
         RebuildFilteredCards();
-    }
-
-    partial void OnIsWorkNextRunningChanged(bool value)
-    {
-        OnPropertyChanged(nameof(CanPlayWorkNext));
-        OnPropertyChanged(nameof(CanStopWorkNext));
-        OnPropertyChanged(nameof(IsPlayVisible));
-        OnPropertyChanged(nameof(IsStopVisible));
     }
 
     partial void OnHasGitHubRepoChanged(bool value)
     {
         OnPropertyChanged(nameof(IsImportVisible));
         OnPropertyChanged(nameof(IsPushToGitHubVisible));
-    }
-
-    partial void OnIsWorkNextStoppingChanged(bool value)
-    {
-        OnPropertyChanged(nameof(CanStopWorkNext));
-        OnPropertyChanged(nameof(StopWorkNextTooltip));
     }
 
     private void OnFilteredCardsChanged(object? sender, NotifyCollectionChangedEventArgs e)

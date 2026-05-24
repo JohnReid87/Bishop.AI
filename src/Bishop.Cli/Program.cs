@@ -29,7 +29,6 @@ using Bishop.Cli.Lanes.List;
 using Bishop.Cli.Bootstrap;
 using Bishop.Cli.Hooks.CheckPath;
 using Bishop.Cli.Tags.List;
-using Bishop.Cli.WorkNext;
 using Bishop.Cli.Workspaces.Current;
 using Bishop.Cli.Workspaces.Init;
 using Bishop.Cli.Workspaces.List;
@@ -143,10 +142,6 @@ root.AddCommand(new PrintContextPackCliCommand(mediator, contextProviders));
 var hookCmd = new Command("hook", "Claude Code hook utilities");
 hookCmd.AddCommand(new CheckPathCliCommand());
 root.AddCommand(hookCmd);
-
-// ── work-next ─────────────────────────────────────────────────────────────────
-
-root.AddCommand(new WorkNextCliCommand(mediator));
 
 // ── run ───────────────────────────────────────────────────────────────────────
 
