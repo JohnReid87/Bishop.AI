@@ -24,7 +24,7 @@ public class LaneViewModelTests
     }
 
     [Fact]
-    public void DisplayName_IncludesNameAndFilteredCount()
+    public void DisplayName_IncludesNameAndTotalCardCount()
     {
         var vm = NewVm(name: "To Do");
         vm.DisplayName.Should().Be("To Do (0)");
@@ -32,6 +32,19 @@ public class LaneViewModelTests
         vm.Cards.Add(new CardViewModel { Title = "A", LaneName = "To Do" });
 
         vm.DisplayName.Should().Be("To Do (1)");
+    }
+
+    [Fact]
+    public void DisplayName_DoesNotChangeWhenFilterIsApplied()
+    {
+        var vm = NewVm(name: "To Do");
+        vm.Cards.Add(new CardViewModel { Title = "Alpha", LaneName = "To Do" });
+        vm.Cards.Add(new CardViewModel { Title = "Beta", LaneName = "To Do" });
+
+        vm.ApplyFilter("alpha");
+
+        vm.FilteredCards.Should().HaveCount(1);
+        vm.DisplayName.Should().Be("To Do (2)");
     }
 
     [Fact]

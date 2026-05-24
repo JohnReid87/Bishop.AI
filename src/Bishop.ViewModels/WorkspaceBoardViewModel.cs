@@ -10,8 +10,6 @@ namespace Bishop.ViewModels;
 
 public sealed partial class WorkspaceBoardViewModel : ObservableObject
 {
-    private const int PageSize = 100;
-
     private readonly ISender _mediator;
     private Guid _workspaceId;
 
@@ -52,7 +50,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         {
             foreach (var laneVm in Lanes)
             {
-                var fresh = (await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId, LaneName: laneVm.Name, Take: PageSize))).ToList();
+                var fresh = (await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId, LaneName: laneVm.Name))).ToList();
                 for (var i = 0; i < fresh.Count; i++)
                 {
                     var card = fresh[i];
@@ -74,7 +72,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         foreach (var lane in lanes)
         {
             var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { WorkspaceId = _workspaceId, Name = lane.Name };
-            var cards = await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId, LaneName: lane.Name, Take: PageSize));
+            var cards = await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId, LaneName: lane.Name));
             foreach (var card in cards)
                 laneVm.Cards.Add(BuildCardViewModel(card, lane.Name, tagColourByName));
             Lanes.Add(laneVm);

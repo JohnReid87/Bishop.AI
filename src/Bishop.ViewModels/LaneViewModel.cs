@@ -20,7 +20,7 @@ public sealed partial class LaneViewModel : ObservableObject
     public ObservableCollection<CardViewModel> Cards { get; } = [];
     public ObservableCollection<CardViewModel> FilteredCards { get; } = [];
 
-    public string DisplayName => $"{Name} ({FilteredCards.Count})";
+    public string DisplayName => $"{Name} ({Cards.Count})";
 
     public bool IsToDoLane => Name == SystemLaneNames.ToDo;
     public bool IsBacklogLane => Name == SystemLaneNames.Backlog;
@@ -97,6 +97,7 @@ public sealed partial class LaneViewModel : ObservableObject
 
     private void OnCardsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(DisplayName));
         OnPropertyChanged(nameof(CanWorkNext));
         OnPropertyChanged(nameof(CanPlayWorkNext));
         OnPropertyChanged(nameof(WorkNextTooltip));
