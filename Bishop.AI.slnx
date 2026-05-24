@@ -4,6 +4,7 @@
     <Project Path="src/Bishop.Cli/Bishop.Cli.csproj" />
     <Project Path="src/Bishop.Core/Bishop.Core.csproj" />
     <Project Path="src/Bishop.Data/Bishop.Data.csproj" />
+    <Project Path="src/Bishop.Game/Bishop.Game.csproj" />
     <Project Path="src/Bishop.UI/Bishop.UI.csproj" />
     <Project Path="src/Bishop.ViewModels/Bishop.ViewModels.csproj" />
   </Folder>
