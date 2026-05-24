@@ -37,6 +37,28 @@ public sealed class TerminalLauncherTests
         result.Split(';', StringSplitOptions.RemoveEmptyEntries).Should().HaveCountGreaterThan(1);
     }
 
+    [Fact]
+    public void CombinePaths_UserPathEmpty_ReturnsMachinePathOnly()
+    {
+        var method = typeof(TerminalLauncher)
+            .GetMethod("CombinePaths", BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var result = (string)method.Invoke(null, [@"C:\Windows\System32", ""])!;
+
+        result.Should().Be(@"C:\Windows\System32");
+    }
+
+    [Fact]
+    public void CombinePaths_BothPathsEmpty_ReturnsEmptyString()
+    {
+        var method = typeof(TerminalLauncher)
+            .GetMethod("CombinePaths", BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var result = (string)method.Invoke(null, ["", ""])!;
+
+        result.Should().BeEmpty();
+    }
+
     // ── Launch ────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -130,6 +152,20 @@ public sealed class TerminalLauncherTests
         sut.Launch(@"C:\Repo", "code .", null, "claude-opus-4");
 
         // Assert
+        var args = _started.Single().Arguments;
+        args.Should().Contain("--model claude-opus-4");
+        args.Should().Contain("\"code .\"");
+    }
+
+    [Fact]
+    public void Launch_WithClaudeArgsSnapAndModelId_AllPropagateToProcessStartInfo()
+    {
+        // Verifies that a snap value does not suppress claudeArgs or modelId in the ProcessStartInfo.
+        var sut = CreateSut(wtExists: false);
+        var snap = new TerminalSnap(0, 0, 1280, 1440);
+
+        sut.Launch(@"C:\Repo", "code .", snap, "claude-opus-4");
+
         var args = _started.Single().Arguments;
         args.Should().Contain("--model claude-opus-4");
         args.Should().Contain("\"code .\"");
@@ -373,6 +409,16 @@ public sealed class TerminalLauncherTests
     }
 
     [Fact]
+    public void LaunchCommand_WithEmptyArgs_DoesNotAppendTrailingSpace()
+    {
+        var sut = CreateSut(wtExists: false);
+
+        sut.LaunchCommand(@"C:\Repo", "bishop", "", null);
+
+        _started.Single().Arguments.Should().Be("-NoExit -Command bishop");
+    }
+
+    [Fact]
     public void LaunchCommand_SetsPathToMergedRegistryPath()
     {
         // Arrange
@@ -569,6 +615,18 @@ public sealed class TerminalLauncherTests
         act.Should().NotThrow();
     }
 
+    [Fact]
+    public void ParameterlessConstructor_DefaultFileExistsDelegateReturnsTrueForExistingFile()
+    {
+        var sut = new TerminalLauncher();
+        var fileExists = (Func<string, bool>)typeof(TerminalLauncher)
+            .GetField("_fileExists", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(sut)!;
+
+        var cmdPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
+        fileExists(cmdPath).Should().BeTrue();
+    }
+
     // ── SnapLater / ApplySnap ─────────────────────────────────────────────────
     // ApplySnap and the inner window-poll loop in SnapLater depend on real win32
     // window handles (EnumWindows, DwmGetWindowAttribute, SetWindowPos). They are
@@ -578,12 +636,15 @@ public sealed class TerminalLauncherTests
     // is reached without crashing the test host.
 
     [Fact]
-    public void LaunchPlain_WithSnap_WtNotFound_DoesNotThrow()
+    public void LaunchPlain_WithSnap_WtNotFound_StartsProcessAndReturnsFalse()
     {
         var sut = CreateSut(wtExists: false);
         var snap = new TerminalSnap(0, 0, 1280, 1440);
-        var act = () => sut.LaunchPlain(@"C:\Repo", snap);
-        act.Should().NotThrow();
+
+        var result = sut.LaunchPlain(@"C:\Repo", snap);
+
+        result.Should().BeFalse();
+        _started.Single().FileName.Should().Be("powershell.exe");
     }
 
 }

@@ -238,8 +238,11 @@ public sealed class TerminalLauncher : ITerminalLauncher
         var user = Environment.ExpandEnvironmentVariables(
             userEnv?.GetValue("Path", "") as string ?? "");
 
-        return string.IsNullOrEmpty(user) ? machine : $"{machine};{user}";
+        return CombinePaths(machine, user);
     }
+
+    private static string CombinePaths(string machine, string user) =>
+        string.IsNullOrEmpty(user) ? machine : $"{machine};{user}";
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
