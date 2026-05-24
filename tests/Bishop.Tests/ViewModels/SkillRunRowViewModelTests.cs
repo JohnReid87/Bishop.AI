@@ -106,4 +106,42 @@ public class SkillRunRowViewModelTests
 
         row.SeverityRank.Should().Be(expectedRank);
     }
+
+    [Theory]
+    [InlineData(-30,      "just now")] // 30 s  — < 60s boundary
+    [InlineData(-3540,    "59m ago")]  // 59 min — < 60m boundary
+    [InlineData(-3600,    "1h ago")]   // 60 min — >= 60m boundary
+    [InlineData(-82800,   "23h ago")]  // 23 h   — < 24h boundary
+    [InlineData(-86400,   "1d ago")]   // 24 h   — >= 24h boundary
+    [InlineData(-2505600, "29d ago")]  // 29 d   — < 30d boundary
+    [InlineData(-2592000, "1mo ago")]  // 30 d   — >= 30d boundary
+    [InlineData(-7776000, "3mo ago")]  // 90 d   — multi-month
+    public void LastRunText_FormatsRelativeTimeBoundaries(int offsetSeconds, string expected)
+    {
+        var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow.AddSeconds(offsetSeconds), 0, false);
+
+        row.LastRunText.Should().Be(expected);
+    }
+
+    [Fact]
+    public void SelectModel_KnownId_UpdatesIdAndLabel()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", null, null, false);
+
+        row.SelectModelCommand.Execute("claude-opus-4-7");
+
+        row.SelectedModelId.Should().Be("claude-opus-4-7");
+        row.SelectedModelLabel.Should().Be("Opus 4.7 ▾");
+    }
+
+    [Fact]
+    public void SelectModel_UnknownId_FallsBackToDefaultLabel()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", null, null, false);
+
+        row.SelectModelCommand.Execute("unknown-model");
+
+        row.SelectedModelId.Should().Be("unknown-model");
+        row.SelectedModelLabel.Should().Be("Sonnet 4.6 ▾");
+    }
 }
