@@ -16,20 +16,17 @@ internal static class TagPickerFlyout
     {
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
         var panel = new StackPanel { Spacing = 4, Width = 220, Padding = new Thickness(6) };
-        var searchBox = new TextBox { PlaceholderText = "Search tags…" };
         var tagListPanel = new StackPanel { Spacing = 2 };
 
-        panel.Children.Add(searchBox);
         panel.Children.Add(tagListPanel);
         flyout.Content = panel;
 
-        void RefreshList(string filter)
+        void RefreshList()
         {
             tagListPanel.Children.Clear();
             var excluded = new HashSet<string>(alreadyAssigned, StringComparer.OrdinalIgnoreCase);
             var matches = allTags
-                .Where(t => !excluded.Contains(t.Name) &&
-                            (filter.Length == 0 || t.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+                .Where(t => !excluded.Contains(t.Name))
                 .ToList();
 
             foreach (var tag in matches)
@@ -47,16 +44,14 @@ internal static class TagPickerFlyout
             {
                 tagListPanel.Children.Add(new TextBlock
                 {
-                    Text = "No matching tags",
+                    Text = "No tags available",
                     Opacity = 0.5,
                     Margin = new Thickness(4, 2, 0, 2),
                 });
             }
         }
 
-        searchBox.TextChanged += (_, _) => RefreshList(searchBox.Text);
-        flyout.Opened += (_, _) => searchBox.Focus(FocusState.Programmatic);
-        RefreshList(string.Empty);
+        RefreshList();
 
         return flyout;
     }
