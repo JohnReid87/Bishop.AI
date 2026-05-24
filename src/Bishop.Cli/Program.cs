@@ -1,7 +1,9 @@
 using Bishop.App;
 using Bishop.Cli;
+using Bishop.Cli.Batches.Abandon;
 using Bishop.Cli.Batches.AddCard;
 using Bishop.Cli.Batches.Create;
+using Bishop.Cli.Batches.Finish;
 using Bishop.Cli.Batches.List;
 using Bishop.Cli.Batches.RemoveCard;
 using Bishop.Cli.Batches.Run;
@@ -102,6 +104,8 @@ batchCmd.AddCommand(new ViewBatchCliCommand(mediator));
 batchCmd.AddCommand(new AddCardToBatchCliCommand(mediator, cardResolver));
 batchCmd.AddCommand(new RemoveCardFromBatchCliCommand(mediator, cardResolver));
 batchCmd.AddCommand(new RunBatchCliCommand(mediator));
+batchCmd.AddCommand(new FinishBatchCliCommand(mediator));
+batchCmd.AddCommand(new AbandonBatchCliCommand(mediator));
 root.AddCommand(batchCmd);
 
 // ── lane ──────────────────────────────────────────────────────────────────────
