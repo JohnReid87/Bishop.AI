@@ -12,17 +12,22 @@ reRunModel: claude-sonnet-4-6
 
 > Recommended model: Opus 4.7 — test-quality heuristic catalogue requires sustained multi-step judgement.
 
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Skill-Run Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
+
 ---
 
-**Before anything else — initialize from `bishop skill bootstrap`:**
+**Before anything else — load the context-pack:**
 
-Run `bishop skill bootstrap --json`. If it exits non-zero, surface the stderr
-line verbatim to the user and STOP — the helper already explains the
-remediation. On success, parse the JSON and extract:
+```
+bishop context-pack tests
+```
+If the command exits non-zero, surface the stderr message as-is and STOP.
 
-- `workspaceName` — echoed back as confirmation
-- `tags[].name` — existing tag names (the skill needs a `test` tag; see step 6)
-- `lanes[].name` — lane names (defaults to `To Do` when pushing)
+Parse the JSON and extract:
+- `workspace.name` — echoed back as confirmation
+- `workspace.tags` — existing tag names (the skill needs a `test` tag; see step 6)
+- `workspace.lanes` — lane names (defaults to `To Do` when pushing)
+- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Skill-Run Recording Procedure)
 
 Echo the workspace name back on its own line:
 
@@ -171,7 +176,7 @@ are shallow.
    > All audited classes already have open quality cards on the board.
    > Nothing new to file.
 
-   Record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-tests`, then continue to step 9 so the clean-classes summary still prints.
+   Record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-tests`, then continue to step 9 so the clean-classes summary still prints.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each
    one, show the class, the test file path, and the issues found. Offer:
@@ -186,7 +191,7 @@ are shallow.
    gap, same module/folder), offer a fourth option to merge them into one
    card before pushing.
 
-   Push confirmed cards by calling `bishop card add` (see [bishop context print --section "Card model"](.bishop/BISHOP_CONTEXT.md#card-model)) with:
+   Push confirmed cards by calling `bishop card add` (see `Card model` in `conventions`) with:
 
    - `--lane "To Do"`
    - `--title "<Title>"`
@@ -209,7 +214,7 @@ are shallow.
    > Re-run `/bish-tests` after the new cards are worked. Dedupe makes
    > repeated runs safe.
 
-10. **Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-tests`.
+10. **Record this run** by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-tests`.
 
 </what-to-do>
 

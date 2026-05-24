@@ -35,16 +35,11 @@ anything is written to the board.
 
 ---
 
-**Initialize from `bishop skill bootstrap`.** Run `bishop skill bootstrap --json`.
-If it exits non-zero, surface the stderr line verbatim and STOP — the helper
-already explains the remediation. On success, parse the JSON and capture
-`workspaceName`, `tags[].name`, `lanes[].name` for the wrap-up step.
-
-> **Workspace:** \<workspaceName\>
+The context-pack below bundles workspace metadata, card data, recent git history, and Bishop convention procedures (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---
 
-**Resolve the card from `$ARGUMENTS`.**
+**Before anything else — load the context-pack:**
 
 `$ARGUMENTS` is **required** and must match `^#?\d+$` (e.g. `42` or `#42`).
 
@@ -60,26 +55,27 @@ already explains the remediation. On success, parse the JSON and capture
   > `bish-chat` accepts a single card Number only (e.g. `42` or `#42`).
   > Use `/bish-grill-me` for free-text seeds.
 
-- Strip a leading `#` if present, then run:
+- Strip a leading `#` if present, then call:
 
   ```
-  bishop card view <number> --json
+  bishop context-pack chat --card <number>
   ```
 
-  If the command exits non-zero, STOP and surface stderr as-is. Do NOT
-  guess.
+  If the command exits non-zero, surface the stderr message as-is and STOP.
 
-  Parse the JSON and capture:
-  - `number` — the canonical `#N` reference (used in headings and the
-    `### Related` line)
-  - `title`, `description`, `laneName`, `tags`
+  Parse the JSON and extract:
+  - `workspace.name` — echoed back as confirmation
+  - `workspace.tags`, `workspace.lanes` — for the wrap-up step
+  - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure)
+  - `skill_specific.card` — the loaded card: `number`, `title`, `description`, `laneName`, `tag`
 
-  Remember this as the **source card** — you will use `number` (and the
-  existing `tags` list) in the wrap-up.
+  Remember `skill_specific.card` as the **source card** — you will use `number` (and the existing `tag`) in the wrap-up.
 
-Echo back so the user can confirm the right card was loaded:
+> **Workspace:** \<workspace.name\>
 
-> **Card #N:** \<title\> *(lane: \<laneName\>, tags: \<comma-joined or "none"\>)*
+Echo the card back so the user can confirm the right card was loaded:
+
+> **Card #N:** \<title\> *(lane: \<laneName\>, tag: \<tag or "none"\>)*
 
 Then open the chat with:
 
@@ -124,14 +120,14 @@ Produce a **single combined proposal**:
    tags.
 2. **Follow-up cards** — zero or more new cards spun out of the chat.
 
-Apply the heuristics in [bishop context print --section "Card Granularity Rules"](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) (TUNABLE) before listing follow-ups.
+Apply the heuristics in `Card Granularity Rules` (in `conventions`) before listing follow-ups.
 
 Each follow-up card's body uses the template below, plus an auto-included
 `### Related` section linking back to the source card (`#<source-number>`).
 
-**Tag** must be one of `tags[].name` from the bootstrap JSON. If the
+**Tag** must be one of `workspace.tags` from the context-pack. If the
 workspace has no tags, default to `feature`. **Lane** defaults to `To Do`;
-use another lane name from `lanes[].name` only when placing the card
+use another lane name from `workspace.lanes` only when placing the card
 somewhere other than the default.
 
 ### Body template
@@ -178,7 +174,7 @@ Rules:
 > <new description body, if changed>
 > ```
 >
-> **Follow-up cards** — render per [bishop context print --section "Task List Preview Format"](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable) (STABLE).
+> **Follow-up cards** — render per `Task List Preview Format` (in `conventions`).
 
 Either side may be empty. If the chat concluded that nothing needs to
 change, print:
@@ -219,7 +215,7 @@ When the user confirms with `push`:
    ```
 
 2. **Add each follow-up card** in order using `bishop card add` per
-   [bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE). Push with
+   `Card Push Procedure` (in `conventions`). Push with
    `--bottom`.
 
 3. **Print a summary table** covering both the source-card edit (if any)

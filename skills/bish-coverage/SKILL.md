@@ -12,17 +12,22 @@ reRunModel: claude-sonnet-4-6
 
 > Recommended model: Sonnet 4.6 — procedure-following; extended reasoning not required.
 
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Skill-Run Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
+
 ---
 
-**Before anything else — initialize from `bishop skill bootstrap`:**
+**Before anything else — load the context-pack:**
 
-Run `bishop skill bootstrap --json`. If it exits non-zero, surface the stderr
-line verbatim to the user and STOP — the helper already explains the
-remediation. On success, parse the JSON and extract:
+```
+bishop context-pack coverage
+```
+If the command exits non-zero, surface the stderr message as-is and STOP.
 
-- `workspaceName` — echoed back as confirmation
-- `tags[].name` — existing tag names (the skill needs a `test` tag; see step 6)
-- `lanes[].name` — lane names (defaults to `To Do` when pushing)
+Parse the JSON and extract:
+- `workspace.name` — echoed back as confirmation
+- `workspace.tags` — existing tag names (the skill needs a `test` tag; see step 6)
+- `workspace.lanes` — lane names (defaults to `To Do` when pushing)
+- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Skill-Run Recording Procedure)
 
 Echo the workspace name back on its own line:
 
@@ -108,7 +113,7 @@ makes no assumption about specific namespace prefixes — it works for any
      can still hide a guard, null check, or mapping worth testing, and the
      user decides per-card in the interview whether it's worth filing.
 
-   If nothing survives, record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-coverage`,
+   If nothing survives, record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-coverage`,
    then congratulate the user — coverage is at or above the threshold — and STOP without pushing anything.
 
 5. **Cluster gaps by source-file directory.** Use the `file` field's parent
@@ -170,7 +175,7 @@ makes no assumption about specific namespace prefixes — it works for any
    > All under-covered areas already have open cards on the board. Nothing new
    > to file.
 
-   Record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-coverage`, then STOP.
+   Record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-coverage`, then STOP.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each one,
    show the cluster name, then each class in the cluster with its coverage
@@ -184,7 +189,7 @@ makes no assumption about specific namespace prefixes — it works for any
    same theme), offer a fourth option to merge them into one card before pushing.
 
 9. **Push confirmed cards.** For each, call `bishop card add`
-   (see [bishop context print --section "Card model"](.bishop/BISHOP_CONTEXT.md#card-model)) with:
+   (see `Card model` in `conventions`) with:
 
    - `--lane "To Do"`
    - `--title "<Title>"`
@@ -204,7 +209,7 @@ makes no assumption about specific namespace prefixes — it works for any
     > `/bish-tests` to audit the test files of well-covered classes.
     > Dedupe makes repeated runs safe.
 
-11. **Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-coverage`.
+11. **Record this run** by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-coverage`.
 
 </what-to-do>
 

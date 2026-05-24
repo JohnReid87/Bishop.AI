@@ -188,6 +188,92 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         pack.SkillSpecific.Should().NotBeNull();
     }
 
+    [Theory]
+    [InlineData("coverage", new[] { "Shell selection", "Card model", "Skill-Run Recording Procedure" })]
+    [InlineData("arch", new[] { "Shell selection", "Card model", "Skill-Run Recording Procedure" })]
+    [InlineData("security", new[] { "Shell selection", "Card model", "Skill-Run Recording Procedure" })]
+    [InlineData("tests", new[] { "Shell selection", "Card model", "Skill-Run Recording Procedure" })]
+    [InlineData("audit-docs", new[] { "Shell selection", "Skill-Run Recording Procedure" })]
+    [InlineData("grill-me", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure", "Source Card Closing Prompt" })]
+    [InlineData("triage", new[] { "Shell selection", "Card Push Procedure", "Source Card Closing Prompt" })]
+    [InlineData("chat", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure" })]
+    public async Task NewProviders_DeliverExpectedConventionKeys(string skillName, string[] expectedKeys)
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var provider = CreateProviderBySkillName(skillName);
+        var handler = CreateHandler(CreateSender(), StubGitCli(), provider);
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery(skillName, workspace, new ContextPackArgs(null)),
+            default);
+
+        // Assert
+        foreach (var key in expectedKeys)
+            pack.Conventions.Should().ContainKey(key, $"provider '{skillName}' declared RequiredSection '{key}'");
+
+        pack.Conventions.Should().HaveCount(expectedKeys.Length);
+    }
+
+    [Theory]
+    [InlineData("grill-me")]
+    [InlineData("triage")]
+    [InlineData("chat")]
+    public async Task CardAwareProviders_LoadCardWhenArgProvided(string skillName)
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var addedCard = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Test card", "Body", TagName: null), default);
+
+        var provider = CreateProviderBySkillName(skillName);
+        var handler = CreateHandler(CreateSender(), StubGitCli(), provider);
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery(skillName, workspace, new ContextPackArgs(addedCard.Number)),
+            default);
+
+        // Assert
+        pack.SkillSpecific.Should().NotBeNull();
+    }
+
+    [Theory]
+    [InlineData("coverage")]
+    [InlineData("arch")]
+    [InlineData("security")]
+    [InlineData("tests")]
+    [InlineData("audit-docs")]
+    public async Task WorkspaceOnlyProviders_SkillSpecificIsNull(string skillName)
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var provider = CreateProviderBySkillName(skillName);
+        var handler = CreateHandler(CreateSender(), StubGitCli(), provider);
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery(skillName, workspace, new ContextPackArgs(null)),
+            default);
+
+        // Assert
+        pack.SkillSpecific.Should().BeNull();
+    }
+
+    private static IContextProvider CreateProviderBySkillName(string skillName) => skillName switch
+    {
+        "coverage" => new CoverageContextProvider(),
+        "arch" => new ArchContextProvider(),
+        "security" => new SecurityContextProvider(),
+        "tests" => new TestsContextProvider(),
+        "audit-docs" => new AuditDocsContextProvider(),
+        "grill-me" => new GrillMeContextProvider(),
+        "triage" => new TriageContextProvider(),
+        "chat" => new ChatContextProvider(),
+        _ => throw new ArgumentOutOfRangeException(nameof(skillName), skillName, null)
+    };
+
     private sealed class TypoSectionProvider : IContextProvider
     {
         public string SkillName => "typo-test";

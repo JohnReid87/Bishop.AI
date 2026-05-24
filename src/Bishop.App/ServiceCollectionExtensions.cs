@@ -43,6 +43,14 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IWorkspaceChangeNotifier, WorkspaceChangeNotifier>();
         services.AddSingleton<IContextProvider, WorkOnCardContextProvider>();
         services.AddSingleton<IContextProvider, AutoCardContextProvider>();
+        services.AddSingleton<IContextProvider, CoverageContextProvider>();
+        services.AddSingleton<IContextProvider, ArchContextProvider>();
+        services.AddSingleton<IContextProvider, SecurityContextProvider>();
+        services.AddSingleton<IContextProvider, TestsContextProvider>();
+        services.AddSingleton<IContextProvider, AuditDocsContextProvider>();
+        services.AddSingleton<IContextProvider, GrillMeContextProvider>();
+        services.AddSingleton<IContextProvider, TriageContextProvider>();
+        services.AddSingleton<IContextProvider, ChatContextProvider>();
         return services;
     }
 }

@@ -82,6 +82,16 @@ Inline `bishop context print --section "<name>"` links in skill prose duplicate 
 
 A provider is one C# class implementing `IContextProvider` (in `Bishop.App.Context.ContextPack`). Adding skill-specific context for a new skill is a one-class change registered in DI; the framework supplies the common blocks automatically.
 
+**Exceptions — skills that do NOT call `bishop context-pack`:**
+
+| Skill | Reason |
+|---|---|
+| `bish-onboard` | The workspace doesn't exist yet at skill entry — `bishop context-pack` requires a registered workspace to resolve. |
+| `bish-audit-skills` | Meta-skill; operates on `skills/` itself, not a workspace's code. No workspace context is relevant. |
+| `bish-write-skill` | Meta-skill; same rationale as `bish-audit-skills`. |
+
+`bish-audit-docs` is a partial exception: it calls `bishop context-pack audit-docs` with a soft fallback (`git rev-parse --show-toplevel`) for repos that aren't Bishop workspaces, because the skill is useful outside the Bishop toolchain.
+
 ---
 
 ## 5. STABLE vs TUNABLE labelling

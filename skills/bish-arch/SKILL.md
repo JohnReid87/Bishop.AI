@@ -12,16 +12,23 @@ reRunModel: claude-sonnet-4-6
 
 > Recommended model: Opus 4.7 — architectural critique requires sustained multi-step judgement.
 
-**Before anything else — initialize from `bishop skill bootstrap`:**
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Skill-Run Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
-Run `bishop skill bootstrap --json`. If it exits non-zero, surface the stderr
-line verbatim to the user and STOP — the helper already explains the
-remediation. On success, parse the JSON and extract:
+---
 
-- `workspaceName` — echoed back as confirmation
-- `workspacePath` — repo root used by the discovery subagent
-- `tags[].name` — existing tag names (the skill needs an `arch` tag; see step 5)
-- `lanes[].name` — lane names (`To Do` is the push target; see step 8)
+**Before anything else — load the context-pack:**
+
+```
+bishop context-pack arch
+```
+If the command exits non-zero, surface the stderr message as-is and STOP.
+
+Parse the JSON and extract:
+- `workspace.name` — echoed back as confirmation
+- `workspace.path` — repo root used by the discovery subagent
+- `workspace.tags` — existing tag names (the skill needs an `arch` tag; see step 5)
+- `workspace.lanes` — lane names (`To Do` is the push target; see step 8)
+- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Skill-Run Recording Procedure)
 
 Echo the workspace name on its own line:
 
@@ -167,7 +174,7 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    to 15. If it returns fewer than 3, that's fine — surface what it found.
 
    If the subagent reports no findings (all applicable dimensions clean),
-   record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-arch`,
+   record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-arch`,
    then congratulate the user and STOP without pushing anything.
 
 3. **Echo summary.** Print a one-line overview the user can scan before triage.
@@ -241,7 +248,7 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    > "Please review the tasks above. Say **push** to create the Bishop cards."
 
 8. **Push confirmed cards** in order. For each, call `bishop card add`
-   (see [bishop context print --section "Card model"](.bishop/BISHOP_CONTEXT.md#card-model)) with:
+   (see `Card model` in `conventions`) with:
 
    - `--lane "To Do"`
    - `--title "<Title>"`
@@ -262,7 +269,7 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    > resurface — explain the same way or capture the rebuttal in a project
    > memory if it's load-bearing.
 
-10. **Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-arch`.
+10. **Record this run** by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-arch`.
 
 </what-to-do>
 

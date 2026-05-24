@@ -36,48 +36,49 @@ Relentless means:
 
 Cards land on the board only after **two gates**:
 
-1. A **granularity pass** — see [bishop context print --section "Card Granularity Rules"](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) (TUNABLE).
+1. A **granularity pass** — see `Card Granularity Rules` (in `conventions`).
 2. A **preview** the user explicitly confirms with `push`. The agent never
    writes to the board on its own.
 
----
-
-**Initialize from `bishop skill bootstrap`.** Run `bishop skill bootstrap --json`.
-If it exits non-zero, surface the stderr line verbatim to the user and STOP —
-the helper already explains the remediation. On success, parse the JSON and
-capture `workspaceName`, `tags[].name`, `lanes[].name` for use during the
-interview.
-
-> **Workspace:** \<workspaceName\>
+The context-pack below bundles workspace metadata, recent git history, card data (when a card number is supplied), and Bishop convention procedures (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure, Source Card Closing Prompt) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---
 
-**Resolve the grill seed from `$ARGUMENTS`.** Three paths:
+**Before anything else — load the context-pack:**
 
-1. **`$ARGUMENTS` is a card Number** (matches `^#?\d+$`, e.g. `42` or `#42`):
-   - Strip a leading `#` if present.
-   - Run `bishop card view <number> --json`.
-   - If the command exits non-zero, STOP and surface stderr as-is. Do not
-     guess.
-   - Parse the JSON and capture `number`, `title`, `description`, `tags`,
-     `laneName`.
-   - Remember the `number` as the **source card** — reused in the closing
-     prompt below.
-   - Use `title` + `description` (and tags / lane for context) as the seed
-     for the grill.
-   - Echo back so the user can confirm before the interview begins:
+**Path A — `$ARGUMENTS` is a card Number** (matches `^#?\d+$`, e.g. `42` or `#42`):
+- Strip a leading `#` if present, then call:
+  ```
+  bishop context-pack grill-me --card <number>
+  ```
+  If the command exits non-zero, surface the stderr message as-is and STOP.
+  
+  Parse the JSON. `skill_specific.card` carries the loaded card.
+  Remember `skill_specific.card.number` as the **source card** — reused in the closing prompt below.
+  Use `skill_specific.card.title` + `skill_specific.card.description` (and tag / laneName for context) as the seed for the grill.
+  Echo back so the user can confirm before the interview begins:
 
-     > **Grilling card #N:** \<title\> *(lane: \<laneName\>, tags: \<comma-joined\>)*
+  > **Grilling card #N:** \<title\> *(lane: \<laneName\>, tag: \<tag\>)*
 
-2. **`$ARGUMENTS` is non-empty free text** (workspace-launch / staging-dialog
-   path):
-   - Use the text verbatim as the seed. No source card; skip the closing
-     prompt later.
+**Path B — `$ARGUMENTS` is non-empty free text** (workspace-launch / staging-dialog path):
+```
+bishop context-pack grill-me
+```
+Use the text verbatim as the seed. No source card; skip the closing prompt later.
 
-3. **`$ARGUMENTS` is empty** (skill launched without arguments and the stage
-   dialog was dismissed):
-   - Ask in chat: "What should I grill you on?" and wait for the user's
-     reply before proceeding. No source card.
+**Path C — `$ARGUMENTS` is empty** (skill launched without arguments and the stage dialog was dismissed):
+```
+bishop context-pack grill-me
+```
+Ask in chat: "What should I grill you on?" and wait for the user's reply before proceeding. No source card.
+
+In all paths, parse the JSON and extract:
+- `workspace.name` — echoed back as confirmation
+- `workspace.tags` — existing tag names
+- `workspace.lanes` — lane names
+- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure, Source Card Closing Prompt)
+
+> **Workspace:** \<workspace.name\>
 
 ---
 
@@ -98,16 +99,16 @@ pull whole files into this conversation.
 
 ## After shared understanding — granularity pass + preview
 
-Apply the heuristics in [bishop context print --section "Card Granularity Rules"](.bishop/BISHOP_CONTEXT.md#card-granularity-rules-tunable) (TUNABLE) to merge or split the proposed cards
+Apply the heuristics in `Card Granularity Rules` (in `conventions`) to merge or split the proposed cards
 before previewing them.
 
-Then print the preview in the shape defined by [bishop context print --section "Task List Preview Format"](.bishop/BISHOP_CONTEXT.md#task-list-preview-format-stable) (STABLE). Each card uses the body template
+Then print the preview in the shape defined by `Task List Preview Format` (in `conventions`). Each card uses the body template
 below.
 
-**Tag** must be one of `tags[].name` from the bootstrap JSON. If the
+**Tag** must be one of `workspace.tags` from the context-pack. If the
 workspace has no tags defined, use `feature` as default.
 
-**Lane** defaults to `To Do`. Use another lane name from `lanes[].name`
+**Lane** defaults to `To Do`. Use another lane name from `workspace.lanes`
 (typically `Backlog`) only when the user asks for a parking spot.
 
 ### Body template
@@ -149,7 +150,7 @@ Do NOT push automatically. Wait for the user to say "push".
 ## Push
 
 When the user confirms, add each card in order using `bishop card add` per
-[bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE). Push with `--bottom`
+`Card Push Procedure` (in `conventions`). Push with `--bottom`
 so cards land in agreed order.
 
 After all cards are created, print a brief summary:
@@ -162,8 +163,8 @@ After all cards are created, print a brief summary:
 
 ## Closing card-action prompt
 
-If a **source card** was captured at the start (Path 1), prompt the user
-about it after the summary, per [bishop context print --section "Source Card Closing Prompt"](.bishop/BISHOP_CONTEXT.md#source-card-closing-prompt-stable) (STABLE). If there is no source card
-(Paths 2 and 3), skip this prompt entirely.
+If a **source card** was captured at the start (Path A), prompt the user
+about it after the summary, per `Source Card Closing Prompt` (in `conventions`). If there is no source card
+(Paths B and C), skip this prompt entirely.
 
 ARGUMENTS: $ARGUMENTS

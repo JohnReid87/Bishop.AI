@@ -41,42 +41,44 @@ manipulates lane position to signal urgency.
 
 ---
 
-**Initialize from `bishop skill bootstrap`.** Run `bishop skill bootstrap --json`.
-If it exits non-zero, surface the stderr line verbatim and STOP — the helper
-already explains the remediation. On success, parse the JSON and capture
-`workspaceName`, `tags[].name`, `lanes[].name` — confirm `bug`, `spike`, and
-`To Do` are present before push.
-
-> **Workspace:** \<workspaceName\>
+The context-pack below bundles workspace metadata, recent git history, card data (when a card number is supplied), and Bishop convention procedures (Shell selection, Card Push Procedure, Source Card Closing Prompt) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---
 
-**Resolve the triage seed from `$ARGUMENTS`.** Three paths:
+**Before anything else — load the context-pack:**
 
-1. **`$ARGUMENTS` is a card Number** (matches `^#?\d+$`, e.g. `42` or `#42`):
-   - Strip a leading `#` if present.
-   - Run `bishop card view <number> --json`.
-   - If the command exits non-zero, STOP and surface stderr as-is. Do not
-     guess.
-   - Parse the JSON and capture `number`, `title`, `description`, `tag`,
-     `laneName`.
-   - Remember the `number` as the **source card** — reused in the closing
-     prompt below.
-   - Use `title` + `description` (verbatim, joined) as the bug-description
-     seed for Phase 1.
-   - Echo back so the user can confirm before the interview begins:
+**Path A — `$ARGUMENTS` is a card Number** (matches `^#?\d+$`, e.g. `42` or `#42`):
+- Strip a leading `#` if present, then call:
+  ```
+  bishop context-pack triage --card <number>
+  ```
+  If the command exits non-zero, surface the stderr message as-is and STOP.
+  
+  `skill_specific.card` carries the loaded card. Remember `skill_specific.card.number` as the **source card** — reused in the closing prompt below.
+  Use `skill_specific.card.title` + `skill_specific.card.description` (verbatim, joined) as the bug-description seed for Phase 1.
+  Echo back so the user can confirm before the interview begins:
 
-     > **Triaging card #N:** \<title\> *(lane: \<laneName\>, tag: \<tag\>)*
+  > **Triaging card #N:** \<title\> *(lane: \<laneName\>, tag: \<tag\>)*
 
-2. **`$ARGUMENTS` is non-empty free text** (workspace-launch / staging-dialog
-   path):
-   - Use the text verbatim as the seed. No source card; skip the closing
-     prompt later.
+**Path B — `$ARGUMENTS` is non-empty free text** (workspace-launch / staging-dialog path):
+```
+bishop context-pack triage
+```
+Use the text verbatim as the seed. No source card; skip the closing prompt later.
 
-3. **`$ARGUMENTS` is empty** (skill launched without arguments and the stage
-   dialog was dismissed):
-   - Ask in chat: "Describe the bug — symptom, repro if known, and any
-     stack trace." and wait for the user's reply. No source card.
+**Path C — `$ARGUMENTS` is empty** (skill launched without arguments and the stage dialog was dismissed):
+```
+bishop context-pack triage
+```
+Ask in chat: "Describe the bug — symptom, repro if known, and any stack trace." and wait for the user's reply. No source card.
+
+In all paths, parse the JSON and extract:
+- `workspace.name` — echoed back as confirmation
+- `workspace.tags` — confirm `bug`, `spike` are present before push
+- `workspace.lanes` — confirm `To Do` is present before push
+- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card Push Procedure, Source Card Closing Prompt)
+
+> **Workspace:** \<workspace.name\>
 
 ---
 
@@ -252,7 +254,7 @@ When the user chose "split into spike + fix-stub" in Phase 3, produce
 
 ## Push
 
-Add the card(s) using `bishop card add` per [bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE). Always `--tag bug` (or `--tag spike`
+Add the card(s) using `bishop card add` per `Card Push Procedure` (in `conventions`). Always `--tag bug` (or `--tag spike`
 for the spike half of a split) and `--lane "To Do"`.
 
 For the spike-split, push the **spike first** (`--tag spike`), capture
@@ -277,10 +279,10 @@ fix-stub.
 ## Closing card-action prompt
 
 If a **source card** was captured at the start (Path 1), prompt the user
-about it after the summary, per [bishop context print --section "Source Card Closing Prompt"](.bishop/BISHOP_CONTEXT.md#source-card-closing-prompt-stable) (STABLE). For the spike-split shape, the
+about it after the summary, per `Source Card Closing Prompt` (in `conventions`). For the spike-split shape, the
 prompt fires once for the original source card (independent of the newly
 created spike + fix-stub pair).
 
-If there is no source card (Paths 2 and 3), skip this prompt entirely.
+If there is no source card (Paths B and C), skip this prompt entirely.
 
 ARGUMENTS: $ARGUMENTS

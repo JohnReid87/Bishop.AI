@@ -17,15 +17,21 @@ reRunModel: claude-sonnet-4-6
 Audit the repo's Markdown documentation for drift against the current code,
 confirm each finding with the user, and apply the agreed edits in place.
 
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Skill-Run Recording Procedure) when running inside a Bishop workspace — canonical source: `.bishop/BISHOP_CONTEXT.md`.
+
 <what-to-do>
 
 **1. Soft workspace detect.**
 
-Run `bishop skill bootstrap`.
+Run `bishop context-pack audit-docs`.
 
-- On success, echo the workspace name:
+- On success, parse the JSON and extract:
+  - `workspace.name` — echoed back as confirmation
+  - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Skill-Run Recording Procedure)
 
-  > **Workspace:** <name>
+  Echo the workspace name:
+
+  > **Workspace:** \<workspace.name\>
 
 - On non-zero exit, fall back to the git repo name
   (`git rev-parse --show-toplevel`, then take the leaf directory). Echo:
@@ -151,7 +157,7 @@ If no edits were applied, skip this step.
 
 ---
 
-**8. Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-audit-docs`.
+**8. Record this run** by following `Skill-Run Recording Procedure` (in `conventions`, if in a Bishop workspace) with `--skill bish-audit-docs`.
 
 </what-to-do>
 

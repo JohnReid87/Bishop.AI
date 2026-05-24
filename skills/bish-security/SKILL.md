@@ -12,18 +12,23 @@ reRunModel: claude-sonnet-4-6
 
 > Recommended model: Opus 4.7 — security heuristic catalogue requires sustained multi-step judgement.
 
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Skill-Run Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
+
 ---
 
-**Before anything else — initialize from `bishop skill bootstrap`:**
+**Before anything else — load the context-pack:**
 
-Run `bishop skill bootstrap --json`. If it exits non-zero, surface the stderr
-line verbatim to the user and STOP — the helper already explains the
-remediation. On success, parse the JSON and extract:
+```
+bishop context-pack security
+```
+If the command exits non-zero, surface the stderr message as-is and STOP.
 
-- `workspaceName` — echoed back as confirmation
-- `workspacePath` — repo root used by the discovery subagent
-- `tags[].name` — existing tag names (the skill needs a `security` tag; see step 3)
-- `lanes[].name` — lane names (defaults to `To Do` when pushing)
+Parse the JSON and extract:
+- `workspace.name` — echoed back as confirmation
+- `workspace.path` — repo root used by the discovery subagent
+- `workspace.tags` — existing tag names (the skill needs a `security` tag; see step 3)
+- `workspace.lanes` — lane names (defaults to `To Do` when pushing)
+- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Skill-Run Recording Procedure)
 
 Echo the workspace name back on its own line:
 
@@ -217,7 +222,7 @@ surface, because the same code often gets copy-pasted into production.
 
    If the subagent reports **no findings** (all applicable dimensions
    clean, no vulnerable packages, no workflow misconfig), record this
-   run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-security`,
+   run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-security`,
    then congratulate the user and STOP without pushing anything.
 
 6. **Echo summary.** Print a one-line overview the user can scan before
@@ -240,7 +245,7 @@ surface, because the same code often gets copy-pasted into production.
    > All security findings already have open cards on the board.
    > Nothing new to file.
 
-   Record this run by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-security`, then STOP.
+   Record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-security`, then STOP.
 
 8. **Triage loop.** Walk surviving findings in severity order. For each
    finding:
@@ -276,7 +281,7 @@ surface, because the same code often gets copy-pasted into production.
      the nearest related card.
 
 10. **Push confirmed cards** in order. For each, call `bishop card add`
-    (see [bishop context print --section "Card model"](.bishop/BISHOP_CONTEXT.md#card-model)) with:
+    (see `Card model` in `conventions`) with:
 
     - `--lane "To Do"`
     - `--title "<Title>"`
@@ -297,7 +302,7 @@ surface, because the same code often gets copy-pasted into production.
     > will resurface — capture load-bearing rebuttals as a project memory
     > so future runs don't re-ask.
 
-12. **Record this run** by following [bishop context print --section "Skill-Run Recording Procedure"](.bishop/BISHOP_CONTEXT.md#skill-run-recording-procedure-stable) (STABLE) with `--skill bish-security`.
+12. **Record this run** by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-security`.
 
 </what-to-do>
 
