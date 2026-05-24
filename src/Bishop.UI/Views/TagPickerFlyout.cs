@@ -11,7 +11,8 @@ internal static class TagPickerFlyout
     internal static Flyout Build(
         IReadOnlyList<TagInfo> allTags,
         IReadOnlyCollection<string> alreadyAssigned,
-        Func<string, string, Task> onPick)
+        Func<string, string, Task> onPick,
+        string? currentlySelected = null)
     {
         var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
         var panel = new StackPanel { Spacing = 4, Width = 220, Padding = new Thickness(6) };
@@ -34,10 +35,11 @@ internal static class TagPickerFlyout
             foreach (var tag in matches)
             {
                 var capturedTag = tag;
-                tagListPanel.Children.Add(MakeTagRow(tag.Name, tag.Colour, async () =>
+                var isSelected = string.Equals(tag.Name, currentlySelected, StringComparison.OrdinalIgnoreCase);
+                tagListPanel.Children.Add(MakeTagRow(tag.Name, tag.Colour, isSelected, async () =>
                 {
                     flyout.Hide();
-                    await onPick(capturedTag.Name, capturedTag.Colour);
+                    if (!isSelected) await onPick(capturedTag.Name, capturedTag.Colour);
                 }));
             }
 
@@ -59,7 +61,7 @@ internal static class TagPickerFlyout
         return flyout;
     }
 
-    private static Button MakeTagRow(string label, string colour, Func<Task> onSelect)
+    private static Button MakeTagRow(string label, string colour, bool isSelected, Func<Task> onSelect)
     {
         var dot = new Border
         {
@@ -74,6 +76,16 @@ internal static class TagPickerFlyout
         var row = new StackPanel { Orientation = Orientation.Horizontal };
         row.Children.Add(dot);
         row.Children.Add(text);
+        if (isSelected)
+        {
+            row.Children.Add(new FontIcon
+            {
+                Glyph = "",
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(6, 0, 0, 0),
+            });
+        }
 
         var btn = new Button
         {

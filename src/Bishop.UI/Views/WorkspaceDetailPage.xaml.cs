@@ -599,9 +599,20 @@ public sealed partial class WorkspaceDetailPage : Page
         };
     }
 
+    private async void CardTagChip_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+        await OpenCardTagPickerAsync((FrameworkElement)sender, card, card.TagName);
+    }
+
     private async void CardAddTagButton_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+        await OpenCardTagPickerAsync((FrameworkElement)sender, card, null);
+    }
+
+    private async Task OpenCardTagPickerAsync(FrameworkElement anchor, CardViewModel card, string? currentlySelected)
+    {
         if (_item is null) return;
 
         var mediator = App.Services.GetRequiredService<IMediator>();
@@ -619,8 +630,8 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             await mediator.Send(new UpdateCardCommand(card.Id, null, null, true, name));
             await Board.RefreshCommand.ExecuteAsync(null);
-        });
-        flyout.ShowAt((FrameworkElement)sender);
+        }, currentlySelected);
+        flyout.ShowAt(anchor);
     }
 
     private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath, CardViewModel? card, string? modelId = null)

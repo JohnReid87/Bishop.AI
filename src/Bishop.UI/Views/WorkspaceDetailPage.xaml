@@ -301,15 +301,24 @@
                                                                        Foreground="{StaticResource AppTextTertiaryBrush}"
                                                                        FontFamily="Cascadia Mono"
                                                                        VerticalAlignment="Center"/>
-                                                            <Border Background="{x:Bind TagColour, Converter={StaticResource HexColorToBrushConverter}}"
-                                                                    CornerRadius="3"
-                                                                    Padding="5,1"
-                                                                    Visibility="{x:Bind IsTagVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                                <TextBlock Text="{x:Bind TagName}"
-                                                                           Style="{StaticResource CaptionTextBlockStyle}"
-                                                                           Foreground="{x:Bind TagColour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
-                                                                           VerticalAlignment="Center"/>
-                                                            </Border>
+                                                            <local:HandCursorButton Background="Transparent"
+                                                                                   BorderThickness="0"
+                                                                                   Padding="0"
+                                                                                   MinWidth="0"
+                                                                                   MinHeight="0"
+                                                                                   Click="CardTagChip_Click"
+                                                                                   ToolTipService.ToolTip="Change tag"
+                                                                                   Visibility="{x:Bind IsTagVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                                   VerticalAlignment="Center">
+                                                                <Border Background="{x:Bind TagColour, Converter={StaticResource HexColorToBrushConverter}}"
+                                                                        CornerRadius="3"
+                                                                        Padding="5,1">
+                                                                    <TextBlock Text="{x:Bind TagName}"
+                                                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                                                               Foreground="{x:Bind TagColour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
+                                                                               VerticalAlignment="Center"/>
+                                                                </Border>
+                                                            </local:HandCursorButton>
                                                             <local:HandCursorButton Click="CardAddTagButton_Click"
                                                                                    Visibility="{x:Bind IsAddTagButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                                                    Padding="5,1"

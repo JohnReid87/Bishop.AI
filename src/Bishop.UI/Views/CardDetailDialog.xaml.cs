@@ -235,9 +235,22 @@ public sealed partial class CardDetailDialog : ContentDialog
 
     // ── Tag editing ───────────────────────────────────────────────────────────
 
-    private async void ClearTag_Click(object sender, RoutedEventArgs e)
+    private async void TagChip_Click(object sender, RoutedEventArgs e)
     {
-        await ViewModel.ClearTagAsync();
+        IReadOnlyList<Bishop.Core.TagInfo> allTags;
+        try
+        {
+            allTags = await ViewModel.GetWorkspaceTagsAsync();
+        }
+        catch
+        {
+            ViewModel.EditError = "Failed to load tags.";
+            return;
+        }
+
+        var flyout = TagPickerFlyout.Build(allTags, [], async (name, colour) =>
+            await ViewModel.SetTagAsync(name, colour), currentlySelected: ViewModel.TagName);
+        flyout.ShowAt((FrameworkElement)sender);
     }
 
     private async void AddTag_Click(object sender, RoutedEventArgs e)
