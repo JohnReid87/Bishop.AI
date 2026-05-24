@@ -14,6 +14,7 @@ internal sealed class BatchConfiguration : IEntityTypeConfiguration<Batch>
         builder.Property(b => b.BaseBranch).HasMaxLength(300).IsRequired();
         builder.Property(b => b.WorktreePath).IsRequired();
         builder.Property(b => b.Status).IsRequired();
+        builder.Property(b => b.GitHubPrUrl).HasMaxLength(2048);
         builder.HasIndex(b => b.BranchName).IsUnique();
     }
 }

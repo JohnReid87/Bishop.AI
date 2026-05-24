@@ -231,4 +231,17 @@ public sealed class FinishBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         result.PrUrl.Should().Be("https://github.com/owner/repo/pull/5");
     }
+
+    [Fact]
+    public async Task GitHubPrUrl_PersistedOnBatch_AfterFinish()
+    {
+        const string prUrl = "https://github.com/owner/repo/pull/7";
+        var batch = await CreateWorkingBatchAsync();
+
+        await CreateHandler(gh: GhReturnsUrl(prUrl))
+            .Handle(new FinishBatchCommand(batch.Name, WorkspacePath, GitHubRepo), default);
+
+        var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
+        saved.GitHubPrUrl.Should().Be(prUrl);
+    }
 }

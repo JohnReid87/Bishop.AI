@@ -625,7 +625,7 @@
 
                             <!-- Batch rows -->
                             <Grid Grid.Row="1">
-                                <TextBlock Text="No open batches."
+                                <TextBlock Text="No batches."
                                            VerticalAlignment="Center"
                                            HorizontalAlignment="Center"
                                            Foreground="{StaticResource AppTextSecondaryBrush}"
@@ -696,6 +696,12 @@
                                                             Click="BatchAbandon_Click"
                                                             Visibility="{x:Bind CanAbandon, Converter={StaticResource BoolToVisibilityConverter}}"
                                                             ToolTipService.ToolTip="Restore cards to To Do and remove worktree"/>
+                                                    <Button Content="View PR"
+                                                            Padding="8,4"
+                                                            FontSize="12"
+                                                            Click="BatchViewPr_Click"
+                                                            Visibility="{x:Bind HasGitHubPr, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                            ToolTipService.ToolTip="Open pull request in browser"/>
                                                 </StackPanel>
                                             </Grid>
                                         </DataTemplate>

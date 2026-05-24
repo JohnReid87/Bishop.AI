@@ -65,7 +65,7 @@ public sealed class BatchRepository : IBatchRepository
         return batch;
     }
 
-    public async Task<Batch> CloseAsync(Guid batchId, BatchClosedReason reason, CancellationToken cancellationToken = default)
+    public async Task<Batch> CloseAsync(Guid batchId, BatchClosedReason reason, string? prUrl = null, CancellationToken cancellationToken = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var batch = await db.Batches.FirstOrDefaultAsync(b => b.Id == batchId, cancellationToken)
@@ -75,6 +75,7 @@ public sealed class BatchRepository : IBatchRepository
         batch.Status = BatchStatus.Closed;
         batch.ClosedReason = reason;
         batch.ClosedAt = DateTimeOffset.UtcNow;
+        batch.GitHubPrUrl = prUrl;
         await db.SaveChangesAsync(cancellationToken);
         return batch;
     }

@@ -32,6 +32,7 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
                 BranchName = s.Batch.BranchName,
                 Status = s.Batch.Status,
                 CardCount = s.CardCount,
+                GitHubPrUrl = s.Batch.GitHubPrUrl,
             });
         HasBatches = Batches.Count > 0;
     }

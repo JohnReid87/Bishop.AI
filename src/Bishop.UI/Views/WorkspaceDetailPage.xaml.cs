@@ -837,6 +837,13 @@ public sealed partial class WorkspaceDetailPage : Page
             await Batches.RefreshCommand.ExecuteAsync(null);
         });
 
+    private async void BatchViewPr_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
+        if (!string.IsNullOrEmpty(batch.GitHubPrUrl))
+            await Launcher.LaunchUriAsync(new Uri(batch.GitHubPrUrl));
+    }
+
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>
         {

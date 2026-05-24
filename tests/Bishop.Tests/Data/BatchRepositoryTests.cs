@@ -150,6 +150,39 @@ public sealed class BatchRepositoryTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task Close_PersistsGitHubPrUrl_WhenProvided()
+    {
+        // Arrange
+        var repo = Repo();
+        var batch = await repo.CreateAsync(U("name"), U("branch"), "main", @"C:\worktree");
+        const string prUrl = "https://github.com/owner/repo/pull/42";
+
+        // Act
+        var closed = await repo.CloseAsync(batch.Id, BatchClosedReason.Finished, prUrl);
+
+        // Assert
+        closed.GitHubPrUrl.Should().Be(prUrl);
+
+        var stored = await _db.Batches.FindAsync(batch.Id);
+        _db.Entry(stored!).Reload();
+        stored!.GitHubPrUrl.Should().Be(prUrl);
+    }
+
+    [Fact]
+    public async Task Close_LeavesGitHubPrUrlNull_WhenNotProvided()
+    {
+        // Arrange
+        var repo = Repo();
+        var batch = await repo.CreateAsync(U("name"), U("branch"), "main", @"C:\worktree");
+
+        // Act
+        var closed = await repo.CloseAsync(batch.Id, BatchClosedReason.Abandoned);
+
+        // Assert
+        closed.GitHubPrUrl.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Close_Throws_WhenAlreadyClosed()
     {
         // Arrange

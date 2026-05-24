@@ -53,7 +53,7 @@ public sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCom
         foreach (var card in cards)
             await _batches.UnassignCardAsync(batch.Id, card.Id, cancellationToken);
 
-        await _batches.CloseAsync(batch.Id, BatchClosedReason.Abandoned, cancellationToken);
+        await _batches.CloseAsync(batch.Id, BatchClosedReason.Abandoned, cancellationToken: cancellationToken);
         await _git.RemoveWorktreeAsync(request.WorkspacePath, batch.WorktreePath, cancellationToken);
 
         return new AbandonBatchResult(cards.Count);

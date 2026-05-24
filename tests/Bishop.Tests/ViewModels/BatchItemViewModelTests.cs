@@ -65,4 +65,36 @@ public class BatchItemViewModelTests
 
         vm.CardCountLabel.Should().Be("0 cards");
     }
+
+    [Fact]
+    public void StatusLabel_ReturnsClosedForClosedStatus()
+    {
+        var vm = new BatchItemViewModel { Status = BatchStatus.Closed };
+
+        vm.StatusLabel.Should().Be("Closed");
+    }
+
+    [Fact]
+    public void HasGitHubPr_TrueWhenUrlSet()
+    {
+        var vm = new BatchItemViewModel { GitHubPrUrl = "https://github.com/owner/repo/pull/1" };
+
+        vm.HasGitHubPr.Should().BeTrue();
+    }
+
+    [Fact]
+    public void HasGitHubPr_FalseWhenUrlNull()
+    {
+        var vm = new BatchItemViewModel { GitHubPrUrl = null };
+
+        vm.HasGitHubPr.Should().BeFalse();
+    }
+
+    [Fact]
+    public void HasGitHubPr_FalseWhenUrlEmpty()
+    {
+        var vm = new BatchItemViewModel { GitHubPrUrl = string.Empty };
+
+        vm.HasGitHubPr.Should().BeFalse();
+    }
 }

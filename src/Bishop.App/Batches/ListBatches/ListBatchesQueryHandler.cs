@@ -19,12 +19,12 @@ public sealed class ListBatchesQueryHandler : IRequestHandler<ListBatchesQuery, 
     public async Task<IReadOnlyList<BatchSummary>> Handle(ListBatchesQuery request, CancellationToken cancellationToken)
     {
         var all = await _batches.ListAsync(cancellationToken);
-        var active = all.Where(b => b.Status != BatchStatus.Closed).ToList();
+        var visible = all.Where(b => b.Status != BatchStatus.Closed || b.GitHubPrUrl != null).ToList();
 
-        if (active.Count == 0)
+        if (visible.Count == 0)
             return [];
 
-        var batchIds = active.Select(b => b.Id).ToList();
+        var batchIds = visible.Select(b => b.Id).ToList();
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
         var cardCounts = await db.Cards.AsNoTracking()
@@ -33,6 +33,6 @@ public sealed class ListBatchesQueryHandler : IRequestHandler<ListBatchesQuery, 
             .Select(g => new { BatchId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.BatchId, x => x.Count, cancellationToken);
 
-        return active.Select(b => new BatchSummary(b, cardCounts.GetValueOrDefault(b.Id, 0))).ToList();
+        return visible.Select(b => new BatchSummary(b, cardCounts.GetValueOrDefault(b.Id, 0))).ToList();
     }
 }

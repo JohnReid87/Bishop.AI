@@ -13,6 +13,7 @@ public sealed class Batch
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ClosedAt { get; set; }
     public string WorktreePath { get; set; } = string.Empty;
+    public string? GitHubPrUrl { get; set; }
 
     [JsonIgnore]
     public ICollection<Card> Cards { get; set; } = [];

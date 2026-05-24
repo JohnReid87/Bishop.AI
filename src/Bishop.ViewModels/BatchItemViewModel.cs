@@ -9,11 +9,18 @@ public sealed class BatchItemViewModel
     public string BranchName { get; init; } = string.Empty;
     public BatchStatus Status { get; init; }
     public int CardCount { get; init; }
+    public string? GitHubPrUrl { get; init; }
 
-    public string StatusLabel => Status == BatchStatus.Working ? "Working" : "Open";
+    public string StatusLabel => Status switch
+    {
+        BatchStatus.Working => "Working",
+        BatchStatus.Closed => "Closed",
+        _ => "Open"
+    };
     public string CardCountLabel => CardCount == 1 ? "1 card" : $"{CardCount} cards";
 
     public bool CanRun => Status == BatchStatus.Open;
     public bool CanFinish => Status == BatchStatus.Working;
     public bool CanAbandon => Status == BatchStatus.Working;
+    public bool HasGitHubPr => !string.IsNullOrEmpty(GitHubPrUrl);
 }
