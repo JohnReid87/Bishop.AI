@@ -267,33 +267,64 @@
             </NavigationView.PaneCustomContent>
 
             <NavigationView.PaneFooter>
-                <Grid>
-                    <!-- Expanded: labelled Bishop tools button -->
-                    <Button HorizontalAlignment="Stretch"
-                            Margin="8,4,8,8"
-                            Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                            Click="SettingsButton_Click"
-                            ToolTipService.ToolTip="Bishop tools"
-                            Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE713;" FontSize="11" VerticalAlignment="Center"/>
-                            <TextBlock Text="Bishop tools"
-                                       FontSize="11"
-                                       VerticalAlignment="Center"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                    </Button>
-                    <!-- Collapsed: icon-only Bishop tools button -->
-                    <Button Width="200" Height="32"
-                            HorizontalAlignment="Center"
-                            Margin="0,0,0,8"
-                            Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                            Click="SettingsButton_Click"
-                            ToolTipService.ToolTip="Bishop tools"
-                            Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
-                        <FontIcon Glyph="&#xE713;" FontSize="13"/>
-                    </Button>
-                </Grid>
+                <StackPanel>
+                    <!-- Game button row -->
+                    <Grid>
+                        <!-- Expanded: labelled Play Breakout button -->
+                        <Button HorizontalAlignment="Stretch"
+                                Margin="8,4,8,4"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="GameButton_Click"
+                                ToolTipService.ToolTip="Play Breakout"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE7FC;" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Play Breakout"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Collapsed: icon-only Play Breakout button -->
+                        <Button Width="200" Height="32"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,4"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="GameButton_Click"
+                                ToolTipService.ToolTip="Play Breakout"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <FontIcon Glyph="&#xE7FC;" FontSize="13"/>
+                        </Button>
+                    </Grid>
+                    <!-- Bishop tools row -->
+                    <Grid>
+                        <!-- Expanded: labelled Bishop tools button -->
+                        <Button HorizontalAlignment="Stretch"
+                                Margin="8,4,8,8"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="SettingsButton_Click"
+                                ToolTipService.ToolTip="Bishop tools"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE713;" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Bishop tools"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Collapsed: icon-only Bishop tools button -->
+                        <Button Width="200" Height="32"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,8"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="SettingsButton_Click"
+                                ToolTipService.ToolTip="Bishop tools"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <FontIcon Glyph="&#xE713;" FontSize="13"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
             </NavigationView.PaneFooter>
 
             <Grid Background="{StaticResource AppBackgroundBrush}">

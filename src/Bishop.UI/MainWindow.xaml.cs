@@ -249,6 +249,9 @@ public sealed partial class MainWindow : Window
                 await ViewModel.DeleteWorkspaceAsync(item);
         });
 
+    private void GameButton_Click(object sender, RoutedEventArgs e)
+        => ContentFrame.Navigate(typeof(GamePage));
+
     private async void SettingsButton_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>
         {
