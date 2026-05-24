@@ -436,6 +436,92 @@ public class MainWindowViewModelTests
         items[2].Position.Should().Be(3);
     }
 
+    [Fact]
+    public void OnWorkspacesChanged_ReloadsWorkspacesFromMediator()
+    {
+        var id = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>
+            {
+                new() { Id = id, Name = "alpha", Path = "C:/a", Position = 1 }
+            });
+        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
+        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: SynchronousDispatcher());
+
+        notifier.WorkspacesChanged += Raise.Event<Action>();
+
+        vm.Workspaces.Should().HaveCount(1);
+        vm.Workspaces[0].Id.Should().Be(id);
+    }
+
+    [Fact]
+    public async Task OnWorkspacesChanged_SelectsFirstWorkspace_WhenCurrentWorkspaceRemovedFromList()
+    {
+        var originalId = Guid.NewGuid();
+        var newId = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new List<Workspace> { new() { Id = originalId, Name = "original", Path = "C:/o", Position = 1 } },
+                new List<Workspace> { new() { Id = newId, Name = "replacement", Path = "C:/n", Position = 1 } });
+        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
+        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: SynchronousDispatcher());
+
+        await vm.LoadAsync();
+        vm.SelectedWorkspace = vm.Workspaces[0];
+
+        notifier.WorkspacesChanged += Raise.Event<Action>();
+
+        vm.SelectedWorkspace.Should().NotBeNull();
+        vm.SelectedWorkspace!.Id.Should().Be(newId);
+    }
+
+    [Fact]
+    public void OnWorkspacesChanged_DoesNotAutoSelectFirstWorkspace_WhenCurrentSelectionIsNull()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>
+            {
+                new() { Id = Guid.NewGuid(), Name = "alpha", Path = "C:/a", Position = 1 }
+            });
+        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
+        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: SynchronousDispatcher());
+
+        notifier.WorkspacesChanged += Raise.Event<Action>();
+
+        vm.SelectedWorkspace.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task OnIsPaneOpenChanged_PersistsNavPrefsToFile()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        try
+        {
+            var vm = NewVm(navPrefsFilePath: tempPath);
+            vm.IsPaneOpen = false;
+
+            await Task.Delay(200);
+
+            var json = await File.ReadAllTextAsync(tempPath);
+            json.Should().Contain("\"IsPaneOpen\":false");
+        }
+        finally
+        {
+            try { File.Delete(tempPath); } catch { }
+        }
+    }
+
+    private static IUiDispatcher SynchronousDispatcher()
+    {
+        var dispatcher = Substitute.For<IUiDispatcher>();
+        dispatcher.When(d => d.TryEnqueue(Arg.Any<Func<Task>>()))
+                  .Do(ci => ci.Arg<Func<Task>>()().GetAwaiter().GetResult());
+        return dispatcher;
+    }
+
     private static MainWindowViewModel NewVm(
         IMediator? mediator = null,
         ICatModeService? catMode = null,
