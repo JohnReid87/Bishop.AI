@@ -16,10 +16,10 @@ Skills divide into four categories. The category determines the restructure appr
 
 | Category | Current members | What the skill *is*, fundamentally |
 |---|---|---|
-| **Conversational** | `bish-grill-me`, `bish-chat`, `bish-triage` | An interview style — relentless interrogation, drift-tolerant chat, or a bug-skeleton walk. The soul is the *quality bar of the conversation*. |
-| **Review** | `bish-arch`, `bish-security`, `bish-tests`, `bish-coverage`, `bish-audit-docs` | A body of heuristics applied to the codebase, then walked with the user finding-by-finding. The soul is the *heuristic catalogue*. |
+| **Conversational** | `bish-grill-me`, `bish-chat` | An interview style — relentless interrogation or drift-tolerant chat. The soul is the *quality bar of the conversation*. |
+| **Review** | `bish-arch`, `bish-security`, `bish-tests`, `bish-coverage`, `bish-audit-docs`, `bish-triage` | A body of heuristics applied to the codebase, then walked with the user finding-by-finding. The soul is the *heuristic catalogue*. |
 | **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card` | A deterministic procedure that mutates state (filesystem, board, git). The soul is the *procedure itself*. |
-| **Bishop-level / meta** | `bish-write-skill` (planned, card #262), `bish-audit-skills` (deferred, card #218 marker) | Skills *about* the skill family — authoring guides, audits. Operate on `skills/` directly, not on a workspace's code. |
+| **Bishop-level / meta** | `bish-write-skill`, `bish-audit-skills` | Skills *about* the skill family — authoring guides, audits. Operate on `skills/` directly, not on a workspace's code. |
 
 The Conversational / Review / Setup-Execute split is **workspace-level** — each skill targets the user's current Bishop workspace. Bishop-level skills are distinct: they treat the Bishop repository itself (or any `skills/` directory) as their subject. Keep them separate so workspace-level skills do not accumulate self-referential plumbing.
 
@@ -157,7 +157,7 @@ Finally, run this family-wide check (not per-skill):
     - `DIRECTION.md` — the "Skills live in this repo" decision block.
     - `src/Bishop.App/Terminal/BishopContext.static.md` — the `## Workflow` section's `### *** skills` sub-headings.
 
-    Each doc must group skills under labels that map 1:1 to the canonical four categories — either the doc-level names (Conversational / Review / Setup-Execute / Bishop-level / meta) or equivalent labels that correspond 1:1 to the frontmatter `bishop.category` values (`discuss` / `review` / `setup` + `execute` / `meta`). Flag:
+    Each doc must group skills under labels that map 1:1 to the canonical four categories — either the doc-level names (Conversational / Review / Setup-Execute / Bishop-level / meta) or equivalent labels that correspond 1:1 to the frontmatter `bishop.category` values (`discuss` / `review` / `setup` and `execute` (as separate values) / `meta`). Flag:
     - **Missing skill** — a `skills/bish-*/` directory not named in one of the four docs.
     - **Missing category** — one of the four categories has no heading or label in a doc that otherwise lists skills.
     - **Stale flat list** — a doc lists skills inline without any category grouping at all.

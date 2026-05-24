@@ -20,7 +20,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 ## Architecture
 
 ### Repository layout
-- `src/` — .NET projects (Core, Data, App, ViewModels, Cli, UI).
+- `src/` — .NET projects (Core, Data, App, ViewModels, Cli, UI, Game).
 - `tests/Bishop.Tests/` — xUnit project.
 - `skills/` — vendored Claude Code skill files shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`. Grouped into four categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
   - **Review:** `bish-arch`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`
@@ -60,7 +60,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path> | --append-description-file <path>] [--tag <name>] [--to-lane <name>] [--no-close] [-w]` — updates only the supplied fields; pass `--tag ""` to clear the tag; `--to-lane` moves the card after editing (auto-closes on move into `Done` unless `--no-close` is set)
 - `bishop card claim [--lane <name>] [--tag <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; `--tag` restricts the pick to the first card carrying that tag; exits non-zero if no matching card exists
 - `bishop card remove <card-id> [-w]`
-- `bishop card push <card-id> [-w]` — create a GitHub issue for the card in the workspace's linked repo and store the issue number on the card
+- `bishop card push [<card-id>] [--lane <name>] [--dry-run] [-w]` — push a single card by ID, or all unlinked cards in a lane; `--lane` and card-id are mutually exclusive; `--dry-run` previews without calling gh
 - `bishop card close <card-id> [-w]` — mark a card as closed; also closes the linked GitHub issue via `gh` if the card has been pushed
 - `bishop card reopen <card-id> [-w]` — reopen a closed card; also reopens the linked GitHub issue via `gh` if the card has been pushed
 - `bishop lane list [-w]` — lanes are fixed (Backlog / To Do / Doing / Done); no user-mutable lane CRUD
