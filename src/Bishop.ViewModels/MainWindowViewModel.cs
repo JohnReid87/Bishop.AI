@@ -1,3 +1,4 @@
+using Bishop.App.Batches.ReconcileOrphanedBatches;
 using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
 using Bishop.App.Workspaces.DeleteWorkspace;
@@ -78,6 +79,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public async Task LoadAsync()
     {
+        await _mediator.Send(new ReconcileOrphanedBatchesCommand());
         var prefs = await LoadNavPrefsAsync();
         await ReloadWorkspacesListAsync();
         if (prefs?.LastSelectedWorkspaceId is { } id)

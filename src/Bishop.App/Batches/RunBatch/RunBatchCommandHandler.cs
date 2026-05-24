@@ -98,48 +98,91 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
             };
         }
 
-        foreach (var card in pendingCards)
+        var lockPath = LockFilePath(batch.WorktreePath, batch.Id);
+        try
         {
-            var gitStatus = await _git.GetWorkingTreeStatusAsync(batch.WorktreePath, cancellationToken);
-            switch (gitStatus)
+            WriteLockFile(lockPath);
+            foreach (var card in pendingCards)
             {
-                case GetWorkingTreeStatusResult.Dirty dirty:
-                    return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.DirtyWorktree, dirty.Paths);
-                case GetWorkingTreeStatusResult.NotAGitRepo:
-                    return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.NotAGitRepo);
-                case GetWorkingTreeStatusResult.GitNotFound:
-                    return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.GitNotFound);
-            }
+                RefreshLockFile(lockPath);
 
-            await _sender.Send(
-                new UpdateCardCommand(card.Id, null, null, false, null, ToLaneName: SystemLaneNames.Doing),
-                cancellationToken);
+                var gitStatus = await _git.GetWorkingTreeStatusAsync(batch.WorktreePath, cancellationToken);
+                switch (gitStatus)
+                {
+                    case GetWorkingTreeStatusResult.Dirty dirty:
+                        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.DirtyWorktree, dirty.Paths);
+                    case GetWorkingTreeStatusResult.NotAGitRepo:
+                        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.NotAGitRepo);
+                    case GetWorkingTreeStatusResult.GitNotFound:
+                        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.GitNotFound);
+                }
 
-            var stamp = DateTimeOffset.Now.ToString("HH:mm:ss");
-            var startLine = request.Model is not null
-                ? $"== [{stamp}] Card #{card.Number}: {card.Title}  [{request.Model}] =="
-                : $"== [{stamp}] Card #{card.Number}: {card.Title} ==";
-            Console.Out.WriteLine(startLine);
-
-            var contextPack = await _sender.Send(
-                new BuildContextPackQuery("auto-card", worktreeWorkspace!, new ContextPackArgs(card.Number)),
-                cancellationToken);
-            var contextJson = JsonSerializer.Serialize(contextPack, s_contextPackOpts);
-            var prompt = $"<bishop-context>\n{contextJson}\n</bishop-context>\n\n/bish-auto-card #{card.Number}";
-            var runResult = await _claude.RunPromptAsync(batch.WorktreePath, prompt, request.Model, card.Number, cancellationToken);
-
-            Console.Out.WriteLine($"exit {runResult.ExitCode}");
-
-            if (runResult.ExitCode == 0)
-            {
-                var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
                 await _sender.Send(
-                    new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens, totals.CacheCreationTokens, totals.CacheReadTokens),
+                    new UpdateCardCommand(card.Id, null, null, false, null, ToLaneName: SystemLaneNames.Doing),
                     cancellationToken);
 
-                var handoff = await ReadAndDeleteHandoffAsync(batch.WorktreePath, cancellationToken);
+                var stamp = DateTimeOffset.Now.ToString("HH:mm:ss");
+                var startLine = request.Model is not null
+                    ? $"== [{stamp}] Card #{card.Number}: {card.Title}  [{request.Model}] =="
+                    : $"== [{stamp}] Card #{card.Number}: {card.Title} ==";
+                Console.Out.WriteLine(startLine);
 
-                if (handoff is null)
+                var contextPack = await _sender.Send(
+                    new BuildContextPackQuery("auto-card", worktreeWorkspace!, new ContextPackArgs(card.Number)),
+                    cancellationToken);
+                var contextJson = JsonSerializer.Serialize(contextPack, s_contextPackOpts);
+                var prompt = $"<bishop-context>\n{contextJson}\n</bishop-context>\n\n/bish-auto-card #{card.Number}";
+                var runResult = await _claude.RunPromptAsync(batch.WorktreePath, prompt, request.Model, card.Number, cancellationToken);
+
+                Console.Out.WriteLine($"exit {runResult.ExitCode}");
+
+                if (runResult.ExitCode == 0)
+                {
+                    var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
+                    await _sender.Send(
+                        new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens, totals.CacheCreationTokens, totals.CacheReadTokens),
+                        cancellationToken);
+
+                    var handoff = await ReadAndDeleteHandoffAsync(batch.WorktreePath, cancellationToken);
+
+                    if (handoff is null)
+                    {
+                        await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
+                        await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
+                        await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
+                        failedNumbers.Add(card.Number);
+                        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
+                    }
+
+                    var prefix = TagToPrefix(card.TagName);
+                    var message = ComposeCommitMessage(prefix, card.Title, card.Number, handoff.CommitBodyBullets);
+
+                    string commitHash;
+                    try
+                    {
+                        await _git.StageAllAsync(batch.WorktreePath, cancellationToken);
+                        commitHash = await _git.CommitAsync(batch.WorktreePath, message, cancellationToken);
+                    }
+                    catch
+                    {
+                        await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
+                        await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
+                        await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
+                        failedNumbers.Add(card.Number);
+                        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
+                    }
+
+                    await _sender.Send(new SetCardCommitCommand(card.Id, commitHash, batch.BranchName), cancellationToken);
+                    await _sender.Send(
+                        new UpdateCardCommand(card.Id, null, null, false, null,
+                            AppendDescription: handoff.Notes,
+                            ToLaneName: SystemLaneNames.Done,
+                            KeepOpen: true),
+                        cancellationToken);
+
+                    succeeded++;
+                }
+                else
                 {
                     await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
                     await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
@@ -147,47 +190,34 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     failedNumbers.Add(card.Number);
                     return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
                 }
-
-                var prefix = TagToPrefix(card.TagName);
-                var message = ComposeCommitMessage(prefix, card.Title, card.Number, handoff.CommitBodyBullets);
-
-                string commitHash;
-                try
-                {
-                    await _git.StageAllAsync(batch.WorktreePath, cancellationToken);
-                    commitHash = await _git.CommitAsync(batch.WorktreePath, message, cancellationToken);
-                }
-                catch
-                {
-                    await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
-                    await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
-                    await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
-                    failedNumbers.Add(card.Number);
-                    return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
-                }
-
-                await _sender.Send(new SetCardCommitCommand(card.Id, commitHash, batch.BranchName), cancellationToken);
-                await _sender.Send(
-                    new UpdateCardCommand(card.Id, null, null, false, null,
-                        AppendDescription: handoff.Notes,
-                        ToLaneName: SystemLaneNames.Done,
-                        KeepOpen: true),
-                    cancellationToken);
-
-                succeeded++;
             }
-            else
-            {
-                await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
-                await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
-                await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
-                failedNumbers.Add(card.Number);
-                return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
-            }
+
+            await _batches.CloseAsync(batch.Id, BatchClosedReason.Finished, cancellationToken: cancellationToken);
+            return new RunBatchResult(succeeded, null, RunBatchStopReason.Finished);
         }
+        finally
+        {
+            DeleteLockFile(lockPath);
+        }
+    }
 
-        await _batches.CloseAsync(batch.Id, BatchClosedReason.Finished, cancellationToken: cancellationToken);
-        return new RunBatchResult(succeeded, null, RunBatchStopReason.Finished);
+    private static string LockFilePath(string worktreePath, Guid batchId) =>
+        Path.Combine(worktreePath, ".bishop", $"batch-{batchId}.lock");
+
+    private static void WriteLockFile(string lockPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
+        File.WriteAllText(lockPath, $"{Environment.ProcessId}\t{DateTimeOffset.UtcNow:O}");
+    }
+
+    private static void RefreshLockFile(string lockPath)
+    {
+        try { File.WriteAllText(lockPath, $"{Environment.ProcessId}\t{DateTimeOffset.UtcNow:O}"); } catch { }
+    }
+
+    private static void DeleteLockFile(string lockPath)
+    {
+        try { File.Delete(lockPath); } catch { }
     }
 
     private static async Task<HandoffPayload?> ReadAndDeleteHandoffAsync(string worktreePath, CancellationToken cancellationToken)

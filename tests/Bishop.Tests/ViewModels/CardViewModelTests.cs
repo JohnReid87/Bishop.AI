@@ -199,15 +199,15 @@ public class CardViewModelTests
     }
 
     [Theory]
-    [InlineData("Backlog", false)]
-    [InlineData("To Do", false)]
-    [InlineData("Done", false)]
-    [InlineData("Doing", true)]
-    public void IsAutoRunFailedIndicatorVisible_TrueOnlyWhenFieldSetAndLaneIsDoing(string laneName, bool expected)
+    [InlineData("Backlog")]
+    [InlineData("To Do")]
+    [InlineData("Done")]
+    [InlineData("Doing")]
+    public void IsAutoRunFailedIndicatorVisible_TrueInAnyLaneWhenFieldSet(string laneName)
     {
         var vm = new CardViewModel { LaneName = laneName, LastAutoRunFailedAt = DateTimeOffset.UtcNow };
 
-        vm.IsAutoRunFailedIndicatorVisible.Should().Be(expected);
+        vm.IsAutoRunFailedIndicatorVisible.Should().BeTrue();
     }
 
     [Fact]
