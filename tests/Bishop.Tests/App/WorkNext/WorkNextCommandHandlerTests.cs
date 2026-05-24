@@ -2,12 +2,16 @@ using System.Diagnostics;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.GetCard;
+using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Services.Claude;
 using Bishop.App.Git;
+using Bishop.App.Git.GetRecentCommits;
 using Bishop.App.Lanes.ListLanesByWorkspace;
+using Bishop.App.Skills.GetSkillBootstrapInfo;
+using Bishop.App.Tags.ListTagsByWorkspace;
 using Bishop.App.WorkNext;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
@@ -86,6 +90,18 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         sender.Send(Arg.Any<RecordAutoRunFailureCommand>(), Arg.Any<CancellationToken>())
             .Returns(call => new RecordAutoRunFailureCommandHandler(_factory)
                 .Handle(call.ArgAt<RecordAutoRunFailureCommand>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ListLanesByWorkspaceQueryHandler()
+                .Handle(call.ArgAt<ListLanesByWorkspaceQuery>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ListTagsByWorkspaceQueryHandler()
+                .Handle(call.ArgAt<ListTagsByWorkspaceQuery>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<GetSkillBootstrapInfoQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new GetSkillBootstrapInfoQueryHandler(_factory, sender)
+                .Handle(call.ArgAt<GetSkillBootstrapInfoQuery>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new GetCardByNumberQueryHandler(_factory)
+                .Handle(call.ArgAt<GetCardByNumberQuery>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }
 
@@ -94,6 +110,8 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         var git = Substitute.For<IGitCli>();
         git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new GetWorkingTreeStatusResult.Clean());
+        git.GetRecentCommitsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetRecentCommitsResult.Success(new List<CommitInfo>(), null));
         return git;
     }
 
@@ -291,7 +309,7 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
     }
 
     [Fact]
-    public async Task ClaudeReceivesPromptWithCardNumber()
+    public async Task ClaudeReceivesPromptWithContextBlockAndCardNumber()
     {
         // Arrange
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
@@ -307,10 +325,13 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             new WorkNextCommand(workspace.Id, WorkspacePath, "test", 1),
             default);
 
-        // Assert
+        // Assert — prompt starts with the pre-stuffed context block and ends with the skill invocation
         await claude.Received(1).RunPromptAsync(
             WorkspacePath,
-            $"/bish-auto-card #{card.Number}",
+            Arg.Is<string>(p =>
+                p.StartsWith("<bishop-context>") &&
+                p.Contains($"\"number\": {card.Number}") &&
+                p.EndsWith($"/bish-auto-card #{card.Number}")),
             Arg.Any<string?>(),
             Arg.Any<int?>(),
             Arg.Any<CancellationToken>());

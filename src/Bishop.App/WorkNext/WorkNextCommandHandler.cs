@@ -1,10 +1,14 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Bishop.App.Cards.ClaimCard;
+using Bishop.App.Cards.GetCardByNumber;
 using Bishop.Core;
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Services.Claude;
 using Bishop.App.Git;
+using Bishop.App.Git.GetRecentCommits;
+using Bishop.App.Skills.GetSkillBootstrapInfo;
 using MediatR;
 
 namespace Bishop.App.WorkNext;
@@ -78,7 +82,8 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                     : $"== [{startStamp}] Card #{card.Number}: {card.Title} ==";
                 Console.Out.WriteLine(startLine);
 
-                var prompt = $"/bish-auto-card #{card.Number}";
+                var context = await BuildAutoCardContextAsync(request.WorkspaceId, request.WorkspacePath, card, cancellationToken);
+                var prompt = $"{context.FormatAsBlock()}\n\n/bish-auto-card #{card.Number}";
                 var claudeSw = Stopwatch.StartNew();
                 var runResult = await _claude.RunPromptAsync(request.WorkspacePath, prompt, request.Model, card.Number, cancellationToken);
                 claudeSw.Stop();
@@ -120,6 +125,56 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
     }
 
     private static IReadOnlyList<int>? ToNullableList(List<int> list) => list.Count > 0 ? list : null;
+
+    private static readonly Regex RelatedCardPattern = new(@"#(\d+)", RegexOptions.Compiled);
+
+    private async Task<AutoCardPromptContext> BuildAutoCardContextAsync(
+        Guid workspaceId,
+        string workspacePath,
+        Card card,
+        CancellationToken cancellationToken)
+    {
+        var bootstrapTask = _sender.Send(new GetSkillBootstrapInfoQuery(workspaceId), cancellationToken);
+        var commitsTask = _git.GetRecentCommitsAsync(workspacePath, cancellationToken);
+
+        await Task.WhenAll(bootstrapTask, commitsTask);
+
+        var bootstrap = await bootstrapTask;
+        var commitsResult = await commitsTask;
+
+        var recentCommits = commitsResult is GetRecentCommitsResult.Success s
+            ? s.Commits.Take(20).Select(c => new AutoCardCommitSummary(c.ShortHash, c.Subject)).ToList()
+            : new List<AutoCardCommitSummary>();
+
+        var relatedNumbers = ParseRelatedCardNumbers(card.Description);
+        var relatedCards = new List<AutoCardPromptCard>();
+        foreach (var num in relatedNumbers)
+        {
+            var related = await _sender.Send(new GetCardByNumberQuery(num, workspaceId), cancellationToken);
+            if (related is not null)
+                relatedCards.Add(ToCardContext(related));
+        }
+
+        return new AutoCardPromptContext(bootstrap, ToCardContext(card), recentCommits, relatedCards);
+    }
+
+    private static AutoCardPromptCard ToCardContext(Card card) =>
+        new(card.Number, card.Title, card.Description, card.LaneName, card.TagName, card.IsClosed);
+
+    private static IReadOnlyList<int> ParseRelatedCardNumbers(string description)
+    {
+        var idx = description.IndexOf("### Related", StringComparison.Ordinal);
+        if (idx < 0) return [];
+
+        var section = description[idx..];
+        var nextSection = section.IndexOf("\n### ", 1, StringComparison.Ordinal);
+        if (nextSection > 0) section = section[..nextSection];
+
+        return RelatedCardPattern.Matches(section)
+            .Select(m => int.Parse(m.Groups[1].Value))
+            .Distinct()
+            .ToList();
+    }
 
     private static string FormatCardSummary(
         int cardNumber,

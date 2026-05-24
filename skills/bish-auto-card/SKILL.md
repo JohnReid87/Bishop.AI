@@ -24,89 +24,45 @@ exists.
 
 <what-to-do>
 
-**Before anything else — initialize from `bishop skill bootstrap`:**
+**Pre-supplied context block**
 
-Run `bishop skill bootstrap --json`. If it exits non-zero, exit non-zero and
-surface the stderr line verbatim — the helper already explains the remediation.
-On success, parse the JSON and echo the workspace name back so the parent log
-captures the destination:
+The initial message that invoked this skill includes a `<bishop-context>` JSON
+block pre-assembled by `bishop work-next`. Read it now:
 
-> **Workspace:** <name>
+- `workspace.path` — set this as `$WORKSPACE_PATH` (the workspace boundary
+  enforced throughout this run)
+- `workspace.name`, `workspace.lanes`, `workspace.tags` — workspace bootstrap data
+- `card` — the claimed card's metadata (number, title, description, laneName, tag, isClosed)
+- `git.recentCommits` — the 20 most recent commits (equivalent to `git log --oneline -20`)
+- `relatedCards` — summaries of cards referenced in the card's `### Related` section
 
-Capture `workspacePath` from the JSON as the **workspace boundary**
-(`$WORKSPACE_PATH`). Every `Edit`, `Write`, and `NotebookEdit` call during
-this run must target a path that resolves (after absolute-path normalization)
-under `$WORKSPACE_PATH`. This is audited before every commit (step 8).
+Do **not** run `bishop skill bootstrap`, `bishop card view`, `git log`, or
+related-card lookups — this data is already here.
+
+Echo the workspace name and card title from the context block so the parent
+log records the destination:
+
+> **Workspace:** <workspace.name>
+> **Card #N:** <card.title>
 
 ---
 
 **Workspace-path boundary — enforced throughout this run**
 
 Every `Edit`, `Write`, and `NotebookEdit` call must target an absolute path
-that starts with `$WORKSPACE_PATH`. Before issuing any file-edit tool call,
-verify the target path resolves under the workspace root. Any path outside the
-workspace is a violation — see the pre-commit audit (step 8) for the exact
-remediation sequence.
+that starts with `$WORKSPACE_PATH` (the value of `workspace.path` from the
+context block above). Before issuing any file-edit tool call, verify the
+target path resolves under the workspace root. Any path outside the workspace
+is a violation — see the pre-commit audit (step 6) for the exact remediation
+sequence.
 
 ---
 
 **For the card:**
 
-1. **Fetch the card.** Run:
-   ```
-   bishop card view <number> --json
-   ```
-   If the command exits non-zero (no match), exit non-zero and surface the
-   stderr message as-is. Do NOT guess which card the caller meant.
+1. Read CONTEXT.md to orient yourself in the domain and solution structure.
 
-   Parse the JSON and capture:
-   - `number` — the canonical `#N` reference (used in commit messages and
-     headings, regardless of what the caller typed)
-   - `title`, `description`, `laneName`, `tags`, `isClosed`
-
-   **Closed-card guard:** If `isClosed` is `true`, exit non-zero with:
-
-   > Card #N is already closed — run `bishop card reopen <number>` first if
-   > you want to work on it.
-
-   Do NOT move the card or begin any implementation.
-
-   Echo the card title back on its own line so the parent log records which
-   card was loaded:
-
-   > **Card #N:** <title>
-
-2. **Ensure the card is in "Doing".** The bishop loop normally claims the
-   card before invoking this skill, so `laneName` should already be `Doing`.
-   If it is not, move it now (no prompt):
-   ```
-   bishop card move <number> --to-lane "Doing" --to-position 0
-   ```
-   If the move fails (e.g. the workspace has no "Doing" lane), exit non-zero
-   and surface the error. Do not invent a substitute lane name.
-
-3. Read CONTEXT.md to orient yourself in the domain and solution structure.
-
-4. **Read recent commit history.** Run:
-   ```
-   git log --oneline -20
-   ```
-   Read the output. This gives context about recent work — what was changed,
-   which cards were completed, and any patterns established by adjacent commits.
-   Use this to inform how you interpret the card and what to look for during
-   exploration.
-
-5. **Load related cards.** Parse the card's description (captured in step 1)
-   for a `### Related` section. Extract every `card #N` or `#N` reference it
-   contains. For each extracted number, run:
-   ```
-   bishop card view <N> --json
-   ```
-   Read the resulting body. This surfaces sibling or predecessor cards whose
-   implementation choices the current card should follow or build on. Both
-   steps execute unconditionally — they are cheap and reliably useful.
-
-6. Explore the codebase areas relevant to the card **via the Explore subagent**
+2. Explore the codebase areas relevant to the card **via the Explore subagent**
    before writing any code.
    - Use the `Agent` tool with `subagent_type: "Explore"`.
    - The `Agent` tool's own `description` parameter is a **3-to-5-word task
@@ -131,12 +87,12 @@ remediation sequence.
    - Follow any dependency order or architectural conventions in CONTEXT.md.
      Do not modify layers or modules the card does not require.
 
-7. Implement the changes described in the card's description.
+3. Implement the changes described in the card's description.
    - Match the coding style, naming conventions, and patterns already present.
    - Do not add libraries or introduce patterns not already in use.
    - Do not gold-plate — implement exactly what the card describes.
 
-8. **Test coverage check** — before validating, analyse what was changed:
+4. **Test coverage check** — before validating, analyse what was changed:
    - Identify any files added or modified in production projects (paths that do
      NOT contain `.Tests` or `Tests` in a directory segment).
    - If production files were touched, assess whether the new or changed code
@@ -151,7 +107,7 @@ remediation sequence.
    - If the card is already tagged `test`, or only test files changed, skip
      this check entirely.
 
-9. Validate the changes. **Any non-zero exit here aborts the skill — no commit,
+5. Validate the changes. **Any non-zero exit here aborts the skill — no commit,
    no Done move, card stays in "Doing".**
    - Run `dotnet build`. If it exits non-zero, run `dotnet clean` once, then
      re-run `dotnet build`. If the retry still fails, exit non-zero and surface
@@ -161,14 +117,14 @@ remediation sequence.
    - Run `dotnet test`. If any test fails, exit non-zero and surface the
      failure. Do not retry `dotnet test` — test failures are real signals.
 
-10. **Pre-commit workspace-path audit.** Before committing, review every
+6. **Pre-commit workspace-path audit.** Before committing, review every
    `Edit`, `Write`, and `NotebookEdit` tool call made during this session
    and collect the absolute target path of each.
 
    For each path, normalize it (resolve to an absolute path) and verify it
    starts with `$WORKSPACE_PATH`.
 
-   **Clean run** (all paths under `$WORKSPACE_PATH`): proceed to step 11.
+   **Clean run** (all paths under `$WORKSPACE_PATH`): proceed to step 7.
 
    **Violation** (any path is outside `$WORKSPACE_PATH`): take these steps in
    order and then exit non-zero:
@@ -198,7 +154,7 @@ remediation sequence.
       ```
    5. Exit non-zero. Do NOT commit. Do NOT move the card to Done.
 
-11. **Draft Agent notes and derive the commit message.** No prompt.
+7. **Draft Agent notes and derive the commit message.** No prompt.
 
    Silently compose an `### Agent notes` block from the session context.
    Use this template, **omitting any section that has no relevant content** —
@@ -231,10 +187,10 @@ remediation sequence.
    - `test` → `test`
    - no tag or unrecognised tag → `chore`
 
-   Take the **first** tag from `tags` (the same field captured in step 1).
+   Take the tag from `card.tag` in the pre-supplied context block.
    Format: `<prefix>: <title> (card N)`.
 
-12. **Commit and update the card, in that order.** No prompt.
+8. **Commit and update the card, in that order.** No prompt.
    ```
    git add -A
    git commit -m "<derived message>"
@@ -267,10 +223,10 @@ remediation sequence.
    already landed and the user can update/move the card manually after
    inspecting.
 
-13. **Never push.** Pushing is out of scope. The parent loop or the user
+9. **Never push.** Pushing is out of scope. The parent loop or the user
     decides when to push after review.
 
-14. On full success, output a concise completion line so the parent log has
+10. On full success, output a concise completion line so the parent log has
     a clear marker:
 
     > **Done — Card #N:** <title> — committed as `<prefix>: <title> (card N)`,
@@ -288,12 +244,12 @@ remediation sequence.
   parent loop stops on non-zero exits per the `bishop work-next` contract.
 - **Card stays in "Doing" on failure.** Only on a clean build + tests + path
   audit + commit does the card move to "Done". Exception: a workspace-boundary
-  violation (step 8) moves the card back to "To Do" so the inspection note is
+  violation (step 6) moves the card back to "To Do" so the inspection note is
   visible. The `--no-close` flag preserves the human review gate on success.
 - **No multi-card mode.** Exactly one Number per invocation. Exit non-zero if
   zero or more than one is supplied.
-- **No claim path.** This skill never claims a card. If the supplied card is
-  not in "Doing", move it there (step 2) — but never pull from "To Do".
+- **No claim path.** This skill never claims a card. The `bishop work-next`
+  loop always claims and moves the card to "Doing" before invoking the skill.
 - If the card is tagged `bug`, reproduce the symptom before fixing.
 - If the card is tagged `feature`, check whether any existing
   code partially addresses it before writing new code.
@@ -303,10 +259,10 @@ remediation sequence.
   error — do not pick an alternative lane name.
 - **No improvised file cleanup.** Do not run `Remove-Item`, `rm`, `del`, or
   any ad-hoc file/directory deletion to clear build artefacts. The only
-  permitted cache-clear path is `dotnet clean` as documented in step 7.
+  permitted cache-clear path is `dotnet clean` as documented in step 5.
 - **Workspace-path boundary.** Every `Edit`, `Write`, and `NotebookEdit` call
   must target a path under `$WORKSPACE_PATH`. Any out-of-workspace edit
-  triggers the step 10 remediation: revert in-workspace changes, append an
+  triggers the step 6 remediation: revert in-workspace changes, append an
   inspection note to the card, move the card back to "To Do", exit non-zero.
 
 </guardrails>
