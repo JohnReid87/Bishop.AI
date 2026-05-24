@@ -117,4 +117,26 @@ public sealed class ListCardsByWorkspaceQueryHandlerTests : IClassFixture<DbFixt
         // Assert
         result.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Handle_WithSkipAndTake_ReturnsPaginatedSubset()
+    {
+        // Arrange
+        var (wsId, lanes) = await CreateWorkspaceAsync();
+        var todoLane = lanes.First(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_factory);
+        for (var i = 0; i < 5; i++)
+            await add.Handle(new AddCardCommand(wsId, todoLane.Name, $"Card {i + 1}"), default);
+        var handler = new ListCardsByWorkspaceQueryHandler(_factory);
+
+        // Act
+        var all = await handler.Handle(new ListCardsByWorkspaceQuery(wsId, LaneName: todoLane.Name), default);
+        var page = await handler.Handle(new ListCardsByWorkspaceQuery(wsId, LaneName: todoLane.Name, Skip: 1, Take: 2), default);
+
+        // Assert
+        all.Should().HaveCount(5);
+        page.Should().HaveCount(2);
+        page[0].Title.Should().Be(all[1].Title);
+        page[1].Title.Should().Be(all[2].Title);
+    }
 }

@@ -10,6 +10,8 @@ namespace Bishop.ViewModels;
 
 public sealed partial class WorkspaceBoardViewModel : ObservableObject
 {
+    private const int PageSize = 100;
+
     private readonly ISender _mediator;
     private Guid _workspaceId;
 
@@ -39,10 +41,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     private async Task RefreshAsync()
     {
         var lanes = await _mediator.Send(new ListLanesByWorkspaceQuery(_workspaceId));
-        var cards = await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId));
         var tags = await _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
         var tagColourByName = tags.ToDictionary(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
-        var cardsByLane = cards.ToLookup(c => c.LaneName, StringComparer.OrdinalIgnoreCase);
 
         // When the lane structure is unchanged, update only cards that actually changed so
         // ListView scroll positions are preserved and unnecessary Replace notifications are
@@ -52,7 +52,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         {
             foreach (var laneVm in Lanes)
             {
-                var fresh = cardsByLane[laneVm.Name].ToList();
+                var fresh = (await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId, LaneName: laneVm.Name, Take: PageSize))).ToList();
                 for (var i = 0; i < fresh.Count; i++)
                 {
                     var card = fresh[i];
@@ -74,7 +74,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         foreach (var lane in lanes)
         {
             var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { WorkspaceId = _workspaceId, Name = lane.Name };
-            foreach (var card in cardsByLane[lane.Name])
+            var cards = await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId, LaneName: lane.Name, Take: PageSize));
+            foreach (var card in cards)
                 laneVm.Cards.Add(BuildCardViewModel(card, lane.Name, tagColourByName));
             Lanes.Add(laneVm);
         }

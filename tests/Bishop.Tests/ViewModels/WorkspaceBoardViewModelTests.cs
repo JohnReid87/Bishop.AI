@@ -61,8 +61,10 @@ public class WorkspaceBoardViewModelTests
         mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<LaneInfo> { new("To Do", 1), new("Doing", 2) });
         var card = new Card { Id = Guid.NewGuid(), Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" };
-        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Is<ListCardsByWorkspaceQuery>(q => q.LaneName == "To Do"), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { card });
+        mediator.Send(Arg.Is<ListCardsByWorkspaceQuery>(q => q.LaneName == "Doing"), Arg.Any<CancellationToken>())
+            .Returns(new List<Card>());
         mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
