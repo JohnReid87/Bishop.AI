@@ -1,5 +1,6 @@
 using Bishop.App.Services.Claude;
 using FluentAssertions;
+using Spectre.Console;
 
 namespace Bishop.Tests.App.Claude;
 
@@ -714,5 +715,25 @@ public sealed class StreamJsonFormatterTests
         var line = """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":["skip this",{"type":"text","text":"found"}]}]}}""";
 
         sut.Format(line).Should().Be("[error] found");
+    }
+
+    [Fact]
+    public void OnStatus_EmitsLabelWithUnescapedBrackets_WhenAssistantTextContainsBracketedHexPrefix()
+    {
+        // Regression: sub-agents emit GUID-derived hex text like "[a1b2c3d4]" which
+        // Spectre treats as an invalid style tag, crashing the host via
+        // InvalidOperationException on the ProgressRefreshThread.
+        // The formatter emits the label raw; the consumer (ClaudeCliRunner) must
+        // call Markup.Escape before passing to ctx.Status.
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+        var hexPrefix = Guid.NewGuid().ToString("N")[..8];
+
+        sut.Format($$$"""{"type":"assistant","message":{"content":[{"type":"text","text":"[{{{hexPrefix}}}] doing work"}]}}""");
+
+        statuses.Should().ContainSingle();
+        var label = statuses[0];
+        label.Should().Contain($"[{hexPrefix}]");
+        Markup.Escape(label).Should().Contain($"[[{hexPrefix}]]");
     }
 }

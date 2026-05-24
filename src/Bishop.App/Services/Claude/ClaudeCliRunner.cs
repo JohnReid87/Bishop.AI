@@ -85,7 +85,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
                 .StartAsync("Working...", async ctx =>
                 {
                     var formatter = new StreamJsonFormatter(
-                        onStatus: label => ctx.Status(label),
+                        onStatus: label => ctx.Status(Markup.Escape(label)),
                         onDenial: ev => AppendDenial(workspacePath, cardNumber, ev));
                     proc.OutputDataReceived += (_, e) =>
                     {
