@@ -1,5 +1,18 @@
 {
   "_comment": "Permission scope for bish-auto-card (bishop work-next). See ~/.claude/skills/bish-auto-card/SKILL.md for the canonical tool list this maps to.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bishop hook check-path"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "deny": [
       "Bash(git push:*)",
