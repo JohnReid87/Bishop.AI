@@ -795,7 +795,7 @@ public sealed partial class WorkspaceDetailPage : Page
         if (_item is null) return;
         if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
         var launcher = App.Services.GetRequiredService<ITerminalLauncher>();
-        launcher.LaunchCommand(_item.Path, "bishop", $"batch run \"{batch.Name}\"", SnapHelper.ComputeSnap());
+        launcher.LaunchCommand(_item.Path, "bishop", ["batch", "run", batch.Name], SnapHelper.ComputeSnap());
     }
 
     private async void BatchFinish_Click(object sender, RoutedEventArgs e)

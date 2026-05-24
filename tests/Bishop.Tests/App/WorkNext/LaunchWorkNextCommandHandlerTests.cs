@@ -3,6 +3,7 @@ using Bishop.App.WorkNext.LaunchWorkNext;
 using FluentAssertions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using System.Linq;
 
 namespace Bishop.Tests.App.WorkNext;
 
@@ -19,7 +20,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
         launcher.Received(1).LaunchCommand(
             @"C:\workspace",
             "bishop",
-            "work-next --tag test --max 5 --model claude-sonnet-4-6",
+            Arg.Is<string[]>(a => a.SequenceEqual(new[] { "work-next", "--tag", "test", "--max", "5", "--model", "claude-sonnet-4-6" })),
             null);
     }
 
@@ -34,7 +35,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
         launcher.Received(1).LaunchCommand(
             @"C:\workspace",
             "bishop",
-            "work-next --max 10 --model claude-sonnet-4-6",
+            Arg.Is<string[]>(a => a.SequenceEqual(new[] { "work-next", "--max", "10", "--model", "claude-sonnet-4-6" })),
             null);
     }
 
@@ -49,7 +50,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
         launcher.Received(1).LaunchCommand(
             @"C:\workspace",
             "bishop",
-            "work-next --max 10 --model claude-sonnet-4-6",
+            Arg.Is<string[]>(a => a.SequenceEqual(new[] { "work-next", "--max", "10", "--model", "claude-sonnet-4-6" })),
             null);
     }
 
@@ -64,7 +65,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
         launcher.Received(1).LaunchCommand(
             @"C:\workspace",
             "bishop",
-            "work-next --tag test --max 0 --model claude-sonnet-4-6",
+            Arg.Is<string[]>(a => a.SequenceEqual(new[] { "work-next", "--tag", "test", "--max", "0", "--model", "claude-sonnet-4-6" })),
             null);
     }
 
@@ -80,7 +81,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
         launcher.Received(1).LaunchCommand(
             @"C:\workspace",
             "bishop",
-            "work-next --max 10 --model claude-sonnet-4-6",
+            Arg.Is<string[]>(a => a.SequenceEqual(new[] { "work-next", "--max", "10", "--model", "claude-sonnet-4-6" })),
             snap);
     }
 
@@ -88,7 +89,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
     public async Task Handle_ReturnsLauncherResult_WhenTrue()
     {
         var launcher = Substitute.For<ITerminalLauncher>();
-        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>()).Returns(true);
+        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string[]>(), Arg.Any<TerminalSnap?>()).Returns(true);
         var handler = new LaunchWorkNextCommandHandler(launcher);
 
         var result = await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", null, 10), default);
@@ -100,7 +101,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
     public async Task Handle_ReturnsLauncherResult_WhenFalse()
     {
         var launcher = Substitute.For<ITerminalLauncher>();
-        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>()).Returns(false);
+        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string[]>(), Arg.Any<TerminalSnap?>()).Returns(false);
         var handler = new LaunchWorkNextCommandHandler(launcher);
 
         var result = await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", null, 10), default);
@@ -117,8 +118,11 @@ public sealed class LaunchWorkNextCommandHandlerTests
 
         await handler.Handle(new LaunchWorkNextCommand(@"C:\workspace", "  ", 10), default);
 
-        var expectedArgs = string.Join(' ', "work-next", "--tag", "  ", "--max", "10", "--model", "claude-sonnet-4-6");
-        launcher.Received(1).LaunchCommand(@"C:\workspace", "bishop", expectedArgs, null);
+        launcher.Received(1).LaunchCommand(
+            @"C:\workspace",
+            "bishop",
+            Arg.Is<string[]>(a => a.SequenceEqual(new[] { "work-next", "--tag", "  ", "--max", "10", "--model", "claude-sonnet-4-6" })),
+            null);
     }
 
     [Fact]
@@ -132,7 +136,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
         launcher.Received(1).LaunchCommand(
             @"C:\workspace",
             "bishop",
-            "work-next --max 10 --model claude-opus-4-7",
+            Arg.Is<string[]>(a => a.SequenceEqual(new[] { "work-next", "--max", "10", "--model", "claude-opus-4-7" })),
             null);
     }
 
@@ -147,7 +151,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
         launcher.Received(1).LaunchCommand(
             @"C:\workspace",
             "bishop",
-            $"work-next --max 10 --model {LaunchWorkNextCommand.DefaultModel}",
+            Arg.Is<string[]>(a => a.SequenceEqual(new[] { "work-next", "--max", "10", "--model", LaunchWorkNextCommand.DefaultModel })),
             null);
     }
 
@@ -155,7 +159,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
     public async Task Handle_PropagatesExceptionFromLauncher()
     {
         var launcher = Substitute.For<ITerminalLauncher>();
-        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>())
+        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string[]>(), Arg.Any<TerminalSnap?>())
             .Throws(new InvalidOperationException("launcher failed"));
         var handler = new LaunchWorkNextCommandHandler(launcher);
 
@@ -170,7 +174,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
         // The handler delegates directly to the synchronous ITerminalLauncher call without
         // inspecting the token; this test documents that the ignore is deliberate.
         var launcher = Substitute.For<ITerminalLauncher>();
-        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<TerminalSnap?>())
+        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string[]>(), Arg.Any<TerminalSnap?>())
             .Returns(true);
         var handler = new LaunchWorkNextCommandHandler(launcher);
         using var cts = new CancellationTokenSource();
@@ -186,7 +190,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
     {
         var result = LaunchWorkNextCommandHandler.BuildArgs(null, 5, null);
 
-        result.Should().Be("work-next --max 5");
+        result.Should().Equal("work-next", "--max", "5");
     }
 
     [Fact]
@@ -194,7 +198,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
     {
         var result = LaunchWorkNextCommandHandler.BuildArgs("bug", 5, null);
 
-        result.Should().Be("work-next --tag bug --max 5");
+        result.Should().Equal("work-next", "--tag", "bug", "--max", "5");
     }
 
     [Fact]
@@ -202,7 +206,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
     {
         var result = LaunchWorkNextCommandHandler.BuildArgs(null, 5, "claude-opus-4-7");
 
-        result.Should().Be("work-next --max 5 --model claude-opus-4-7");
+        result.Should().Equal("work-next", "--max", "5", "--model", "claude-opus-4-7");
     }
 
     [Fact]
@@ -210,7 +214,7 @@ public sealed class LaunchWorkNextCommandHandlerTests
     {
         var result = LaunchWorkNextCommandHandler.BuildArgs(null, -1, null);
 
-        result.Should().Be("work-next --max -1");
+        result.Should().Equal("work-next", "--max", "-1");
     }
 
     [Fact]
@@ -218,6 +222,6 @@ public sealed class LaunchWorkNextCommandHandlerTests
     {
         var result = LaunchWorkNextCommandHandler.BuildArgs("bug", 3, "claude-opus-4-7");
 
-        result.Should().Be("work-next --tag bug --max 3 --model claude-opus-4-7");
+        result.Should().Equal("work-next", "--tag", "bug", "--max", "3", "--model", "claude-opus-4-7");
     }
 }

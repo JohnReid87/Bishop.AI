@@ -117,7 +117,7 @@ public sealed class TerminalLauncherTests
     }
 
     [Fact]
-    public void Launch_WithClaudeArgs_AppendsQuotedArgsSuffix()
+    public void Launch_WithClaudeArgs_AppendsClaudeArgsToArgumentList()
     {
         // Arrange
         var sut = CreateSut(wtExists: false);
@@ -126,11 +126,11 @@ public sealed class TerminalLauncherTests
         sut.Launch(@"C:\Repo", "code .", null);
 
         // Assert
-        _started.Single().Arguments.Should().Contain("\"code .\"");
+        _started.Single().ArgumentList.Should().Contain("code .");
     }
 
     [Fact]
-    public void Launch_WithModelId_AppendsModelFlag()
+    public void Launch_WithModelId_AppendsModelFlagToArgumentList()
     {
         // Arrange
         var sut = CreateSut(wtExists: false);
@@ -139,7 +139,7 @@ public sealed class TerminalLauncherTests
         sut.Launch(@"C:\Repo", null, null, "claude-opus-4");
 
         // Assert
-        _started.Single().Arguments.Should().Contain("--model claude-opus-4");
+        _started.Single().ArgumentList.Should().ContainInOrder("--model", "claude-opus-4");
     }
 
     [Fact]
@@ -152,9 +152,9 @@ public sealed class TerminalLauncherTests
         sut.Launch(@"C:\Repo", "code .", null, "claude-opus-4");
 
         // Assert
-        var args = _started.Single().Arguments;
-        args.Should().Contain("--model claude-opus-4");
-        args.Should().Contain("\"code .\"");
+        var list = _started.Single().ArgumentList;
+        list.Should().ContainInOrder("--model", "claude-opus-4");
+        list.Should().Contain("code .");
     }
 
     [Fact]
@@ -166,9 +166,9 @@ public sealed class TerminalLauncherTests
 
         sut.Launch(@"C:\Repo", "code .", snap, "claude-opus-4");
 
-        var args = _started.Single().Arguments;
-        args.Should().Contain("--model claude-opus-4");
-        args.Should().Contain("\"code .\"");
+        var list = _started.Single().ArgumentList;
+        list.Should().ContainInOrder("--model", "claude-opus-4");
+        list.Should().Contain("code .");
     }
 
     [Fact]
@@ -181,7 +181,7 @@ public sealed class TerminalLauncherTests
         sut.Launch(@"C:\Repo", null, null);
 
         // Assert
-        _started.Single().Arguments.Should().NotContain("--model");
+        _started.Single().ArgumentList.Should().NotContain("--model");
     }
 
     [Fact]
@@ -266,7 +266,7 @@ public sealed class TerminalLauncherTests
         sut.LaunchPlain(@"C:\Repo", null);
 
         // Assert
-        _started.Single().Arguments.Should().Contain("pwsh.exe");
+        _started.Single().ArgumentList.Should().Contain("pwsh.exe");
     }
 
     [Fact]
@@ -279,7 +279,7 @@ public sealed class TerminalLauncherTests
         sut.LaunchPlain(@"C:\Repo", null);
 
         // Assert
-        _started.Single().Arguments.Should().Contain("powershell.exe");
+        _started.Single().ArgumentList.Should().Contain("powershell.exe");
     }
 
     [Fact]
@@ -361,23 +361,24 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: true);
 
         // Act
-        var result = sut.LaunchCommand(@"C:\Repo", "bishop", "work-next --max 10", null);
+        var result = sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next", "--max", "10"], null);
 
         // Assert
         result.Should().BeTrue();
     }
 
     [Fact]
-    public void LaunchCommand_WtFound_BuildsWtArgumentsWithCommandAndArgs()
+    public void LaunchCommand_WtFound_BuildsArgumentListWithCommandAndArgs()
     {
         // Arrange
         var sut = CreateSut(wtExists: true);
 
         // Act
-        sut.LaunchCommand(@"C:\Repo", "bishop", "work-next --tag test --max 5", null);
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next", "--tag", "test", "--max", "5"], null);
 
         // Assert
-        _started.Single().Arguments.Should().Be(@"-d ""C:\Repo"" cmd.exe /k bishop work-next --tag test --max 5");
+        _started.Single().ArgumentList.Should().Equal(
+            "-d", @"C:\Repo", "cmd.exe", "/k", "bishop", "work-next", "--tag", "test", "--max", "5");
     }
 
     [Fact]
@@ -387,35 +388,22 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: false);
 
         // Act
-        sut.LaunchCommand(@"C:\Repo", "bishop", "work-next --max 10", null);
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next", "--max", "10"], null);
 
         // Assert
         _started.Single().FileName.Should().Be("powershell.exe");
-        _started.Single().Arguments.Should().Be("-NoExit -Command bishop work-next --max 10");
+        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "bishop", "work-next", "--max", "10");
         _started.Single().WorkingDirectory.Should().Be(@"C:\Repo");
     }
 
     [Fact]
-    public void LaunchCommand_WithNullArgs_DoesNotAppendTrailingSpace()
-    {
-        // Arrange
-        var sut = CreateSut(wtExists: false);
-
-        // Act
-        sut.LaunchCommand(@"C:\Repo", "bishop", null, null);
-
-        // Assert
-        _started.Single().Arguments.Should().Be("-NoExit -Command bishop");
-    }
-
-    [Fact]
-    public void LaunchCommand_WithEmptyArgs_DoesNotAppendTrailingSpace()
+    public void LaunchCommand_WithNoArgs_OnlyCommandInArgumentList()
     {
         var sut = CreateSut(wtExists: false);
 
-        sut.LaunchCommand(@"C:\Repo", "bishop", "", null);
+        sut.LaunchCommand(@"C:\Repo", "bishop", [], null);
 
-        _started.Single().Arguments.Should().Be("-NoExit -Command bishop");
+        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "bishop");
     }
 
     [Fact]
@@ -425,7 +413,7 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: false);
 
         // Act
-        sut.LaunchCommand(@"C:\Repo", "bishop", "work-next", null);
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next"], null);
 
         // Assert — PATH must be the merged registry PATH; never empty, always multi-entry.
         var path = _started.Single().Environment["PATH"];
@@ -439,7 +427,7 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: true);
         var snap = new TerminalSnap(0, 0, 1280, 1440);
 
-        var result = sut.LaunchCommand(@"C:\Repo", "bishop", "work-next", snap);
+        var result = sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next"], snap);
 
         result.Should().BeTrue();
     }
@@ -450,9 +438,41 @@ public sealed class TerminalLauncherTests
         var sut = CreateSut(wtExists: false);
         var snap = new TerminalSnap(0, 0, 1280, 1440);
 
-        var result = sut.LaunchCommand(@"C:\Repo", "bishop", "work-next", snap);
+        var result = sut.LaunchCommand(@"C:\Repo", "bishop", ["work-next"], snap);
 
         result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LaunchCommand_WorkspacePathWithSpaceAndQuote_PassedLiterallyInArgumentList()
+    {
+        // WT path: ArgumentList = ["-d", <workingDirectory>, "cmd.exe", "/k", ...]
+        var sut = CreateSut(wtExists: true);
+        var path = @"C:\My ""Repo"" Path";
+
+        sut.LaunchCommand(path, "bishop", ["work-next"], null);
+
+        _started.Single().ArgumentList[1].Should().Be(path);
+    }
+
+    [Fact]
+    public void LaunchCommand_ArgWithAmpersand_PassedLiterallyInArgumentList()
+    {
+        var sut = CreateSut(wtExists: false);
+
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["--tag", "tag&bad"], null);
+
+        _started.Single().ArgumentList.Should().Contain("tag&bad");
+    }
+
+    [Fact]
+    public void LaunchCommand_ArgWithSpace_PassedLiterallyInArgumentList()
+    {
+        var sut = CreateSut(wtExists: false);
+
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["--tag", "my tag"], null);
+
+        _started.Single().ArgumentList.Should().Contain("my tag");
     }
 
     // ── ArgumentException catch branches ─────────────────────────────────────
@@ -566,14 +586,14 @@ public sealed class TerminalLauncherTests
     }
 
     [Fact]
-    public void Launch_EmptyClaudeArgs_AppendsEmptyQuotedString()
+    public void Launch_EmptyClaudeArgs_AppendsEmptyStringToArgumentList()
     {
         var sut = CreateSut(wtExists: false);
         sut.Launch(@"C:\Repo", "", null);
 
         var psi = _started.Single();
-        psi.Arguments.Should().Be("-NoExit -Command claude \"\"");
-        psi.Arguments.Should().NotContain("--model");
+        psi.ArgumentList.Should().Equal("-NoExit", "-Command", "claude", "");
+        psi.ArgumentList.Should().NotContain("--model");
         psi.WorkingDirectory.Should().Be(@"C:\Repo");
     }
 

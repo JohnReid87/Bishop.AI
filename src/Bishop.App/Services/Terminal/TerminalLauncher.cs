@@ -29,19 +29,19 @@ public sealed class TerminalLauncher : ITerminalLauncher
     {
         var fullPath = BuildFullPath();
         var wt = FindWindowsTerminal();
-        var modelFlag = modelId is not null ? $" --model {modelId}" : "";
-        var cmdSuffix = claudeArgs is null ? modelFlag : $"{modelFlag} \"{claudeArgs}\"";
 
         if (wt is not null)
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = wt,
-                // cmd.exe /k resolves claude.cmd; wt -- claude fails because wt uses
-                // CreateProcess directly, which cannot execute .cmd wrapper scripts.
-                Arguments = $"-d \"{workingDirectory}\" cmd.exe /k claude{cmdSuffix}",
-                UseShellExecute = false,
-            };
+            var psi = new ProcessStartInfo { FileName = wt, UseShellExecute = false };
+            // cmd.exe /k resolves claude.cmd; wt -- claude fails because wt uses
+            // CreateProcess directly, which cannot execute .cmd wrapper scripts.
+            psi.ArgumentList.Add("-d");
+            psi.ArgumentList.Add(workingDirectory);
+            psi.ArgumentList.Add("cmd.exe");
+            psi.ArgumentList.Add("/k");
+            psi.ArgumentList.Add("claude");
+            if (modelId is not null) { psi.ArgumentList.Add("--model"); psi.ArgumentList.Add(modelId); }
+            if (claudeArgs is not null) psi.ArgumentList.Add(claudeArgs);
             psi.Environment["PATH"] = fullPath;
             var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
             _startProcess(psi);
@@ -52,10 +52,14 @@ public sealed class TerminalLauncher : ITerminalLauncher
         var psFallback = new ProcessStartInfo
         {
             FileName = "powershell.exe",
-            Arguments = $"-NoExit -Command claude{cmdSuffix}",
             WorkingDirectory = workingDirectory,
             UseShellExecute = false,
         };
+        psFallback.ArgumentList.Add("-NoExit");
+        psFallback.ArgumentList.Add("-Command");
+        psFallback.ArgumentList.Add("claude");
+        if (modelId is not null) { psFallback.ArgumentList.Add("--model"); psFallback.ArgumentList.Add(modelId); }
+        if (claudeArgs is not null) psFallback.ArgumentList.Add(claudeArgs);
         psFallback.Environment["PATH"] = fullPath;
         var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
         _startProcess(psFallback);
@@ -63,21 +67,21 @@ public sealed class TerminalLauncher : ITerminalLauncher
         return false;
     }
 
-    public bool LaunchCommand(string workingDirectory, string command, string? args, TerminalSnap? snap)
+    public bool LaunchCommand(string workingDirectory, string command, string[] args, TerminalSnap? snap)
     {
         var fullPath = BuildFullPath();
         var wt = FindWindowsTerminal();
-        var argSuffix = string.IsNullOrEmpty(args) ? "" : $" {args}";
 
         if (wt is not null)
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = wt,
-                // cmd.exe /k mirrors the Launch path so .cmd / .bat wrappers resolve too.
-                Arguments = $"-d \"{workingDirectory}\" cmd.exe /k {command}{argSuffix}",
-                UseShellExecute = false,
-            };
+            var psi = new ProcessStartInfo { FileName = wt, UseShellExecute = false };
+            // cmd.exe /k mirrors the Launch path so .cmd / .bat wrappers resolve too.
+            psi.ArgumentList.Add("-d");
+            psi.ArgumentList.Add(workingDirectory);
+            psi.ArgumentList.Add("cmd.exe");
+            psi.ArgumentList.Add("/k");
+            psi.ArgumentList.Add(command);
+            foreach (var a in args) psi.ArgumentList.Add(a);
             psi.Environment["PATH"] = fullPath;
             var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
             _startProcess(psi);
@@ -88,10 +92,13 @@ public sealed class TerminalLauncher : ITerminalLauncher
         var psFallback = new ProcessStartInfo
         {
             FileName = "powershell.exe",
-            Arguments = $"-NoExit -Command {command}{argSuffix}",
             WorkingDirectory = workingDirectory,
             UseShellExecute = false,
         };
+        psFallback.ArgumentList.Add("-NoExit");
+        psFallback.ArgumentList.Add("-Command");
+        psFallback.ArgumentList.Add(command);
+        foreach (var a in args) psFallback.ArgumentList.Add(a);
         psFallback.Environment["PATH"] = fullPath;
         var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
         _startProcess(psFallback);
@@ -107,12 +114,10 @@ public sealed class TerminalLauncher : ITerminalLauncher
 
         if (wt is not null)
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = wt,
-                Arguments = $"-d \"{workingDirectory}\" {shell}",
-                UseShellExecute = false,
-            };
+            var psi = new ProcessStartInfo { FileName = wt, UseShellExecute = false };
+            psi.ArgumentList.Add("-d");
+            psi.ArgumentList.Add(workingDirectory);
+            psi.ArgumentList.Add(shell);
             psi.Environment["PATH"] = fullPath;
             var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
             _startProcess(psi);
@@ -123,10 +128,10 @@ public sealed class TerminalLauncher : ITerminalLauncher
         var psFallback = new ProcessStartInfo
         {
             FileName = shell,
-            Arguments = "-NoExit",
             WorkingDirectory = workingDirectory,
             UseShellExecute = false,
         };
+        psFallback.ArgumentList.Add("-NoExit");
         psFallback.Environment["PATH"] = fullPath;
         var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
         _startProcess(psFallback);
