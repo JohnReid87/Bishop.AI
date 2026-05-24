@@ -58,9 +58,7 @@ public sealed class StreamJsonFormatterTests
         var output = sut.Format(line);
 
         output.Should().NotBeNull();
-        output!.Should().StartWith("… ");
-        output.Should().EndWith("…");
-        output.Length.Should().Be("… ".Length + 120 + 1);
+        output!.Should().Be("… " + longText[..120] + "…");
     }
 
     [Fact]
@@ -350,8 +348,7 @@ public sealed class StreamJsonFormatterTests
         sut.Format(line);
 
         statuses.Should().ContainSingle();
-        statuses[0].Should().EndWith("…");
-        statuses[0].Length.Should().Be(120 + 1);
+        statuses[0].Should().Be(longText[..120] + "…");
     }
 
     [Fact]
@@ -547,7 +544,8 @@ public sealed class StreamJsonFormatterTests
 
         sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":1234,"output_tokens":340},"content":[{"type":"text","text":"hi"}]}}""");
 
-        statuses.Should().ContainSingle().Which.Should().Be("hi — 1.2k↑ 340↓");
+        var expectedSuffix = RunFormatting.FormatTokenSuffix(1234, 340)!;
+        statuses.Should().ContainSingle().Which.Should().Be($"hi — {expectedSuffix}");
     }
 
     [Fact]
@@ -558,7 +556,8 @@ public sealed class StreamJsonFormatterTests
 
         sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":1234,"output_tokens":340},"content":[{"type":"tool_use","name":"Edit","input":{}}]}}""");
 
-        statuses.Should().ContainSingle().Which.Should().Be("Tool: Edit — 1.2k↑ 340↓");
+        var expectedSuffix = RunFormatting.FormatTokenSuffix(1234, 340)!;
+        statuses.Should().ContainSingle().Which.Should().Be($"Tool: Edit — {expectedSuffix}");
     }
 
     [Fact]
@@ -571,8 +570,8 @@ public sealed class StreamJsonFormatterTests
         sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":600,"output_tokens":200},"content":[{"type":"text","text":"b"}]}}""");
 
         statuses.Should().Equal(
-            "a — 600↑ 200↓",
-            "b — 1.2k↑ 400↓");
+            $"a — {RunFormatting.FormatTokenSuffix(600, 200)}",
+            $"b — {RunFormatting.FormatTokenSuffix(1200, 400)}");
     }
 
     [Fact]
@@ -604,5 +603,50 @@ public sealed class StreamJsonFormatterTests
         sut.Format("""{"type":"result","duration_ms":500}""");
 
         sut.Totals.Should().Be(new ClaudeRunTotals(1000, 300, 400, 12000));
+    }
+
+    [Fact]
+    public void Format_Returns_Null_When_Type_Field_Is_Numeric()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":123,"message":{"content":[]}}""";
+
+        sut.Format(line).Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_Assistant_SkipsNumericItemsInContentArray()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"assistant","message":{"content":[123]}}""";
+
+        sut.Format(line).Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_Assistant_SkipsStringItemsInContentArray()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"assistant","message":{"content":["string"]}}""";
+
+        sut.Format(line).Should().BeNull();
+    }
+
+    [Fact]
+    public void Format_Assistant_SkipsNonObjectItems_AndProcessesRemainingTextBlocks()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"assistant","message":{"content":[123,"skip",{"type":"text","text":"hi"}]}}""";
+
+        sut.Format(line).Should().Be("… hi");
+    }
+
+    [Fact]
+    public void Format_Tool_Result_With_Error_Flag_MixedStringAndObjectItems_ReturnsFirstTextBlock()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":["skip this",{"type":"text","text":"found"}]}]}}""";
+
+        sut.Format(line).Should().Be("[error] found");
     }
 }
