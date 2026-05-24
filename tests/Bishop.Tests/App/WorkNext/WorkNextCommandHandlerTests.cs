@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.GetCard;
@@ -6,6 +7,8 @@ using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
+using Bishop.App.Cards.SetCardCommit;
+using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Services.Claude;
 using Bishop.App.Git;
 using Bishop.App.Git.GetRecentCommits;
@@ -102,6 +105,12 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         sender.Send(Arg.Any<GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
             .Returns(call => new GetCardByNumberQueryHandler(_factory)
                 .Handle(call.ArgAt<GetCardByNumberQuery>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<SetCardCommitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call => new SetCardCommitCommandHandler(_factory)
+                .Handle(call.ArgAt<SetCardCommitCommand>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call => new UpdateCardCommandHandler(_factory, sender)
+                .Handle(call.ArgAt<UpdateCardCommand>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }
 
@@ -112,14 +121,37 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
             .Returns(new GetWorkingTreeStatusResult.Clean());
         git.GetRecentCommitsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new GetRecentCommitsResult.Success(new List<CommitInfo>(), null));
+        git.CommitAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("abc1234567890def1234567890abc1234567890ab");
+        git.GetCurrentBranchAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("main");
         return git;
+    }
+
+    private static void WriteHandoff(string bishopDir, string? notes = null)
+    {
+        Directory.CreateDirectory(bishopDir);
+        var payload = new
+        {
+            commit_body_bullets = new[] { "Implemented card" },
+            touched_files = Array.Empty<string>(),
+            notes,
+        };
+        File.WriteAllText(
+            Path.Combine(bishopDir, "handoff.json"),
+            JsonSerializer.Serialize(payload));
     }
 
     private static IClaudeCliRunner ClaudeAlwaysSucceeds(ClaudeRunTotals? totals = null, int toolUseCount = 0)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(new ClaudeRunResult(0, totals, toolUseCount));
+            .Returns(call =>
+            {
+                var workspacePath = call.ArgAt<string>(0);
+                WriteHandoff(Path.Combine(workspacePath, ".bishop"));
+                return Task.FromResult(new ClaudeRunResult(0, totals, toolUseCount));
+            });
         return claude;
     }
 
@@ -213,12 +245,13 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         var callCount = 0;
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(_ =>
+            .Returns(call =>
             {
                 callCount++;
-                return Task.FromResult(callCount == 1
-                    ? new ClaudeRunResult(7, null, 0)   // second card (claimed first) fails
-                    : new ClaudeRunResult(0, null, 0)); // first card (claimed second) succeeds
+                if (callCount == 1)
+                    return Task.FromResult(new ClaudeRunResult(7, null, 0)); // second card (claimed first) fails
+                WriteHandoff(Path.Combine(call.ArgAt<string>(0), ".bishop"));
+                return Task.FromResult(new ClaudeRunResult(0, null, 0)); // first card (claimed second) succeeds
             });
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
 
@@ -762,10 +795,11 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
 
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(_ =>
+            .Returns(call =>
             {
                 // Drop a stop file mid-run, after the first card finishes.
                 File.WriteAllText(StopFile, "");
+                WriteHandoff(Path.Combine(call.ArgAt<string>(0), ".bishop"));
                 return Task.FromResult(new ClaudeRunResult(0, null, 0));
             });
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
@@ -819,9 +853,10 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         var heartbeatExistedDuringRun = false;
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(_ =>
+            .Returns(call =>
             {
                 heartbeatExistedDuringRun = File.Exists(RunningFile);
+                WriteHandoff(Path.Combine(call.ArgAt<string>(0), ".bishop"));
                 return Task.FromResult(new ClaudeRunResult(0, null, 0));
             });
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
@@ -847,9 +882,10 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         string? captured = null;
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(_ =>
+            .Returns(call =>
             {
                 captured = File.ReadAllText(RunningFile);
+                WriteHandoff(Path.Combine(call.ArgAt<string>(0), ".bishop"));
                 return Task.FromResult(new ClaudeRunResult(0, null, 0));
             });
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
@@ -987,9 +1023,10 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
 
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(_ =>
+            .Returns(call =>
             {
                 File.WriteAllText(StopFile, "");
+                WriteHandoff(Path.Combine(call.ArgAt<string>(0), ".bishop"));
                 return Task.FromResult(new ClaudeRunResult(0, null, 0));
             });
         var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
@@ -1102,6 +1139,199 @@ public sealed class WorkNextCommandHandlerTests : IClassFixture<DbFixture>, IDis
         // Assert
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
         saved.LastAutoRunFailedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandoffJsonMissing_AfterClaudeExitZero_TreatsAsFailure()
+    {
+        // Arrange — claude returns 0 but writes no handoff.json
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "feature"), default);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ClaudeRunResult(0, null, 0)));
+        var git = GitAlwaysClean();
+        var handler = new WorkNextCommandHandler(git, CreateSender(), claude);
+
+        // Act
+        var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "feature", 10), default);
+
+        // Assert
+        result.Succeeded.Should().Be(0);
+        result.FailedCardNumbers.Should().Equal(card.Number);
+        result.StopReason.Should().Be(WorkNextStopReason.EmptyLane);
+        await git.Received(1).ResetHardAsync(WorkspacePath, Arg.Any<CancellationToken>());
+        await git.DidNotReceive().CommitAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.LastAutoRunFailedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task HandoffJsonMalformed_AfterClaudeExitZero_TreatsAsFailure()
+    {
+        // Arrange — claude returns 0 but writes garbage JSON
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "feature"), default);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var bishopDir = Path.Combine(call.ArgAt<string>(0), ".bishop");
+                Directory.CreateDirectory(bishopDir);
+                File.WriteAllText(Path.Combine(bishopDir, "handoff.json"), "not valid json {{");
+                return Task.FromResult(new ClaudeRunResult(0, null, 0));
+            });
+        var git = GitAlwaysClean();
+        var handler = new WorkNextCommandHandler(git, CreateSender(), claude);
+
+        // Act
+        var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "feature", 10), default);
+
+        // Assert
+        result.Succeeded.Should().Be(0);
+        result.FailedCardNumbers.Should().Equal(card.Number);
+        await git.DidNotReceive().CommitAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ValidHandoffJson_CommitFails_TreatsAsFailure()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "feature"), default);
+
+        var claude = ClaudeAlwaysSucceeds();
+        var git = GitAlwaysClean();
+        git.CommitAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(new InvalidOperationException("nothing to commit")));
+        var handler = new WorkNextCommandHandler(git, CreateSender(), claude);
+
+        // Act
+        var result = await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "feature", 10), default);
+
+        // Assert
+        result.Succeeded.Should().Be(0);
+        result.FailedCardNumbers.Should().Equal(card.Number);
+        await git.Received(1).ResetHardAsync(WorkspacePath, Arg.Any<CancellationToken>());
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.LastAutoRunFailedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ValidHandoffJson_SuccessfulRun_MovesCardToDone()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "feature"), default);
+
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "feature", 1), default);
+
+        // Assert
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.LaneName.Should().Be("Done");
+        saved.IsClosed.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ValidHandoffJson_SuccessfulRun_RecordsCommitHashAndBranchOnCard()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "feature"), default);
+
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "feature", 1), default);
+
+        // Assert
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.CommitHash.Should().Be("abc1234567890def1234567890abc1234567890ab");
+        saved.BranchName.Should().Be("main");
+    }
+
+    [Fact]
+    public async Task ValidHandoffJson_WithNotes_AppendsNotesToCardDescription()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "feature", Description: "### Why\nOriginal."), default);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                WriteHandoff(Path.Combine(call.ArgAt<string>(0), ".bishop"), notes: "### Agent notes\n\nDid the thing.");
+                return Task.FromResult(new ClaudeRunResult(0, null, 0));
+            });
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), claude);
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "feature", 1), default);
+
+        // Assert
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.Description.Should().Contain("### Why\nOriginal.");
+        saved.Description.Should().Contain("### Agent notes");
+        saved.Description.Should().Contain("Did the thing.");
+    }
+
+    [Fact]
+    public async Task ValidHandoffJson_HandoffFileDeletedAfterProcessing()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "T1", TagName: "feature"), default);
+
+        var handoffPath = Path.Combine(BishopDir, "handoff.json");
+        var handler = new WorkNextCommandHandler(GitAlwaysClean(), CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "feature", 1), default);
+
+        // Assert
+        File.Exists(handoffPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CommitMessage_UsesTagPrefixAndCardTitle()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var todo = lanes.Single(l => l.Name == "To Do");
+        var card = await new AddCardCommandHandler(_factory).Handle(
+            new AddCardCommand(workspace.Id, todo.Name, "My Feature", TagName: "feature"), default);
+
+        var git = GitAlwaysClean();
+        var handler = new WorkNextCommandHandler(git, CreateSender(), ClaudeAlwaysSucceeds());
+
+        // Act
+        await handler.Handle(new WorkNextCommand(workspace.Id, WorkspacePath, "feature", 1), default);
+
+        // Assert
+        await git.Received(1).CommitAsync(
+            WorkspacePath,
+            Arg.Is<string>(m => m.StartsWith($"feat: My Feature (card {card.Number})")),
+            Arg.Any<CancellationToken>());
     }
 
     private static void RunGit(string workingDir, string[] args)

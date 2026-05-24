@@ -1,7 +1,7 @@
 ---
 name: bish-auto-card
-description: Unattended sibling of /bish-work-on-card. Accepts a single card Number, implements the card, runs build + tests, commits, and moves the card to "Done" with --no-close. No prompts. Exits non-zero on any failure so a parent loop (bishop work-next) can react. Use when invoked by automation, not interactively.
-allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(git diff:*), Bash(git log:*), Bash(git rev-parse:*), Read, Edit, Write, Glob, Grep, Agent
+description: Unattended sibling of /bish-work-on-card. Accepts a single card Number, implements the card, runs build + tests, then writes .bishop/handoff.json for the host to commit and move to Done. No prompts. Exits non-zero on any failure so a parent loop (bishop work-next) can react. Use when invoked by automation, not interactively.
+allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git status:*), Bash(git diff:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.category: execute
 ---
 
@@ -117,44 +117,7 @@ sequence.
    - Run `dotnet test`. If any test fails, exit non-zero and surface the
      failure. Do not retry `dotnet test` — test failures are real signals.
 
-6. **Pre-commit workspace-path audit.** Before committing, review every
-   `Edit`, `Write`, and `NotebookEdit` tool call made during this session
-   and collect the absolute target path of each.
-
-   For each path, normalize it (resolve to an absolute path) and verify it
-   starts with `$WORKSPACE_PATH`.
-
-   **Clean run** (all paths under `$WORKSPACE_PATH`): proceed to step 7.
-
-   **Violation** (any path is outside `$WORKSPACE_PATH`): take these steps in
-   order and then exit non-zero:
-   1. Print the offending absolute paths to chat.
-   2. Revert all in-workspace changes:
-      ```
-      git restore .
-      git clean -fd
-      ```
-      (This removes both tracked-file modifications and any untracked files
-      auto-card wrote inside the workspace.)
-   3. Append a note to the card's description via `bishop card edit`:
-      ```
-      bishop card edit <number> --append-description-file -
-      ```
-      Pipe the following block as stdin (substituting real values):
-      ```
-      ### Out-of-workspace edits (needs inspection)
-      Auto-card aborted; the following files outside `<$WORKSPACE_PATH>` were
-      modified and could not be reverted automatically:
-      - `<absolute path 1>`
-      - `<absolute path 2>`
-      ```
-   4. Move the card back to "To Do":
-      ```
-      bishop card move <number> --to-lane "To Do" --to-position 0
-      ```
-   5. Exit non-zero. Do NOT commit. Do NOT move the card to Done.
-
-7. **Draft Agent notes and derive the commit message.** No prompt.
+6. **Draft Agent notes and derive the commit message.** No prompt.
 
    Silently compose an `### Agent notes` block from the session context.
    Use this template, **omitting any section that has no relevant content** —
@@ -176,8 +139,8 @@ sequence.
    - <what ran, what was added>
    ````
 
-   Then derive the commit message. Use the same tag → prefix mapping as
-   `/bish-work-on-card`:
+   Then derive the commit message bullets — one short string per meaningful
+   change. Use the same tag → prefix mapping as `/bish-work-on-card`:
 
    - `feature` → `feat`
    - `bug` → `fix`
@@ -187,50 +150,47 @@ sequence.
    - `test` → `test`
    - no tag or unrecognised tag → `chore`
 
-   Take the tag from `card.tag` in the pre-supplied context block.
-   Format: `<prefix>: <title> (card N)`.
+   Take the tag from `card.tag` in the pre-supplied context block. The host
+   composes the final commit message as `<prefix>: <title> (card N)` plus the
+   bullets as the body — you supply the bullets, not the subject line.
 
-8. **Commit and update the card, in that order.** No prompt.
+7. **Write `.bishop/handoff.json` as your final action.** No prompt. This is
+   the signal to `bishop work-next` that the skill completed cleanly. The host
+   reads this file after `claude -p` exits with code 0, commits, updates the
+   card, and moves it to Done. Exiting without writing the file is treated as
+   failure by the host.
+
+   Write the file using the `Write` tool with this exact schema:
+
+   ```json
+   {
+     "commit_body_bullets": ["<one short string per change>"],
+     "touched_files": ["<relative path of each file changed>"],
+     "notes": "<the full ### Agent notes block as a string, or null>"
+   }
    ```
-   git add -A
-   git commit -m "<derived message>"
-   ```
-   If `git commit` exits non-zero (e.g. pre-commit hook, nothing to commit,
-   signing failure), exit non-zero immediately. Do NOT update the card;
-   leave it in "Doing" and let the staged changes (if any) sit in
-   the working tree for the user to inspect.
 
-   On a successful commit, capture the hash and branch then record them —
-   run each git command separately, capture the output, and pass the literal
-   values to `set-commit` (do not use shell variable expansion):
-   ```
-   git log -1 --format=%H
-   git rev-parse --abbrev-ref HEAD
-   bishop card set-commit <number> --hash <full-sha> --branch <branch>
-   ```
-   If `set-commit` exits non-zero, continue anyway — it is non-fatal; the
-   commit has already landed.
+   - `commit_body_bullets` — the bullet strings for the git commit body. Each
+     string should be concise (one line), e.g. `"Add HandoffPayload record"`.
+     Do NOT include leading `- ` dashes; the host formats the body.
+   - `touched_files` — every file path written or edited during this session,
+     relative to `$WORKSPACE_PATH`.
+   - `notes` — the full `### Agent notes` markdown block (multi-line string),
+     or `null` if there is nothing meaningful to append.
 
-   Then pipe the drafted `### Agent notes` block to
-   `card edit` via stdin:
-   ```
-   bishop card edit <number> --append-description-file - --to-lane "Done" --no-close
-   ```
-   (Pipe the notes block as stdin — use a shell heredoc or equivalent.)
-   `--no-close` keeps `IsClosed=false` so the human review gate is preserved.
+   Target path: `<workspace.path>/.bishop/handoff.json`.
 
-   If `bishop card edit` exits non-zero, exit non-zero — the commit has
-   already landed and the user can update/move the card manually after
-   inspecting.
+   Do NOT run `bishop card edit`, `git add`, `git commit`, or
+   `bishop card set-commit` — the host performs all of those in-process.
 
-9. **Never push.** Pushing is out of scope. The parent loop or the user
-    decides when to push after review.
+8. **Never push.** Pushing is out of scope. The parent loop or the user
+   decides when to push after review.
 
-10. On full success, output a concise completion line so the parent log has
-    a clear marker:
+9. On full success (handoff.json written), output a concise completion line
+   so the parent log has a clear marker:
 
-    > **Done — Card #N:** <title> — committed as `<prefix>: <title> (card N)`,
-    > moved to "Done" (still open).
+    > **Done — Card #N:** <title> — handoff written; host will commit and move
+    > to Done.
 
 </what-to-do>
 
@@ -239,30 +199,29 @@ sequence.
 - **No prompts, ever.** Any place `/bish-work-on-card` would ask the user a
   question, take the documented default or exit non-zero. The caller is a
   non-interactive `claude -p` session spawned by `bishop work-next`.
-- **Non-zero exit on any deviation.** Failed build, failed test, failed commit,
-  closed-card guard, missing lane, missing card — all exit non-zero. The
-  parent loop stops on non-zero exits per the `bishop work-next` contract.
-- **Card stays in "Doing" on failure.** Only on a clean build + tests + path
-  audit + commit does the card move to "Done". Exception: a workspace-boundary
-  violation (step 6) moves the card back to "To Do" so the inspection note is
-  visible. The `--no-close` flag preserves the human review gate on success.
+- **Non-zero exit on any deviation.** Failed build, failed test, closed-card
+  guard, missing lane, missing card — all exit non-zero. The parent loop stops
+  on non-zero exits per the `bishop work-next` contract.
+- **Card stays in "Doing" on failure.** Only on a clean build + tests +
+  handoff.json write does the host move the card to "Done". The `KeepOpen`
+  flag preserves the human review gate on success.
 - **No multi-card mode.** Exactly one Number per invocation. Exit non-zero if
   zero or more than one is supplied.
 - **No claim path.** This skill never claims a card. The `bishop work-next`
   loop always claims and moves the card to "Doing" before invoking the skill.
+- **No direct git or card commit/move calls.** Do NOT run `git add`, `git
+  commit`, `bishop card set-commit`, or `bishop card edit --to-lane Done`. The
+  host performs all of those after reading handoff.json.
 - If the card is tagged `bug`, reproduce the symptom before fixing.
 - If the card is tagged `feature`, check whether any existing
   code partially addresses it before writing new code.
 - If blocked by a missing dependency (e.g. card X requires card Y), exit
   non-zero with a clear message rather than improvising.
-- If `bishop card move` fails because the lane doesn't exist, surface the
-  error — do not pick an alternative lane name.
 - **No improvised file cleanup.** Do not run `Remove-Item`, `rm`, `del`, or
   any ad-hoc file/directory deletion to clear build artefacts. The only
   permitted cache-clear path is `dotnet clean` as documented in step 5.
 - **Workspace-path boundary.** Every `Edit`, `Write`, and `NotebookEdit` call
-  must target a path under `$WORKSPACE_PATH`. Any out-of-workspace edit
-  triggers the step 6 remediation: revert in-workspace changes, append an
-  inspection note to the card, move the card back to "To Do", exit non-zero.
+  must target a path under `$WORKSPACE_PATH`. A pre-commit hook enforces this
+  boundary — do not attempt to bypass it.
 
 </guardrails>

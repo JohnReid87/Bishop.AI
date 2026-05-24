@@ -37,4 +37,8 @@ public interface IGitCli
     Task<int?> GetBranchCommitCountAsync(string workspacePath, string branchName, string baseBranch, CancellationToken cancellationToken = default);
 
     Task DeleteLocalBranchAsync(string workspacePath, string branchName, CancellationToken cancellationToken = default);
+
+    Task StageAllAsync(string workspacePath, CancellationToken cancellationToken = default);
+
+    Task<string> CommitAsync(string workspacePath, string message, CancellationToken cancellationToken = default);
 }

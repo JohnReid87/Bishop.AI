@@ -1,7 +1,10 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Bishop.App.Cards.ClaimCard;
 using Bishop.App.Cards.GetCardByNumber;
+using Bishop.App.Cards.SetCardCommit;
+using Bishop.App.Cards.UpdateCard;
 using Bishop.Core;
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
@@ -89,16 +92,82 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                 claudeSw.Stop();
 
                 var recordElapsed = TimeSpan.Zero;
+                var cardFailed = false;
+
                 if (runResult.ExitCode == 0)
                 {
-                    var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
-                    var recordSw = Stopwatch.StartNew();
-                    await _sender.Send(
-                        new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens, totals.CacheCreationTokens, totals.CacheReadTokens),
-                        cancellationToken);
-                    recordSw.Stop();
-                    recordElapsed = recordSw.Elapsed;
-                    succeeded++;
+                    var handoffPath = Path.Combine(bishopDir, "handoff.json");
+                    HandoffPayload? handoff = null;
+                    if (File.Exists(handoffPath))
+                    {
+                        try
+                        {
+                            var json = await File.ReadAllTextAsync(handoffPath, cancellationToken);
+                            handoff = JsonSerializer.Deserialize<HandoffPayload>(json, HandoffSerializerOptions);
+                        }
+                        catch { }
+                        finally
+                        {
+                            try { File.Delete(handoffPath); } catch { }
+                        }
+                    }
+
+                    if (handoff is not null)
+                    {
+                        var prefix = TagToPrefix(card.TagName);
+                        var commitMessage = ComposeCommitMessage(prefix, card.Title, card.Number, handoff.CommitBodyBullets);
+
+                        string? commitHash = null;
+                        string? branch = null;
+                        try
+                        {
+                            await _git.StageAllAsync(request.WorkspacePath, cancellationToken);
+                            commitHash = await _git.CommitAsync(request.WorkspacePath, commitMessage, cancellationToken);
+                            branch = await _git.GetCurrentBranchAsync(request.WorkspacePath, cancellationToken);
+                        }
+                        catch
+                        {
+                            await _git.ResetHardAsync(request.WorkspacePath, cancellationToken);
+                            await _git.CleanWorkingTreeAsync(request.WorkspacePath, cancellationToken);
+                            await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
+                            failedCardNumbers.Add(card.Number);
+                            cardFailed = true;
+                        }
+
+                        if (!cardFailed)
+                        {
+                            var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
+                            var recordSw = Stopwatch.StartNew();
+                            await _sender.Send(
+                                new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens, totals.CacheCreationTokens, totals.CacheReadTokens),
+                                cancellationToken);
+                            recordSw.Stop();
+                            recordElapsed = recordSw.Elapsed;
+
+                            try
+                            {
+                                await _sender.Send(new SetCardCommitCommand(card.Id, commitHash!, branch!), cancellationToken);
+                            }
+                            catch { }
+
+                            await _sender.Send(
+                                new UpdateCardCommand(card.Id, null, null, false, null,
+                                    AppendDescription: handoff.Notes,
+                                    ToLaneName: SystemLaneNames.Done,
+                                    KeepOpen: true),
+                                cancellationToken);
+
+                            succeeded++;
+                        }
+                    }
+                    else
+                    {
+                        await _git.ResetHardAsync(request.WorkspacePath, cancellationToken);
+                        await _git.CleanWorkingTreeAsync(request.WorkspacePath, cancellationToken);
+                        await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
+                        failedCardNumbers.Add(card.Number);
+                        cardFailed = true;
+                    }
                 }
 
                 Console.Out.WriteLine($"exit {runResult.ExitCode}");
@@ -113,6 +182,9 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
                     continue;
                 }
 
+                if (cardFailed)
+                    continue;
+
                 if (request.MaxIterations > 0 && succeeded >= request.MaxIterations)
                     return new WorkNextResult(succeeded, WorkNextStopReason.CapReached, ToNullableList(failedCardNumbers));
             }
@@ -125,6 +197,31 @@ public sealed class WorkNextCommandHandler : IRequestHandler<WorkNextCommand, Wo
     }
 
     private static IReadOnlyList<int>? ToNullableList(List<int> list) => list.Count > 0 ? list : null;
+
+    private static readonly JsonSerializerOptions HandoffSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
+
+    private static string TagToPrefix(string? tag) => tag switch
+    {
+        "feature" => "feat",
+        "bug" => "fix",
+        "chore" => "chore",
+        "docs" => "docs",
+        "refactor" => "refactor",
+        "test" => "test",
+        _ => "chore",
+    };
+
+    private static string ComposeCommitMessage(string prefix, string title, int cardNumber, IReadOnlyList<string> bullets)
+    {
+        var subject = $"{prefix}: {title} (card {cardNumber})";
+        if (bullets.Count == 0)
+            return subject;
+        var body = string.Join("\n", bullets);
+        return $"{subject}\n\n{body}";
+    }
 
     private static readonly Regex RelatedCardPattern = new(@"#(\d+)", RegexOptions.Compiled);
 

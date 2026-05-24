@@ -880,6 +880,106 @@ public sealed class GitCli : IGitCli
         }
     }
 
+    public async Task StageAllAsync(string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("add");
+        psi.ArgumentList.Add("-A");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            throw new InvalidOperationException("git executable not found", ex);
+        }
+
+        if (proc is null)
+            throw new InvalidOperationException("Failed to start git process");
+
+        using (proc)
+        {
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git add -A exited {proc.ExitCode}: {stderr.Trim()}");
+        }
+    }
+
+    public async Task<string> CommitAsync(string workspacePath, string message, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        psi.ArgumentList.Add("commit");
+        psi.ArgumentList.Add("-m");
+        psi.ArgumentList.Add(message);
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            throw new InvalidOperationException("git executable not found", ex);
+        }
+
+        if (proc is null)
+            throw new InvalidOperationException("Failed to start git process");
+
+        using (proc)
+        {
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git commit exited {proc.ExitCode}: {stderr.Trim()}");
+        }
+
+        var hashPsi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workspacePath,
+        };
+        hashPsi.ArgumentList.Add("rev-parse");
+        hashPsi.ArgumentList.Add("HEAD");
+
+        proc = Process.Start(hashPsi);
+        if (proc is null)
+            throw new InvalidOperationException("Failed to start git process for rev-parse");
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"git rev-parse HEAD exited {proc.ExitCode}: {stderr.Trim()}");
+
+            return stdout.Trim();
+        }
+    }
+
     public async Task DeleteLocalBranchAsync(
         string workspacePath, string branchName, CancellationToken cancellationToken = default)
     {
