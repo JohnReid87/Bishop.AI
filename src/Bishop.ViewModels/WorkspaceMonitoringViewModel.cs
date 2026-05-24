@@ -1,4 +1,6 @@
 using Bishop.App.Git;
+using Bishop.App.Services.Settings;
+using Bishop.App.Skills;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -20,6 +22,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
 
     private readonly IMediator _mediator;
     private readonly IGitCli _gitCli;
+    private readonly IAppSettings _appSettings;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
 
@@ -37,10 +40,11 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     [ObservableProperty]
     private string _badgeTooltip = string.Empty;
 
-    public WorkspaceMonitoringViewModel(IMediator mediator, IGitCli gitCli)
+    public WorkspaceMonitoringViewModel(IMediator mediator, IGitCli gitCli, IAppSettings appSettings)
     {
         _mediator = mediator;
         _gitCli = gitCli;
+        _appSettings = appSettings;
     }
 
     public async Task LoadAsync(Guid workspaceId, string workspacePath)
@@ -69,7 +73,15 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
                 shaUnreachable = commitsSince is null;
             }
 
-            rows.Add(new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable));
+            var savedModelId = SkillModelOptions.ResolveModelId(await _appSettings.GetAsync($"skill.{skillName}.last_model"));
+            var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable);
+            row.SelectModelCommand.Execute(savedModelId);
+            row.PropertyChanged += async (sender, args) =>
+            {
+                if (args.PropertyName == nameof(SkillRunRowViewModel.SelectedModelId) && sender is SkillRunRowViewModel r)
+                    await _appSettings.SetAsync($"skill.{r.SkillName}.last_model", r.SelectedModelId);
+            };
+            rows.Add(row);
         }
 
         Rows.Clear();

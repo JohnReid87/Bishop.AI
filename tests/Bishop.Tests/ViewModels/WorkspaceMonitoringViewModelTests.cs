@@ -1,4 +1,5 @@
 using Bishop.App.Git;
+using Bishop.App.Services.Settings;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 using Bishop.Core;
 using Bishop.ViewModels;
@@ -21,17 +22,21 @@ public class WorkspaceMonitoringViewModelTests
 
     private readonly IMediator _mediator = Substitute.For<IMediator>();
     private readonly IGitCli _gitCli = Substitute.For<IGitCli>();
+    private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
     private readonly WorkspaceMonitoringViewModel _vm;
 
     public WorkspaceMonitoringViewModelTests()
     {
-        _vm = new WorkspaceMonitoringViewModel(_mediator, _gitCli);
+        _vm = new WorkspaceMonitoringViewModel(_mediator, _gitCli, _appSettings);
         _mediator
             .Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>([]));
         _gitCli
             .GetCommitCountSinceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(0));
+        _appSettings
+            .GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<string?>(null));
     }
 
     [Fact]
@@ -194,5 +199,45 @@ public class WorkspaceMonitoringViewModelTests
 
         _vm.BadgeIsVisible.Should().BeTrue();
         _vm.BadgeColor.Should().Be("#ff5555");
+    }
+
+    [Fact]
+    public async Task LoadAsync_NoSavedModel_SeedsDefaultSonnet()
+    {
+        await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
+
+        _vm.Rows.Should().AllSatisfy(r =>
+        {
+            r.SelectedModelId.Should().Be("claude-sonnet-4-6");
+            r.SelectedModelLabel.Should().Be("Sonnet 4.6 ▾");
+        });
+    }
+
+    [Fact]
+    public async Task LoadAsync_SavedOpusModel_SeedsOpusOnMatchingRow()
+    {
+        _appSettings
+            .GetAsync("skill.bish-arch.last_model", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<string?>("claude-opus-4-7"));
+
+        await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
+
+        var row = _vm.Rows.First(r => r.SkillName == "bish-arch");
+        row.SelectedModelId.Should().Be("claude-opus-4-7");
+        row.SelectedModelLabel.Should().Be("Opus 4.7 ▾");
+    }
+
+    [Fact]
+    public async Task SelectModel_PersistsChoiceToAppSettings()
+    {
+        await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
+        var row = _vm.Rows.First(r => r.SkillName == "bish-arch");
+
+        row.SelectModelCommand.Execute("claude-haiku-4-5-20251001");
+
+        await _appSettings.Received(1).SetAsync(
+            "skill.bish-arch.last_model",
+            "claude-haiku-4-5-20251001",
+            Arg.Any<CancellationToken>());
     }
 }

@@ -662,7 +662,7 @@ public sealed partial class WorkspaceDetailPage : Page
         var skillItem = _workspaceSkills.FirstOrDefault(s => string.Equals(s.Skill.Name, row.SkillName, StringComparison.OrdinalIgnoreCase));
         if (skillItem is null) return;
         var rendered = SkillCommandRenderer.Render(skillItem.Skill.Command!, null, null, null, _item.Path);
-        await LaunchSkillAsync(skillItem.Skill, rendered, _item.Path, card: null);
+        await LaunchSkillAsync(skillItem.Skill, rendered, _item.Path, card: null, modelId: row.SelectedModelId);
     }
 
     private static FrameworkElement MakeCategoryHeader(string text) =>

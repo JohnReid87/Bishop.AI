@@ -1,6 +1,9 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
 namespace Bishop.ViewModels;
 
-public sealed class SkillRunRowViewModel
+public sealed partial class SkillRunRowViewModel : ObservableObject
 {
     public string SkillName { get; }
     public string LastRunText { get; }
@@ -8,6 +11,20 @@ public sealed class SkillRunRowViewModel
     public string StatusDotColor { get; }
     public string StatusTooltip { get; }
     public int SeverityRank { get; }
+
+    [ObservableProperty]
+    private string _selectedModelId = "claude-sonnet-4-6";
+
+    [ObservableProperty]
+    private string _selectedModelLabel = "Sonnet 4.6 ▾";
+
+    [RelayCommand]
+    private void SelectModel(string modelId)
+    {
+        SelectedModelId = modelId;
+        var label = WorkNextOptionsDialogViewModel.Models.FirstOrDefault(m => m.Id == modelId)?.Label ?? "Sonnet 4.6";
+        SelectedModelLabel = $"{label} ▾";
+    }
 
     public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable)
     {
