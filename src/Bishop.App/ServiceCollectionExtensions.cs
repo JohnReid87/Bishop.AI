@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using Bishop.App.Context.ContextPack;
+using Bishop.App.Context.ContextPack.Providers;
 using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
 using Bishop.App.Services.Claude;
@@ -39,6 +41,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IWorkspaceContextSeeder, WorkspaceContextSeeder>();
         services.AddSingleton<ICatModeService, CatModeService>();
         services.AddSingleton<IWorkspaceChangeNotifier, WorkspaceChangeNotifier>();
+        services.AddSingleton<IContextProvider, WorkOnCardContextProvider>();
+        services.AddSingleton<IContextProvider, AutoCardContextProvider>();
         return services;
     }
 }

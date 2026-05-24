@@ -67,6 +67,21 @@ Three destinations, picked by the *nature* of the block, not by its length.
 
 **Anti-pattern:** lifting heuristic content (SOLID checks, CVE patterns, test-quality dimensions) into BISHOP_CONTEXT. Heuristics are skill-specific — each review skill's catalogue *is* its differentiator. Keep them inline.
 
+### Context-pack entry-point pattern
+
+The legacy entry-point fan-out — `bishop skill bootstrap`, then a handful of `bishop context print --section "<name>"` calls scattered through the SKILL.md prose — re-bills every tool-call result on each subsequent turn at uncached rates. The `bishop context-pack <skill-name>` command collapses that fan-out into one cached prompt prefix.
+
+Workspace-level skills (Conversational / Review / Setup-Execute) open with a single `bishop context-pack <skill-name> [--card N]` call and a one-line intro stating what the pack contains. The pack bundles:
+
+- `workspace` — name, path, GitHub repo, lanes, tags, and `CONTEXT.md` content when size permits.
+- `git` — current branch and recent commits.
+- `skill_specific` — provider-built block (e.g. the loaded card body for `work-on-card` / `auto-card`).
+- `conventions` — the STABLE/TUNABLE sections sliced from `BishopContext.static.md` by the provider's `RequiredSections`.
+
+Inline `bishop context print --section "<name>"` links in skill prose duplicate what the pack already delivers. They are flagged by `bish-audit-skills`. `bishop context print` itself stays available for ad-hoc human / debug inspection — only the in-skill references are removed.
+
+A provider is one C# class implementing `IContextProvider` (in `Bishop.App.Context.ContextPack`). Adding skill-specific context for a new skill is a one-class change registered in DI; the framework supplies the common blocks automatically.
+
 ---
 
 ## 5. STABLE vs TUNABLE labelling
@@ -148,10 +163,11 @@ For each skill in `skills/`:
 9. **Procedural flow** — for setup/execute skills: is the procedure still readable top-to-bottom as imperative steps? Reordering for "purpose-first" is a bug here.
 10. **Frontmatter** — `name`, `description`, `allowed-tools`, `bishop.scope`, `bishop.command` all present and accurate? Stage flags (`bishop.stage`, `bishop.stage_prompt`) correct for the workspace-launch path?
 11. **Recommended model** — does the file carry a `> Recommended model:` line immediately after the frontmatter `---`, with an allowed value (`Sonnet 4.6` or `Opus 4.7`) and a one-line reason? If not, flag it. See §6 for placement and allowed values.
+12. **Context-pack entry-point** — workspace-level skills (Conversational / Review / Setup-Execute) open the body with a single `bishop context-pack <skill-name> [--card N]` call and a one-line intro about the pack's contents. Any inline `bishop context print --section "<name>"` reference in the SKILL.md prose is drift — the pack already delivers those sections. Bishop-level / meta skills do not call context-pack. See §4 ("Context-pack entry-point pattern") for the rationale.
 
 Finally, run this family-wide check (not per-skill):
 
-12. **Bundled-skills-list drift** — every skill in `skills/bish-*/` must appear at least once in each of these four canonical bundled-skills lists, grouped by category rather than as a flat list:
+13. **Bundled-skills-list drift** — every skill in `skills/bish-*/` must appear at least once in each of these four canonical bundled-skills lists, grouped by category rather than as a flat list:
     - `README.md` — "Getting started → After MSI install" bullet group.
     - `CONTEXT.md` — both the `skills/` entry under "Repository layout" and the "Skill integration" paragraph.
     - `DIRECTION.md` — the "Skills live in this repo" decision block.
@@ -162,7 +178,7 @@ Finally, run this family-wide check (not per-skill):
     - **Missing category** — one of the four categories has no heading or label in a doc that otherwise lists skills.
     - **Stale flat list** — a doc lists skills inline without any category grouping at all.
 
-Flag findings (per-skill for items 1–10, family-wide for item 11) and walk them with the user before pushing follow-up cards (the standard per-finding cadence used by `bish-arch` / `bish-security`).
+Flag findings (per-skill for items 1–12, family-wide for item 13) and walk them with the user before pushing follow-up cards (the standard per-finding cadence used by `bish-arch` / `bish-security`).
 
 ---
 

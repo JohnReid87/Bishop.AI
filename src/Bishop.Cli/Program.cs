@@ -21,6 +21,8 @@ using Bishop.Cli.Cards.Remove;
 using Bishop.Cli.Cards.Reopen;
 using Bishop.Cli.Cards.SetCommit;
 using Bishop.Cli.Cards.View;
+using Bishop.App.Context.ContextPack;
+using Bishop.Cli.Context.Pack;
 using Bishop.Cli.Context.Print;
 using Bishop.Cli.InstallSkills;
 using Bishop.Cli.Lanes.List;
@@ -132,6 +134,9 @@ root.AddCommand(skillCmd);
 var contextCmd = new Command("context", "Inspect the workspace context file");
 contextCmd.AddCommand(new PrintContextCliCommand(mediator));
 root.AddCommand(contextCmd);
+
+var contextProviders = host.Services.GetServices<IContextProvider>();
+root.AddCommand(new PrintContextPackCliCommand(mediator, contextProviders));
 
 // ── hook ──────────────────────────────────────────────────────────────────────
 
