@@ -1,13 +1,14 @@
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Cards.SetCardCommit;
+using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git;
-using Bishop.App.Git.GetCardCommit;
 using Bishop.App.Services.Claude;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace Bishop.App.Batches.RunBatch;
 
@@ -87,6 +88,10 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.GitNotFound);
             }
 
+            await _sender.Send(
+                new UpdateCardCommand(card.Id, null, null, false, null, ToLaneName: SystemLaneNames.Doing),
+                cancellationToken);
+
             var stamp = DateTimeOffset.Now.ToString("HH:mm:ss");
             var startLine = request.Model is not null
                 ? $"== [{stamp}] Card #{card.Number}: {card.Title}  [{request.Model}] =="
@@ -105,9 +110,42 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens, totals.CacheCreationTokens, totals.CacheReadTokens),
                     cancellationToken);
 
-                var commitResult = await _git.GetCardCommitAsync(card.Number, batch.WorktreePath, cancellationToken);
-                if (commitResult is GetCardCommitResult.Found found)
-                    await _sender.Send(new SetCardCommitCommand(card.Id, found.Commit.FullHash, batch.BranchName), cancellationToken);
+                var handoff = await ReadAndDeleteHandoffAsync(batch.WorktreePath, cancellationToken);
+
+                if (handoff is null)
+                {
+                    await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
+                    await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
+                    await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
+                    failedNumbers.Add(card.Number);
+                    return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
+                }
+
+                var prefix = TagToPrefix(card.TagName);
+                var message = ComposeCommitMessage(prefix, card.Title, card.Number, handoff.CommitBodyBullets);
+
+                string commitHash;
+                try
+                {
+                    await _git.StageAllAsync(batch.WorktreePath, cancellationToken);
+                    commitHash = await _git.CommitAsync(batch.WorktreePath, message, cancellationToken);
+                }
+                catch
+                {
+                    await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
+                    await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
+                    await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
+                    failedNumbers.Add(card.Number);
+                    return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
+                }
+
+                await _sender.Send(new SetCardCommitCommand(card.Id, commitHash, batch.BranchName), cancellationToken);
+                await _sender.Send(
+                    new UpdateCardCommand(card.Id, null, null, false, null,
+                        AppendDescription: handoff.Notes,
+                        ToLaneName: SystemLaneNames.Done,
+                        KeepOpen: true),
+                    cancellationToken);
 
                 succeeded++;
             }
@@ -123,6 +161,47 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
 
         await _batches.CloseAsync(batch.Id, BatchClosedReason.Finished, cancellationToken: cancellationToken);
         return new RunBatchResult(succeeded, null, RunBatchStopReason.Finished);
+    }
+
+    private static async Task<HandoffPayload?> ReadAndDeleteHandoffAsync(string worktreePath, CancellationToken cancellationToken)
+    {
+        var path = Path.Combine(worktreePath, ".bishop", "handoff.json");
+        if (!File.Exists(path))
+            return null;
+
+        HandoffPayload? result = null;
+        try
+        {
+            var json = await File.ReadAllTextAsync(path, cancellationToken);
+            result = JsonSerializer.Deserialize<HandoffPayload>(json);
+        }
+        catch { }
+        finally
+        {
+            try { File.Delete(path); } catch { }
+        }
+
+        return result;
+    }
+
+    private static string TagToPrefix(string? tag) => tag switch
+    {
+        "feature" => "feat",
+        "bug" => "fix",
+        "chore" => "chore",
+        "docs" => "docs",
+        "refactor" => "refactor",
+        "test" => "test",
+        _ => "chore"
+    };
+
+    private static string ComposeCommitMessage(string prefix, string title, int number, IReadOnlyList<string> bullets)
+    {
+        var subject = $"{prefix}: {title} (card #{number})";
+        if (bullets.Count == 0)
+            return subject;
+        var body = string.Join("\n", bullets.Select(b => $"- {b}"));
+        return $"{subject}\n\n{body}";
     }
 
     private static IReadOnlyList<int>? ToNullableList(List<int> list) => list.Count > 0 ? list : null;

@@ -1,6 +1,6 @@
 ---
 name: bish-auto-card
-description: Unattended sibling of /bish-work-on-card. Accepts a single card Number, implements the card, runs build + tests, then writes .bishop/handoff.json for the host to commit and move to Done. No prompts. Exits non-zero on any failure. Use when invoked by automation, not interactively.
+description: Unattended skill invoked by `bishop batch run`. Accepts a single card Number, implements the card, runs build + tests, then writes .bishop/handoff.json for the host to commit and move to Done. No prompts. Exits non-zero on any failure.
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git status:*), Bash(git diff:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.category: execute
 ---
@@ -10,9 +10,12 @@ Shell tool selection (Bash vs PowerShell) — follow [bishop context print --sec
 ---
 
 Accepts **exactly one** card Number (`bish-auto-card 42` or `bish-auto-card #42`).
-This is the unattended sibling of `/bish-work-on-card`, designed to be invoked
-by automation. The caller has already claimed the card and moved it to "Doing"
-before invoking this skill.
+This skill is invoked via `claude -p` by `bishop batch run` (`RunBatchCommandHandler`).
+The batch handler loops over its cards sequentially, moves each card to "Doing"
+via `UpdateCardCommand` before invoking this skill, then reads
+`.bishop/handoff.json` after the skill exits with code 0 to commit, record the
+hash and branch, append notes, and move the card to Done. The caller has already
+moved the card to "Doing" before this skill runs.
 
 If the user (or caller) passes zero or multiple IDs, exit non-zero with a
 short message — there is no claim fallback and no multi-card mode.
@@ -206,8 +209,8 @@ sequence.
   flag preserves the human review gate on success.
 - **No multi-card mode.** Exactly one Number per invocation. Exit non-zero if
   zero or more than one is supplied.
-- **No claim path.** This skill never claims a card. The calling automation
-  always claims and moves the card to "Doing" before invoking the skill.
+- **No claim path.** This skill never claims a card. `bishop batch run` moves
+  each card to "Doing" via `UpdateCardCommand` before invoking this skill.
 - **No direct git or card commit/move calls.** Do NOT run `git add`, `git
   commit`, `bishop card set-commit`, or `bishop card edit --to-lane Done`. The
   host performs all of those after reading handoff.json.

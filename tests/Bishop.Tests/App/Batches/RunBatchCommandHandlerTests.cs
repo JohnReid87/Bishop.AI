@@ -4,8 +4,8 @@ using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Cards.SetCardCommit;
+using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git;
-using Bishop.App.Git.GetCardCommit;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Services.Claude;
 using Bishop.App.Workspaces.CreateWorkspace;
@@ -22,12 +22,17 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 {
     private readonly BishopDbContext _db;
     private readonly IDbContextFactory<BishopDbContext> _factory;
-    private const string WorktreePath = @"C:\fake-worktrees\my-batch";
+    private readonly string _worktreePath;
+
+    private const string ValidHandoffJson =
+        """{"commit_body_bullets":["test change"],"touched_files":[],"notes":null}""";
 
     public RunBatchCommandHandlerTests(DbFixture fixture)
     {
         _db = fixture.Db;
         _factory = fixture.Factory;
+        _worktreePath = Path.Combine(Path.GetTempPath(), "bishop-test-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(Path.Combine(_worktreePath, ".bishop"));
     }
 
     private static string U(string prefix = "x") => $"{prefix}-{Guid.NewGuid():N}"[..20];
@@ -53,7 +58,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     {
         var repo = new BatchRepository(_factory);
         var slug = U("br");
-        var batch = await repo.CreateAsync(U("batch"), $"bishop/{slug}", "main", WorktreePath);
+        var batch = await repo.CreateAsync(U("batch"), $"bishop/{slug}", "main", _worktreePath);
         foreach (var id in cardIds)
             await repo.AssignCardAsync(batch.Id, id);
         return batch;
@@ -74,6 +79,9 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         sender.Send(Arg.Any<SetCardCommitCommand>(), Arg.Any<CancellationToken>())
             .Returns(call => new SetCardCommitCommandHandler(_factory)
                 .Handle(call.ArgAt<SetCardCommitCommand>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call => new UpdateCardCommandHandler(_factory, sender)
+                .Handle(call.ArgAt<UpdateCardCommand>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }
 
@@ -82,16 +90,23 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var git = Substitute.For<IGitCli>();
         git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new GetWorkingTreeStatusResult.Clean());
-        git.GetCardCommitAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new GetCardCommitResult.NotFound());
+        git.StageAllAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        git.CommitAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("deadbeef12345678deadbeef12345678deadbeef");
         return git;
     }
 
-    private static IClaudeCliRunner ClaudeAlwaysSucceeds()
+    private IClaudeCliRunner ClaudeAlwaysSucceeds()
     {
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(new ClaudeRunResult(0, null, 0));
+            .Returns(async _ =>
+            {
+                var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(path, ValidHandoffJson);
+                return new ClaudeRunResult(0, null, 0);
+            });
         return claude;
     }
 
@@ -245,14 +260,12 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var git = Substitute.For<IGitCli>();
         git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new GetWorkingTreeStatusResult.Clean());
-        git.GetCardCommitAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new GetCardCommitResult.NotFound());
 
         await CreateHandler(git: git, claude: ClaudeReturnsExitCode(1))
             .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
-        await git.Received(1).ResetHardAsync(WorktreePath, Arg.Any<CancellationToken>());
-        await git.Received(1).CleanWorkingTreeAsync(WorktreePath, Arg.Any<CancellationToken>());
+        await git.Received(1).ResetHardAsync(_worktreePath, Arg.Any<CancellationToken>());
+        await git.Received(1).CleanWorkingTreeAsync(_worktreePath, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -347,7 +360,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
         await claude.Received(1).RunPromptAsync(
-            WorktreePath,
+            _worktreePath,
             Arg.Any<string>(),
             Arg.Any<string?>(),
             Arg.Any<int?>(),
@@ -365,7 +378,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
         await claude.Received(1).RunPromptAsync(
-            WorktreePath,
+            _worktreePath,
             $"/bish-auto-card #{card.Number}",
             Arg.Any<string?>(),
             Arg.Any<int?>(),
@@ -401,7 +414,12 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         var claude = Substitute.For<IClaudeCliRunner>();
         claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(new ClaudeRunResult(0, new ClaudeRunTotals(1000, 250), 0));
+            .Returns(async _ =>
+            {
+                var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(path, ValidHandoffJson);
+                return new ClaudeRunResult(0, new ClaudeRunTotals(1000, 250), 0);
+            });
 
         await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
@@ -414,7 +432,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     // ── commit recording ───────────────────────────────────────────────────────
 
     [Fact]
-    public async Task SuccessfulCard_RecordsCommitHash_WhenCommitFound()
+    public async Task SuccessfulCard_RecordsCommitHash_FromCommitAsync()
     {
         var (workspace, lanes) = await CreateWorkspaceAsync();
         var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
@@ -423,33 +441,16 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var git = Substitute.For<IGitCli>();
         git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new GetWorkingTreeStatusResult.Clean());
-        git.GetCardCommitAsync(card.Number, WorktreePath, Arg.Any<CancellationToken>())
-            .Returns(new GetCardCommitResult.Found(
-                new CommitInfo("abc1234", "abc1234567890", $"feat: implement (card {card.Number})", "", DateTimeOffset.UtcNow, false)));
+        git.StageAllAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        git.CommitAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("abc1234567890abcdef");
 
         await CreateHandler(git: git).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
-        saved.CommitHash.Should().Be("abc1234567890");
+        saved.CommitHash.Should().Be("abc1234567890abcdef");
         saved.BranchName.Should().Be(batch.BranchName);
-    }
-
-    [Fact]
-    public async Task SuccessfulCard_DoesNotThrow_WhenCommitNotFound()
-    {
-        var (workspace, lanes) = await CreateWorkspaceAsync();
-        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
-        var batch = await CreateBatchAsync(card.Id);
-
-        var git = Substitute.For<IGitCli>();
-        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new GetWorkingTreeStatusResult.Clean());
-        git.GetCardCommitAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new GetCardCommitResult.NotFound());
-
-        var result = await CreateHandler(git: git).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
-
-        result.StopReason.Should().Be(RunBatchStopReason.Finished);
     }
 
     // ── resume ─────────────────────────────────────────────────────────────────
@@ -478,7 +479,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         result.Succeeded.Should().Be(1);
 
         await claude.Received(1).RunPromptAsync(
-            WorktreePath,
+            _worktreePath,
             $"/bish-auto-card #{c2.Number}",
             Arg.Any<string?>(),
             Arg.Any<int?>(),
