@@ -100,6 +100,7 @@ public sealed partial class WorkspaceDetailPage : Page
             _item.PropertyChanged -= OnItemPropertyChanged;
         DisposeWorkNextWatcher();
         _ = Notes.FlushAsync();
+        Notes.Dispose();
     }
 
     private void DisposeWorkNextWatcher()

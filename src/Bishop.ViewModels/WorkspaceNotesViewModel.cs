@@ -81,8 +81,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         if (!string.IsNullOrEmpty(_workspacePath))
             await WriteNotesAsync(NotesContent);
 
-        _watcher?.Dispose();
-        _watcher = null;
+        TearDownWatcher();
 
         _workspaceId = workspaceId;
         _workspacePath = workspacePath;
@@ -264,10 +263,22 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Bishop.AI", "notes-prefs.json");
 
+    private void TearDownWatcher()
+    {
+        if (_watcher is null) return;
+        _watcher.Changed -= OnFileChanged;
+        _watcher.Created -= OnFileChanged;
+        _watcher.Deleted -= OnFileChanged;
+        _watcher.EnableRaisingEvents = false;
+        _watcher.Dispose();
+        _watcher = null;
+    }
+
     public void Dispose()
     {
+        TearDownWatcher();
+        _debounceCts?.Cancel();
         _debounceCts?.Dispose();
-        _watcher?.Dispose();
     }
 
     private sealed record WorkspaceNotesPrefs(bool IsExpanded, double PanelHeight);

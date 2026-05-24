@@ -86,6 +86,43 @@ public class WorkspaceNotesViewModelTests
     }
 
     [Fact]
+    public async Task Dispose_AfterLoadAsync_DoesNotThrow()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        var vm = NewVm();
+        try
+        {
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+            var act = () => vm.Dispose();
+            act.Should().NotThrow();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Dispose_CalledTwiceAfterLoadAsync_IsIdempotent()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        var vm = NewVm();
+        try
+        {
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+            vm.Dispose();
+            var act = () => vm.Dispose();
+            act.Should().NotThrow();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void NotesContent_WhenChanged_SetsEditingState()
     {
         var vm = NewVm();
