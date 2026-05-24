@@ -534,7 +534,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private async void CardTitle_Tapped(object sender, TappedRoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>
         {
-            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+            if (GetCardFromSender(sender) is not CardViewModel card) return;
 
             var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty, _item?.GitHubRepo) { XamlRoot = XamlRoot };
             await dialog.ShowAsync();
@@ -546,7 +546,7 @@ public sealed partial class WorkspaceDetailPage : Page
         => await SafeAsync.RunAsync(async () =>
         {
             if (_item is null || _cardSkills.Length == 0) return;
-            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+            if (GetCardFromSender(sender) is not CardViewModel card) return;
             var appSettings = App.Services.GetRequiredService<IAppSettings>();
 
             var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
@@ -587,7 +587,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private async void CardCloseButton_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>
         {
-            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+            if (GetCardFromSender(sender) is not CardViewModel card) return;
             var mediator = App.Services.GetRequiredService<ISender>();
 
             if (card.IsClosed)
@@ -618,14 +618,14 @@ public sealed partial class WorkspaceDetailPage : Page
     private async void CardTagChip_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>
         {
-            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+            if (GetCardFromSender(sender) is not CardViewModel card) return;
             await OpenCardTagPickerAsync((FrameworkElement)sender, card, card.TagName);
         });
 
     private async void CardAddTagButton_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>
         {
-            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+            if (GetCardFromSender(sender) is not CardViewModel card) return;
             await OpenCardTagPickerAsync((FrameworkElement)sender, card, null);
         });
 
@@ -752,7 +752,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private void Card_DragStarting(UIElement sender, DragStartingEventArgs e)
     {
-        _draggedCard = (sender as FrameworkElement)?.DataContext as CardViewModel;
+        _draggedCard = GetCardFromSender(sender);
         if (_draggedCard is null) return;
         _dragSourceLane = Board.Lanes.FirstOrDefault(l => string.Equals(l.Name, _draggedCard.LaneName, StringComparison.OrdinalIgnoreCase));
         e.Data.RequestedOperation = DataPackageOperation.Move;
@@ -831,6 +831,18 @@ public sealed partial class WorkspaceDetailPage : Page
             if (child is T match) return match;
             var found = FindVisualChild<T>(child);
             if (found is not null) return found;
+        }
+        return null;
+    }
+
+    private static CardViewModel? GetCardFromSender(object sender)
+    {
+        var element = sender as DependencyObject;
+        while (element is not null)
+        {
+            if (element is FrameworkElement { Tag: CardViewModel card })
+                return card;
+            element = VisualTreeHelper.GetParent(element);
         }
         return null;
     }
