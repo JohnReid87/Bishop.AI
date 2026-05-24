@@ -2,13 +2,16 @@ using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Cards.SetCardCommit;
 using Bishop.App.Cards.UpdateCard;
+using Bishop.App.Context.ContextPack;
 using Bishop.App.Git;
 using Bishop.App.Services.Claude;
+using Bishop.App.Workspaces.GetWorkspace;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Bishop.App.Batches.RunBatch;
 
@@ -75,6 +78,26 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
         var succeeded = 0;
         var failedNumbers = new List<int>();
 
+        Workspace? worktreeWorkspace = null;
+        if (pendingCards.Count > 0)
+        {
+            var ws = await _sender.Send(new GetWorkspaceQuery(allCards[0].WorkspaceId), cancellationToken)
+                ?? throw new InvalidOperationException($"Workspace not found for batch '{batch.Name}'.");
+            worktreeWorkspace = new Workspace
+            {
+                Id = ws.Id,
+                Name = ws.Name,
+                Path = batch.WorktreePath,
+                GitHubRepo = ws.GitHubRepo,
+                NextCardNumber = ws.NextCardNumber,
+                Position = ws.Position,
+                IsRemoved = ws.IsRemoved,
+                RemovedAt = ws.RemovedAt,
+                CreatedAt = ws.CreatedAt,
+                UpdatedAt = ws.UpdatedAt,
+            };
+        }
+
         foreach (var card in pendingCards)
         {
             var gitStatus = await _git.GetWorkingTreeStatusAsync(batch.WorktreePath, cancellationToken);
@@ -98,7 +121,11 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                 : $"== [{stamp}] Card #{card.Number}: {card.Title} ==";
             Console.Out.WriteLine(startLine);
 
-            var prompt = $"/bish-auto-card #{card.Number}";
+            var contextPack = await _sender.Send(
+                new BuildContextPackQuery("auto-card", worktreeWorkspace!, new ContextPackArgs(card.Number)),
+                cancellationToken);
+            var contextJson = JsonSerializer.Serialize(contextPack, s_contextPackOpts);
+            var prompt = $"<bishop-context>\n{contextJson}\n</bishop-context>\n\n/bish-auto-card #{card.Number}";
             var runResult = await _claude.RunPromptAsync(batch.WorktreePath, prompt, request.Model, card.Number, cancellationToken);
 
             Console.Out.WriteLine($"exit {runResult.ExitCode}");
@@ -205,4 +232,12 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
     }
 
     private static IReadOnlyList<int>? ToNullableList(List<int> list) => list.Count > 0 ? list : null;
+
+    private static readonly JsonSerializerOptions s_contextPackOpts = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        ReferenceHandler = ReferenceHandler.IgnoreCycles,
+    };
 }
