@@ -5,7 +5,7 @@ allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git status:*), Bash(git diff
 bishop.category: execute
 ---
 
-Shell tool selection (Bash vs PowerShell) — follow [bishop context print --section "Shell selection"](.bishop/BISHOP_CONTEXT.md#shell-selection-stable) (STABLE).
+Shell tool selection (Bash vs PowerShell) — follow `conventions["Shell selection"]` from the pre-loaded context block.
 
 ---
 
@@ -36,7 +36,8 @@ block pre-assembled by the calling automation. Read it now:
   enforced throughout this run)
 - `workspace.name`, `workspace.lanes`, `workspace.tags` — workspace bootstrap data
 - `card` — the claimed card's metadata (number, title, description, laneName, tag, isClosed)
-- `git.recentCommits` — the 20 most recent commits (equivalent to `git log --oneline -20`)
+- `git.commits` — the 20 most recent commits (equivalent to `git log --oneline -20`)
+- `conventions["Shell selection"]`, `conventions["Commit-reference convention"]`, `conventions["Auto-card permission contract"]`, `conventions["Card model"]` — the four procedure sections pre-sliced for this skill
 - `relatedCards` — summaries of cards referenced in the card's `### Related` section
 
 Do **not** run `bishop skill bootstrap`, `bishop card view`, `git log`, or
@@ -63,9 +64,7 @@ sequence.
 
 **For the card:**
 
-1. Read CONTEXT.md to orient yourself in the domain and solution structure.
-
-2. Explore the codebase areas relevant to the card **via the Explore subagent**
+1. Explore the codebase areas relevant to the card **via the Explore subagent**
    before writing any code.
    - Use the `Agent` tool with `subagent_type: "Explore"`.
    - The `Agent` tool's own `description` parameter is a **3-to-5-word task
@@ -90,12 +89,12 @@ sequence.
    - Follow any dependency order or architectural conventions in CONTEXT.md.
      Do not modify layers or modules the card does not require.
 
-3. Implement the changes described in the card's description.
+2. Implement the changes described in the card's description.
    - Match the coding style, naming conventions, and patterns already present.
    - Do not add libraries or introduce patterns not already in use.
    - Do not gold-plate — implement exactly what the card describes.
 
-4. **Test coverage check** — before validating, analyse what was changed:
+3. **Test coverage check** — before validating, analyse what was changed:
    - Identify any files added or modified in production projects (paths that do
      NOT contain `.Tests` or `Tests` in a directory segment).
    - If production files were touched, assess whether the new or changed code
@@ -110,7 +109,7 @@ sequence.
    - If the card is already tagged `test`, or only test files changed, skip
      this check entirely.
 
-5. Validate the changes. **Any non-zero exit here aborts the skill — no commit,
+4. Validate the changes. **Any non-zero exit here aborts the skill — no commit,
    no Done move, card stays in "Doing".**
    - Run `dotnet build`. If it exits non-zero, run `dotnet clean` once, then
      re-run `dotnet build`. If the retry still fails, exit non-zero and surface
@@ -120,7 +119,7 @@ sequence.
    - Run `dotnet test`. If any test fails, exit non-zero and surface the
      failure. Do not retry `dotnet test` — test failures are real signals.
 
-6. **Draft Agent notes and derive the commit message.** No prompt.
+5. **Draft Agent notes and derive the commit message.** No prompt.
 
    Silently compose an `### Agent notes` block from the session context.
    Use this template, **omitting any section that has no relevant content** —
@@ -157,7 +156,7 @@ sequence.
    composes the final commit message as `<prefix>: <title> (card N)` plus the
    bullets as the body — you supply the bullets, not the subject line.
 
-7. **Write `.bishop/handoff.json` as your final action.** No prompt. This is
+6. **Write `.bishop/handoff.json` as your final action.** No prompt. This is
    the signal that the skill completed cleanly. The host reads this file after
    `claude -p` exits with code 0, commits, updates the card, and moves it to
    Done. Exiting without writing the file is treated as failure by the host.
@@ -185,10 +184,10 @@ sequence.
    Do NOT run `bishop card edit`, `git add`, `git commit`, or
    `bishop card set-commit` — the host performs all of those in-process.
 
-8. **Never push.** Pushing is out of scope. The parent loop or the user
+7. **Never push.** Pushing is out of scope. The parent loop or the user
    decides when to push after review.
 
-9. On full success (handoff.json written), output a concise completion line
+8. On full success (handoff.json written), output a concise completion line
    so the parent log has a clear marker:
 
     > **Done — Card #N:** <title> — handoff written; host will commit and move
