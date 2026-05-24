@@ -40,6 +40,12 @@ public sealed class BatchRepository : IBatchRepository
         return await db.Batches.FirstOrDefaultAsync(b => b.BranchName == branchName, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Batch>> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Batches.Where(b => b.Name == name).ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Batch>> ListAsync(CancellationToken cancellationToken = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -95,6 +101,15 @@ public sealed class BatchRepository : IBatchRepository
         card.BatchId = batchId;
         await db.SaveChangesAsync(cancellationToken);
         await tx.CommitAsync(cancellationToken);
+    }
+
+    public async Task UnassignCardAsync(Guid batchId, Guid cardId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var card = await db.Cards.FirstOrDefaultAsync(c => c.Id == cardId && c.BatchId == batchId, cancellationToken)
+            ?? throw new InvalidOperationException($"Card {cardId} is not assigned to batch {batchId}.");
+        card.BatchId = null;
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task DeleteAsync(Guid batchId, CancellationToken cancellationToken = default)

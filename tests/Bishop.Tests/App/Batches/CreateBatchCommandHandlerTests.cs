@@ -1,0 +1,136 @@
+using Bishop.App.Batches.CreateBatch;
+using Bishop.App.Cards.AddCard;
+using Bishop.App.Git;
+using Bishop.App.Workspaces.CreateWorkspace;
+using Bishop.Core;
+using Bishop.Data;
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using NSubstitute;
+
+namespace Bishop.Tests.App.Batches;
+
+public sealed class CreateBatchCommandHandlerTests : IClassFixture<DbFixture>
+{
+    private readonly IDbContextFactory<BishopDbContext> _factory;
+    private readonly IBatchRepository _batchRepo;
+    private readonly IGitCli _git;
+
+    public CreateBatchCommandHandlerTests(DbFixture fixture)
+    {
+        _factory = fixture.Factory;
+        _batchRepo = new BatchRepository(_factory);
+        _git = Substitute.For<IGitCli>();
+        _git.GetCurrentBranchAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("main");
+        _git.CreateWorktreeAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+    }
+
+    private async Task<Workspace> CreateWorkspaceAsync()
+    {
+        var name = $"batchtest-{Guid.NewGuid():N}"[..20];
+        return await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+    }
+
+    private CreateBatchCommandHandler MakeHandler() =>
+        new(_batchRepo, _git, _factory);
+
+    [Fact]
+    public async Task Handle_NoCards_CreatesBatchWithWorktree()
+    {
+        // Arrange
+        var ws = await CreateWorkspaceAsync();
+        var cmd = new CreateBatchCommand(
+            ws.Id, ws.Path, "Sprint 1", "bishop/sprint-1", null,
+            @"C:\worktrees\sprint-1", [], null, null);
+
+        // Act
+        var result = await MakeHandler().Handle(cmd, default);
+
+        // Assert
+        result.Batch.Name.Should().Be("Sprint 1");
+        result.Batch.BranchName.Should().Be("bishop/sprint-1");
+        result.Batch.BaseBranch.Should().Be("main");
+        result.Batch.Status.Should().Be(BatchStatus.Open);
+        result.CardCount.Should().Be(0);
+        await _git.Received(1).GetCurrentBranchAsync(ws.Path, Arg.Any<CancellationToken>());
+        await _git.Received(1).CreateWorktreeAsync(ws.Path, "bishop/sprint-1", "main", @"C:\worktrees\sprint-1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithBaseBranch_SkipsGetCurrentBranch()
+    {
+        // Arrange
+        var ws = await CreateWorkspaceAsync();
+        var cmd = new CreateBatchCommand(
+            ws.Id, ws.Path, "Hotfix", "bishop/hotfix", "develop",
+            @"C:\worktrees\hotfix", [], null, null);
+
+        // Act
+        var result = await MakeHandler().Handle(cmd, default);
+
+        // Assert
+        result.Batch.BaseBranch.Should().Be("develop");
+        await _git.DidNotReceive().GetCurrentBranchAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithCardNumbers_AssignsCards()
+    {
+        // Arrange
+        var ws = await CreateWorkspaceAsync();
+        var addHandler = new AddCardCommandHandler(_factory);
+        var card1 = await addHandler.Handle(new AddCardCommand(ws.Id, SystemLaneNames.ToDo, "Card A"), default);
+        var card2 = await addHandler.Handle(new AddCardCommand(ws.Id, SystemLaneNames.ToDo, "Card B"), default);
+
+        var cmd = new CreateBatchCommand(
+            ws.Id, ws.Path, "With Cards", "bishop/with-cards", "main",
+            @"C:\worktrees\with-cards", [card1.Number, card2.Number], null, null);
+
+        // Act
+        var result = await MakeHandler().Handle(cmd, default);
+
+        // Assert
+        result.CardCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_MissingCardNumber_ThrowsWithMissingNumbers()
+    {
+        // Arrange
+        var ws = await CreateWorkspaceAsync();
+        var cmd = new CreateBatchCommand(
+            ws.Id, ws.Path, "Bad", "bishop/bad", "main",
+            @"C:\worktrees\bad", [999], null, null);
+
+        // Act
+        var act = () => MakeHandler().Handle(cmd, default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*#999*");
+    }
+
+    [Fact]
+    public async Task Handle_TagFilter_AssignsMatchingCards()
+    {
+        // Arrange
+        var ws = await CreateWorkspaceAsync();
+        var addHandler = new AddCardCommandHandler(_factory);
+        var tagged = await addHandler.Handle(new AddCardCommand(ws.Id, SystemLaneNames.ToDo, "Tagged", TagName: "feature"), default);
+        await addHandler.Handle(new AddCardCommand(ws.Id, SystemLaneNames.ToDo, "Untagged"), default);
+
+        var cmd = new CreateBatchCommand(
+            ws.Id, ws.Path, "Tag Batch", "bishop/tag-batch", "main",
+            @"C:\worktrees\tag-batch", [], "feature", null);
+
+        // Act
+        var result = await MakeHandler().Handle(cmd, default);
+
+        // Assert
+        result.CardCount.Should().Be(1);
+    }
+}
