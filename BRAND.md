@@ -92,7 +92,7 @@ values.
 Every tag chip must remain legible against `surface: #141414`. Chip
 **text colour** is chosen by relative luminance: tags whose luminance
 exceeds the WCAG 0.179 threshold get **black** text; tags below it get
-white. All seven canonical tags exceed the threshold, so the canonical
+white. All eight canonical tags exceed the threshold, so the canonical
 chip text colour is black. Custom tags must be checked against the same
 threshold before they ship — see `LuminanceContrast` (or equivalent
 converter) in the UI layer.
@@ -100,7 +100,7 @@ converter) in the UI layer.
 ### Tag-palette reservation
 
 Tag hex values must not be reused literally outside tag chips and
-chip-derived UI (filter chips, tag lists, tag pickers). The seven hexes
+chip-derived UI (filter chips, tag lists, tag pickers). The eight hexes
 above are **the** identifier for tags — repurposing one elsewhere makes
 that surface read as a tag.
 

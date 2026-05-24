@@ -25,7 +25,7 @@ If any of these changes, expect the design to fall over.
 ### CLI as primary mutation surface for skills and automation
 The `bishop` CLI is the primary mutation surface for skills and automated workflows. Skills invoke `bishop` commands; the conversational loop is the human-in-the-loop gate.
 
-**Decision updated:** the WinUI app now supports a narrow set of direct mutations — card detail dialog (with delete), drag-and-drop card move, and lane CRUD. The previous stance was: *"The WinUI app is a read-only viewer of the same state. UI editability is possible later but not required for any committed milestone."* This held while the board was scaffolding; it no longer reflects what is actually being built. The CLI remains the automation surface; the UI is the interactive surface for the human user and handles these mutations directly rather than routing through the CLI.
+**Decision updated:** the WinUI app now supports a narrow set of direct mutations — card detail dialog (with delete) and drag-and-drop card move. The previous stance was: *"The WinUI app is a read-only viewer of the same state. UI editability is possible later but not required for any committed milestone."* This held while the board was scaffolding; it no longer reflects what is actually being built. The CLI remains the automation surface; the UI is the interactive surface for the human user and handles these mutations directly rather than routing through the CLI.
 
 ### No pending-move review queue
 Card moves apply immediately when the CLI is called. Human-in-the-loop gating happens at the **skill** level — `bish-work-on-card` prompts the user in the conversation before invoking `bishop card move ... --to-lane Done`. By the time the CLI runs, the move is already approved.
@@ -62,7 +62,7 @@ Decided against, not deferred. Don't drift back into these without explicitly re
 - **Automatic CLAUDE.md seeding.** Cut — see above.
 - **Embedded terminal.** Cut — see above.
 - **Tabbed right pane.** The original idea was a tab host with kanban + (future tools) per workspace; with the layer-above-editor framing, the kanban *is* the workspace view and a tab host is unjustified weight.
-- **Full kanban admin UI in Bishop.UI.** Light mutations are now in scope (card delete, drag-and-drop move, lane CRUD — see [CLI as primary mutation surface for skills and automation](#cli-as-primary-mutation-surface-for-skills-and-automation)); a fully featured editing UI that replaces the CLI as the mutation surface is not.
+- **Full kanban admin UI in Bishop.UI.** Light mutations are now in scope (card delete, drag-and-drop move — see [CLI as primary mutation surface for skills and automation](#cli-as-primary-mutation-surface-for-skills-and-automation)); a fully featured editing UI that replaces the CLI as the mutation surface is not.
 - **General-purpose file viewer / browser inside Bishop.** Editor territory; VS Code + Claude extension already owns it.
 - **Plugin system / extensibility points.** Future tabs and tools ship as in-tree code if they ship at all.
 - **Full GitHub Issues / Projects sync.** Basic GitHub integration is shipped (`bishop workspace set-github`, `bishop card push`); bidirectional sync and automatic issue tracking are not in scope.
