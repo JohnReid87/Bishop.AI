@@ -34,14 +34,14 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         if (lastRun is null)
         {
             CommitsSinceText = "—";
-            StatusDotColor = "#ff5555";
+            StatusDotColor = "#c97a8a";
             StatusTooltip = "Never audited";
             SeverityRank = 2;
         }
         else if (shaUnreachable)
         {
             CommitsSinceText = "Re-audit";
-            StatusDotColor = "#ff5555";
+            StatusDotColor = "#c97a8a";
             StatusTooltip = "Audit SHA is no longer reachable from HEAD";
             SeverityRank = 2;
         }
@@ -49,7 +49,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         {
             var count = commitsSince ?? 0;
             CommitsSinceText = count.ToString();
-            StatusDotColor = count < 10 ? "#4a9e6a" : count < 50 ? "#c4944f" : "#ff5555";
+            StatusDotColor = count < 10 ? "#4a9e6a" : count < 50 ? "#c4a85f" : "#c97a8a";
             StatusTooltip = count < 10 ? "Fresh" : count < 50 ? "Getting stale" : "Stale — re-audit recommended";
             SeverityRank = count < 10 ? 0 : count < 50 ? 1 : 2;
         }

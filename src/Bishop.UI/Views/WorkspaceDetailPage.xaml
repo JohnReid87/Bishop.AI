@@ -398,7 +398,7 @@
                                 <Rectangle RadiusX="8" RadiusY="8"
                                            Fill="{x:Bind Monitoring.BadgeColor, Mode=OneWay, Converter={StaticResource HexColorToBrushConverter}}"/>
                                 <TextBlock Text="{x:Bind Monitoring.BadgeCount, Mode=OneWay}"
-                                           Foreground="White"
+                                           Foreground="{x:Bind Monitoring.BadgeColor, Mode=OneWay, Converter={StaticResource HexColorToContrastForegroundConverter}}"
                                            FontSize="11"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"

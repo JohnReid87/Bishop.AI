@@ -55,7 +55,7 @@ public class WorkspaceMonitoringViewModelTests
 
         var row = _vm.Rows.First(r => r.SkillName == "bish-arch");
         row.LastRunText.Should().Be("Never");
-        row.StatusDotColor.Should().Be("#ff5555");
+        row.StatusDotColor.Should().Be("#c97a8a");
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class WorkspaceMonitoringViewModelTests
 
         var row = _vm.Rows.First(r => r.SkillName == "bish-security");
         row.CommitsSinceText.Should().Be("Re-audit");
-        row.StatusDotColor.Should().Be("#ff5555");
+        row.StatusDotColor.Should().Be("#c97a8a");
     }
 
     [Fact]
@@ -153,7 +153,7 @@ public class WorkspaceMonitoringViewModelTests
         await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
 
         _vm.BadgeIsVisible.Should().BeTrue();
-        _vm.BadgeColor.Should().Be("#ff5555");
+        _vm.BadgeColor.Should().Be("#c97a8a");
         _vm.BadgeCount.Should().Be(TrackedSkills.Length);
         _vm.BadgeTooltip.Should().Be($"{TrackedSkills.Length} of 5 reviews need attention");
     }
@@ -175,7 +175,7 @@ public class WorkspaceMonitoringViewModelTests
         await _vm.LoadAsync(workspaceId, @"C:\fake");
 
         _vm.BadgeIsVisible.Should().BeTrue();
-        _vm.BadgeColor.Should().Be("#c4944f");
+        _vm.BadgeColor.Should().Be("#c4a85f");
         _vm.BadgeCount.Should().Be(TrackedSkills.Length);
     }
 
@@ -198,7 +198,7 @@ public class WorkspaceMonitoringViewModelTests
         await _vm.LoadAsync(workspaceId, @"C:\fake");
 
         _vm.BadgeIsVisible.Should().BeTrue();
-        _vm.BadgeColor.Should().Be("#ff5555");
+        _vm.BadgeColor.Should().Be("#c97a8a");
     }
 
     [Fact]

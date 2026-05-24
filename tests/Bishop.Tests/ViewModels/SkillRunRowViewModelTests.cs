@@ -12,7 +12,7 @@ public class SkillRunRowViewModelTests
 
         row.LastRunText.Should().Be("Never");
         row.CommitsSinceText.Should().Be("—");
-        row.StatusDotColor.Should().Be("#ff5555");
+        row.StatusDotColor.Should().Be("#c97a8a");
         row.StatusTooltip.Should().Be("Never audited");
     }
 
@@ -22,17 +22,17 @@ public class SkillRunRowViewModelTests
         var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow.AddDays(-10), commitsSince: null, shaUnreachable: true);
 
         row.CommitsSinceText.Should().Be("Re-audit");
-        row.StatusDotColor.Should().Be("#ff5555");
+        row.StatusDotColor.Should().Be("#c97a8a");
         row.StatusTooltip.Should().Be("Audit SHA is no longer reachable from HEAD");
     }
 
     [Theory]
     [InlineData(0, "#4a9e6a")]
     [InlineData(9, "#4a9e6a")]
-    [InlineData(10, "#c4944f")]
-    [InlineData(49, "#c4944f")]
-    [InlineData(50, "#ff5555")]
-    [InlineData(100, "#ff5555")]
+    [InlineData(10, "#c4a85f")]
+    [InlineData(49, "#c4a85f")]
+    [InlineData(50, "#c97a8a")]
+    [InlineData(100, "#c97a8a")]
     public void CommitCountDeterminesStatusColor(int commitsSince, string expectedColor)
     {
         var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow.AddDays(-5), commitsSince, shaUnreachable: false);

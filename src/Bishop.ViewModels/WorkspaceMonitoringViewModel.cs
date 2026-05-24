@@ -97,7 +97,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         var hasRed = Rows.Any(r => r.SeverityRank >= 2);
 
         BadgeCount = attentionCount;
-        BadgeColor = hasRed ? "#ff5555" : attentionCount > 0 ? "#c4944f" : string.Empty;
+        BadgeColor = hasRed ? "#c97a8a" : attentionCount > 0 ? "#c4a85f" : string.Empty;
         BadgeIsVisible = attentionCount > 0;
         BadgeTooltip = attentionCount > 0
             ? $"{attentionCount} of {TrackedSkills.Length} reviews need attention"
