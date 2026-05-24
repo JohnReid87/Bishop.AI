@@ -15,13 +15,12 @@ namespace Bishop.UI.Views;
 public sealed partial class GamePage : Page
 {
     private readonly BreakoutEngine _engine = new();
-    private DispatcherTimer? _timer;
     private readonly Dictionary<int, Border> _brickVisuals = new();
     private Ellipse? _ballVisual;
     private Rectangle? _paddleVisual;
     private bool _leftPressed;
     private bool _rightPressed;
-    private DateTime _lastTick;
+    private TimeSpan _lastRenderingTime;
 
     public GamePage()
     {
@@ -40,10 +39,8 @@ public sealed partial class GamePage : Page
 
         BuildScene();
 
-        _lastTick = DateTime.UtcNow;
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _timer.Tick += OnTick;
-        _timer.Start();
+        _lastRenderingTime = TimeSpan.Zero;
+        CompositionTarget.Rendering += OnRendering;
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -127,11 +124,16 @@ public sealed partial class GamePage : Page
         };
     }
 
-    private void OnTick(object? sender, object e)
+    private void OnRendering(object? sender, object e)
     {
-        var now = DateTime.UtcNow;
-        var dt = (now - _lastTick).TotalSeconds;
-        _lastTick = now;
+        var renderingTime = ((RenderingEventArgs)e).RenderingTime;
+        if (_lastRenderingTime == TimeSpan.Zero)
+        {
+            _lastRenderingTime = renderingTime;
+            return;
+        }
+        var dt = (renderingTime - _lastRenderingTime).TotalSeconds;
+        _lastRenderingTime = renderingTime;
 
         if (_leftPressed) _engine.MovePaddle(PaddleDirection.Left);
         if (_rightPressed) _engine.MovePaddle(PaddleDirection.Right);
@@ -242,7 +244,6 @@ public sealed partial class GamePage : Page
 
     private void StopTimer()
     {
-        _timer?.Stop();
-        _timer = null;
+        CompositionTarget.Rendering -= OnRendering;
     }
 }

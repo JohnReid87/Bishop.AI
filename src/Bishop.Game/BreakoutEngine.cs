@@ -8,10 +8,10 @@ public sealed class BreakoutEngine
     private const float PaddleWidth = 100f;
     private const float PaddleHeight = 12f;
     private const float PaddleY = 550f;
-    private const float PaddleStep = 8f;
+    private const float PaddleStep = 15f;
 
     private const float BallRadius = 8f;
-    private const float BallLaunchSpeed = 250f;
+    private const float BallLaunchSpeed = 420f;
 
     private const float BrickWidth = 88f;
     private const float BrickHeight = 22f;
@@ -148,7 +148,7 @@ public sealed class BreakoutEngine
     public void LaunchBall()
     {
         if (_state != GameState.WaitingToLaunch) return;
-        _ballDx = 100f;
+        _ballDx = 168f;
         _ballDy = -BallLaunchSpeed;
         _state = GameState.Playing;
     }
