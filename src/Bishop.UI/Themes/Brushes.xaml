@@ -17,5 +17,6 @@
     <SolidColorBrush x:Key="AppCardBackgroundBrush"   Color="#1E1E1E"/>
     <SolidColorBrush x:Key="AppDragTargetBrush"       Color="#3300FF41"/>
     <SolidColorBrush x:Key="AppDragTargetBorderBrush" Color="#00FF41"/>
+    <SolidColorBrush x:Key="AppSurfaceSelectedBrush"  Color="#A000FF41"/>
 
 </ResourceDictionary>
