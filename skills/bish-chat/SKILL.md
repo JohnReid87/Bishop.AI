@@ -68,6 +68,7 @@ The context-pack below bundles workspace metadata, card data, recent git history
   - `workspace.tags`, `workspace.lanes` — for the wrap-up step
   - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure)
   - `skill_specific.card` — the loaded card: `number`, `title`, `description`, `laneName`, `tag`
+  - `skill_specific.relatedCards` — summaries of cards referenced in the source card's `### Related` section (empty array when none); each entry has `number`, `title`, `laneName`, `isClosed`
 
   Remember `skill_specific.card` as the **source card** — you will use `number` (and the existing `tag`) in the wrap-up.
 

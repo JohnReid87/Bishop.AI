@@ -54,7 +54,8 @@ The context-pack below bundles workspace metadata, recent git history, card data
   ```
   If the command exits non-zero, surface the stderr message as-is and STOP.
   
-  `skill_specific.card` carries the loaded card. Remember `skill_specific.card.number` as the **source card** — reused in the closing prompt below.
+  `skill_specific.card` carries the loaded card. `skill_specific.relatedCards` carries summaries (`number`, `title`, `laneName`, `isClosed`) of any cards referenced in the source card's `### Related` section (empty array when none).
+  Remember `skill_specific.card.number` as the **source card** — reused in the closing prompt below.
   Use `skill_specific.card.title` + `skill_specific.card.description` (verbatim, joined) as the bug-description seed for Phase 1.
   Echo back so the user can confirm before the interview begins:
 

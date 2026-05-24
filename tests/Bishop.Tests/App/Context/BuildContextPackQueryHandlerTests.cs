@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Context.ContextPack;
@@ -271,8 +272,87 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         "grill-me" => new GrillMeContextProvider(),
         "triage" => new TriageContextProvider(),
         "chat" => new ChatContextProvider(),
+        "auto-card" => new AutoCardContextProvider(),
+        "work-on-card" => new WorkOnCardContextProvider(),
         _ => throw new ArgumentOutOfRangeException(nameof(skillName), skillName, null)
     };
+
+    [Theory]
+    [InlineData("work-on-card")]
+    [InlineData("auto-card")]
+    [InlineData("grill-me")]
+    [InlineData("triage")]
+    [InlineData("chat")]
+    public async Task CardProviders_NoRelatedSection_EmitsEmptyRelatedCards(string skillName)
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var sender = CreateSender();
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "My card", "### Why\nNo related section", TagName: null), default);
+
+        var handler = CreateHandler(sender, StubGitCli(), CreateProviderBySkillName(skillName));
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery(skillName, workspace, new ContextPackArgs(card.Number)), default);
+
+        // Assert
+        var root = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(pack.SkillSpecific));
+        root.GetProperty("relatedCards").GetArrayLength().Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData("work-on-card")]
+    [InlineData("auto-card")]
+    [InlineData("grill-me")]
+    [InlineData("triage")]
+    [InlineData("chat")]
+    public async Task CardProviders_WithRelatedSection_LoadsReferencedCards(string skillName)
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var sender = CreateSender();
+        var related = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Related card", "", TagName: null), default);
+        var source = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Source card",
+                $"### Why\nSomething\n### Related\n- #{related.Number}", TagName: null), default);
+
+        var handler = CreateHandler(sender, StubGitCli(), CreateProviderBySkillName(skillName));
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery(skillName, workspace, new ContextPackArgs(source.Number)), default);
+
+        // Assert
+        var root = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(pack.SkillSpecific));
+        var arr = root.GetProperty("relatedCards");
+        arr.GetArrayLength().Should().Be(1);
+        arr[0].GetProperty("number").GetInt32().Should().Be(related.Number);
+        arr[0].GetProperty("title").GetString().Should().Be("Related card");
+    }
+
+    [Fact]
+    public async Task CardProvider_MissingRelatedRef_SkippedSilently()
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var sender = CreateSender();
+        var source = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Source card",
+                "### Why\nSomething\n### Related\n- #9999", TagName: null), default);
+
+        var handler = CreateHandler(sender, StubGitCli(), new WorkOnCardContextProvider());
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(source.Number)), default);
+
+        // Assert
+        var root = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(pack.SkillSpecific));
+        root.GetProperty("relatedCards").GetArrayLength().Should().Be(0);
+    }
 
     private sealed class TypoSectionProvider : IContextProvider
     {

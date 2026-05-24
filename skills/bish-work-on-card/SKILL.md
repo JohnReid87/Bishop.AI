@@ -68,6 +68,7 @@ Parse the claim JSON and ask the user to confirm:
   > **Workspace:** <name>
 - `skillSpecific.card` — card metadata (`number`, `title`, `description`,
   `laneName`, `tag`, `isClosed`). If this is `null`, the card was not found — STOP.
+- `skillSpecific.relatedCards` — summaries of cards referenced in the source card's `### Related` section (empty array when none); each entry has `number`, `title`, `laneName`, `isClosed`.
 - `workspace.contextMd` — project orientation text (used in step 2 below).
 - `conventions` — STABLE procedure sections. Use `conventions["Shell selection"]`
   when choosing the Bash vs PowerShell tool throughout this run.
