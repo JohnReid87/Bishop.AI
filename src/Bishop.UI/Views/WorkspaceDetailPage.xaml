@@ -5,6 +5,149 @@
     xmlns:local="using:Bishop.UI.Views"
     xmlns:vm="using:Bishop.ViewModels"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
+    <Page.Resources>
+        <DataTemplate x:Key="CardItemTemplate" x:DataType="vm:CardViewModel">
+            <Grid Margin="8,0,8,4"
+                  Opacity="{x:Bind CardOpacity}"
+                  Tag="{x:Bind}">
+                <Border Background="{StaticResource AppCardBackgroundBrush}"
+                        CornerRadius="4">
+                <StackPanel>
+                    <local:SizeAllCursorGrid Padding="{x:Bind IsDoneLane, Converter={StaticResource BoolToThicknessConverter}, ConverterParameter='10,2,4,2|10,4,4,4'}"
+                                             Background="Transparent"
+                                             BorderBrush="{StaticResource AppDividerBrush}"
+                                             BorderThickness="0,0,0,1"
+                                             CanDrag="True"
+                                             DragStarting="Card_DragStarting"
+                                             DropCompleted="Card_DropCompleted">
+                        <local:SizeAllCursorGrid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </local:SizeAllCursorGrid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0"
+                                    Orientation="Horizontal"
+                                    Spacing="6"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind NumberDisplay}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{StaticResource AppTextTertiaryBrush}"
+                                       FontFamily="Cascadia Mono"
+                                       VerticalAlignment="Center"/>
+                            <local:HandCursorButton Background="Transparent"
+                                                   BorderThickness="0"
+                                                   Padding="0"
+                                                   MinWidth="0"
+                                                   MinHeight="0"
+                                                   Click="CardTagChip_Click"
+                                                   ToolTipService.ToolTip="Change tag"
+                                                   Visibility="{x:Bind IsTagVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                   VerticalAlignment="Center">
+                                <Border Background="{x:Bind TagColour, Converter={StaticResource HexColorToBrushConverter}}"
+                                        CornerRadius="3"
+                                        Padding="5,1">
+                                    <TextBlock Text="{x:Bind TagName}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{x:Bind TagColour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                            </local:HandCursorButton>
+                            <local:HandCursorButton Click="CardAddTagButton_Click"
+                                                   Visibility="{x:Bind IsAddTagButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                   Padding="5,1"
+                                                   BorderThickness="0"
+                                                   CornerRadius="3"
+                                                   Background="{StaticResource AppDividerBrush}">
+                                <TextBlock Text="+ tag"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           VerticalAlignment="Center"/>
+                            </local:HandCursorButton>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal">
+                            <FontIcon Glyph="&#xE99A;"
+                                      Foreground="#ff5555"
+                                      FontSize="12"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,4,0"
+                                      ToolTipService.ToolTip="{x:Bind AutoRunFailedTooltip}"
+                                      Visibility="{x:Bind IsAutoRunFailedIndicatorVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <local:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                   ToolTipService.ToolTip="Skills"
+                                                   Click="CardSkillsButton_Click"
+                                                   Visibility="{x:Bind IsSkillsButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                   VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xEBD2;" FontSize="12"/>
+                            </local:HandCursorButton>
+                            <local:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                   ToolTipService.ToolTip="{x:Bind CloseReopenTooltip}"
+                                                   Click="CardCloseButton_Click"
+                                                   VerticalAlignment="Center">
+                                <FontIcon Glyph="{x:Bind CloseReopenGlyph}" FontSize="12"/>
+                            </local:HandCursorButton>
+                        </StackPanel>
+                    </local:SizeAllCursorGrid>
+                    <local:HandCursorGrid>
+                        <TextBlock Text="{x:Bind Title}"
+                                   TextWrapping="Wrap"
+                                   Padding="{x:Bind IsDoneLane, Converter={StaticResource BoolToThicknessConverter}, ConverterParameter='10,3,10,4|10,6,10,8'}"
+                                   FontSize="{x:Bind CardTitleFontSize}"
+                                   Tapped="CardTitle_Tapped"/>
+                    </local:HandCursorGrid>
+                </StackPanel>
+                </Border>
+                <Border CornerRadius="4"
+                        IsHitTestVisible="False"
+                        BorderBrush="{StaticResource AppCardSelectionBorderBrush}"
+                        BorderThickness="2"
+                        Background="{StaticResource AppCardSelectionBrush}"
+                        Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="BatchGroupItemTemplate" x:DataType="vm:BatchGroupViewModel">
+            <Grid Margin="8,0,8,4">
+                <Border Background="{StaticResource AppCardBackgroundBrush}"
+                        BorderBrush="{StaticResource AppBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <StackPanel>
+                        <Grid Padding="10,6,4,6"
+                              BorderBrush="{StaticResource AppDividerBrush}"
+                              BorderThickness="0,0,0,1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="{x:Bind BatchName, Mode=OneWay}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{StaticResource AppTextSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{x:Bind ProgressDisplay, Mode=OneWay}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{StaticResource AppTextTertiaryBrush}"
+                                       FontFamily="Cascadia Mono"
+                                       VerticalAlignment="Center"
+                                       Margin="4,0,8,0"/>
+                        </Grid>
+                        <ItemsRepeater ItemsSource="{x:Bind Cards}"
+                                       ItemTemplate="{StaticResource CardItemTemplate}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Orientation="Vertical"/>
+                            </ItemsRepeater.Layout>
+                        </ItemsRepeater>
+                        <Border Height="4"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <local:CardOrGroupTemplateSelector x:Key="CardOrGroupSelector"
+                                            CardTemplate="{StaticResource CardItemTemplate}"
+                                            GroupTemplate="{StaticResource BatchGroupItemTemplate}"/>
+    </Page.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -279,114 +422,12 @@
                                                            Visibility="{x:Bind HasAddCardError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                             </StackPanel>
 
-                                            <!-- Card list (virtualised) -->
-                                            <ItemsRepeater ItemsSource="{x:Bind FilteredCards}">
+                                            <!-- Card list (with batch grouping) -->
+                                            <ItemsRepeater ItemsSource="{x:Bind LaneItems, Mode=OneWay}"
+                                                           ItemTemplate="{StaticResource CardOrGroupSelector}">
                                                 <ItemsRepeater.Layout>
                                                     <StackLayout Orientation="Vertical"/>
                                                 </ItemsRepeater.Layout>
-                                                <ItemsRepeater.ItemTemplate>
-                                                    <DataTemplate x:DataType="vm:CardViewModel">
-                                                        <Grid Margin="8,0,8,4"
-                                                              Opacity="{x:Bind CardOpacity}"
-                                                              Tag="{x:Bind}">
-                                                            <Border Background="{StaticResource AppCardBackgroundBrush}"
-                                                                    CornerRadius="4">
-
-                                                            <StackPanel>
-                                                                <!-- Card header: drag handle -->
-                                                                <local:SizeAllCursorGrid Padding="{x:Bind IsDoneLane, Converter={StaticResource BoolToThicknessConverter}, ConverterParameter='10,2,4,2|10,4,4,4'}"
-                                                                                         Background="Transparent"
-                                                                                         BorderBrush="{StaticResource AppDividerBrush}"
-                                                                                         BorderThickness="0,0,0,1"
-                                                                                         CanDrag="True"
-                                                                                         DragStarting="Card_DragStarting"
-                                                                                         DropCompleted="Card_DropCompleted">
-                                                                    <local:SizeAllCursorGrid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="*"/>
-                                                                        <ColumnDefinition Width="Auto"/>
-                                                                    </local:SizeAllCursorGrid.ColumnDefinitions>
-                                                                    <StackPanel Grid.Column="0"
-                                                                                Orientation="Horizontal"
-                                                                                Spacing="6"
-                                                                                VerticalAlignment="Center">
-                                                                        <TextBlock Text="{x:Bind NumberDisplay}"
-                                                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                                                   Foreground="{StaticResource AppTextTertiaryBrush}"
-                                                                                   FontFamily="Cascadia Mono"
-                                                                                   VerticalAlignment="Center"/>
-                                                                        <local:HandCursorButton Background="Transparent"
-                                                                                               BorderThickness="0"
-                                                                                               Padding="0"
-                                                                                               MinWidth="0"
-                                                                                               MinHeight="0"
-                                                                                               Click="CardTagChip_Click"
-                                                                                               ToolTipService.ToolTip="Change tag"
-                                                                                               Visibility="{x:Bind IsTagVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                                                               VerticalAlignment="Center">
-                                                                            <Border Background="{x:Bind TagColour, Converter={StaticResource HexColorToBrushConverter}}"
-                                                                                    CornerRadius="3"
-                                                                                    Padding="5,1">
-                                                                                <TextBlock Text="{x:Bind TagName}"
-                                                                                           Style="{StaticResource CaptionTextBlockStyle}"
-                                                                                           Foreground="{x:Bind TagColour, Converter={StaticResource HexColorToContrastForegroundConverter}}"
-                                                                                           VerticalAlignment="Center"/>
-                                                                            </Border>
-                                                                        </local:HandCursorButton>
-                                                                        <local:HandCursorButton Click="CardAddTagButton_Click"
-                                                                                               Visibility="{x:Bind IsAddTagButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                                                               Padding="5,1"
-                                                                                               BorderThickness="0"
-                                                                                               CornerRadius="3"
-                                                                                               Background="{StaticResource AppDividerBrush}">
-                                                                            <TextBlock Text="+ tag"
-                                                                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                                                                       VerticalAlignment="Center"/>
-                                                                        </local:HandCursorButton>
-                                                                    </StackPanel>
-                                                                    <StackPanel Grid.Column="1"
-                                                                                Orientation="Horizontal">
-                                                                        <FontIcon Glyph="&#xE99A;"
-                                                                                  Foreground="#ff5555"
-                                                                                  FontSize="12"
-                                                                                  VerticalAlignment="Center"
-                                                                                  Margin="0,0,4,0"
-                                                                                  ToolTipService.ToolTip="{x:Bind AutoRunFailedTooltip}"
-                                                                                  Visibility="{x:Bind IsAutoRunFailedIndicatorVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                                        <local:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                                                               ToolTipService.ToolTip="Skills"
-                                                                                               Click="CardSkillsButton_Click"
-                                                                                               Visibility="{x:Bind IsSkillsButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                                                               VerticalAlignment="Center">
-                                                                            <FontIcon Glyph="&#xEBD2;" FontSize="12"/>
-                                                                        </local:HandCursorButton>
-                                                                        <local:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                                                               ToolTipService.ToolTip="{x:Bind CloseReopenTooltip}"
-                                                                                               Click="CardCloseButton_Click"
-                                                                                               VerticalAlignment="Center">
-                                                                            <FontIcon Glyph="{x:Bind CloseReopenGlyph}" FontSize="12"/>
-                                                                        </local:HandCursorButton>
-                                                                    </StackPanel>
-                                                                </local:SizeAllCursorGrid>
-                                                                <!-- Card title: tap to open detail -->
-                                                                <local:HandCursorGrid>
-                                                                    <TextBlock Text="{x:Bind Title}"
-                                                                               TextWrapping="Wrap"
-                                                                               Padding="{x:Bind IsDoneLane, Converter={StaticResource BoolToThicknessConverter}, ConverterParameter='10,3,10,4|10,6,10,8'}"
-                                                                               FontSize="{x:Bind CardTitleFontSize}"
-                                                                               Tapped="CardTitle_Tapped"/>
-                                                                </local:HandCursorGrid>
-                                                            </StackPanel>
-                                                            </Border>
-                                                            <!-- Selection highlight overlay -->
-                                                            <Border CornerRadius="4"
-                                                                    IsHitTestVisible="False"
-                                                                    BorderBrush="{StaticResource AppCardSelectionBorderBrush}"
-                                                                    BorderThickness="2"
-                                                                    Background="{StaticResource AppCardSelectionBrush}"
-                                                                    Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </ItemsRepeater.ItemTemplate>
                                             </ItemsRepeater>
                                         </StackPanel>
                                     </ScrollViewer>

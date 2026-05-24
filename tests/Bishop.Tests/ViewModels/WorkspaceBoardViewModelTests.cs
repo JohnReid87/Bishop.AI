@@ -638,4 +638,91 @@ public class WorkspaceBoardViewModelTests
         changed.Should().Contain(nameof(WorkspaceBoardViewModel.HasSelection));
         changed.Should().Contain(nameof(WorkspaceBoardViewModel.SelectionCount));
     }
+
+    [Fact]
+    public async Task LoadAsync_WithBatchedCards_GroupsThemInLaneItems()
+    {
+        var workspaceId = Guid.NewGuid();
+        var batchId = Guid.NewGuid();
+        var batch = new Bishop.Core.Batch { Id = batchId, Name = "Sprint 1" };
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("To Do", 1) });
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card>
+            {
+                new() { Id = Guid.NewGuid(), Number = 1, Title = "Standalone", LaneName = "To Do", Description = "" },
+                new() { Id = Guid.NewGuid(), Number = 2, Title = "Batch-1", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch },
+                new() { Id = Guid.NewGuid(), Number = 3, Title = "Batch-2", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch },
+            });
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<TagInfo>());
+
+        var vm = new WorkspaceBoardViewModel(mediator);
+        await vm.LoadAsync(workspaceId);
+
+        var lane = vm.Lanes[0];
+        lane.LaneItems.Should().HaveCount(2);
+        lane.LaneItems[0].Should().BeOfType<CardViewModel>().Which.Title.Should().Be("Standalone");
+        var group = lane.LaneItems[1].Should().BeOfType<BatchGroupViewModel>().Subject;
+        group.BatchName.Should().Be("Sprint 1");
+        group.Cards.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task LoadAsync_BatchStats_TotalCountSpansAllLanes()
+    {
+        var workspaceId = Guid.NewGuid();
+        var batchId = Guid.NewGuid();
+        var batch = new Bishop.Core.Batch { Id = batchId, Name = "B" };
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("To Do", 1), new("Done", 2) });
+        mediator.Send(Arg.Is<ListCardsByWorkspaceQuery>(q => q.LaneName == "To Do"), Arg.Any<CancellationToken>())
+            .Returns(new List<Card>
+            {
+                new() { Id = Guid.NewGuid(), Number = 1, Title = "C1", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch },
+            });
+        mediator.Send(Arg.Is<ListCardsByWorkspaceQuery>(q => q.LaneName == "Done"), Arg.Any<CancellationToken>())
+            .Returns(new List<Card>
+            {
+                new() { Id = Guid.NewGuid(), Number = 2, Title = "C2", LaneName = "Done", Description = "", BatchId = batchId, Batch = batch },
+            });
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<TagInfo>());
+
+        var vm = new WorkspaceBoardViewModel(mediator);
+        await vm.LoadAsync(workspaceId);
+
+        var group = vm.Lanes[0].LaneItems[0].Should().BeOfType<BatchGroupViewModel>().Subject;
+        group.TotalCount.Should().Be(2);
+        group.DoneCount.Should().Be(1);
+        group.ProgressDisplay.Should().Be("(1/2)");
+    }
+
+    [Fact]
+    public async Task Matches_BatchIdChanged_CardIsReplaced()
+    {
+        var workspaceId = Guid.NewGuid();
+        var cardId = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("To Do", 1) });
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<TagInfo>());
+
+        var vm = new WorkspaceBoardViewModel(mediator);
+        await vm.LoadAsync(workspaceId);
+        var originalCardVm = vm.Lanes[0].Cards[0];
+
+        var batchId = Guid.NewGuid();
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "", BatchId = batchId } });
+        await vm.RefreshCommand.ExecuteAsync(null);
+
+        vm.Lanes[0].Cards[0].Should().NotBeSameAs(originalCardVm);
+        vm.Lanes[0].Cards[0].BatchId.Should().Be(batchId);
+    }
 }

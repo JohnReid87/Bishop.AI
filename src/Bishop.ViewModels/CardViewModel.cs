@@ -14,6 +14,8 @@ public sealed partial class CardViewModel : ObservableObject
     public string? TagColour { get; init; }
     public bool IsClosed { get; init; }
     public int? GitHubIssueNumber { get; init; }
+    public Guid? BatchId { get; init; }
+    public string? BatchName { get; init; }
 
     [ObservableProperty]
     private bool _isSelected;

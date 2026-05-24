@@ -1011,12 +1011,19 @@ public sealed partial class WorkspaceDetailPage : Page
         if (repeater is null) return targetLane.FilteredCards.Count + 1;
 
         var dropPoint = e.GetPosition(repeater);
-        for (var i = 0; i < targetLane.FilteredCards.Count; i++)
+        var cardOffset = 0;
+        for (var i = 0; i < targetLane.LaneItems.Count; i++)
         {
-            if (repeater.TryGetElement(i) is not FrameworkElement item) continue;
+            var cardsInItem = targetLane.LaneItems[i] is Bishop.ViewModels.BatchGroupViewModel bg ? bg.Cards.Count : 1;
+            if (repeater.TryGetElement(i) is not FrameworkElement item)
+            {
+                cardOffset += cardsInItem;
+                continue;
+            }
             var itemTop = item.TransformToVisual(repeater).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
             if (dropPoint.Y < itemTop + item.ActualHeight / 2)
-                return i + 1;
+                return cardOffset + 1;
+            cardOffset += cardsInItem;
         }
         return targetLane.FilteredCards.Count + 1;
     }

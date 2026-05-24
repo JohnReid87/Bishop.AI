@@ -22,9 +22,31 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     partial void OnSearchTextChanged(string value)
     {
+        var batchStats = ComputeBatchStats();
         foreach (var lane in Lanes)
+        {
             lane.ApplyFilter(value);
+            lane.RebuildLaneItems(batchStats);
+        }
         OnPropertyChanged(nameof(IsSearchEmpty));
+    }
+
+    private IReadOnlyDictionary<Guid, BatchStats> ComputeBatchStats()
+    {
+        var result = new Dictionary<Guid, BatchStats>();
+        foreach (var lane in Lanes)
+        {
+            foreach (var card in lane.Cards)
+            {
+                if (card.BatchId is not { } batchId) continue;
+                result.TryGetValue(batchId, out var existing);
+                result[batchId] = new BatchStats(
+                    existing.Name is not (null or "") ? existing.Name : card.BatchName ?? string.Empty,
+                    existing.TotalCount + 1,
+                    existing.DoneCount + (card.LaneName == Bishop.Core.SystemLaneNames.Done ? 1 : 0));
+            }
+        }
+        return result;
     }
 
     public IEnumerable<CardViewModel> SelectedCards =>
@@ -94,6 +116,9 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
                 while (laneVm.Cards.Count > fresh.Count)
                     laneVm.Cards.RemoveAt(laneVm.Cards.Count - 1);
             }
+            var batchStats = ComputeBatchStats();
+            foreach (var laneVm in Lanes)
+                laneVm.RebuildLaneItems(batchStats);
             return;
         }
 
@@ -112,6 +137,10 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             foreach (var laneVm in Lanes)
                 laneVm.ApplyFilter(SearchText);
         }
+
+        var fullBatchStats = ComputeBatchStats();
+        foreach (var laneVm in Lanes)
+            laneVm.RebuildLaneItems(fullBatchStats);
     }
 
     private static bool Matches(CardViewModel vm, Bishop.Core.Card card, IReadOnlyDictionary<string, string> tagColourByName)
@@ -122,7 +151,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             || vm.IsClosed != card.IsClosed
             || vm.GitHubIssueNumber != card.GitHubIssueNumber
             || vm.GitHubPushedAt != card.GitHubPushedAt
-            || vm.LastAutoRunFailedAt != card.LastAutoRunFailedAt)
+            || vm.LastAutoRunFailedAt != card.LastAutoRunFailedAt
+            || vm.BatchId != card.BatchId)
             return false;
 
         var expectedColour = card.TagName is { } name && tagColourByName.TryGetValue(name, out var c) ? c : null;
@@ -148,6 +178,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             GitHubIssueNumber = card.GitHubIssueNumber,
             GitHubPushedAt = card.GitHubPushedAt,
             LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+            BatchId = card.BatchId,
+            BatchName = card.Batch?.Name,
         };
     }
 }

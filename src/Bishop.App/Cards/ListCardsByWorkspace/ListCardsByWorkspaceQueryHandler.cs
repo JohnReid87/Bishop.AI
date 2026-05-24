@@ -17,6 +17,7 @@ public sealed class ListCardsByWorkspaceQueryHandler : IRequestHandler<ListCards
 
         IQueryable<Card> query = db.Cards
             .AsNoTracking()
+            .Include(c => c.Batch)
             .Where(c => c.WorkspaceId == request.WorkspaceId);
 
         if (request.TagName is not null)

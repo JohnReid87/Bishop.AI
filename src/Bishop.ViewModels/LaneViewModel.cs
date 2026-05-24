@@ -19,6 +19,7 @@ public sealed partial class LaneViewModel : ObservableObject
     public string Name { get; init; } = string.Empty;
     public ObservableCollection<CardViewModel> Cards { get; } = [];
     public ObservableCollection<CardViewModel> FilteredCards { get; } = [];
+    public ObservableCollection<object> LaneItems { get; } = [];
 
     public string DisplayName => $"{Name} ({Cards.Count})";
 
@@ -93,6 +94,46 @@ public sealed partial class LaneViewModel : ObservableObject
         }
         while (FilteredCards.Count > wanted.Count)
             FilteredCards.RemoveAt(FilteredCards.Count - 1);
+    }
+
+    public void RebuildLaneItems(IReadOnlyDictionary<Guid, BatchStats> batchStats)
+    {
+        var existingGroups = LaneItems.OfType<BatchGroupViewModel>().ToDictionary(g => g.BatchId);
+        var activeGroups = new Dictionary<Guid, BatchGroupViewModel>();
+        var target = new List<object>(FilteredCards.Count);
+
+        foreach (var card in FilteredCards)
+        {
+            if (card.BatchId is { } batchId)
+            {
+                if (!activeGroups.TryGetValue(batchId, out var group))
+                {
+                    if (!existingGroups.TryGetValue(batchId, out group))
+                        group = new BatchGroupViewModel { BatchId = batchId };
+
+                    if (batchStats.TryGetValue(batchId, out var s))
+                        (group.BatchName, group.TotalCount, group.DoneCount) = (s.Name, s.TotalCount, s.DoneCount);
+                    else
+                        group.BatchName = card.BatchName ?? string.Empty;
+
+                    group.Cards.Clear();
+                    activeGroups[batchId] = group;
+                    target.Add(group);
+                }
+                group.Cards.Add(card);
+            }
+            else
+                target.Add(card);
+        }
+
+        for (var i = 0; i < target.Count; i++)
+        {
+            if (i < LaneItems.Count)
+            { if (!ReferenceEquals(LaneItems[i], target[i])) LaneItems[i] = target[i]; }
+            else LaneItems.Add(target[i]);
+        }
+        while (LaneItems.Count > target.Count)
+            LaneItems.RemoveAt(LaneItems.Count - 1);
     }
 
     private void OnCardsChanged(object? sender, NotifyCollectionChangedEventArgs e)

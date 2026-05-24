@@ -279,6 +279,101 @@ public class LaneViewModelTests
         vm.IsAddingCard.Should().BeTrue();
     }
 
+    [Fact]
+    public void RebuildLaneItems_StandaloneCards_AreAddedDirectly()
+    {
+        var vm = NewVm();
+        vm.Cards.Add(new CardViewModel { Title = "A" });
+        vm.Cards.Add(new CardViewModel { Title = "B" });
+
+        vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
+
+        vm.LaneItems.Should().HaveCount(2);
+        vm.LaneItems[0].Should().BeOfType<CardViewModel>().Which.Title.Should().Be("A");
+        vm.LaneItems[1].Should().BeOfType<CardViewModel>().Which.Title.Should().Be("B");
+    }
+
+    [Fact]
+    public void RebuildLaneItems_CardsSharingBatchId_AreGrouped()
+    {
+        var batchId = Guid.NewGuid();
+        var vm = NewVm();
+        vm.Cards.Add(new CardViewModel { Title = "Card 1", BatchId = batchId, BatchName = "MyBatch" });
+        vm.Cards.Add(new CardViewModel { Title = "Card 2", BatchId = batchId, BatchName = "MyBatch" });
+
+        vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
+
+        vm.LaneItems.Should().HaveCount(1);
+        var group = vm.LaneItems[0].Should().BeOfType<BatchGroupViewModel>().Subject;
+        group.BatchId.Should().Be(batchId);
+        group.Cards.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void RebuildLaneItems_MultipleBatches_EachGetOwnGroup()
+    {
+        var batchA = Guid.NewGuid();
+        var batchB = Guid.NewGuid();
+        var vm = NewVm();
+        vm.Cards.Add(new CardViewModel { Title = "A1", BatchId = batchA });
+        vm.Cards.Add(new CardViewModel { Title = "B1", BatchId = batchB });
+        vm.Cards.Add(new CardViewModel { Title = "A2", BatchId = batchA });
+
+        vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
+
+        vm.LaneItems.Should().HaveCount(2);
+        vm.LaneItems[0].Should().BeOfType<BatchGroupViewModel>().Which.Cards.Should().HaveCount(2);
+        vm.LaneItems[1].Should().BeOfType<BatchGroupViewModel>().Which.Cards.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void RebuildLaneItems_BatchStats_AreAppliedToGroup()
+    {
+        var batchId = Guid.NewGuid();
+        var stats = new Dictionary<Guid, BatchStats> { [batchId] = new BatchStats("Sprint 1", 3, 1) };
+        var vm = NewVm();
+        vm.Cards.Add(new CardViewModel { Title = "C1", BatchId = batchId });
+
+        vm.RebuildLaneItems(stats);
+
+        var group = vm.LaneItems[0].Should().BeOfType<BatchGroupViewModel>().Subject;
+        group.BatchName.Should().Be("Sprint 1");
+        group.TotalCount.Should().Be(3);
+        group.DoneCount.Should().Be(1);
+        group.ProgressDisplay.Should().Be("(1/3)");
+    }
+
+    [Fact]
+    public void RebuildLaneItems_MixedItems_OrderMatchesFilteredCards()
+    {
+        var batchId = Guid.NewGuid();
+        var vm = NewVm();
+        vm.Cards.Add(new CardViewModel { Title = "Standalone" });
+        vm.Cards.Add(new CardViewModel { Title = "Batch-1", BatchId = batchId });
+        vm.Cards.Add(new CardViewModel { Title = "Batch-2", BatchId = batchId });
+
+        vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
+
+        vm.LaneItems.Should().HaveCount(2);
+        vm.LaneItems[0].Should().BeOfType<CardViewModel>().Which.Title.Should().Be("Standalone");
+        vm.LaneItems[1].Should().BeOfType<BatchGroupViewModel>();
+    }
+
+    [Fact]
+    public void RebuildLaneItems_ReusesExistingGroupVm_WhenBatchIdMatches()
+    {
+        var batchId = Guid.NewGuid();
+        var vm = NewVm();
+        vm.Cards.Add(new CardViewModel { Title = "C1", BatchId = batchId });
+        vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
+
+        var firstGroup = vm.LaneItems[0] as BatchGroupViewModel;
+
+        vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
+
+        vm.LaneItems[0].Should().BeSameAs(firstGroup);
+    }
+
     private static LaneViewModel NewVm(
         string name = "Doing",
         IMediator? mediator = null,
