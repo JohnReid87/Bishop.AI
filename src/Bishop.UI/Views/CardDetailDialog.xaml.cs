@@ -50,11 +50,9 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private async void CardDetailDialog_Loaded(object sender, RoutedEventArgs e)
-    {
-        await Task.WhenAll(
+        => await SafeAsync.RunAsync(() => Task.WhenAll(
             ViewModel.LoadCardNumbersAsync(),
-            LoadCardExtrasAsync(ViewModel.CardId, ViewModel.Number));
-    }
+            LoadCardExtrasAsync(ViewModel.CardId, ViewModel.Number)));
 
     private async Task LoadCardExtrasAsync(Guid cardId, int cardNumber)
     {
@@ -80,62 +78,64 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private async void DescriptionMarkdown_LinkClicked(object? sender, LinkClickedEventArgs e)
-    {
-        const string scheme = "bishop://card/";
-        var url = e.Uri.OriginalString;
-        if (!url.StartsWith(scheme, StringComparison.Ordinal)) return;
-        if (!int.TryParse(url[scheme.Length..], out var targetNumber)) return;
-
-        e.Handled = true;
-
-        var snapshot = BuildCurrentCardSnapshot();
-        _backStack.Push(snapshot);
-
-        try
+        => await SafeAsync.RunAsync(async () =>
         {
-            var mediator = App.Services.GetRequiredService<IMediator>();
-            var card = await mediator.Send(new GetCardByNumberQuery(targetNumber, _workspaceId));
-            if (card is null)
+            const string scheme = "bishop://card/";
+            var url = e.Uri.OriginalString;
+            if (!url.StartsWith(scheme, StringComparison.Ordinal)) return;
+            if (!int.TryParse(url[scheme.Length..], out var targetNumber)) return;
+
+            e.Handled = true;
+
+            var snapshot = BuildCurrentCardSnapshot();
+            _backStack.Push(snapshot);
+
+            try
+            {
+                var mediator = App.Services.GetRequiredService<IMediator>();
+                var card = await mediator.Send(new GetCardByNumberQuery(targetNumber, _workspaceId));
+                if (card is null)
+                {
+                    _backStack.TryPop(out _);
+                    return;
+                }
+
+                var tags = await ViewModel.GetWorkspaceTagsAsync();
+                var tagColour = card.TagName is { } tagName
+                    ? tags.FirstOrDefault(t => t.Name == tagName)?.Colour
+                    : null;
+
+                var targetVm = new CardViewModel
+                {
+                    Id = card.Id,
+                    Number = card.Number,
+                    Title = card.Title,
+                    Description = card.Description,
+                    LaneName = card.LaneName,
+                    TagName = card.TagName,
+                    TagColour = tagColour,
+                    IsClosed = card.IsClosed,
+                    GitHubIssueNumber = card.GitHubIssueNumber,
+                    GitHubPushedAt = card.GitHubPushedAt,
+                    LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+                };
+
+                ViewModel.NavigateTo(targetVm, canGoBack: true);
+                await LoadCardExtrasAsync(card.Id, card.Number);
+            }
+            catch
             {
                 _backStack.TryPop(out _);
-                return;
             }
-
-            var tags = await ViewModel.GetWorkspaceTagsAsync();
-            var tagColour = card.TagName is { } tagName
-                ? tags.FirstOrDefault(t => t.Name == tagName)?.Colour
-                : null;
-
-            var targetVm = new CardViewModel
-            {
-                Id = card.Id,
-                Number = card.Number,
-                Title = card.Title,
-                Description = card.Description,
-                LaneName = card.LaneName,
-                TagName = card.TagName,
-                TagColour = tagColour,
-                IsClosed = card.IsClosed,
-                GitHubIssueNumber = card.GitHubIssueNumber,
-                GitHubPushedAt = card.GitHubPushedAt,
-                LastAutoRunFailedAt = card.LastAutoRunFailedAt,
-            };
-
-            ViewModel.NavigateTo(targetVm, canGoBack: true);
-            await LoadCardExtrasAsync(card.Id, card.Number);
-        }
-        catch
-        {
-            _backStack.TryPop(out _);
-        }
-    }
+        });
 
     private async void BackButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (!_backStack.TryPop(out var previous)) return;
-        ViewModel.NavigateTo(previous, canGoBack: _backStack.Count > 0);
-        await LoadCardExtrasAsync(previous.Id, previous.Number);
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (!_backStack.TryPop(out var previous)) return;
+            ViewModel.NavigateTo(previous, canGoBack: _backStack.Count > 0);
+            await LoadCardExtrasAsync(previous.Id, previous.Number);
+        });
 
     private CardViewModel BuildCurrentCardSnapshot() => new()
     {
@@ -161,16 +161,18 @@ public sealed partial class CardDetailDialog : ContentDialog
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
 
     private async void GitHubIssueButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (ViewModel.GitHubIssueUrl is { } url)
-            await Launcher.LaunchUriAsync(new Uri(url));
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (ViewModel.GitHubIssueUrl is { } url)
+                await Launcher.LaunchUriAsync(new Uri(url));
+        });
 
     private async void CommitButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (ViewModel.CommitUrl is { } url)
-            await Launcher.LaunchUriAsync(new Uri(url));
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (ViewModel.CommitUrl is { } url)
+                await Launcher.LaunchUriAsync(new Uri(url));
+        });
 
     // ── Title editing ─────────────────────────────────────────────────────────
 
@@ -183,23 +185,22 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private async void TitleTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        await ViewModel.CommitTitleAsync(TitleTextBox.Text);
-    }
+        => await SafeAsync.RunAsync(() => ViewModel.CommitTitleAsync(TitleTextBox.Text));
 
     private async void TitleTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key == VirtualKey.Enter)
+        => await SafeAsync.RunAsync(async () =>
         {
-            e.Handled = true;
-            await ViewModel.CommitTitleAsync(TitleTextBox.Text);
-        }
-        else if (e.Key == VirtualKey.Escape)
-        {
-            e.Handled = true;
-            ViewModel.CancelTitleEdit();
-        }
-    }
+            if (e.Key == VirtualKey.Enter)
+            {
+                e.Handled = true;
+                await ViewModel.CommitTitleAsync(TitleTextBox.Text);
+            }
+            else if (e.Key == VirtualKey.Escape)
+            {
+                e.Handled = true;
+                ViewModel.CancelTitleEdit();
+            }
+        });
 
     // ── Description editing ───────────────────────────────────────────────────
 
@@ -211,99 +212,101 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private async void DescriptionTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        await ViewModel.CommitDescriptionAsync(DescriptionTextBox.Text);
-    }
+        => await SafeAsync.RunAsync(() => ViewModel.CommitDescriptionAsync(DescriptionTextBox.Text));
 
     private async void DescriptionTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key == VirtualKey.Escape)
+        => await SafeAsync.RunAsync(async () =>
         {
-            e.Handled = true;
-            ViewModel.CancelDescriptionEdit();
-        }
-        else if (e.Key == VirtualKey.Enter)
-        {
-            var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
-            if ((ctrl & CoreVirtualKeyStates.Down) != 0)
+            if (e.Key == VirtualKey.Escape)
             {
                 e.Handled = true;
-                await ViewModel.CommitDescriptionAsync(DescriptionTextBox.Text);
+                ViewModel.CancelDescriptionEdit();
             }
-        }
-    }
+            else if (e.Key == VirtualKey.Enter)
+            {
+                var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
+                if ((ctrl & CoreVirtualKeyStates.Down) != 0)
+                {
+                    e.Handled = true;
+                    await ViewModel.CommitDescriptionAsync(DescriptionTextBox.Text);
+                }
+            }
+        });
 
     // ── Tag editing ───────────────────────────────────────────────────────────
 
     private async void TagChip_Click(object sender, RoutedEventArgs e)
-    {
-        IReadOnlyList<Bishop.Core.TagInfo> allTags;
-        try
+        => await SafeAsync.RunAsync(async () =>
         {
-            allTags = await ViewModel.GetWorkspaceTagsAsync();
-        }
-        catch
-        {
-            ViewModel.EditError = "Failed to load tags.";
-            return;
-        }
+            IReadOnlyList<Bishop.Core.TagInfo> allTags;
+            try
+            {
+                allTags = await ViewModel.GetWorkspaceTagsAsync();
+            }
+            catch
+            {
+                ViewModel.EditError = "Failed to load tags.";
+                return;
+            }
 
-        var flyout = TagPickerFlyout.Build(allTags, [], async (name, colour) =>
-            await ViewModel.SetTagAsync(name, colour), currentlySelected: ViewModel.TagName);
-        flyout.ShowAt((FrameworkElement)sender);
-    }
+            var flyout = TagPickerFlyout.Build(allTags, [], async (name, colour) =>
+                await ViewModel.SetTagAsync(name, colour), currentlySelected: ViewModel.TagName);
+            flyout.ShowAt((FrameworkElement)sender);
+        });
 
     private async void AddTag_Click(object sender, RoutedEventArgs e)
-    {
-        IReadOnlyList<Bishop.Core.TagInfo> allTags;
-        try
+        => await SafeAsync.RunAsync(async () =>
         {
-            allTags = await ViewModel.GetWorkspaceTagsAsync();
-        }
-        catch
-        {
-            ViewModel.EditError = "Failed to load tags.";
-            return;
-        }
+            IReadOnlyList<Bishop.Core.TagInfo> allTags;
+            try
+            {
+                allTags = await ViewModel.GetWorkspaceTagsAsync();
+            }
+            catch
+            {
+                ViewModel.EditError = "Failed to load tags.";
+                return;
+            }
 
-        var flyout = TagPickerFlyout.Build(allTags, [], async (name, colour) =>
-            await ViewModel.SetTagAsync(name, colour));
-        flyout.ShowAt((FrameworkElement)sender);
-    }
+            var flyout = TagPickerFlyout.Build(allTags, [], async (name, colour) =>
+                await ViewModel.SetTagAsync(name, colour));
+            flyout.ShowAt((FrameworkElement)sender);
+        });
 
     // ── Skills ────────────────────────────────────────────────────────────────
 
     private async void SkillButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_cardSkills.Length == 0) return;
-        var appSettings = App.Services.GetRequiredService<IAppSettings>();
-
-        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
-
-        foreach (var item in _cardSkills)
+        => await SafeAsync.RunAsync(async () =>
         {
-            if (item.GroupHeader is not null)
-                panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
+            if (_cardSkills.Length == 0) return;
+            var appSettings = App.Services.GetRequiredService<IAppSettings>();
 
-            var skill = item.Skill;
-            var rendered = SkillCommandRenderer.Render(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath);
-            var settingKey = $"skill.{skill.Name}.last_model";
-            var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
+            var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
+            var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
 
-            panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel, async chosenModel =>
+            foreach (var item in _cardSkills)
             {
-                await appSettings.SetAsync(settingKey, chosenModel);
-                flyout.Hide();
-                await LaunchSkillAsync(rendered, chosenModel);
-            }));
-            if (item.HasSeparatorAfter)
-                panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
-        }
+                if (item.GroupHeader is not null)
+                    panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
 
-        flyout.Content = panel;
-        flyout.ShowAt((FrameworkElement)sender);
-    }
+                var skill = item.Skill;
+                var rendered = SkillCommandRenderer.Render(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, _workspacePath);
+                var settingKey = $"skill.{skill.Name}.last_model";
+                var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
+
+                panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel, async chosenModel =>
+                {
+                    await appSettings.SetAsync(settingKey, chosenModel);
+                    flyout.Hide();
+                    await LaunchSkillAsync(rendered, chosenModel);
+                }));
+                if (item.HasSeparatorAfter)
+                    panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
+            }
+
+            flyout.Content = panel;
+            flyout.ShowAt((FrameworkElement)sender);
+        });
 
     private async Task LaunchSkillAsync(string rendered, string? modelId = null)
     {

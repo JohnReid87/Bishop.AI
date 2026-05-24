@@ -181,19 +181,20 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void UpdateView(WorkspaceItemViewModel vm)
-    {
-        WorkspaceNameText.Text = vm.Name;
-        WorkspacePathText.Text = vm.Path;
-        ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
-        UpdatePathStatus();
-        ApplyGitHubRepoToBacklogLane();
-        ApplyGitHubRepoToDoneLane();
-        await LoadSkillsAsync();
-        SetupWorkNextWatcher(vm.Path);
-        _ = Board.LoadAsync(vm.Id);
-        _ = Notes.LoadAsync(vm.Id, vm.Path);
-        _ = Monitoring.LoadAsync(vm.Id, vm.Path);
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            WorkspaceNameText.Text = vm.Name;
+            WorkspacePathText.Text = vm.Path;
+            ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
+            UpdatePathStatus();
+            ApplyGitHubRepoToBacklogLane();
+            ApplyGitHubRepoToDoneLane();
+            await LoadSkillsAsync();
+            SetupWorkNextWatcher(vm.Path);
+            _ = Board.LoadAsync(vm.Id);
+            _ = Notes.LoadAsync(vm.Id, vm.Path);
+            _ = Monitoring.LoadAsync(vm.Id, vm.Path);
+        });
 
     private async Task LoadSkillsAsync()
     {
@@ -225,63 +226,67 @@ public sealed partial class WorkspaceDetailPage : Page
     private void InfoBar_Closed(InfoBar sender, InfoBarClosedEventArgs args) => UpdateNotificationPanel();
 
     private async void ClaudeButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item is null) return;
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path, SnapHelper.ComputeSnap()));
-        FallbackWarningBar.IsOpen = !launchedWithTerminal;
-        UpdateNotificationPanel();
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            var launchedWithTerminal = await mediator.Send(new LaunchWorkspaceCommand(_item.Path, SnapHelper.ComputeSnap()));
+            FallbackWarningBar.IsOpen = !launchedWithTerminal;
+            UpdateNotificationPanel();
+        });
 
     private async void TerminalButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item is null) return;
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new LaunchPlainTerminalCommand(_item.Path, SnapHelper.ComputeSnap()));
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            await mediator.Send(new LaunchPlainTerminalCommand(_item.Path, SnapHelper.ComputeSnap()));
+        });
 
     private async void WorkspaceSkillsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item is null || _workspaceSkills.Length == 0) return;
-        var appSettings = App.Services.GetRequiredService<IAppSettings>();
-
-        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
-
-        foreach (var item in _workspaceSkills)
+        => await SafeAsync.RunAsync(async () =>
         {
-            if (item.GroupHeader is not null)
-                panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
+            if (_item is null || _workspaceSkills.Length == 0) return;
+            var appSettings = App.Services.GetRequiredService<IAppSettings>();
 
-            var skill = item.Skill;
-            var rendered = SkillCommandRenderer.Render(skill.Command!, null, null, null, _item.Path);
-            var workspacePath = _item.Path;
-            var settingKey = $"skill.{skill.Name}.last_model";
-            var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
+            var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
+            var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
 
-            panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel,
-                onLaunch: async chosenModel =>
-                {
-                    await appSettings.SetAsync(settingKey, chosenModel);
-                    flyout.Hide();
-                    await LaunchSkillAsync(skill, rendered, workspacePath, card: null, chosenModel);
-                },
-                onView: () =>
-                {
-                    flyout.Hide();
-                    App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
-                    return Task.CompletedTask;
-                }));
-            if (item.HasSeparatorAfter)
-                panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
-        }
+            foreach (var item in _workspaceSkills)
+            {
+                if (item.GroupHeader is not null)
+                    panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
 
-        flyout.Content = panel;
-        flyout.ShowAt((FrameworkElement)sender);
-    }
+                var skill = item.Skill;
+                var rendered = SkillCommandRenderer.Render(skill.Command!, null, null, null, _item.Path);
+                var workspacePath = _item.Path;
+                var settingKey = $"skill.{skill.Name}.last_model";
+                var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
+
+                panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel,
+                    onLaunch: async chosenModel =>
+                    {
+                        await appSettings.SetAsync(settingKey, chosenModel);
+                        flyout.Hide();
+                        await LaunchSkillAsync(skill, rendered, workspacePath, card: null, chosenModel);
+                    },
+                    onView: () =>
+                    {
+                        flyout.Hide();
+                        App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
+                        return Task.CompletedTask;
+                    }));
+                if (item.HasSeparatorAfter)
+                    panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
+            }
+
+            flyout.Content = panel;
+            flyout.ShowAt((FrameworkElement)sender);
+        });
 
     private async void CommitsButton_Click(object sender, RoutedEventArgs e)
-    {
+        => await SafeAsync.RunAsync(async () =>
+        {
         if (_item is null) return;
         var workspacePath = _item.Path;
         var gitHubRepo = _item.GitHubRepo;
@@ -417,7 +422,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
         flyout.Content = panel;
         flyout.ShowAt((FrameworkElement)sender);
-    }
+        });
 
     private async Task ShowCopiedToastAsync()
     {
@@ -525,97 +530,102 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void CardTitle_Tapped(object sender, TappedRoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
 
-        var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty, _item?.GitHubRepo) { XamlRoot = XamlRoot };
-        await dialog.ShowAsync();
-        if (dialog.ViewModel.Deleted || dialog.ViewModel.Updated)
-            await Board.RefreshCommand.ExecuteAsync(null);
-    }
+            var dialog = new CardDetailDialog(card, _cardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty, _item?.GitHubRepo) { XamlRoot = XamlRoot };
+            await dialog.ShowAsync();
+            if (dialog.ViewModel.Deleted || dialog.ViewModel.Updated)
+                await Board.RefreshCommand.ExecuteAsync(null);
+        });
 
     private async void CardSkillsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item is null || _cardSkills.Length == 0) return;
-        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
-        var appSettings = App.Services.GetRequiredService<IAppSettings>();
-
-        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
-
-        foreach (var item in _cardSkills)
+        => await SafeAsync.RunAsync(async () =>
         {
-            if (item.GroupHeader is not null)
-                panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
+            if (_item is null || _cardSkills.Length == 0) return;
+            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+            var appSettings = App.Services.GetRequiredService<IAppSettings>();
 
-            var skill = item.Skill;
-            var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, _item.Path);
-            var workspacePath = _item.Path;
-            var settingKey = $"skill.{skill.Name}.last_model";
-            var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
+            var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
+            var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
 
-            panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel,
-                onLaunch: async chosenModel =>
-                {
-                    await appSettings.SetAsync(settingKey, chosenModel);
-                    flyout.Hide();
-                    await LaunchSkillAsync(skill, rendered, workspacePath, card, chosenModel);
-                },
-                onView: () =>
-                {
-                    flyout.Hide();
-                    App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
-                    return Task.CompletedTask;
-                }));
-            if (item.HasSeparatorAfter)
-                panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
-        }
+            foreach (var item in _cardSkills)
+            {
+                if (item.GroupHeader is not null)
+                    panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
 
-        flyout.Content = panel;
-        flyout.ShowAt((FrameworkElement)sender);
-    }
+                var skill = item.Skill;
+                var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, _item.Path);
+                var workspacePath = _item.Path;
+                var settingKey = $"skill.{skill.Name}.last_model";
+                var savedModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync(settingKey));
+
+                panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel,
+                    onLaunch: async chosenModel =>
+                    {
+                        await appSettings.SetAsync(settingKey, chosenModel);
+                        flyout.Hide();
+                        await LaunchSkillAsync(skill, rendered, workspacePath, card, chosenModel);
+                    },
+                    onView: () =>
+                    {
+                        flyout.Hide();
+                        App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
+                        return Task.CompletedTask;
+                    }));
+                if (item.HasSeparatorAfter)
+                    panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
+            }
+
+            flyout.Content = panel;
+            flyout.ShowAt((FrameworkElement)sender);
+        });
 
     private async void CardCloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
-        var mediator = App.Services.GetRequiredService<IMediator>();
-
-        if (card.IsClosed)
-            await mediator.Send(new ReopenCardCommand(card.Id));
-        else
-            await mediator.Send(new CloseCardCommand(card.Id));
-
-        var lane = Board.Lanes.FirstOrDefault(l => string.Equals(l.Name, card.LaneName, StringComparison.OrdinalIgnoreCase));
-        if (lane is null) return;
-        var idx = lane.Cards.IndexOf(card);
-        if (idx < 0) return;
-        lane.Cards[idx] = new CardViewModel
+        => await SafeAsync.RunAsync(async () =>
         {
-            Id = card.Id,
-            Number = card.Number,
-            Title = card.Title,
-            Description = card.Description,
-            LaneName = card.LaneName,
-            TagName = card.TagName,
-            TagColour = card.TagColour,
-            IsClosed = !card.IsClosed,
-            GitHubIssueNumber = card.GitHubIssueNumber,
-            GitHubPushedAt = card.GitHubPushedAt,
-            LastAutoRunFailedAt = card.LastAutoRunFailedAt,
-        };
-    }
+            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+            var mediator = App.Services.GetRequiredService<IMediator>();
+
+            if (card.IsClosed)
+                await mediator.Send(new ReopenCardCommand(card.Id));
+            else
+                await mediator.Send(new CloseCardCommand(card.Id));
+
+            var lane = Board.Lanes.FirstOrDefault(l => string.Equals(l.Name, card.LaneName, StringComparison.OrdinalIgnoreCase));
+            if (lane is null) return;
+            var idx = lane.Cards.IndexOf(card);
+            if (idx < 0) return;
+            lane.Cards[idx] = new CardViewModel
+            {
+                Id = card.Id,
+                Number = card.Number,
+                Title = card.Title,
+                Description = card.Description,
+                LaneName = card.LaneName,
+                TagName = card.TagName,
+                TagColour = card.TagColour,
+                IsClosed = !card.IsClosed,
+                GitHubIssueNumber = card.GitHubIssueNumber,
+                GitHubPushedAt = card.GitHubPushedAt,
+                LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+            };
+        });
 
     private async void CardTagChip_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
-        await OpenCardTagPickerAsync((FrameworkElement)sender, card, card.TagName);
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+            await OpenCardTagPickerAsync((FrameworkElement)sender, card, card.TagName);
+        });
 
     private async void CardAddTagButton_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
-        await OpenCardTagPickerAsync((FrameworkElement)sender, card, null);
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if ((sender as FrameworkElement)?.DataContext is not CardViewModel card) return;
+            await OpenCardTagPickerAsync((FrameworkElement)sender, card, null);
+        });
 
     private async Task OpenCardTagPickerAsync(FrameworkElement anchor, CardViewModel card, string? currentlySelected)
     {
@@ -662,14 +672,15 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void RunNowSkillButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item is null) return;
-        if ((sender as FrameworkElement)?.DataContext is not SkillRunRowViewModel row) return;
-        var skillItem = _workspaceSkills.FirstOrDefault(s => string.Equals(s.Skill.Name, row.SkillName, StringComparison.OrdinalIgnoreCase));
-        if (skillItem is null) return;
-        var rendered = SkillCommandRenderer.Render(skillItem.Skill.Command!, null, null, null, _item.Path);
-        await LaunchSkillAsync(skillItem.Skill, rendered, _item.Path, card: null, modelId: row.SelectedModelId);
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if ((sender as FrameworkElement)?.DataContext is not SkillRunRowViewModel row) return;
+            var skillItem = _workspaceSkills.FirstOrDefault(s => string.Equals(s.Skill.Name, row.SkillName, StringComparison.OrdinalIgnoreCase));
+            if (skillItem is null) return;
+            var rendered = SkillCommandRenderer.Render(skillItem.Skill.Command!, null, null, null, _item.Path);
+            await LaunchSkillAsync(skillItem.Skill, rendered, _item.Path, card: null, modelId: row.SelectedModelId);
+        });
 
     private static FrameworkElement MakeCategoryHeader(string text) =>
         new TextBlock
@@ -683,49 +694,50 @@ public sealed partial class WorkspaceDetailPage : Page
         };
 
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item is null) return;
-
-        var repoBox = new TextBox
+        => await SafeAsync.RunAsync(async () =>
         {
-            PlaceholderText = "owner/repo  (clear to unlink)",
-            Text = _item.GitHubRepo ?? string.Empty,
-            Width = 300,
-        };
+            if (_item is null) return;
 
-        var dialog = new ContentDialog
-        {
-            Title = "Workspace Settings",
-            Content = new StackPanel
+            var repoBox = new TextBox
             {
-                Spacing = 8,
-                Children =
+                PlaceholderText = "owner/repo  (clear to unlink)",
+                Text = _item.GitHubRepo ?? string.Empty,
+                Width = 300,
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "Workspace Settings",
+                Content = new StackPanel
                 {
-                    new TextBlock { Text = "GitHub repository" },
-                    repoBox,
-                }
-            },
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = XamlRoot,
-        };
+                    Spacing = 8,
+                    Children =
+                    {
+                        new TextBlock { Text = "GitHub repository" },
+                        repoBox,
+                    }
+                },
+                PrimaryButtonText = "Save",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+            };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        var repo = repoBox.Text.Trim();
-        if (string.IsNullOrEmpty(repo))
-        {
-            await mediator.Send(new UnsetWorkspaceGitHubRepoCommand(_item.Id));
-            _item.GitHubRepo = null;
-        }
-        else
-        {
-            await mediator.Send(new SetWorkspaceGitHubRepoCommand(_item.Id, repo));
-            _item.GitHubRepo = repo;
-        }
-    }
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            var repo = repoBox.Text.Trim();
+            if (string.IsNullOrEmpty(repo))
+            {
+                await mediator.Send(new UnsetWorkspaceGitHubRepoCommand(_item.Id));
+                _item.GitHubRepo = null;
+            }
+            else
+            {
+                await mediator.Send(new SetWorkspaceGitHubRepoCommand(_item.Id, repo));
+                _item.GitHubRepo = repo;
+            }
+        });
 
     private void ClearAllDropTargets()
     {
@@ -772,24 +784,25 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void Cards_Drop(object sender, DragEventArgs e)
-    {
-        if (_draggedCard is null || _dragSourceLane is null) return;
-        var targetLane = (sender as FrameworkElement)?.DataContext as LaneViewModel;
-        if (targetLane is null) return;
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_draggedCard is null || _dragSourceLane is null) return;
+            var targetLane = (sender as FrameworkElement)?.DataContext as LaneViewModel;
+            if (targetLane is null) return;
 
-        ClearAllDropTargets();
+            ClearAllDropTargets();
 
-        var position = GetDropIndex(sender as ListView, e, targetLane);
-        var card = _draggedCard;
-        var targetLaneName = targetLane.Name;
+            var position = GetDropIndex(sender as ListView, e, targetLane);
+            var card = _draggedCard;
+            var targetLaneName = targetLane.Name;
 
-        _draggedCard = null;
-        _dragSourceLane = null;
+            _draggedCard = null;
+            _dragSourceLane = null;
 
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new MoveCardCommand(card.Id, targetLaneName, position));
-        await Board.RefreshCommand.ExecuteAsync(null);
-    }
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            await mediator.Send(new MoveCardCommand(card.Id, targetLaneName, position));
+            await Board.RefreshCommand.ExecuteAsync(null);
+        });
 
     private static int GetDropIndex(ListView? listView, DragEventArgs e, LaneViewModel targetLane)
     {
@@ -807,28 +820,29 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void WorkNext_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item is null) return;
-        if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
-        if (!lane.CanWorkNext) return;
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if ((sender as FrameworkElement)?.DataContext is not LaneViewModel lane) return;
+            if (!lane.CanWorkNext) return;
 
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        var appSettings = App.Services.GetRequiredService<IAppSettings>();
-        var tags = await mediator.Send(new ListTagsByWorkspaceQuery(_item.Id));
-        var lastModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync("workNext.last_model"));
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            var appSettings = App.Services.GetRequiredService<IAppSettings>();
+            var tags = await mediator.Send(new ListTagsByWorkspaceQuery(_item.Id));
+            var lastModel = SkillModelOptions.ResolveModelId(await appSettings.GetAsync("workNext.last_model"));
 
-        var dialog = new WorkNextOptionsDialog(tags.Select(t => t.Name), lastModel) { XamlRoot = XamlRoot };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+            var dialog = new WorkNextOptionsDialog(tags.Select(t => t.Name), lastModel) { XamlRoot = XamlRoot };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
-        var chosenModel = dialog.ViewModel.SelectedModelId;
-        await appSettings.SetAsync("workNext.last_model", chosenModel);
-        await mediator.Send(new LaunchWorkNextCommand(
-            _item.Path,
-            dialog.ViewModel.SelectedTagOrNull,
-            dialog.ViewModel.MaxValue,
-            SnapHelper.ComputeSnap(),
-            chosenModel));
-    }
+            var chosenModel = dialog.ViewModel.SelectedModelId;
+            await appSettings.SetAsync("workNext.last_model", chosenModel);
+            await mediator.Send(new LaunchWorkNextCommand(
+                _item.Path,
+                dialog.ViewModel.SelectedTagOrNull,
+                dialog.ViewModel.MaxValue,
+                SnapHelper.ComputeSnap(),
+                chosenModel));
+        });
 
     private void WorkNextStop_Click(object sender, RoutedEventArgs e)
     {
@@ -839,27 +853,29 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void ImportFromGitHub_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item?.GitHubRepo is not { } repo) return;
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        var ghCli = App.Services.GetRequiredService<IGhCli>();
-        var dialog = new ImportFromGitHubDialog(_item.Id, repo, mediator, ghCli) { XamlRoot = XamlRoot };
-        await dialog.ShowAsync();
-        if (dialog.ViewModel.WasImported)
-            await Board.RefreshCommand.ExecuteAsync(null);
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item?.GitHubRepo is not { } repo) return;
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            var ghCli = App.Services.GetRequiredService<IGhCli>();
+            var dialog = new ImportFromGitHubDialog(_item.Id, repo, mediator, ghCli) { XamlRoot = XamlRoot };
+            await dialog.ShowAsync();
+            if (dialog.ViewModel.WasImported)
+                await Board.RefreshCommand.ExecuteAsync(null);
+        });
 
     private async void PushToGitHub_Click(object sender, RoutedEventArgs e)
-    {
-        if (_item?.GitHubRepo is null) return;
-        var doneLane = Board.Lanes.FirstOrDefault(l => l.IsDoneLane);
-        if (doneLane is null) return;
-        var mediator = App.Services.GetRequiredService<IMediator>();
-        var dialog = new PushLaneToGitHubDialog(_item.Id, doneLane.Name, doneLane.Cards.ToList(), mediator) { XamlRoot = XamlRoot };
-        await dialog.ShowAsync();
-        if (dialog.ViewModel.WasPushed)
-            await Board.RefreshCommand.ExecuteAsync(null);
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item?.GitHubRepo is null) return;
+            var doneLane = Board.Lanes.FirstOrDefault(l => l.IsDoneLane);
+            if (doneLane is null) return;
+            var mediator = App.Services.GetRequiredService<IMediator>();
+            var dialog = new PushLaneToGitHubDialog(_item.Id, doneLane.Name, doneLane.Cards.ToList(), mediator) { XamlRoot = XamlRoot };
+            await dialog.ShowAsync();
+            if (dialog.ViewModel.WasPushed)
+                await Board.RefreshCommand.ExecuteAsync(null);
+        });
 
     private void NotesSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
@@ -928,11 +944,12 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void NotesTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key != VirtualKey.S) return;
-        var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
-        if (!ctrl.HasFlag(CoreVirtualKeyStates.Down)) return;
-        e.Handled = true;
-        await Notes.QuickSaveAsync();
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (e.Key != VirtualKey.S) return;
+            var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
+            if (!ctrl.HasFlag(CoreVirtualKeyStates.Down)) return;
+            e.Handled = true;
+            await Notes.QuickSaveAsync();
+        });
 }

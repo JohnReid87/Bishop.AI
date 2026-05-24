@@ -50,59 +50,61 @@ public sealed partial class ImportFromGitHubDialog : ContentDialog
     }
 
     private async void Preview_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.IsBusy = true;
-        IsPrimaryButtonEnabled = false;
-        try
+        => await SafeAsync.RunAsync(async () =>
         {
-            var result = await _mediator.Send(new ImportFromGitHubCommand(_workspaceId, ViewModel.LabelFilter, ViewModel.Limit, DryRun: true));
-            ViewModel.PreviewItems.Clear();
-            foreach (var card in result.Imported)
-                ViewModel.PreviewItems.Add($"#{card.GitHubIssueNumber} {card.Title}");
-            ViewModel.ResultSummary = $"{result.Imported.Count} to import, {result.SkippedAlreadyPresent.Count} already present";
-            ViewModel.HasResults = true;
-            IsPrimaryButtonEnabled = result.Imported.Count > 0;
-        }
-        catch (Exception ex)
-        {
-            ViewModel.ResultSummary = $"Preview failed: {ex.Message}";
-            ViewModel.HasResults = true;
-        }
-        finally
-        {
-            ViewModel.IsBusy = false;
-        }
-    }
+            ViewModel.IsBusy = true;
+            IsPrimaryButtonEnabled = false;
+            try
+            {
+                var result = await _mediator.Send(new ImportFromGitHubCommand(_workspaceId, ViewModel.LabelFilter, ViewModel.Limit, DryRun: true));
+                ViewModel.PreviewItems.Clear();
+                foreach (var card in result.Imported)
+                    ViewModel.PreviewItems.Add($"#{card.GitHubIssueNumber} {card.Title}");
+                ViewModel.ResultSummary = $"{result.Imported.Count} to import, {result.SkippedAlreadyPresent.Count} already present";
+                ViewModel.HasResults = true;
+                IsPrimaryButtonEnabled = result.Imported.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ViewModel.ResultSummary = $"Preview failed: {ex.Message}";
+                ViewModel.HasResults = true;
+            }
+            finally
+            {
+                ViewModel.IsBusy = false;
+            }
+        });
 
     private async void OnImportClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        var deferral = args.GetDeferral();
-        args.Cancel = true;
-        ViewModel.IsBusy = true;
-        IsPrimaryButtonEnabled = false;
-        try
+        => await SafeAsync.RunAsync(async () =>
         {
-            var result = await _mediator.Send(new ImportFromGitHubCommand(_workspaceId, ViewModel.LabelFilter, ViewModel.Limit, DryRun: false));
-            ViewModel.PreviewItems.Clear();
-            var summary = $"{result.Imported.Count} imported, {result.SkippedAlreadyPresent.Count} skipped";
-            if (result.Failed.Count > 0)
-                summary += $", {result.Failed.Count} failed";
-            ViewModel.ResultSummary = summary;
-            ViewModel.HasResults = true;
-            ViewModel.WasImported = result.Imported.Count > 0;
-        }
-        catch (Exception ex)
-        {
-            ViewModel.ResultSummary = $"Import failed: {ex.Message}";
-            ViewModel.HasResults = true;
-            IsPrimaryButtonEnabled = true;
-        }
-        finally
-        {
-            ViewModel.IsBusy = false;
-            deferral.Complete();
-        }
-    }
+            var deferral = args.GetDeferral();
+            args.Cancel = true;
+            ViewModel.IsBusy = true;
+            IsPrimaryButtonEnabled = false;
+            try
+            {
+                var result = await _mediator.Send(new ImportFromGitHubCommand(_workspaceId, ViewModel.LabelFilter, ViewModel.Limit, DryRun: false));
+                ViewModel.PreviewItems.Clear();
+                var summary = $"{result.Imported.Count} imported, {result.SkippedAlreadyPresent.Count} skipped";
+                if (result.Failed.Count > 0)
+                    summary += $", {result.Failed.Count} failed";
+                ViewModel.ResultSummary = summary;
+                ViewModel.HasResults = true;
+                ViewModel.WasImported = result.Imported.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ViewModel.ResultSummary = $"Import failed: {ex.Message}";
+                ViewModel.HasResults = true;
+                IsPrimaryButtonEnabled = true;
+            }
+            finally
+            {
+                ViewModel.IsBusy = false;
+                deferral.Complete();
+            }
+        });
 
     private sealed class GhLabelDto
     {

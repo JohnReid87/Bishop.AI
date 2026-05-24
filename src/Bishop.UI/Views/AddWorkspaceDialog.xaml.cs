@@ -18,19 +18,20 @@ public sealed partial class AddWorkspaceDialog : ContentDialog
     }
 
     private async void BrowseButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-    {
-        var picker = new FolderPicker();
-        picker.FileTypeFilter.Add("*");
-
-        var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
-        InitializeWithWindow.Initialize(picker, hwnd);
-
-        var folder = await picker.PickSingleFolderAsync();
-        if (folder is not null)
+        => await SafeAsync.RunAsync(async () =>
         {
-            ViewModel.FolderPath = folder.Path;
-            if (string.IsNullOrWhiteSpace(ViewModel.Name))
-                ViewModel.Name = folder.DisplayName;
-        }
-    }
+            var picker = new FolderPicker();
+            picker.FileTypeFilter.Add("*");
+
+            var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+            InitializeWithWindow.Initialize(picker, hwnd);
+
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder is not null)
+            {
+                ViewModel.FolderPath = folder.Path;
+                if (string.IsNullOrWhiteSpace(ViewModel.Name))
+                    ViewModel.Name = folder.DisplayName;
+            }
+        });
 }

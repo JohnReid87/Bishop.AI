@@ -25,25 +25,26 @@ public sealed partial class PushLaneToGitHubDialog : ContentDialog
     }
 
     private async void OnPushClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-    {
-        var deferral = args.GetDeferral();
-        args.Cancel = true;
-        ViewModel.IsBusy = true;
-        IsPrimaryButtonEnabled = false;
-        try
+        => await SafeAsync.RunAsync(async () =>
         {
-            var result = await _mediator.Send(new PushLaneCommand(_workspaceId, _laneName));
-            ViewModel.ApplyResult(result.Pushed.Count, result.SkippedAlreadyLinked, result.Failed.Count);
-        }
-        catch (Exception ex)
-        {
-            ViewModel.ApplyError(ex.Message);
-            IsPrimaryButtonEnabled = true;
-        }
-        finally
-        {
-            ViewModel.IsBusy = false;
-            deferral.Complete();
-        }
-    }
+            var deferral = args.GetDeferral();
+            args.Cancel = true;
+            ViewModel.IsBusy = true;
+            IsPrimaryButtonEnabled = false;
+            try
+            {
+                var result = await _mediator.Send(new PushLaneCommand(_workspaceId, _laneName));
+                ViewModel.ApplyResult(result.Pushed.Count, result.SkippedAlreadyLinked, result.Failed.Count);
+            }
+            catch (Exception ex)
+            {
+                ViewModel.ApplyError(ex.Message);
+                IsPrimaryButtonEnabled = true;
+            }
+            finally
+            {
+                ViewModel.IsBusy = false;
+                deferral.Complete();
+            }
+        });
 }

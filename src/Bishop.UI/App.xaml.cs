@@ -31,6 +31,8 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        SafeAsync.OnException = LogExceptionToFile;
+
         var connStr = GetConnectionString();
         var dbPath = connStr["Data Source=".Length..];
         var dispatcherQueue = DispatcherQueue.GetForCurrentThread();
@@ -63,51 +65,52 @@ public partial class App : Application
     }
 
     private static async void OnAppUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
-    {
-        e.Handled = true;
-        var ex = e.Exception;
-        LogExceptionToFile(ex);
+        => await SafeAsync.RunAsync(async () =>
+        {
+            e.Handled = true;
+            var ex = e.Exception;
+            LogExceptionToFile(ex);
 
-        var root = MainWindow?.Content?.XamlRoot;
-        if (root is null) return;
+            var root = MainWindow?.Content?.XamlRoot;
+            if (root is null) return;
 
-        var dialog = new ContentDialog
-        {
-            Title = "I'm sorry, Dave. I'm afraid I can't do that.",
-            Content = ExceptionDialogHelper.BuildErrorDialogText(ex),
-            PrimaryButtonText = "Copy details",
-            SecondaryButtonText = "Open log folder",
-            CloseButtonText = "Dismiss",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = root,
-        };
-        try
-        {
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
+            var dialog = new ContentDialog
             {
-                var pkg = new DataPackage();
-                pkg.SetText($"{ex.GetType().FullName}\n{ex.Message}\n\n{ex}");
-                Clipboard.SetContent(pkg);
-            }
-            else if (result == ContentDialogResult.Secondary)
+                Title = "I'm sorry, Dave. I'm afraid I can't do that.",
+                Content = ExceptionDialogHelper.BuildErrorDialogText(ex),
+                PrimaryButtonText = "Copy details",
+                SecondaryButtonText = "Open log folder",
+                CloseButtonText = "Dismiss",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = root,
+            };
+            try
             {
-                var logDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "Bishop.AI");
-                Process.Start("explorer.exe", logDir);
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                    var pkg = new DataPackage();
+                    pkg.SetText($"{ex.GetType().FullName}\n{ex.Message}\n\n{ex}");
+                    Clipboard.SetContent(pkg);
+                }
+                else if (result == ContentDialogResult.Secondary)
+                {
+                    var logDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "Bishop.AI");
+                    Process.Start("explorer.exe", logDir);
+                }
             }
-        }
-        catch (COMException)
-        {
-            // ShowAsync throws COMException when a ContentDialog is already open.
-            // The error is already logged above; swallow to prevent a cascading crash.
-        }
-        catch (Exception showEx)
-        {
-            LogExceptionToFile(showEx);
-        }
-    }
+            catch (COMException)
+            {
+                // ShowAsync throws COMException when a ContentDialog is already open.
+                // The error is already logged above; swallow to prevent a cascading crash.
+            }
+            catch (Exception showEx)
+            {
+                LogExceptionToFile(showEx);
+            }
+        });
 
     private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
     {

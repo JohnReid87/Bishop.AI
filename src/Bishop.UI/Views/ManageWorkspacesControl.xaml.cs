@@ -17,18 +17,20 @@ public sealed partial class ManageWorkspacesControl : UserControl
     }
 
     private async void RemoveButton_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.Tag is not WorkspaceManagerItemViewModel item) return;
-        if (!await ConfirmFlyoutAsync((FrameworkElement)sender, "Remove")) return;
-        await ViewModel.RemoveAsync(item.Id);
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if ((sender as FrameworkElement)?.Tag is not WorkspaceManagerItemViewModel item) return;
+            if (!await ConfirmFlyoutAsync((FrameworkElement)sender, "Remove")) return;
+            await ViewModel.RemoveAsync(item.Id);
+        });
 
     private async void PurgeButton_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.Tag is not WorkspaceManagerItemViewModel item) return;
-        if (!await ConfirmFlyoutAsync((FrameworkElement)sender, "Purge")) return;
-        await ViewModel.PurgeAsync(item.Id);
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if ((sender as FrameworkElement)?.Tag is not WorkspaceManagerItemViewModel item) return;
+            if (!await ConfirmFlyoutAsync((FrameworkElement)sender, "Purge")) return;
+            await ViewModel.PurgeAsync(item.Id);
+        });
 
     // WinUI 3 forbids a second ContentDialog while one is already open (e.g. SettingsDialog).
     // A Flyout has no such constraint and anchors visually to the triggering button.

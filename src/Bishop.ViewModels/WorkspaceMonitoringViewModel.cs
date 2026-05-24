@@ -76,10 +76,10 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             var savedModelId = SkillModelOptions.ResolveModelId(await _appSettings.GetAsync($"skill.{skillName}.last_model"));
             var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable);
             row.SelectModelCommand.Execute(savedModelId);
-            row.PropertyChanged += async (sender, args) =>
+            row.PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == nameof(SkillRunRowViewModel.SelectedModelId) && sender is SkillRunRowViewModel r)
-                    await _appSettings.SetAsync($"skill.{r.SkillName}.last_model", r.SelectedModelId);
+                    _ = SafeAsync.RunAsync(() => _appSettings.SetAsync($"skill.{r.SkillName}.last_model", r.SelectedModelId));
             };
             rows.Add(row);
         }

@@ -123,30 +123,31 @@ public sealed partial class MainWindow : Window
     }
 
     private async void WorkspacesDrop(object sender, DragEventArgs e)
-    {
-        if (_draggedWorkspace is null || sender is not ListView listView) return;
-        var item = _draggedWorkspace;
-        _draggedWorkspace = null;
-
-        var insertIndex = GetWorkspaceDropIndex(listView, e);
-        var oldIndex = ViewModel.Workspaces.IndexOf(item);
-        if (oldIndex >= 0)
+        => await SafeAsync.RunAsync(async () =>
         {
-            insertIndex = Math.Clamp(insertIndex, 0, ViewModel.Workspaces.Count);
-            var moveTarget = insertIndex > oldIndex ? insertIndex - 1 : insertIndex;
-            if (moveTarget != oldIndex)
+            if (_draggedWorkspace is null || sender is not ListView listView) return;
+            var item = _draggedWorkspace;
+            _draggedWorkspace = null;
+
+            var insertIndex = GetWorkspaceDropIndex(listView, e);
+            var oldIndex = ViewModel.Workspaces.IndexOf(item);
+            if (oldIndex >= 0)
             {
-                ViewModel.Workspaces.Move(oldIndex, moveTarget);
-                await ViewModel.PersistReorderAsync(ViewModel.Workspaces);
+                insertIndex = Math.Clamp(insertIndex, 0, ViewModel.Workspaces.Count);
+                var moveTarget = insertIndex > oldIndex ? insertIndex - 1 : insertIndex;
+                if (moveTarget != oldIndex)
+                {
+                    ViewModel.Workspaces.Move(oldIndex, moveTarget);
+                    await ViewModel.PersistReorderAsync(ViewModel.Workspaces);
+                }
             }
-        }
 
-        if (_selectionBeforeDrag is not null)
-        {
-            ViewModel.SelectedWorkspace = _selectionBeforeDrag;
-            _selectionBeforeDrag = null;
-        }
-    }
+            if (_selectionBeforeDrag is not null)
+            {
+                ViewModel.SelectedWorkspace = _selectionBeforeDrag;
+                _selectionBeforeDrag = null;
+            }
+        });
 
     private static int GetWorkspaceDropIndex(ListView listView, DragEventArgs e)
     {
@@ -162,13 +163,13 @@ public sealed partial class MainWindow : Window
     }
 
     private async void AddWorkspaceButton_Click(object sender, RoutedEventArgs e) =>
-        await ShowAddWorkspaceDialogAsync();
+        await SafeAsync.RunAsync(() => ShowAddWorkspaceDialogAsync());
 
     private async void CreateWorkspaceCta_Click(object sender, RoutedEventArgs e) =>
-        await ShowAddWorkspaceDialogAsync(pickExisting: false);
+        await SafeAsync.RunAsync(() => ShowAddWorkspaceDialogAsync(pickExisting: false));
 
     private async void OpenWorkspaceCta_Click(object sender, RoutedEventArgs e) =>
-        await ShowAddWorkspaceDialogAsync(pickExisting: true);
+        await SafeAsync.RunAsync(() => ShowAddWorkspaceDialogAsync(pickExisting: true));
 
     private async Task ShowAddWorkspaceDialogAsync(bool? pickExisting = null)
     {
@@ -181,28 +182,29 @@ public sealed partial class MainWindow : Window
     }
 
     private async void RenameWorkspace_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
-            return;
-
-        var nameBox = new TextBox { Text = item.Name, SelectionStart = item.Name.Length };
-        var renameDialog = new ContentDialog
+        => await SafeAsync.RunAsync(async () =>
         {
-            Title = "Rename Workspace",
-            Content = nameBox,
-            PrimaryButtonText = "Rename",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = Content.XamlRoot,
-        };
-        renameDialog.Resources["ContentDialogBackground"] = Application.Current.Resources["AppSurfaceBrush"];
+            if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
+                return;
 
-        if (await renameDialog.ShowAsync() == ContentDialogResult.Primary)
-        {
-            item.Name = nameBox.Text;
-            await ViewModel.RenameWorkspaceAsync(item);
-        }
-    }
+            var nameBox = new TextBox { Text = item.Name, SelectionStart = item.Name.Length };
+            var renameDialog = new ContentDialog
+            {
+                Title = "Rename Workspace",
+                Content = nameBox,
+                PrimaryButtonText = "Rename",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = Content.XamlRoot,
+            };
+            renameDialog.Resources["ContentDialogBackground"] = Application.Current.Resources["AppSurfaceBrush"];
+
+            if (await renameDialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                item.Name = nameBox.Text;
+                await ViewModel.RenameWorkspaceAsync(item);
+            }
+        });
 
     private void WorkspaceItem_RightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
     {
@@ -212,44 +214,47 @@ public sealed partial class MainWindow : Window
 
 
     private async void RepathWorkspace_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
-            return;
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
+                return;
 
-        var picker = new FolderPicker();
-        picker.FileTypeFilter.Add("*");
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            var picker = new FolderPicker();
+            picker.FileTypeFilter.Add("*");
+            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
 
-        var folder = await picker.PickSingleFolderAsync();
-        if (folder is not null)
-            await ViewModel.RepathWorkspaceAsync(item, folder.Path);
-    }
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder is not null)
+                await ViewModel.RepathWorkspaceAsync(item, folder.Path);
+        });
 
     private async void DeleteWorkspace_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
-            return;
-
-        var confirmDialog = new ContentDialog
+        => await SafeAsync.RunAsync(async () =>
         {
-            Title = $"Remove \"{item.Name}\"?",
-            Content = "This will remove the workspace from Bishop.AI. Your files will not be affected.",
-            PrimaryButtonText = "Remove",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = Content.XamlRoot,
-        };
-        confirmDialog.Resources["ContentDialogBackground"] = Application.Current.Resources["AppSurfaceBrush"];
+            if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
+                return;
 
-        if (await confirmDialog.ShowAsync() == ContentDialogResult.Primary)
-            await ViewModel.DeleteWorkspaceAsync(item);
-    }
+            var confirmDialog = new ContentDialog
+            {
+                Title = $"Remove \"{item.Name}\"?",
+                Content = "This will remove the workspace from Bishop.AI. Your files will not be affected.",
+                PrimaryButtonText = "Remove",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = Content.XamlRoot,
+            };
+            confirmDialog.Resources["ContentDialogBackground"] = Application.Current.Resources["AppSurfaceBrush"];
+
+            if (await confirmDialog.ShowAsync() == ContentDialogResult.Primary)
+                await ViewModel.DeleteWorkspaceAsync(item);
+        });
 
     private async void SettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new SettingsDialog { XamlRoot = Content.XamlRoot };
-        await dialog.ShowAsync();
-    }
+        => await SafeAsync.RunAsync(async () =>
+        {
+            var dialog = new SettingsDialog { XamlRoot = Content.XamlRoot };
+            await dialog.ShowAsync();
+        });
 
     private bool _isSnapping;
     private DispatcherTimer? _snapTimer;
