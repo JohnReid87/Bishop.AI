@@ -31,6 +31,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using System.ComponentModel;
 using Windows.ApplicationModel.DataTransfer;
@@ -792,7 +793,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
             ClearAllDropTargets();
 
-            var position = GetDropIndex(sender as ListView, e, targetLane);
+            var position = GetDropIndex(FindVisualChild<ItemsRepeater>(sender as DependencyObject), e, targetLane);
             var card = _draggedCard;
             var targetLaneName = targetLane.Name;
 
@@ -804,19 +805,33 @@ public sealed partial class WorkspaceDetailPage : Page
             await Board.RefreshCommand.ExecuteAsync(null);
         });
 
-    private static int GetDropIndex(ListView? listView, DragEventArgs e, LaneViewModel targetLane)
+    private static int GetDropIndex(ItemsRepeater? repeater, DragEventArgs e, LaneViewModel targetLane)
     {
-        if (listView is null) return targetLane.Cards.Count + 1;
+        if (repeater is null) return targetLane.FilteredCards.Count + 1;
 
-        var dropPoint = e.GetPosition(listView);
-        for (var i = 0; i < listView.Items.Count; i++)
+        var dropPoint = e.GetPosition(repeater);
+        for (var i = 0; i < targetLane.FilteredCards.Count; i++)
         {
-            if (listView.ContainerFromIndex(i) is not ListViewItem item) continue;
-            var itemTop = item.TransformToVisual(listView).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
+            if (repeater.TryGetElement(i) is not FrameworkElement item) continue;
+            var itemTop = item.TransformToVisual(repeater).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
             if (dropPoint.Y < itemTop + item.ActualHeight / 2)
                 return i + 1;
         }
-        return listView.Items.Count + 1;
+        return targetLane.FilteredCards.Count + 1;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject? parent) where T : DependencyObject
+    {
+        if (parent is null) return null;
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) return match;
+            var found = FindVisualChild<T>(child);
+            if (found is not null) return found;
+        }
+        return null;
     }
 
     private async void WorkNext_Click(object sender, RoutedEventArgs e)
