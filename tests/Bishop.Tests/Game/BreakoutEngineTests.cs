@@ -57,6 +57,19 @@ public class BreakoutEngineTests
         engine.Snapshot.State.Should().Be(GameState.Playing);
     }
 
+    [Theory]
+    [InlineData(GameState.Paused)]
+    [InlineData(GameState.GameOver)]
+    [InlineData(GameState.LevelComplete)]
+    public void LaunchBall_WhenNotWaitingToLaunch_StateUnchanged(GameState state)
+    {
+        var engine = InState(state);
+
+        engine.LaunchBall();
+
+        engine.Snapshot.State.Should().Be(state);
+    }
+
     // ── TogglePause ───────────────────────────────────────────────────────────
 
     [Fact]
@@ -323,6 +336,44 @@ public class BreakoutEngineTests
         engine.Snapshot.Ball.X.Should().BeGreaterThan(before);
     }
 
+    [Fact]
+    public void MovePaddle_Right_WhenAtRightEdge_PaddlePositionUnchanged()
+    {
+        var engine = new BreakoutEngine();
+        for (int i = 0; i < 100; i++) engine.MovePaddle(PaddleDirection.Right);
+        float atEdge = engine.Snapshot.Paddle.X;
+
+        engine.MovePaddle(PaddleDirection.Right);
+
+        engine.Snapshot.Paddle.X.Should().Be(atEdge);
+    }
+
+    [Fact]
+    public void MovePaddle_Left_WhenAtLeftEdge_PaddlePositionUnchanged()
+    {
+        var engine = new BreakoutEngine();
+        for (int i = 0; i < 100; i++) engine.MovePaddle(PaddleDirection.Left);
+        float atEdge = engine.Snapshot.Paddle.X;
+
+        engine.MovePaddle(PaddleDirection.Left);
+
+        engine.Snapshot.Paddle.X.Should().Be(atEdge);
+    }
+
+    [Theory]
+    [InlineData(GameState.Paused)]
+    [InlineData(GameState.GameOver)]
+    [InlineData(GameState.LevelComplete)]
+    public void MovePaddle_WhenInNonMovableState_PaddlePositionUnchanged(GameState state)
+    {
+        var engine = InState(state);
+        float before = engine.Snapshot.Paddle.X;
+
+        engine.MovePaddle(PaddleDirection.Right);
+
+        engine.Snapshot.Paddle.X.Should().Be(before);
+    }
+
     // ── Reset ─────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -338,5 +389,57 @@ public class BreakoutEngineTests
         snap.Lives.Should().Be(3);
         snap.Score.Should().Be(0);
         snap.Bricks.Should().AllSatisfy(b => b.IsDestroyed.Should().BeFalse());
+    }
+
+    // ── Degenerate delta ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void Tick_WithZeroDelta_DoesNotMoveBall()
+    {
+        var engine = new BreakoutEngine();
+        engine.LaunchBall();
+        var before = engine.Snapshot.Ball;
+
+        engine.Tick(0.0);
+
+        var after = engine.Snapshot.Ball;
+        after.X.Should().Be(before.X);
+        after.Y.Should().Be(before.Y);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static BreakoutEngine InState(GameState state) => state switch
+    {
+        GameState.Paused        => PausedEngine(),
+        GameState.GameOver      => GameOverEngine(),
+        GameState.LevelComplete => LevelCompleteEngine(),
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
+    };
+
+    private static BreakoutEngine PausedEngine()
+    {
+        var engine = new BreakoutEngine();
+        engine.LaunchBall();
+        engine.TogglePause();
+        return engine;
+    }
+
+    private static BreakoutEngine GameOverEngine()
+    {
+        var engine = new BreakoutEngine();
+        engine.SetLivesForTest(1);
+        engine.SetBallForTest(x: 400f, y: BreakoutEngine.FieldHeight - 1f, dx: 0f, dy: 200f);
+        engine.Tick(1.0 / 60.0);
+        return engine;
+    }
+
+    private static BreakoutEngine LevelCompleteEngine()
+    {
+        var engine = new BreakoutEngine();
+        engine.SetBallForTest(x: 400f, y: 300f, dx: 0f, dy: 0f);
+        engine.DestroyAllBricksForTest();
+        engine.Tick(1.0 / 60.0);
+        return engine;
     }
 }
