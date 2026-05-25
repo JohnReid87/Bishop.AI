@@ -76,22 +76,14 @@ public class CardViewModelTests
         inToDo.CardTitleFontSize.Should().Be(14.0);
     }
 
-    [Fact]
-    public void IsSkillsButtonVisible_MirrorsStaticFlag()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void IsSkillsButtonVisible_ReflectsInitValue(bool visible)
     {
-        var original = CardViewModel.IsCardSkillsButtonVisible;
-        try
-        {
-            CardViewModel.IsCardSkillsButtonVisible = true;
-            new CardViewModel().IsSkillsButtonVisible.Should().BeTrue();
+        var vm = new CardViewModel { IsSkillsButtonVisible = visible };
 
-            CardViewModel.IsCardSkillsButtonVisible = false;
-            new CardViewModel().IsSkillsButtonVisible.Should().BeFalse();
-        }
-        finally
-        {
-            CardViewModel.IsCardSkillsButtonVisible = original;
-        }
+        vm.IsSkillsButtonVisible.Should().Be(visible);
     }
 
     [Theory]

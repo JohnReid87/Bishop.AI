@@ -13,6 +13,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     private readonly ISender _mediator;
     private Guid _workspaceId;
 
+    public bool IsCardSkillsButtonVisible { get; set; }
+
     public ObservableCollection<LaneViewModel> Lanes { get; } = [];
 
     [ObservableProperty]
@@ -162,7 +164,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         return true;
     }
 
-    private static CardViewModel BuildCardViewModel(Bishop.Core.Card card, string laneName, IReadOnlyDictionary<string, string> tagColourByName)
+    private CardViewModel BuildCardViewModel(Bishop.Core.Card card, string laneName, IReadOnlyDictionary<string, string> tagColourByName)
     {
         var tagColour = card.TagName is { } name && tagColourByName.TryGetValue(name, out var c) ? c : null;
         return new CardViewModel
@@ -180,6 +182,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             LastAutoRunFailedAt = card.LastAutoRunFailedAt,
             BatchId = card.BatchId,
             BatchName = card.Batch?.Name,
+            IsSkillsButtonVisible = IsCardSkillsButtonVisible,
         };
     }
 }

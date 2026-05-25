@@ -174,7 +174,7 @@ public sealed partial class WorkspaceDetailPage : Page
         var skills = await mediator.Send(new DiscoverSkillsQuery());
         _cardSkills = SkillMenuBuilder.Build(skills, "card");
         _workspaceSkills = SkillMenuBuilder.Build(skills, "workspace");
-        CardViewModel.IsCardSkillsButtonVisible = _cardSkills.Length > 0;
+        Board.IsCardSkillsButtonVisible = _cardSkills.Length > 0;
         WorkspaceSkillsButton.Visibility = _workspaceSkills.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -662,6 +662,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 GitHubIssueNumber = card.GitHubIssueNumber,
                 GitHubPushedAt = card.GitHubPushedAt,
                 LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+                IsSkillsButtonVisible = Board.IsCardSkillsButtonVisible,
             };
         });
 

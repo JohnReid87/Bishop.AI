@@ -118,6 +118,7 @@ public sealed partial class CardDetailDialog : ContentDialog
                     GitHubIssueNumber = card.GitHubIssueNumber,
                     GitHubPushedAt = card.GitHubPushedAt,
                     LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+                    IsSkillsButtonVisible = _cardSkills.Length > 0,
                 };
 
                 ViewModel.NavigateTo(targetVm, canGoBack: true);
@@ -148,6 +149,7 @@ public sealed partial class CardDetailDialog : ContentDialog
         TagColour = ViewModel.TagColour,
         IsClosed = ViewModel.IsClosed,
         GitHubIssueNumber = ViewModel.GitHubIssueNumber,
+        IsSkillsButtonVisible = ViewModel.IsSkillsButtonVisible,
     };
 
     private void CardDetailDialog_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
