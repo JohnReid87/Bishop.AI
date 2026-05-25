@@ -20,7 +20,8 @@ public sealed class BatchItemViewModel
     public string CardCountLabel => CardCount == 1 ? "1 card" : $"{CardCount} cards";
 
     public bool CanRun => Status == BatchStatus.Open;
-    public bool CanFinish => Status == BatchStatus.Working;
+    public bool CanFinish => Status == BatchStatus.Working && !HasGitHubPr;
+    public bool CanComplete => Status == BatchStatus.Working && HasGitHubPr;
     public bool CanAbandon => Status == BatchStatus.Working;
     public bool HasGitHubPr => !string.IsNullOrEmpty(GitHubPrUrl);
 }

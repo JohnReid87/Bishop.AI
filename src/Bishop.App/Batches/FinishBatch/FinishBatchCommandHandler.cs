@@ -68,7 +68,7 @@ public sealed class FinishBatchCommandHandler : IRequestHandler<FinishBatchComma
              "--base", batch.BaseBranch],
             cancellationToken);
 
-        await _batches.CloseAsync(batch.Id, BatchClosedReason.Finished, prUrl.Trim(), cancellationToken);
+        await _batches.SetGitHubPrUrlAsync(batch.Id, prUrl.Trim(), cancellationToken);
         await _git.RemoveWorktreeAsync(request.WorkspacePath, batch.WorktreePath, cancellationToken);
 
         return new FinishBatchResult(prUrl.Trim());

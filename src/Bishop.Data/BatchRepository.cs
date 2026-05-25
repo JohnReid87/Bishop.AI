@@ -65,6 +65,16 @@ public sealed class BatchRepository : IBatchRepository
         return batch;
     }
 
+    public async Task<Batch> SetGitHubPrUrlAsync(Guid batchId, string prUrl, CancellationToken cancellationToken = default)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var batch = await db.Batches.FirstOrDefaultAsync(b => b.Id == batchId, cancellationToken)
+            ?? throw new InvalidOperationException($"Batch {batchId} not found.");
+        batch.GitHubPrUrl = prUrl;
+        await db.SaveChangesAsync(cancellationToken);
+        return batch;
+    }
+
     public async Task<Batch> CloseAsync(Guid batchId, BatchClosedReason reason, string? prUrl = null, CancellationToken cancellationToken = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);

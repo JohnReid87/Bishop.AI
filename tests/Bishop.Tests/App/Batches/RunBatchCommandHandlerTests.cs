@@ -189,7 +189,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     // ── happy path ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task EmptyBatch_ClosesWithFinished()
+    public async Task EmptyBatch_RemainsWorking_AfterFinishedRun()
     {
         var batch = await CreateBatchAsync();
 
@@ -199,12 +199,12 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         result.Succeeded.Should().Be(0);
 
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
-        saved.Status.Should().Be(BatchStatus.Closed);
-        saved.ClosedReason.Should().Be(BatchClosedReason.Finished);
+        saved.Status.Should().Be(BatchStatus.Working);
+        saved.ClosedReason.Should().BeNull();
     }
 
     [Fact]
-    public async Task AllCardsSucceed_ClosesWithFinished()
+    public async Task AllCardsSucceed_BatchRemainsWorking_CardsMovedToDone()
     {
         var (workspace, lanes) = await CreateWorkspaceAsync();
         var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
@@ -219,7 +219,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         result.FailedCardNumbers.Should().BeNull();
 
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
-        saved.Status.Should().Be(BatchStatus.Closed);
+        saved.Status.Should().Be(BatchStatus.Working);
 
         var savedC1 = await _db.Cards.SingleAsync(c => c.Id == c1.Id);
         var savedC2 = await _db.Cards.SingleAsync(c => c.Id == c2.Id);
@@ -228,15 +228,15 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task FreshRun_TransitionsBatchToWorking_ThenToClosedOnSuccess()
+    public async Task FreshRun_TransitionsBatchToWorking_StaysWorkingOnSuccess()
     {
         var batch = await CreateBatchAsync();
 
         await CreateHandler().Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
-        saved.Status.Should().Be(BatchStatus.Closed);
-        saved.ClosedReason.Should().Be(BatchClosedReason.Finished);
+        saved.Status.Should().Be(BatchStatus.Working);
+        saved.ClosedReason.Should().BeNull();
     }
 
     // ── card failure ───────────────────────────────────────────────────────────
@@ -521,7 +521,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         await claude.DidNotReceive().RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
 
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
-        saved.Status.Should().Be(BatchStatus.Closed);
+        saved.Status.Should().Be(BatchStatus.Working);
     }
 
     // ── handoff missing ────────────────────────────────────────────────────────

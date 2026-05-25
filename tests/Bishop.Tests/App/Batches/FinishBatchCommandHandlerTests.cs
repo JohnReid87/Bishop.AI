@@ -139,7 +139,7 @@ public sealed class FinishBatchCommandHandlerTests : IClassFixture<DbFixture>
     // ── happy path ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task EmptyBatch_CreatesPrWithEmptyBody_ClosesWithFinished()
+    public async Task EmptyBatch_CreatesPr_BatchRemainsWorking()
     {
         var batch = await CreateWorkingBatchAsync();
         var gh = GhReturnsUrl("https://github.com/owner/repo/pull/99");
@@ -150,9 +150,10 @@ public sealed class FinishBatchCommandHandlerTests : IClassFixture<DbFixture>
         result.PrUrl.Should().Be("https://github.com/owner/repo/pull/99");
 
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
-        saved.Status.Should().Be(BatchStatus.Closed);
-        saved.ClosedReason.Should().Be(BatchClosedReason.Finished);
-        saved.ClosedAt.Should().NotBeNull();
+        saved.Status.Should().Be(BatchStatus.Working);
+        saved.ClosedReason.Should().BeNull();
+        saved.ClosedAt.Should().BeNull();
+        saved.GitHubPrUrl.Should().Be("https://github.com/owner/repo/pull/99");
     }
 
     [Fact]

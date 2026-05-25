@@ -180,7 +180,6 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                 }
             }
 
-            await _batches.CloseAsync(batch.Id, BatchClosedReason.Finished, cancellationToken: cancellationToken);
             return new RunBatchResult(succeeded, null, RunBatchStopReason.Finished);
         }
         finally

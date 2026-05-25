@@ -17,13 +17,37 @@ public class BatchItemViewModelTests
     }
 
     [Fact]
-    public void CanFinish_TrueWhenWorking()
+    public void CanFinish_TrueWhenWorkingWithoutPr()
     {
-        var vm = new BatchItemViewModel { Status = BatchStatus.Working };
+        var vm = new BatchItemViewModel { Status = BatchStatus.Working, GitHubPrUrl = null };
 
         vm.CanRun.Should().BeFalse();
         vm.CanFinish.Should().BeTrue();
+        vm.CanComplete.Should().BeFalse();
         vm.CanAbandon.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CanComplete_TrueWhenWorkingWithPr()
+    {
+        var vm = new BatchItemViewModel
+        {
+            Status = BatchStatus.Working,
+            GitHubPrUrl = "https://github.com/owner/repo/pull/1"
+        };
+
+        vm.CanFinish.Should().BeFalse();
+        vm.CanComplete.Should().BeTrue();
+        vm.CanAbandon.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CanFinish_And_CanComplete_BothFalseWhenClosed()
+    {
+        var vm = new BatchItemViewModel { Status = BatchStatus.Closed };
+
+        vm.CanFinish.Should().BeFalse();
+        vm.CanComplete.Should().BeFalse();
     }
 
     [Fact]

@@ -166,7 +166,7 @@ public class LaneViewModelTests
         var refreshed = false;
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(default(Card?));
+            .Returns((Card)null!);
         var vm = NewVm(mediator: mediator, refreshBoard: () => { refreshed = true; return Task.CompletedTask; });
         vm.NewCardTitle = "New card";
 

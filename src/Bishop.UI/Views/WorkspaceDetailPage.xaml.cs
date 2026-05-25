@@ -1,5 +1,6 @@
 using CommunityToolkit.WinUI.Controls;
 using Bishop.App.Batches.AbandonBatch;
+using Bishop.App.Batches.CompleteBatch;
 using Bishop.App.Batches.CreateBatch;
 using Bishop.App.Batches.FinishBatch;
 using Bishop.App.Cards.CloseCard;
@@ -783,6 +784,17 @@ public sealed partial class WorkspaceDetailPage : Page
             await Batches.RefreshCommand.ExecuteAsync(null);
 
             await Launcher.LaunchUriAsync(new Uri(result.PrUrl));
+        });
+
+    private async void BatchComplete_Click(object sender, RoutedEventArgs e)
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
+            var mediator = App.Services.GetRequiredService<ISender>();
+            await mediator.Send(new CompleteBatchCommand(batch.Name, _item.Path));
+            await Board.RefreshCommand.ExecuteAsync(null);
+            await Batches.RefreshCommand.ExecuteAsync(null);
         });
 
     private async void BatchAbandon_Click(object sender, RoutedEventArgs e)
