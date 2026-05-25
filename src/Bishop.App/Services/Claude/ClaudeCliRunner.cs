@@ -98,8 +98,12 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
                         if (e.Data is not null) AnsiConsole.WriteLine(e.Data);
                     };
 
-                    await proc.StandardInput.WriteAsync(prompt);
-                    proc.StandardInput.Close();
+                    try
+                    {
+                        await proc.StandardInput.WriteAsync(prompt);
+                        proc.StandardInput.Close();
+                    }
+                    catch (IOException) { } // process exited before reading stdin
 
                     proc.BeginOutputReadLine();
                     proc.BeginErrorReadLine();
