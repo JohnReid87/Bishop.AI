@@ -49,7 +49,7 @@ public sealed class PurgeWorkspaceCliCommandTests
             Console.SetError(originalErr);
         }
 
-        exitCode.Should().Be(0);
+        exitCode.Should().Be(1);
         errorOutput.ToString().Should().Contain("error:");
         await mediator.DidNotReceive().Send(Arg.Any<PurgeWorkspaceCommand>(), Arg.Any<CancellationToken>());
     }
@@ -60,10 +60,21 @@ public sealed class PurgeWorkspaceCliCommandTests
         var ws = MakeRemovedWorkspace(path: WorkspacePath);
         var mediator = BuildMediator(ws);
         var cmd = new PurgeWorkspaceCliCommand(mediator);
-
-        var exitCode = await cmd.InvokeAsync(["--path", WorkspacePath, "--yes"]);
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try
+        {
+            exitCode = await cmd.InvokeAsync(["--path", WorkspacePath, "--yes"]);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
 
         exitCode.Should().Be(0);
+        output.ToString().Should().Contain($"Workspace '{ws.Name}' purged.");
         await mediator.Received(1).Send(
             Arg.Is<PurgeWorkspaceCommand>(c => c.Id == ws.Id),
             Arg.Any<CancellationToken>());
@@ -110,10 +121,21 @@ public sealed class PurgeWorkspaceCliCommandTests
         var ws = MakeRemovedWorkspace(name: "old-ws");
         var mediator = BuildMediator(ws);
         var cmd = new PurgeWorkspaceCliCommand(mediator);
-
-        var exitCode = await cmd.InvokeAsync(["--name", "old-ws", "--yes"]);
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try
+        {
+            exitCode = await cmd.InvokeAsync(["--name", "old-ws", "--yes"]);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
 
         exitCode.Should().Be(0);
+        output.ToString().Should().Contain($"Workspace '{ws.Name}' purged.");
         await mediator.Received(1).Send(
             Arg.Is<PurgeWorkspaceCommand>(c => c.Id == ws.Id),
             Arg.Any<CancellationToken>());
@@ -151,7 +173,7 @@ public sealed class PurgeWorkspaceCliCommandTests
             Console.SetError(originalErr);
         }
 
-        exitCode.Should().Be(0);
+        exitCode.Should().Be(1);
         errorOutput.ToString().Should().Contain("error:");
         await mediator.DidNotReceive().Send(Arg.Any<PurgeWorkspaceCommand>(), Arg.Any<CancellationToken>());
     }
@@ -209,5 +231,71 @@ public sealed class PurgeWorkspaceCliCommandTests
         }
 
         await mediator.DidNotReceive().Send(Arg.Any<PurgeWorkspaceCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Path_ForwardSlashSeparator_FindsWorkspaceAndSendsPurgeCommand()
+    {
+        var ws = MakeRemovedWorkspace(path: WorkspacePath);
+        var mediator = BuildMediator(ws);
+        var cmd = new PurgeWorkspaceCliCommand(mediator);
+
+        var exitCode = await cmd.InvokeAsync(["--path", @"C:/bishop-purge-test", "--yes"]);
+
+        exitCode.Should().Be(0);
+        await mediator.Received(1).Send(
+            Arg.Is<PurgeWorkspaceCommand>(c => c.Id == ws.Id),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Path_DifferentCasing_FindsWorkspaceAndSendsPurgeCommand()
+    {
+        var ws = MakeRemovedWorkspace(path: WorkspacePath);
+        var mediator = BuildMediator(ws);
+        var cmd = new PurgeWorkspaceCliCommand(mediator);
+
+        var exitCode = await cmd.InvokeAsync(["--path", @"c:\BISHOP-PURGE-TEST", "--yes"]);
+
+        exitCode.Should().Be(0);
+        await mediator.Received(1).Send(
+            Arg.Is<PurgeWorkspaceCommand>(c => c.Id == ws.Id),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Path_NoBishopDirectory_SendsPurgeCommandAndOmitsBishopDirFromOutput()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "bishop-purge-nodotbishop-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var ws = MakeRemovedWorkspace(path: tempDir);
+            var mediator = BuildMediator(ws);
+            var cmd = new PurgeWorkspaceCliCommand(mediator);
+            var output = new StringWriter();
+            var originalOut = Console.Out;
+            Console.SetOut(output);
+            int exitCode;
+            try
+            {
+                exitCode = await cmd.InvokeAsync(["--path", tempDir, "--yes"]);
+            }
+            finally
+            {
+                Console.SetOut(originalOut);
+            }
+
+            exitCode.Should().Be(0);
+            output.ToString().Should().NotContain(".bishop");
+            await mediator.Received(1).Send(
+                Arg.Is<PurgeWorkspaceCommand>(c => c.Id == ws.Id),
+                Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, recursive: true);
+        }
     }
 }

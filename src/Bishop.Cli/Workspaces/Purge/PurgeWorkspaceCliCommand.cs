@@ -3,6 +3,7 @@ using Bishop.App.Workspaces.PurgeWorkspace;
 using Bishop.Core;
 using MediatR;
 using System.CommandLine;
+using System.CommandLine.Invocation;
 
 namespace Bishop.Cli.Workspaces.Purge;
 
@@ -21,12 +22,17 @@ internal sealed class PurgeWorkspaceCliCommand : Command
         AddOption(yesOpt);
         AddOption(dryRunOpt);
 
-        this.SetHandler(async (string? path, string? name, bool yes, bool dryRun) =>
+        this.SetHandler(async (InvocationContext ctx) =>
         {
+            var path = ctx.ParseResult.GetValueForOption(pathOpt);
+            var name = ctx.ParseResult.GetValueForOption(nameOpt);
+            var yes = ctx.ParseResult.GetValueForOption(yesOpt);
+            var dryRun = ctx.ParseResult.GetValueForOption(dryRunOpt);
+
             if (path is null && name is null)
             {
                 Console.Error.WriteLine("error: specify --path or --name");
-                Environment.ExitCode = 1;
+                ctx.ExitCode = 1;
                 return;
             }
 
@@ -58,7 +64,7 @@ internal sealed class PurgeWorkspaceCliCommand : Command
                     Console.Error.WriteLine($"error: multiple archived workspaces match '{name}' — re-run with --path:");
                     foreach (var m in matches)
                         Console.Error.WriteLine($"  {m.Path}");
-                    Environment.ExitCode = 1;
+                    ctx.ExitCode = 1;
                     return;
                 }
 
@@ -98,6 +104,6 @@ internal sealed class PurgeWorkspaceCliCommand : Command
                 Directory.Delete(bishopDir, recursive: true);
 
             Console.WriteLine($"Workspace '{ws.Name}' purged.");
-        }, pathOpt, nameOpt, yesOpt, dryRunOpt);
+        });
     }
 }
