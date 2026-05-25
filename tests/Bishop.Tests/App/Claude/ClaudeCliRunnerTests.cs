@@ -124,7 +124,7 @@ public sealed class ClaudeCliRunnerTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => sut.RunPromptAsync("C:\\ws", "hello", null, null, cts.Token);
+        var act = () => sut.RunPromptAsync("C:\\ws", "hello", cancellationToken: cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -235,7 +235,7 @@ public sealed class ClaudeCliRunnerTests
     }
 
     [Fact]
-    public async Task RunPromptAsync_WithoutModel_DoesNotAppendModelArg()
+    public async Task RunPromptAsync_WithDefaultModel_AppendsDefaultModelArg()
     {
         var resolver = Substitute.For<IClaudeExecutableResolver>();
         resolver.Resolve().Returns("claude");
@@ -250,7 +250,7 @@ public sealed class ClaudeCliRunnerTests
         await sut.RunPromptAsync("C:\\ws", "hello");
 
         capturedPsi.Should().NotBeNull();
-        capturedPsi!.ArgumentList.Should().NotContain("--model");
+        capturedPsi!.ArgumentList.Should().ContainInOrder("--model", "claude-sonnet-4-6");
     }
 
     [Fact]

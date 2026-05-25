@@ -103,7 +103,7 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
     private IClaudeCliRunner ClaudeSucceedsWithHandoff(string handoffJson)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
@@ -116,7 +116,7 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
     private static IClaudeCliRunner ClaudeSucceedsNoHandoff()
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(0, null, 0));
         return claude;
     }

@@ -1,4 +1,5 @@
 using Bishop.App.Batches.RunBatch;
+using Bishop.App.Skills;
 using MediatR;
 using System.CommandLine;
 
@@ -10,13 +11,13 @@ internal sealed class RunBatchCliCommand : Command
     {
         var nameArg = new Argument<string>("name", "Batch name");
         var resumeOpt = new Option<bool>("--resume", "Re-acquire the lock and continue from the next undone card");
-        var modelOpt = new Option<string?>("--model", () => null, "Claude model ID to pass to claude");
+        var modelOpt = new Option<string>("--model", () => SkillModelOptions.DefaultModelId, "Claude model ID to pass to claude");
 
         AddArgument(nameArg);
         AddOption(resumeOpt);
         AddOption(modelOpt);
 
-        this.SetHandler(async (string name, bool resume, string? model) =>
+        this.SetHandler(async (string name, bool resume, string model) =>
         {
             var result = await mediator.Send(new RunBatchCommand(name, resume, model));
 

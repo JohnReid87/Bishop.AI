@@ -1,3 +1,4 @@
+using Bishop.App.Skills;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
@@ -25,7 +26,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
     public async Task<ClaudeRunResult> RunPromptAsync(
         string workspacePath,
         string prompt,
-        string? model = null,
+        string model = SkillModelOptions.DefaultModelId,
         int? cardNumber = null,
         CancellationToken cancellationToken = default)
     {
@@ -55,11 +56,8 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         psi.ArgumentList.Add("--verbose");
         psi.ArgumentList.Add("--permission-mode");
         psi.ArgumentList.Add("bypassPermissions");
-        if (model is not null)
-        {
-            psi.ArgumentList.Add("--model");
-            psi.ArgumentList.Add(model);
-        }
+        psi.ArgumentList.Add("--model");
+        psi.ArgumentList.Add(model);
 
         Process? proc;
         try

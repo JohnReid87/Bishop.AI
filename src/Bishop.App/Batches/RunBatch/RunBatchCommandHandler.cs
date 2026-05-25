@@ -110,10 +110,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     cancellationToken);
 
                 var stamp = DateTimeOffset.Now.ToString("HH:mm:ss");
-                var startLine = request.Model is not null
-                    ? $"== [{stamp}] Card #{card.Number}: {card.Title}  [{request.Model}] =="
-                    : $"== [{stamp}] Card #{card.Number}: {card.Title} ==";
-                Console.Out.WriteLine(startLine);
+                Console.Out.WriteLine($"== [{stamp}] Card #{card.Number}: {card.Title}  [{request.Model}] ==");
 
                 var contextPack = await _sender.Send(
                     new BuildContextPackQuery("auto-card", worktreeWorkspace!, new ContextPackArgs(card.Number)),
