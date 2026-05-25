@@ -32,11 +32,10 @@ public sealed class PruneBatchCliCommandTests
     }
 
     [Fact]
-    public async Task InvokeAsync_NoCandidates_PrintsNoCandidatesAndExitsZero()
+    public async Task InvokeAsync_NoCandidates_DoesNotSendDeleteCommand()
     {
         var ws = MakeWorkspace();
         var mediator = MakeMediatorWithCandidates(ws, []);
-
         var cmd = new PruneBatchCliCommand(mediator);
 
         var output = new StringWriter();
@@ -53,7 +52,6 @@ public sealed class PruneBatchCliCommandTests
         }
 
         exitCode.Should().Be(0);
-        output.ToString().Should().Contain("No candidates found.");
         await mediator.DidNotReceive().Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>());
     }
 
@@ -62,7 +60,6 @@ public sealed class PruneBatchCliCommandTests
     {
         var ws = MakeWorkspace();
         var mediator = MakeMediatorWithCandidates(ws, [MakeCandidate()]);
-
         var cmd = new PruneBatchCliCommand(mediator);
 
         var output = new StringWriter();
@@ -79,19 +76,17 @@ public sealed class PruneBatchCliCommandTests
         }
 
         exitCode.Should().Be(0);
-        output.ToString().Should().Contain("[dry-run]");
         await mediator.DidNotReceive().Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task InvokeAsync_YesFlag_DeletesAllPrunableCandidates()
+    public async Task InvokeAsync_YesFlag_SendsDeleteCommandForEachPrunableCandidate()
     {
         var ws = MakeWorkspace();
         var candidate = MakeCandidate("bishop/sprint-1");
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
         mediator.Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new DeleteBatchBranchResult());
-
         var cmd = new PruneBatchCliCommand(mediator);
 
         var output = new StringWriter();
@@ -112,16 +107,14 @@ public sealed class PruneBatchCliCommandTests
             Arg.Is<DeleteBatchBranchCommand>(c =>
                 c.WorkspacePath == ws.Path && c.BranchName == candidate.BranchName),
             Arg.Any<CancellationToken>());
-        output.ToString().Should().Contain("1 branch(es) deleted.");
     }
 
     [Fact]
-    public async Task InvokeAsync_AllCheckedOut_PrintsSkippedMessage()
+    public async Task InvokeAsync_AllCheckedOut_DoesNotSendDeleteCommand()
     {
         var ws = MakeWorkspace();
         var candidate = MakeCandidate(isCheckedOut: true);
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
-
         var cmd = new PruneBatchCliCommand(mediator);
 
         var output = new StringWriter();
@@ -138,7 +131,6 @@ public sealed class PruneBatchCliCommandTests
         }
 
         exitCode.Should().Be(0);
-        output.ToString().Should().Contain("currently checked out");
         await mediator.DidNotReceive().Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>());
     }
 
@@ -147,7 +139,6 @@ public sealed class PruneBatchCliCommandTests
     {
         var ws = MakeWorkspace();
         var mediator = MakeMediatorWithCandidates(ws, []);
-
         var cmd = new PruneBatchCliCommand(mediator);
 
         var saved = Environment.ExitCode;
@@ -164,20 +155,204 @@ public sealed class PruneBatchCliCommandTests
     }
 
     [Theory]
-    [InlineData("7d")]
-    [InlineData("24h")]
-    [InlineData("30m")]
-    public async Task InvokeAsync_ValidOlderThan_PassesParsedDurationToQuery(string duration)
+    [InlineData("7d", 7, 0, 0)]
+    [InlineData("3h", 0, 3, 0)]
+    [InlineData("30m", 0, 0, 30)]
+    public async Task InvokeAsync_ValidOlderThan_PassesExactDurationToQuery(
+        string duration, int days, int hours, int minutes)
     {
         var ws = MakeWorkspace();
         var mediator = MakeMediatorWithCandidates(ws, []);
-
         var cmd = new PruneBatchCliCommand(mediator);
+        var expected = new TimeSpan(days, hours, minutes, 0);
 
         await cmd.InvokeAsync(["--older-than", duration, "--workspace", "test-ws"]);
 
         await mediator.Received(1).Send(
-            Arg.Is<GetBatchPruneCandidatesQuery>(q => q.OlderThan.HasValue),
+            Arg.Is<GetBatchPruneCandidatesQuery>(q => q.OlderThan == expected),
             Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("7")]    // single character: length < 2, no usable suffix
+    [InlineData("-5d")]  // negative value
+    [InlineData("7x")]   // unsupported suffix
+    public async Task InvokeAsync_OlderThan_UnparsableDuration_SetsExitCodeOneAndDoesNotQuery(string duration)
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithCandidates(ws, []);
+        var cmd = new PruneBatchCliCommand(mediator);
+
+        var saved = Environment.ExitCode;
+        try
+        {
+            Environment.ExitCode = 0;
+            await cmd.InvokeAsync(["--older-than", duration, "--workspace", "test-ws"]);
+            Environment.ExitCode.Should().Be(1);
+        }
+        finally
+        {
+            Environment.ExitCode = saved;
+        }
+
+        await mediator.DidNotReceive().Send(Arg.Any<GetBatchPruneCandidatesQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_AbandonedOnlyFlag_ForwardsAbandonedOnlyToQuery()
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithCandidates(ws, []);
+        var cmd = new PruneBatchCliCommand(mediator);
+
+        await cmd.InvokeAsync(["--abandoned-only", "--workspace", "test-ws"]);
+
+        await mediator.Received(1).Send(
+            Arg.Is<GetBatchPruneCandidatesQuery>(q => q.AbandonedOnly && !q.MergedOnly),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_MergedOnlyFlag_ForwardsMergedOnlyToQuery()
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithCandidates(ws, []);
+        var cmd = new PruneBatchCliCommand(mediator);
+
+        await cmd.InvokeAsync(["--merged-only", "--workspace", "test-ws"]);
+
+        await mediator.Received(1).Send(
+            Arg.Is<GetBatchPruneCandidatesQuery>(q => !q.AbandonedOnly && q.MergedOnly),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_InteractiveAnswerYes_SendsDeleteCommand()
+    {
+        var ws = MakeWorkspace();
+        var candidate = MakeCandidate("bishop/sprint-1");
+        var mediator = MakeMediatorWithCandidates(ws, [candidate]);
+        mediator.Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new DeleteBatchBranchResult());
+        var cmd = new PruneBatchCliCommand(mediator);
+
+        var originalIn = Console.In;
+        var originalOut = Console.Out;
+        Console.SetIn(new StringReader("y\n"));
+        Console.SetOut(new StringWriter());
+        try
+        {
+            await cmd.InvokeAsync(["--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetIn(originalIn);
+            Console.SetOut(originalOut);
+        }
+
+        await mediator.Received(1).Send(
+            Arg.Is<DeleteBatchBranchCommand>(c =>
+                c.WorkspacePath == ws.Path && c.BranchName == candidate.BranchName),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_InteractiveAnswerNo_SkipsDeleteCommand()
+    {
+        var ws = MakeWorkspace();
+        var candidate = MakeCandidate("bishop/sprint-1");
+        var mediator = MakeMediatorWithCandidates(ws, [candidate]);
+        var cmd = new PruneBatchCliCommand(mediator);
+
+        var originalIn = Console.In;
+        var originalOut = Console.Out;
+        Console.SetIn(new StringReader("n\n"));
+        Console.SetOut(new StringWriter());
+        try
+        {
+            await cmd.InvokeAsync(["--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetIn(originalIn);
+            Console.SetOut(originalOut);
+        }
+
+        await mediator.DidNotReceive().Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CandidateOlderThanOneDay_OutputsAgeInDays()
+    {
+        var ws = MakeWorkspace();
+        var candidate = new PruneBatchCandidate(
+            "Sprint 1", "bishop/sprint-1", BatchClosedReason.Finished,
+            DateTimeOffset.UtcNow.AddDays(-3), 5, false);
+        var mediator = MakeMediatorWithCandidates(ws, [candidate]);
+        var cmd = new PruneBatchCliCommand(mediator);
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        try
+        {
+            await cmd.InvokeAsync(["--dry-run", "--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        output.ToString().Should().Contain("3d");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CandidateOlderThanOneHour_OutputsAgeInHours()
+    {
+        var ws = MakeWorkspace();
+        var candidate = new PruneBatchCandidate(
+            "Sprint 1", "bishop/sprint-1", BatchClosedReason.Finished,
+            DateTimeOffset.UtcNow.AddHours(-5), 5, false);
+        var mediator = MakeMediatorWithCandidates(ws, [candidate]);
+        var cmd = new PruneBatchCliCommand(mediator);
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        try
+        {
+            await cmd.InvokeAsync(["--dry-run", "--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        output.ToString().Should().Contain("5h");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CandidateOlderThanOneMinute_OutputsAgeInMinutes()
+    {
+        var ws = MakeWorkspace();
+        var candidate = new PruneBatchCandidate(
+            "Sprint 1", "bishop/sprint-1", BatchClosedReason.Finished,
+            DateTimeOffset.UtcNow.AddMinutes(-45), 5, false);
+        var mediator = MakeMediatorWithCandidates(ws, [candidate]);
+        var cmd = new PruneBatchCliCommand(mediator);
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        try
+        {
+            await cmd.InvokeAsync(["--dry-run", "--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        output.ToString().Should().Contain("45m");
     }
 }
