@@ -4,6 +4,7 @@ using Bishop.UI.Views;
 using Bishop.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -55,6 +56,7 @@ public partial class App : Application
 
         _host.Start();
         Services = _host.Services;
+        SafeAsync.Logger = Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(SafeAsync));
 
         UnhandledException += OnAppUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
