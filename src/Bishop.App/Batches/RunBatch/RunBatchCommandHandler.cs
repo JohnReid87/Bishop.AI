@@ -139,7 +139,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                         await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
                         await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
                         failedNumbers.Add(card.Number);
-                        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
+                        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.HandoffMissing);
                     }
 
                     var prefix = TagToPrefix(card.TagName);

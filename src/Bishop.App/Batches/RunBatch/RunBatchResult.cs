@@ -4,6 +4,7 @@ public enum RunBatchStopReason
 {
     Finished,
     CardFailure,
+    HandoffMissing,
     DirtyWorktree,
     NotAGitRepo,
     GitNotFound,

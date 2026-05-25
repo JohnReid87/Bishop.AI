@@ -196,7 +196,7 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
         var result = await CreateHandler(git: git, claude: claude)
             .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
-        result.StopReason.Should().Be(RunBatchStopReason.CardFailure);
+        result.StopReason.Should().Be(RunBatchStopReason.HandoffMissing);
         result.Succeeded.Should().Be(0);
 
         await git.Received(1).ResetHardAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -222,7 +222,7 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
         var result = await CreateHandler(git: git, claude: claude)
             .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
-        result.StopReason.Should().Be(RunBatchStopReason.CardFailure);
+        result.StopReason.Should().Be(RunBatchStopReason.HandoffMissing);
 
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
         saved.LastAutoRunFailedAt.Should().NotBeNull();

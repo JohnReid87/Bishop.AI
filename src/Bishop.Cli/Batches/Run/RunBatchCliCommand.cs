@@ -35,6 +35,10 @@ internal sealed class RunBatchCliCommand : Command
                     Console.Error.WriteLine("Batch stopped on card failure; resolve and --resume or abandon.");
                     Environment.ExitCode = 1;
                     break;
+                case RunBatchStopReason.HandoffMissing:
+                    Console.Error.WriteLine("Batch stopped: card exited 0 but wrote no valid handoff.json; resolve and --resume or abandon.");
+                    Environment.ExitCode = 1;
+                    break;
                 case RunBatchStopReason.DirtyWorktree:
                     Console.Error.WriteLine("Worktree is dirty:");
                     foreach (var path in result.DirtyPaths ?? Array.Empty<string>())
