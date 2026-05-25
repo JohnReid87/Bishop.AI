@@ -1,14 +1,18 @@
+using Microsoft.Extensions.Logging;
+
 namespace Bishop.UI.Services;
 
 internal sealed class DbChangeWatcher : IDisposable
 {
     private readonly FileSystemWatcher _watcher;
+    private readonly ILogger<DbChangeWatcher> _logger;
     private CancellationTokenSource? _debounceCts;
 
     public event EventHandler? DatabaseChanged;
 
-    public DbChangeWatcher(string dbPath)
+    public DbChangeWatcher(string dbPath, ILogger<DbChangeWatcher> logger)
     {
+        _logger = logger;
         var dir = Path.GetDirectoryName(dbPath)!;
         var fileName = Path.GetFileName(dbPath);
 
@@ -34,7 +38,14 @@ internal sealed class DbChangeWatcher : IDisposable
         try
         {
             await Task.Delay(300, ct);
-            DatabaseChanged?.Invoke(this, EventArgs.Empty);
+            try
+            {
+                DatabaseChanged?.Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DbChangeWatcher subscriber threw an unhandled exception");
+            }
         }
         catch (OperationCanceledException) { }
     }

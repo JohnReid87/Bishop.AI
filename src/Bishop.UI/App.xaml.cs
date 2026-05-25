@@ -42,7 +42,7 @@ public partial class App : Application
             .ConfigureServices(services =>
             {
                 services.AddBishopApp(connStr, BishopStampPath.Resolve());
-                services.AddSingleton(_ => new DbChangeWatcher(dbPath));
+                services.AddSingleton(sp => new DbChangeWatcher(dbPath, sp.GetRequiredService<ILogger<DbChangeWatcher>>()));
                 services.AddSingleton<IUiDispatcher>(_ => new WinUiDispatcher(dispatcherQueue));
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<WorkspaceBoardViewModel>();
