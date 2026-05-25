@@ -101,4 +101,20 @@ public sealed class BishopDbConnectionStringTests : IDisposable
         result.Should().Be($"Data Source={Path.Combine(expectedDir, "bishop.db")}");
         Directory.Exists(expectedDir).Should().BeTrue();
     }
+
+    [Fact]
+    public void Resolve_WhenBishopDbEnvVarIsOutsideUserProfile_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+        var outOfBoundsPath = Path.Combine(systemDir, "evil.db");
+        Environment.SetEnvironmentVariable("BISHOP_DB", outOfBoundsPath);
+
+        // Act
+        var act = () => BishopDbConnectionString.Resolve();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*BISHOP_DB*");
+    }
 }
