@@ -1,3 +1,4 @@
+using Bishop.App.Batches.ReconcileOrphanedBatches;
 using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
 using Bishop.App.Workspaces.DeleteWorkspace;
@@ -181,6 +182,21 @@ public class MainWindowViewModelTests
         {
             try { File.Delete(tempPath); } catch (IOException) { /* SaveNavPrefsAsync may still hold the file */ }
         }
+    }
+
+    [Fact]
+    public async Task LoadAsync_SendsReconcileOrphanedBatchesCommand()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>());
+        var vm = NewVm(mediator: mediator);
+
+        await vm.LoadAsync();
+
+        await mediator.Received(1).Send(
+            Arg.Any<ReconcileOrphanedBatchesCommand>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -447,7 +463,7 @@ public class MainWindowViewModelTests
                 new() { Id = id, Name = "alpha", Path = "C:/a", Position = 1 }
             });
         var notifier = Substitute.For<IWorkspaceChangeNotifier>();
-        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: SynchronousDispatcher());
+        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: new SynchronousDispatcher());
 
         notifier.WorkspacesChanged += Raise.Event<Action>();
 
@@ -466,7 +482,7 @@ public class MainWindowViewModelTests
                 new List<Workspace> { new() { Id = originalId, Name = "original", Path = "C:/o", Position = 1 } },
                 new List<Workspace> { new() { Id = newId, Name = "replacement", Path = "C:/n", Position = 1 } });
         var notifier = Substitute.For<IWorkspaceChangeNotifier>();
-        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: SynchronousDispatcher());
+        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: new SynchronousDispatcher());
 
         await vm.LoadAsync();
         vm.SelectedWorkspace = vm.Workspaces[0];
@@ -487,7 +503,7 @@ public class MainWindowViewModelTests
                 new() { Id = Guid.NewGuid(), Name = "alpha", Path = "C:/a", Position = 1 }
             });
         var notifier = Substitute.For<IWorkspaceChangeNotifier>();
-        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: SynchronousDispatcher());
+        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: new SynchronousDispatcher());
 
         notifier.WorkspacesChanged += Raise.Event<Action>();
 
@@ -514,12 +530,31 @@ public class MainWindowViewModelTests
         }
     }
 
-    private static IUiDispatcher SynchronousDispatcher()
+    [Fact]
+    public async Task SaveNavPrefsAsync_SwallowsIOException_WhenFileIsLocked()
     {
-        var dispatcher = Substitute.For<IUiDispatcher>();
-        dispatcher.When(d => d.TryEnqueue(Arg.Any<Func<Task>>()))
-                  .Do(ci => ci.Arg<Func<Task>>()().GetAwaiter().GetResult());
-        return dispatcher;
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        var lockStream = new FileStream(tempPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+        try
+        {
+            var vm = NewVm(navPrefsFilePath: tempPath);
+
+            vm.IsPaneOpen = false;
+            await Task.Delay(200);
+
+            vm.IsPaneOpen.Should().BeFalse();
+        }
+        finally
+        {
+            lockStream.Dispose();
+            try { File.Delete(tempPath); } catch { }
+        }
+    }
+
+    private sealed class SynchronousDispatcher : IUiDispatcher
+    {
+        public void TryEnqueue(Action work) => work();
+        public void TryEnqueue(Func<Task> work) => work().GetAwaiter().GetResult();
     }
 
     private static MainWindowViewModel NewVm(
