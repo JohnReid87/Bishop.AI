@@ -24,6 +24,7 @@ internal static class ErrorDialog
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = xamlRoot,
         };
+        App.LogExceptionToFile(ex);
         try
         {
             var result = await dialog.ShowAsync();
@@ -41,9 +42,9 @@ internal static class ErrorDialog
                 Process.Start("explorer.exe", logDir);
             }
         }
-        catch (COMException)
+        catch (COMException showEx)
         {
-            // ShowAsync throws COMException when a ContentDialog is already open; swallow.
+            App.LogExceptionToFile(showEx);
         }
         catch (Exception showEx)
         {
