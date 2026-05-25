@@ -31,15 +31,20 @@ public sealed class ListCardsCliCommandTests
         new() { Id = Guid.NewGuid(), Name = "test-ws", Path = @"C:\test" };
 
     [Fact]
-    public async Task InvokeAsync_EmptyCards_ExitsZeroAndSendsListCardsByWorkspaceQuery()
+    public async Task InvokeAsync_EmptyCards_ExitsZeroAndOutputsNothing()
     {
         var ws = DefaultWorkspace();
-        var (mediator, cmd) = Build(ws, []);
+        var (_, cmd) = Build(ws, []);
 
-        var exitCode = await cmd.InvokeAsync(["--workspace", "test-ws"]);
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try { exitCode = await cmd.InvokeAsync(["--workspace", "test-ws"]); }
+        finally { Console.SetOut(originalOut); }
 
         exitCode.Should().Be(0);
-        await mediator.Received(1).Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>());
+        output.ToString().Trim().Should().BeEmpty();
     }
 
     [Fact]
@@ -132,15 +137,113 @@ public sealed class ListCardsCliCommandTests
     }
 
     [Fact]
-    public async Task InvokeAsync_TagAndLaneFilter_SendsQueryWithBothFilters()
+    public async Task InvokeAsync_TagAndLaneFilter_OutputsMatchingCards()
     {
         var ws = DefaultWorkspace();
-        var (mediator, cmd) = Build(ws, []);
+        var cards = (IReadOnlyList<Card>)[
+            new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 5, Title = "Filtered card", LaneName = "To Do", Position = 0, TagName = "feature" },
+        ];
+        var lanes = (IReadOnlyList<LaneInfo>)[new LaneInfo("To Do", 1)];
+        var (_, cmd) = Build(ws, cards, lanes);
 
-        await cmd.InvokeAsync(["--workspace", "test-ws", "--tag", "feature", "--lane", "To Do"]);
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["--workspace", "test-ws", "--tag", "feature", "--lane", "To Do"]); }
+        finally { Console.SetOut(originalOut); }
 
-        await mediator.Received(1).Send(
-            Arg.Is<ListCardsByWorkspaceQuery>(q => q.TagName == "feature" && q.LaneName == "To Do"),
-            Arg.Any<CancellationToken>());
+        var text = output.ToString();
+        text.Should().Contain("Filtered card");
+        text.Should().Contain("[feature]");
+        text.Should().Contain("[To Do]");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_TagFilterOnly_OutputsMatchingCard()
+    {
+        var ws = DefaultWorkspace();
+        var cards = (IReadOnlyList<Card>)[
+            new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 3, Title = "Tagged card", LaneName = "To Do", Position = 0, TagName = "feature" },
+        ];
+        var (_, cmd) = Build(ws, cards);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["--workspace", "test-ws", "--tag", "feature"]); }
+        finally { Console.SetOut(originalOut); }
+
+        var text = output.ToString();
+        text.Should().Contain("Tagged card");
+        text.Should().Contain("[feature]");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_LaneFilterOnly_OutputsMatchingCard()
+    {
+        var ws = DefaultWorkspace();
+        var cards = (IReadOnlyList<Card>)[
+            new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 4, Title = "Lane card", LaneName = "Doing", Position = 0 },
+        ];
+        var lanes = (IReadOnlyList<LaneInfo>)[new LaneInfo("Doing", 2)];
+        var (_, cmd) = Build(ws, cards, lanes);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["--workspace", "test-ws", "--lane", "Doing"]); }
+        finally { Console.SetOut(originalOut); }
+
+        var text = output.ToString();
+        text.Should().Contain("[Doing]");
+        text.Should().Contain("Lane card");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_UnknownLane_SortsAfterKnownLanes()
+    {
+        var ws = DefaultWorkspace();
+        var cards = (IReadOnlyList<Card>)[
+            new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 1, Title = "Known", LaneName = "To Do", Position = 0 },
+            new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 2, Title = "Orphan", LaneName = "Archive", Position = 0 },
+        ];
+        var lanes = (IReadOnlyList<LaneInfo>)[new LaneInfo("To Do", 1)];
+        var (_, cmd) = Build(ws, cards, lanes);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["--workspace", "test-ws"]); }
+        finally { Console.SetOut(originalOut); }
+
+        var text = output.ToString();
+        text.Should().Contain("[To Do]");
+        text.Should().Contain("[Archive]");
+        text.IndexOf("[To Do]", StringComparison.Ordinal)
+            .Should().BeLessThan(text.IndexOf("[Archive]", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_EmptyStringLaneName_SortsAfterKnownLanes()
+    {
+        var ws = DefaultWorkspace();
+        var cards = (IReadOnlyList<Card>)[
+            new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 1, Title = "Known", LaneName = "To Do", Position = 0 },
+            new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 2, Title = "Missing", LaneName = "", Position = 0 },
+        ];
+        var lanes = (IReadOnlyList<LaneInfo>)[new LaneInfo("To Do", 1)];
+        var (_, cmd) = Build(ws, cards, lanes);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["--workspace", "test-ws"]); }
+        finally { Console.SetOut(originalOut); }
+
+        var text = output.ToString();
+        text.Should().Contain("[To Do]");
+        text.Should().Contain("Missing");
+        text.IndexOf("[To Do]", StringComparison.Ordinal)
+            .Should().BeLessThan(text.IndexOf("Missing", StringComparison.Ordinal));
     }
 }
