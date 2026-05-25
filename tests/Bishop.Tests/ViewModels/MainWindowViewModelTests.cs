@@ -202,7 +202,7 @@ public class MainWindowViewModelTests
     [Fact]
     public void OnSelectedWorkspaceChanged_SetsIsPathMissing_WhenPathDoesNotExist()
     {
-        var vm = NewVm();
+        var vm = NewVm(dispatcher: new SynchronousDispatcher());
         var item = new WorkspaceItemViewModel
         {
             Id = Guid.NewGuid(),
@@ -218,7 +218,7 @@ public class MainWindowViewModelTests
     [Fact]
     public void OnSelectedWorkspaceChanged_MarksSingleItemSelected()
     {
-        var vm = NewVm();
+        var vm = NewVm(dispatcher: new SynchronousDispatcher());
         var item1 = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "a" };
         var item2 = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "b" };
         vm.Workspaces.Add(item1);
@@ -516,7 +516,7 @@ public class MainWindowViewModelTests
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
         try
         {
-            var vm = NewVm(navPrefsFilePath: tempPath);
+            var vm = NewVm(dispatcher: new SynchronousDispatcher(), navPrefsFilePath: tempPath);
             vm.IsPaneOpen = false;
 
             await Task.Delay(200);
@@ -537,7 +537,7 @@ public class MainWindowViewModelTests
         var lockStream = new FileStream(tempPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
         try
         {
-            var vm = NewVm(navPrefsFilePath: tempPath);
+            var vm = NewVm(dispatcher: new SynchronousDispatcher(), navPrefsFilePath: tempPath);
 
             vm.IsPaneOpen = false;
             await Task.Delay(200);
