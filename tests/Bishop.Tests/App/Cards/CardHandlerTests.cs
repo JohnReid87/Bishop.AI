@@ -1,5 +1,4 @@
 using Bishop.App.Cards.AddCard;
-using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.ListCardsByWorkspace;
@@ -15,6 +14,7 @@ using FluentAssertions;
 using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Bishop.Tests.App.Cards;
@@ -33,6 +33,9 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     }
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
+
+    private MoveCardCommandHandler MoveHandler() =>
+        new(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance);
 
     private async Task<(Workspace workspace, IReadOnlyList<LaneInfo> lanes)> CreateWorkspaceWithLanesAsync()
     {
@@ -136,7 +139,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var a = await add.Handle(new AddCardCommand(workspace.Id, lane.Name, "A"), default);
         var b = await add.Handle(new AddCardCommand(workspace.Id, lane.Name, "B"), default);
         var c = await add.Handle(new AddCardCommand(workspace.Id, lane.Name, "C"), default);
-        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
+        var handler = MoveHandler();
 
         // Act — with insert-at-top, initial order is C(1), B(2), A(3); move A to position 1 → A, C, B
         await handler.Handle(new MoveCardCommand(a.Id, lane.Name, 1), default);
@@ -161,7 +164,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var a = await add.Handle(new AddCardCommand(workspace.Id, todo.Name, "A"), default);
         var b = await add.Handle(new AddCardCommand(workspace.Id, todo.Name, "B"), default);
         await add.Handle(new AddCardCommand(workspace.Id, doing.Name, "X"), default);
-        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
+        var handler = MoveHandler();
 
         // Act — move A from To Do to Doing at position 1 → Doing: A(1), X(2); To Do: B(1)
         await handler.Handle(new MoveCardCommand(a.Id, doing.Name, 1), default);
@@ -277,7 +280,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var a = await add.Handle(new AddCardCommand(workspace.Id, lane.Name, "A"), default);
         var b = await add.Handle(new AddCardCommand(workspace.Id, lane.Name, "B"), default);
         var c = await add.Handle(new AddCardCommand(workspace.Id, lane.Name, "C"), default);
-        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
+        var handler = MoveHandler();
 
         // Act — with insert-at-top, initial order is C(1), B(2), A(3); move C to position 3 (end) → B, A, C
         await handler.Handle(new MoveCardCommand(c.Id, lane.Name, 3), default);
@@ -298,7 +301,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "A"), default);
-        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
+        var handler = MoveHandler();
 
         // Act
         await handler.Handle(
@@ -318,7 +321,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var (workspace, _) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.Doing, "Already moved"), default);
-        var handler = new MoveCardCommandHandler(_factory, Substitute.For<ISender>());
+        var handler = MoveHandler();
 
         // Act
         var act = async () => await handler.Handle(
@@ -516,11 +519,8 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         var ghCli = Substitute.For<IGhCli>();
         var sender = Substitute.For<ISender>();
         sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new MoveCardCommandHandler(_factory, sender)
+            .Returns(call => new MoveCardCommandHandler(_factory, ghCli, NullLogger<MoveCardCommandHandler>.Instance)
                 .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
-        sender.Send(Arg.Any<CloseCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new CloseCardCommandHandler(_factory, ghCli)
-                .Handle(call.ArgAt<CloseCardCommand>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }
 

@@ -8,6 +8,7 @@ using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Services.Claude;
+using Bishop.App.Services.GitHub;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.GetWorkspace;
 using Bishop.Core;
@@ -15,6 +16,7 @@ using Bishop.Data;
 using FluentAssertions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Bishop.Tests.App.Batches;
@@ -69,7 +71,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     {
         var sender = Substitute.For<ISender>();
         sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new MoveCardCommandHandler(_factory, sender)
+            .Returns(call => new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
                 .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<RecordClaudeRunCommand>(), Arg.Any<CancellationToken>())
             .Returns(call => new RecordClaudeRunCommandHandler(_factory)
@@ -472,7 +474,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         await repo.TransitionToWorkingAsync(batch.Id);
 
         // Manually move c1 to Done to simulate a previously completed card
-        await new MoveCardCommandHandler(_factory, CreateSender())
+        await new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
             .Handle(new MoveCardCommand(c1.Id, SystemLaneNames.Done, 0, KeepOpen: true), default);
 
         var claude = ClaudeAlwaysSucceeds();
@@ -500,7 +502,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         var repo = new BatchRepository(_factory);
         await repo.TransitionToWorkingAsync(batch.Id);
-        await new MoveCardCommandHandler(_factory, CreateSender())
+        await new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
             .Handle(new MoveCardCommand(card.Id, SystemLaneNames.Done, 0, KeepOpen: true), default);
 
         var claude = ClaudeAlwaysSucceeds();
