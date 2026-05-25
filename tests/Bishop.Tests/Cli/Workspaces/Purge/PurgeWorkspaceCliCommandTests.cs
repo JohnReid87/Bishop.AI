@@ -39,15 +39,17 @@ public sealed class PurgeWorkspaceCliCommandTests
         var errorOutput = new StringWriter();
         var originalErr = Console.Error;
         Console.SetError(errorOutput);
+        int exitCode;
         try
         {
-            await cmd.InvokeAsync([]);
+            exitCode = await cmd.InvokeAsync([]);
         }
         finally
         {
             Console.SetError(originalErr);
         }
 
+        exitCode.Should().Be(0);
         errorOutput.ToString().Should().Contain("error:");
         await mediator.DidNotReceive().Send(Arg.Any<PurgeWorkspaceCommand>(), Arg.Any<CancellationToken>());
     }
@@ -68,13 +70,37 @@ public sealed class PurgeWorkspaceCliCommandTests
     }
 
     [Fact]
+    public async Task Path_HappyPath_DeletesBishopDirectory()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "bishop-purge-" + Guid.NewGuid().ToString("N")[..8]);
+        var bishopDir = Path.Combine(tempDir, ".bishop");
+        Directory.CreateDirectory(bishopDir);
+        try
+        {
+            var ws = MakeRemovedWorkspace(path: tempDir);
+            var mediator = BuildMediator(ws);
+            var cmd = new PurgeWorkspaceCliCommand(mediator);
+
+            await cmd.InvokeAsync(["--path", tempDir, "--yes"]);
+
+            Directory.Exists(bishopDir).Should().BeFalse();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Path_NotFound_DoesNotSendPurgeCommand()
     {
         var mediator = BuildMediator();
         var cmd = new PurgeWorkspaceCliCommand(mediator);
 
-        await cmd.InvokeAsync(["--path", WorkspacePath, "--yes"]);
+        var exitCode = await cmd.InvokeAsync(["--path", WorkspacePath, "--yes"]);
 
+        exitCode.Should().Be(1);
         await mediator.DidNotReceive().Send(Arg.Any<PurgeWorkspaceCommand>(), Arg.Any<CancellationToken>());
     }
 
@@ -94,6 +120,18 @@ public sealed class PurgeWorkspaceCliCommandTests
     }
 
     [Fact]
+    public async Task Name_NotFound_ExitCode1AndDoesNotSendPurgeCommand()
+    {
+        var mediator = BuildMediator();
+        var cmd = new PurgeWorkspaceCliCommand(mediator);
+
+        var exitCode = await cmd.InvokeAsync(["--name", "nonexistent-ws", "--yes"]);
+
+        exitCode.Should().Be(1);
+        await mediator.DidNotReceive().Send(Arg.Any<PurgeWorkspaceCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Name_MultipleMatches_WritesErrorAndDoesNotSendPurgeCommand()
     {
         var ws1 = MakeRemovedWorkspace(name: "dup-ws", path: @"C:\dup-path-1");
@@ -103,15 +141,17 @@ public sealed class PurgeWorkspaceCliCommandTests
         var errorOutput = new StringWriter();
         var originalErr = Console.Error;
         Console.SetError(errorOutput);
+        int exitCode;
         try
         {
-            await cmd.InvokeAsync(["--name", "dup-ws", "--yes"]);
+            exitCode = await cmd.InvokeAsync(["--name", "dup-ws", "--yes"]);
         }
         finally
         {
             Console.SetError(originalErr);
         }
 
+        exitCode.Should().Be(0);
         errorOutput.ToString().Should().Contain("error:");
         await mediator.DidNotReceive().Send(Arg.Any<PurgeWorkspaceCommand>(), Arg.Any<CancellationToken>());
     }
