@@ -615,4 +615,36 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
         var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
         result.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task Handle_SkillMdWithFirstRunModelAndReRunModel_ParsedCorrectly()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            "---\nname: my-skill\nfirstRunModel: claude-opus-4-7\nreRunModel: claude-sonnet-4-6\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].FirstRunModel.Should().Be("claude-opus-4-7");
+        result[0].ReRunModel.Should().Be("claude-sonnet-4-6");
+    }
+
+    [Fact]
+    public async Task Handle_SkillMdWithoutFirstRunModelAndReRunModel_BothNull()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
+            "---\nname: my-skill\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].FirstRunModel.Should().BeNull();
+        result[0].ReRunModel.Should().BeNull();
+    }
 }
