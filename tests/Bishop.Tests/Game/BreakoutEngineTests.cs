@@ -193,6 +193,23 @@ public class BreakoutEngineTests
         engine.BallDxForTest.Should().BeNegative();
     }
 
+    [Fact]
+    public void Tick_WhenBallMovingUpward_DoesNotCollideWithPaddle()
+    {
+        var engine = new BreakoutEngine();
+        var paddle = engine.Snapshot.Paddle;
+        float ballRadius = engine.Snapshot.Ball.Radius;
+        engine.SetBallForTest(
+            x: paddle.X + paddle.Width / 2f,
+            y: paddle.Y - ballRadius - 1f,
+            dx: 0f,
+            dy: -200f); // moving upward — _ballDy > 0f guard should reject collision
+
+        engine.Tick(1.0 / 60.0);
+
+        engine.BallDyForTest.Should().BeNegative(); // dy unchanged; no paddle bounce
+    }
+
     // ── Brick collision ───────────────────────────────────────────────────────
 
     [Fact]
@@ -384,6 +401,35 @@ public class BreakoutEngineTests
         engine.SetBallForTest(x: 400f, y: BreakoutEngine.FieldHeight - 1f, dx: 0f, dy: 200f);
         engine.Tick(1.0 / 60.0); // triggers GameOver
         engine.Reset();
+        var snap = engine.Snapshot;
+        snap.State.Should().Be(GameState.WaitingToLaunch);
+        snap.Lives.Should().Be(3);
+        snap.Score.Should().Be(0);
+        snap.Bricks.Should().AllSatisfy(b => b.IsDestroyed.Should().BeFalse());
+    }
+
+    [Fact]
+    public void Reset_WhenPlaying_RestoresInitialState()
+    {
+        var engine = new BreakoutEngine();
+        engine.LaunchBall();
+
+        engine.Reset();
+
+        var snap = engine.Snapshot;
+        snap.State.Should().Be(GameState.WaitingToLaunch);
+        snap.Lives.Should().Be(3);
+        snap.Score.Should().Be(0);
+        snap.Bricks.Should().AllSatisfy(b => b.IsDestroyed.Should().BeFalse());
+    }
+
+    [Fact]
+    public void Reset_WhenPaused_RestoresInitialState()
+    {
+        var engine = PausedEngine();
+
+        engine.Reset();
+
         var snap = engine.Snapshot;
         snap.State.Should().Be(GameState.WaitingToLaunch);
         snap.Lives.Should().Be(3);
