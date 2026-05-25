@@ -6,7 +6,7 @@ namespace Bishop.Cli.Batches.Finish;
 
 internal sealed class FinishBatchCliCommand : Command
 {
-    public FinishBatchCliCommand(ISender mediator) : base("finish", "Push the batch branch, open a PR, and close the batch")
+    public FinishBatchCliCommand(ISender mediator) : base("finish", "Push the batch branch and open a PR; batch stays open until 'bishop batch complete'")
     {
         var resolver = new WorkspaceResolver(mediator);
         var nameArg = new Argument<string>("name", "Batch name");

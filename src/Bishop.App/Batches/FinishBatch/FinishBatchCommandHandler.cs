@@ -4,6 +4,7 @@ using Bishop.Core;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Bishop.App.Batches.FinishBatch;
 
@@ -13,17 +14,20 @@ public sealed class FinishBatchCommandHandler : IRequestHandler<FinishBatchComma
     private readonly IGitCli _git;
     private readonly IGhCli _ghCli;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly ILogger<FinishBatchCommandHandler> _logger;
 
     public FinishBatchCommandHandler(
         IBatchRepository batches,
         IGitCli git,
         IGhCli ghCli,
-        IDbContextFactory<BishopDbContext> dbFactory)
+        IDbContextFactory<BishopDbContext> dbFactory,
+        ILogger<FinishBatchCommandHandler> logger)
     {
         _batches = batches;
         _git = git;
         _ghCli = ghCli;
         _dbFactory = dbFactory;
+        _logger = logger;
     }
 
     public async Task<FinishBatchResult> Handle(FinishBatchCommand request, CancellationToken cancellationToken)
@@ -69,7 +73,16 @@ public sealed class FinishBatchCommandHandler : IRequestHandler<FinishBatchComma
             cancellationToken);
 
         await _batches.SetGitHubPrUrlAsync(batch.Id, prUrl.Trim(), cancellationToken);
-        await _git.RemoveWorktreeAsync(request.WorkspacePath, batch.WorktreePath, cancellationToken);
+
+        try
+        {
+            await _git.RemoveWorktreeAsync(request.WorkspacePath, batch.WorktreePath, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to remove worktree '{Path}' after finishing batch '{Name}'.",
+                batch.WorktreePath, batch.Name);
+        }
 
         return new FinishBatchResult(prUrl.Trim());
     }

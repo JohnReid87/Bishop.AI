@@ -778,7 +778,23 @@ public sealed partial class WorkspaceDetailPage : Page
             }
 
             var mediator = App.Services.GetRequiredService<ISender>();
-            var result = await mediator.Send(new FinishBatchCommand(batch.Name, _item.Path, _item.GitHubRepo));
+            FinishBatchResult result;
+            try
+            {
+                result = await mediator.Send(new FinishBatchCommand(batch.Name, _item.Path, _item.GitHubRepo));
+            }
+            catch (Exception ex)
+            {
+                var errDialog = new ContentDialog
+                {
+                    Title = "Finish failed",
+                    Content = ex.Message,
+                    CloseButtonText = "OK",
+                    XamlRoot = XamlRoot,
+                };
+                await errDialog.ShowAsync();
+                return;
+            }
 
             await Board.RefreshCommand.ExecuteAsync(null);
             await Batches.RefreshCommand.ExecuteAsync(null);

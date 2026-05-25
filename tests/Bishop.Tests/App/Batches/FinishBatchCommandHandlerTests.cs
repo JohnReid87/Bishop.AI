@@ -77,7 +77,8 @@ public sealed class FinishBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     private FinishBatchCommandHandler CreateHandler(IGitCli? git = null, IGhCli? gh = null)
-        => new(new BatchRepository(_factory), git ?? GitPushSucceeds(), gh ?? GhReturnsUrl(), _factory);
+        => new(new BatchRepository(_factory), git ?? GitPushSucceeds(), gh ?? GhReturnsUrl(), _factory,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<FinishBatchCommandHandler>.Instance);
 
     // ── status validation ──────────────────────────────────────────────────────
 
