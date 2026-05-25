@@ -492,6 +492,48 @@ public sealed class GitCli : IGitCli
         }
     }
 
+    public async Task<PushResult> PushNewBranchAsync(
+        string worktreePath, string branchName, CancellationToken cancellationToken = default)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = worktreePath,
+        };
+        psi.ArgumentList.Add("push");
+        psi.ArgumentList.Add("-u");
+        psi.ArgumentList.Add("origin");
+        psi.ArgumentList.Add(branchName);
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            return new PushResult(Success: false, Message: "git executable not found");
+        }
+
+        if (proc is null)
+            return new PushResult(Success: false, Message: "git executable not found");
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            var message = string.IsNullOrWhiteSpace(stderr) ? stdout.Trim() : stderr.Trim();
+            return new PushResult(
+                Success: proc.ExitCode == 0,
+                Message: string.IsNullOrEmpty(message) ? null : message);
+        }
+    }
+
     public async Task ResetHardAsync(string workspacePath, CancellationToken cancellationToken = default)
     {
         var psi = new ProcessStartInfo("git")

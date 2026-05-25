@@ -63,7 +63,7 @@ public sealed class FinishBatchCommandHandlerTests : IClassFixture<DbFixture>
     private static IGitCli GitPushSucceeds()
     {
         var git = Substitute.For<IGitCli>();
-        git.PushAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        git.PushNewBranchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new PushResult(true, null));
         return git;
     }
@@ -125,7 +125,7 @@ public sealed class FinishBatchCommandHandlerTests : IClassFixture<DbFixture>
         var batch = await CreateWorkingBatchAsync();
 
         var git = Substitute.For<IGitCli>();
-        git.PushAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        git.PushNewBranchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new PushResult(false, "rejected: not fast-forward"));
         var gh = GhReturnsUrl();
 
@@ -200,7 +200,7 @@ public sealed class FinishBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task PushCalledWithWorktreePath()
+    public async Task PushNewBranchCalledWithWorktreePathAndBranchName()
     {
         var batch = await CreateWorkingBatchAsync();
         var git = GitPushSucceeds();
@@ -208,7 +208,7 @@ public sealed class FinishBatchCommandHandlerTests : IClassFixture<DbFixture>
         await CreateHandler(git: git).Handle(
             new FinishBatchCommand(batch.Name, WorkspacePath, GitHubRepo), default);
 
-        await git.Received(1).PushAsync(WorktreePath, Arg.Any<CancellationToken>());
+        await git.Received(1).PushNewBranchAsync(WorktreePath, batch.BranchName, Arg.Any<CancellationToken>());
     }
 
     [Fact]

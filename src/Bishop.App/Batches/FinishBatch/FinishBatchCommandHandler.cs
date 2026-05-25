@@ -51,7 +51,7 @@ public sealed class FinishBatchCommandHandler : IRequestHandler<FinishBatchComma
             .OrderBy(c => c.Number)
             .ToListAsync(cancellationToken);
 
-        var pushResult = await _git.PushAsync(batch.WorktreePath, cancellationToken);
+        var pushResult = await _git.PushNewBranchAsync(batch.WorktreePath, batch.BranchName, cancellationToken);
         if (!pushResult.Success)
             throw new InvalidOperationException(
                 $"Failed to push branch '{batch.BranchName}': {pushResult.Message}");

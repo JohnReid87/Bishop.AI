@@ -18,6 +18,8 @@ public interface IGitCli
 
     Task<PushResult> PushAsync(string workspacePath, CancellationToken cancellationToken = default);
 
+    Task<PushResult> PushNewBranchAsync(string worktreePath, string branchName, CancellationToken cancellationToken = default);
+
     Task ResetHardAsync(string workspacePath, CancellationToken cancellationToken = default);
 
     Task CleanWorkingTreeAsync(string workspacePath, CancellationToken cancellationToken = default);
