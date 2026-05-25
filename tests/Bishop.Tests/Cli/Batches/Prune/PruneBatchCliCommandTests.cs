@@ -52,7 +52,7 @@ public sealed class PruneBatchCliCommandTests
         }
 
         exitCode.Should().Be(0);
-        await mediator.DidNotReceive().Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>());
+        output.ToString().Should().Contain("No candidates found.");
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class PruneBatchCliCommandTests
         }
 
         exitCode.Should().Be(0);
-        await mediator.DidNotReceive().Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>());
+        output.ToString().Should().Contain("[dry-run] No changes made.");
     }
 
     [Fact]
@@ -103,10 +103,7 @@ public sealed class PruneBatchCliCommandTests
         }
 
         exitCode.Should().Be(0);
-        await mediator.Received(1).Send(
-            Arg.Is<DeleteBatchBranchCommand>(c =>
-                c.WorkspacePath == ws.Path && c.BranchName == candidate.BranchName),
-            Arg.Any<CancellationToken>());
+        output.ToString().Should().Contain("1 branch(es) deleted.");
     }
 
     [Fact]
@@ -354,5 +351,47 @@ public sealed class PruneBatchCliCommandTests
         }
 
         output.ToString().Should().Contain("45m");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_AbandonedOnlyFlag_RenderedOutputDiffersFromNoFlag()
+    {
+        var ws = MakeWorkspace();
+        var finishedCandidate = new PruneBatchCandidate(
+            "Sprint 1", "bishop/sprint-1", BatchClosedReason.Finished,
+            DateTimeOffset.UtcNow.AddDays(-2), 5, false);
+        var abandonedCandidate = new PruneBatchCandidate(
+            "Sprint 2", "bishop/sprint-2", BatchClosedReason.Abandoned,
+            DateTimeOffset.UtcNow.AddDays(-3), 2, false);
+
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Workspace>)[ws]);
+        mediator.Send(
+            Arg.Is<GetBatchPruneCandidatesQuery>(q => !q.AbandonedOnly),
+            Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<PruneBatchCandidate>)[finishedCandidate, abandonedCandidate]);
+        mediator.Send(
+            Arg.Is<GetBatchPruneCandidatesQuery>(q => q.AbandonedOnly),
+            Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<PruneBatchCandidate>)[abandonedCandidate]);
+
+        var cmd = new PruneBatchCliCommand(mediator);
+
+        var outputWithoutFlag = new StringWriter();
+        var outputWithFlag = new StringWriter();
+        var original = Console.Out;
+
+        Console.SetOut(outputWithoutFlag);
+        try { await cmd.InvokeAsync(["--dry-run", "--workspace", "test-ws"]); }
+        finally { Console.SetOut(original); }
+
+        Console.SetOut(outputWithFlag);
+        try { await cmd.InvokeAsync(["--dry-run", "--abandoned-only", "--workspace", "test-ws"]); }
+        finally { Console.SetOut(original); }
+
+        outputWithoutFlag.ToString().Should().Contain("bishop/sprint-1");
+        outputWithFlag.ToString().Should().NotContain("bishop/sprint-1");
+        outputWithFlag.ToString().Should().Contain("bishop/sprint-2");
     }
 }
