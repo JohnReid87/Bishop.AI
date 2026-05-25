@@ -995,6 +995,57 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         }
     }
 
+    [Fact]
+    public async Task SeedAsync_ThrowsOperationCanceledException_WhenTokenAlreadyCancelled()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            var sut = new WorkspaceContextSeeder(_factory);
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var act = () => sut.SeedAsync(temp, cts.Token);
+
+            await act.Should().ThrowAsync<OperationCanceledException>();
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_ResolvesExactlyOneWorkspace_WhenDuplicateNormalizedPathsExist()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            var firstName = U("First");
+            var secondName = U("Second");
+            var workspace1 = new Workspace { Id = Guid.NewGuid(), Name = firstName, Path = temp, Position = 1 };
+            var workspace2 = new Workspace { Id = Guid.NewGuid(), Name = secondName, Path = temp, Position = 2 };
+            _db.Workspaces.AddRange(workspace1, workspace2);
+            await _db.SaveChangesAsync();
+
+            var sut = new WorkspaceContextSeeder(_factory);
+            await sut.SeedAsync(temp);
+
+            // ResolveWorkspaceAsync uses FirstOrDefault with no ORDER BY — which workspace
+            // wins is non-deterministic (depends on SQLite row order). Assert that exactly
+            // one of the two is resolved, not both or neither.
+            var bishopContent = File.ReadAllText(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md"));
+            var containsFirst = bishopContent.Contains($"# BISHOP_CONTEXT — {firstName}", StringComparison.Ordinal);
+            var containsSecond = bishopContent.Contains($"# BISHOP_CONTEXT — {secondName}", StringComparison.Ordinal);
+            (containsFirst ^ containsSecond).Should().BeTrue(
+                "ResolveWorkspaceAsync must resolve exactly one workspace even when two share the same normalized path");
+        }
+        finally
+        {
+            CleanupTempDir(temp);
+        }
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private async Task<Workspace> SeedRegisteredWorkspaceAsync(string path, string name)
