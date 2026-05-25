@@ -45,8 +45,7 @@ accent are placed.
 | dialog-surface  | `#14141A`  | Modal dialog backgrounds only — see surface tiers    |
 | icon-surface    | `#141914`  | SVG app-icon backgrounds only — see surface tiers    |
 | border          | `#2a2a2a`  | Dividers, outlines                                   |
-| text            | `#e8e8e8`  | Primary text (branded wordmarks, etc.)               |
-| text-muted      | `#888888`  | Secondary text, muted / offline state                |
+| text            | `#FFFFFF`  | Primary text (branded wordmarks, etc.)               |
 | accent (signal) | `#00ff41`  | Focus ring, selection indicator, primary CTA         |
 | accent-hover    | `#00b830`  | Signal on hover / pressed                            |
 | error           | `#ff5555`  | Error & destructive states only — see carve-outs     |
@@ -59,15 +58,13 @@ accent are placed.
 - **Red `#ff5555`** is reserved for true error / destructive states
   (validation failures, delete confirmations, failed runs). Do not use
   red for warnings, badges, or decoration.
-- **Grey `#888888`** is the muted / offline indicator (disabled buttons,
-  dimmed text, "unavailable" affordances).
 
 ## State overlays
 
 Alpha-blended whites and blacks layered onto the neutral scaffold. Hex
 is shown in `#AARRGGBB` form (WPF / WinUI native). These are documented
-as they appear in code today — extracting them into named brushes in
-`Themes/Colors.xaml` is a future refinement, not a brand requirement.
+as they appear in code today — they are defined as named brushes in
+`Themes/Brushes.xaml`.
 
 | Token                       | Hex          | Where it lives                                                                 |
 | --------------------------- | ------------ | ------------------------------------------------------------------------------ |
@@ -75,9 +72,9 @@ as they appear in code today — extracting them into named brushes in
 | `overlay-selected-hover`    | `#30FFFFFF`  | `ListViewItemBackgroundSelectedPointerOver`                                    |
 | `overlay-selected-pressed`  | `#40FFFFFF`  | `ListViewItemBackgroundSelectedPressed`                                        |
 | `placeholder-text`          | `#44FFFFFF`  | TextBox / search-box placeholder labels (`WorkspaceDetailPage`)                |
-| `text-tertiary`             | `#55FFFFFF`  | `ColorTextTertiary` in `Themes/Colors.xaml` — least prominent text             |
-| `text-secondary`            | `#99FFFFFF`  | `ColorTextSecondary` in `Themes/Colors.xaml` — disabled / muted secondary text |
-| `divider`                   | `#1AFFFFFF`  | `ColorDivider` in `Themes/Colors.xaml` — thin separators on dark surfaces      |
+| `text-tertiary`             | `#55FFFFFF`  | `AppTextTertiaryBrush` in `Themes/Brushes.xaml` — least prominent text             |
+| `text-secondary`            | `#99FFFFFF`  | `AppTextSecondaryBrush` in `Themes/Brushes.xaml` — disabled / muted secondary text |
+| `divider`                   | `#1AFFFFFF`  | `AppDividerBrush` in `Themes/Brushes.xaml` — thin separators on dark surfaces      |
 | `scrim`                     | `#80000000`  | Full-content darkening overlay (e.g. cat-mode tint in `MainWindow.xaml`)       |
 
 The selection scale (`#20` → `#30` → `#40`) is a deliberate ramp — each

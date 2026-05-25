@@ -66,6 +66,19 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop lane list [-w]` — lanes are fixed (Backlog / To Do / Doing / Done); no user-mutable lane CRUD
 - `bishop tag list [-w]` — list all tags defined in the workspace
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
+- `bishop batch create --name <text> [--branch <name>] [--base <branch>] [--cards <n,...>] [--tag <name>] [--lane <name>] [-w]` — create a batch, provision a git worktree, and optionally assign cards by number, tag, or lane
+- `bishop batch list [--json]`
+- `bishop batch view <name> [--json]`
+- `bishop batch add-card <name> <card-id> [-w]`
+- `bishop batch remove-card <name> <card-id> [-w]`
+- `bishop batch run <name> [--resume] [--model <model-id>]` — run a batch end-to-end in its worktree via `bish-auto-card`; stops on card failure; `--resume` continues from the next undone card
+- `bishop batch finish <name> [-w]` — push the batch branch, open a PR, and close the batch
+- `bishop batch abandon <name> [-w]` — abandon a batch and remove its worktree
+- `bishop batch prune [-w]` — remove worktrees for completed or abandoned batches
+- `bishop skill bootstrap [--json]` — emit workspace + tag/lane info for a skill preamble; non-zero exit if not in a workspace
+- `bishop context print [--section <name>] [-w]` — print the workspace CONTEXT.md file, or a single named H2 section
+- `bishop context-pack <skill-name> [--card <n>] [-w] [--list]` — emit a pre-stuffed JSON context bundle (workspace + git + skill-specific data + conventions); `--list` enumerates registered providers
+- `bishop hook check-path` — `PreToolUse` hook: reads tool-use JSON from stdin and exits non-zero if the target path is outside the workspace; only active when `BISHOP_AUTO_CARD` is set
 
 Card identifiers accept either a workspace-scoped Number (`42`, `#42`) or the first 8 hex chars of the GUID as a short-ID prefix. Number lookup is exact; hex-prefix lookup falls back and rejects ambiguous prefixes with a list of 8-char hex candidates on stderr. CLI output renders `#N` (e.g. `#42`) rather than the full UUID.
 

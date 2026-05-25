@@ -8,7 +8,7 @@ Single source of truth for "is this in scope or not". When the answer changes, u
 
 Deep Claude Code integration on top of the kanban + `bishop` CLI scaffolding that already exists.
 
-The kanban tracks work state per workspace. Skills (`bish-work-on-card`, `bish-grill-me`, future siblings) shell out to the `bishop` CLI to read and mutate that state. The user reviews everything material in the conversational loop. Bishop.UI is the interactive surface over the same state — a kanban view with a narrow set of direct mutations (see [Resolved scope decisions](#resolved-scope-decisions)). No agent observability dashboard, no embedded terminals, no plugin system.
+The kanban tracks work state per workspace. Skills (`bish-work-on-card`, `bish-grill-me`, `bish-auto-card`) shell out to the `bishop` CLI to read and mutate that state. The user reviews everything material in the conversational loop. Bishop.UI is the interactive surface over the same state — a kanban view with a narrow set of direct mutations (see [Resolved scope decisions](#resolved-scope-decisions)). No agent observability dashboard, no embedded terminals, no plugin system.
 
 The differentiator is the **layer above the editor** — cross-workspace orchestration + kanban as work-state source of truth + skill integration. The editor layer (VS Code + Claude extension) already exists; Bishop doesn't compete inside its box.
 
