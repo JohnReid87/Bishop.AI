@@ -354,6 +354,163 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         root.GetProperty("relatedCards").GetArrayLength().Should().Be(0);
     }
 
+    [Fact]
+    public async Task ContextMd_WhenFileExists_ReadsContent()
+    {
+        // Arrange
+        var name = U("ctx");
+        var dir = Path.Combine(Path.GetTempPath(), name);
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "CONTEXT.md"), "# My context");
+            var workspace = await new CreateWorkspaceCommandHandler(_factory)
+                .Handle(new CreateWorkspaceCommand(name, dir), default);
+            var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
+
+            // Act
+            var pack = await handler.Handle(
+                new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(null)),
+                default);
+
+            // Assert
+            pack.Workspace.ContextMd.Should().Be("# My context");
+            pack.Workspace.ContextMdTruncated.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ContextMd_WhenFileExceedsMaxBytes_ReturnsNullAndTruncatedTrue()
+    {
+        // Arrange
+        var name = U("ctx");
+        var dir = Path.Combine(Path.GetTempPath(), name);
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var bigContent = new string('x', BuildContextPackQueryHandler.ContextMdMaxBytes + 1);
+            File.WriteAllText(Path.Combine(dir, "CONTEXT.md"), bigContent);
+            var workspace = await new CreateWorkspaceCommandHandler(_factory)
+                .Handle(new CreateWorkspaceCommand(name, dir), default);
+            var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
+
+            // Act
+            var pack = await handler.Handle(
+                new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(null)),
+                default);
+
+            // Assert
+            pack.Workspace.ContextMd.Should().BeNull();
+            pack.Workspace.ContextMdTruncated.Should().BeTrue();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ContextMd_WhenFileIsLocked_ReturnsNull()
+    {
+        // Arrange
+        var name = U("ctx");
+        var dir = Path.Combine(Path.GetTempPath(), name);
+        Directory.CreateDirectory(dir);
+        var contextPath = Path.Combine(dir, "CONTEXT.md");
+        File.WriteAllText(contextPath, "locked content");
+        try
+        {
+            ContextPack pack;
+            using (var lockStream = new FileStream(contextPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                var workspace = await new CreateWorkspaceCommandHandler(_factory)
+                    .Handle(new CreateWorkspaceCommand(name, dir), default);
+                var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
+                pack = await handler.Handle(
+                    new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(null)),
+                    default);
+            }
+
+            // Assert
+            pack.Workspace.ContextMd.Should().BeNull();
+            pack.Workspace.ContextMdTruncated.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task GitBlock_WhenGetBranchThrows_BranchIsNull()
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var git = Substitute.For<IGitCli>();
+        git.GetCurrentBranchAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<string>(_ => throw new InvalidOperationException("Not a git repo"));
+        git.GetRecentCommitsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<GetRecentCommitsResult>(new GetRecentCommitsResult.NoCommits()));
+        var handler = CreateHandler(CreateSender(), git, new WorkOnCardContextProvider());
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(null)),
+            default);
+
+        // Assert
+        pack.Git.Branch.Should().BeNull();
+        pack.Git.Commits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GitBlock_WhenNoCommitsResult_CommitsIsEmpty()
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var git = Substitute.For<IGitCli>();
+        git.GetCurrentBranchAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("main"));
+        git.GetRecentCommitsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<GetRecentCommitsResult>(new GetRecentCommitsResult.NoCommits()));
+        var handler = CreateHandler(CreateSender(), git, new WorkOnCardContextProvider());
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(null)),
+            default);
+
+        // Assert
+        pack.Git.Branch.Should().Be("main");
+        pack.Git.Commits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GitBlock_WhenNotAGitRepoResult_CommitsIsEmpty()
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var git = Substitute.For<IGitCli>();
+        git.GetCurrentBranchAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("main"));
+        git.GetRecentCommitsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<GetRecentCommitsResult>(new GetRecentCommitsResult.NotAGitRepo()));
+        var handler = CreateHandler(CreateSender(), git, new WorkOnCardContextProvider());
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(null)),
+            default);
+
+        // Assert
+        pack.Git.Branch.Should().Be("main");
+        pack.Git.Commits.Should().BeEmpty();
+    }
+
     private sealed class TypoSectionProvider : IContextProvider
     {
         public string SkillName => "typo-test";
