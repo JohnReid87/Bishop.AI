@@ -158,6 +158,31 @@ public class LaneViewModelTests
         await vm.ConfirmAddCardCommand.ExecuteAsync(null);
 
         await mediator.DidNotReceive().Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>());
+        vm.AddCardErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task ConfirmAddCardAsync_WhitespaceOnlyTitle_SetsErrorMessage()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var vm = NewVm(mediator: mediator);
+        vm.NewCardTitle = "\t  \t";
+
+        await vm.ConfirmAddCardCommand.ExecuteAsync(null);
+
+        vm.AddCardErrorMessage.Should().NotBeNullOrEmpty();
+        await mediator.DidNotReceive().Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void OnCardsChanged_AddingCard_UpdatesDisplayNameAndFilteredCards()
+    {
+        var vm = NewVm(name: "To Do");
+
+        vm.Cards.Add(new CardViewModel { Title = "Alpha", LaneName = "To Do" });
+
+        vm.DisplayName.Should().Be("To Do (1)");
+        vm.FilteredCards.Should().ContainSingle(c => c.Title == "Alpha");
     }
 
     [Fact]

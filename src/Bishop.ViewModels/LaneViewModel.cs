@@ -150,7 +150,11 @@ public sealed partial class LaneViewModel : ObservableObject
     private async Task ConfirmAddCardAsync(CancellationToken cancellationToken)
     {
         var title = NewCardTitle.Trim();
-        if (string.IsNullOrEmpty(title)) return;
+        if (string.IsNullOrEmpty(title))
+        {
+            AddCardErrorMessage = "Title cannot be blank.";
+            return;
+        }
         AddCardErrorMessage = null;
         try
         {
