@@ -124,4 +124,20 @@ public sealed class BishopStampPathTests : IDisposable
         result.Should().Be(Path.Combine(expectedDir, "migration_stamp"));
         Directory.Exists(expectedDir).Should().BeTrue();
     }
+
+    [Fact]
+    public void Resolve_WhenBishopStampEnvVarIsOutsideUserProfile_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+        var outOfBoundsPath = Path.Combine(systemDir, "evil_stamp");
+        Environment.SetEnvironmentVariable("BISHOP_STAMP", outOfBoundsPath);
+
+        // Act
+        var act = () => BishopStampPath.Resolve();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*BISHOP_STAMP*");
+    }
 }

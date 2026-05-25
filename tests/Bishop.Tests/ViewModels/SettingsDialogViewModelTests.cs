@@ -19,11 +19,12 @@ public class SettingsDialogViewModelTests
         var original = Environment.GetEnvironmentVariable("BISHOP_DB");
         try
         {
-            Environment.SetEnvironmentVariable("BISHOP_DB", @"C:\test\bishop.db");
+            var dbPath = Path.Combine(Path.GetTempPath(), "test_bishop.db");
+            Environment.SetEnvironmentVariable("BISHOP_DB", dbPath);
 
             var vm = new SettingsDialogViewModel();
 
-            vm.DbPath.Should().Be(@"C:\test\bishop.db");
+            vm.DbPath.Should().Be(dbPath);
         }
         finally
         {
