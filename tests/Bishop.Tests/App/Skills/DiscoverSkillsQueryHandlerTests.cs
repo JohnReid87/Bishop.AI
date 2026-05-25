@@ -1,3 +1,4 @@
+using System.Reflection;
 using Bishop.App.Skills.DiscoverSkills;
 using FluentAssertions;
 
@@ -608,10 +609,17 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     [Fact]
     public async Task ParameterlessConstructor_ResolvedPathIsUsedForHandling()
     {
-        // The parameterless constructor resolves %USERPROFILE%\.claude\skills.
-        // Calling Handle on the resulting instance succeeds without throwing;
-        // it returns an empty list when that directory does not exist.
+        var expectedPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".claude", "skills");
+
         var sut = new DiscoverSkillsQueryHandler();
+
+        var field = typeof(DiscoverSkillsQueryHandler)
+            .GetField("_skillsRoot", BindingFlags.NonPublic | BindingFlags.Instance);
+        var resolvedPath = (string)field!.GetValue(sut)!;
+        resolvedPath.Should().Be(expectedPath);
+
         var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
         result.Should().NotBeNull();
     }
