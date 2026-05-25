@@ -701,6 +701,52 @@ public class WorkspaceBoardViewModelTests
     }
 
     [Fact]
+    public void Lanes_IsEmptyBeforeLoadAsync()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+
+        vm.Lanes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task LoadAsync_WithIsCardSkillsButtonVisible_SetsSkillsButtonVisibleOnCards()
+    {
+        var workspaceId = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("To Do", 1) });
+        var card = new Card { Id = Guid.NewGuid(), Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" };
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card> { card });
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<TagInfo>());
+
+        var vm = new WorkspaceBoardViewModel(mediator) { IsCardSkillsButtonVisible = true };
+        await vm.LoadAsync(workspaceId);
+
+        vm.Lanes[0].Cards[0].IsSkillsButtonVisible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void SearchText_UpdatesBatchStatsInLaneItems()
+    {
+        var batchId = Guid.NewGuid();
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>());
+        var todoLane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var doneLane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "Done" };
+        todoLane.Cards.Add(new CardViewModel { Title = "Batch Alpha", BatchId = batchId, BatchName = "Sprint 1", LaneName = "To Do" });
+        doneLane.Cards.Add(new CardViewModel { Title = "Batch Beta", BatchId = batchId, BatchName = "Sprint 1", LaneName = "Done" });
+        vm.Lanes.Add(todoLane);
+        vm.Lanes.Add(doneLane);
+
+        vm.SearchText = "Batch";
+
+        var group = todoLane.LaneItems[0].Should().BeOfType<BatchGroupViewModel>().Subject;
+        group.TotalCount.Should().Be(2);
+        group.DoneCount.Should().Be(1);
+    }
+
+    [Fact]
     public async Task Matches_BatchIdChanged_CardIsReplaced()
     {
         var workspaceId = Guid.NewGuid();
