@@ -99,4 +99,74 @@ public sealed class BootstrapSkillCliCommandTests
         exitCode.Should().Be(1);
         errorOutput.ToString().Should().Contain("Not in a Bishop workspace");
     }
+
+    [Fact]
+    public async Task InvokeAsync_NullGitHubRepo_TextOutputOmitsGitHubLine()
+    {
+        var cwd = Directory.GetCurrentDirectory();
+        var info = new SkillBootstrapInfo(
+            "test-ws", cwd, null,
+            [new TagInfo("feature", "#ff0000")],
+            [new LaneInfo("To Do", 1)]);
+        var (_, cmd) = BuildWithInfo(info);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try { exitCode = await cmd.InvokeAsync([]); }
+        finally { Console.SetOut(originalOut); }
+
+        exitCode.Should().Be(0);
+        var text = output.ToString();
+        text.Should().NotContain("GitHub:");
+        text.Should().Contain("Workspace: test-ws");
+        text.Should().Contain("Tags:      feature");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_NullGitHubRepo_JsonFlag_SerializesGitHubRepoAsNull()
+    {
+        var cwd = Directory.GetCurrentDirectory();
+        var info = new SkillBootstrapInfo(
+            "test-ws", cwd, null,
+            [new TagInfo("feature", "#ff0000")],
+            [new LaneInfo("To Do", 1)]);
+        var (_, cmd) = BuildWithInfo(info);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try { exitCode = await cmd.InvokeAsync(["--json"]); }
+        finally { Console.SetOut(originalOut); }
+
+        exitCode.Should().Be(0);
+        using var doc = JsonDocument.Parse(output.ToString());
+        var root = doc.RootElement;
+        root.GetProperty("gitHubRepo").GetString().Should().BeNull();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_EmptyTagsAndLanes_TextOutputRendersValidLines()
+    {
+        var cwd = Directory.GetCurrentDirectory();
+        var info = new SkillBootstrapInfo(
+            "test-ws", cwd, "org/repo",
+            [],
+            []);
+        var (_, cmd) = BuildWithInfo(info);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try { exitCode = await cmd.InvokeAsync([]); }
+        finally { Console.SetOut(originalOut); }
+
+        exitCode.Should().Be(0);
+        var text = output.ToString();
+        text.Should().Contain("Tags:      ");
+        text.Should().Contain("Lanes:     ");
+    }
 }
