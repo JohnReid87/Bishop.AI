@@ -102,7 +102,7 @@ public sealed partial class WorkspaceDetailPage : Page
             App.MainWindow.Activated -= OnWindowActivated;
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
-        _ = Notes.FlushAsync();
+        _ = SafeAsync.RunAsync(Notes.FlushAsync);
         Notes.Dispose();
     }
 
