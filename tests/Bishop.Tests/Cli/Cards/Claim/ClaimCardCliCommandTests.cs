@@ -130,6 +130,28 @@ public sealed class ClaimCardCliCommandTests
     }
 
     [Fact]
+    public async Task InvokeAsync_LaneOption_SendsCommandWithSourceLaneName()
+    {
+        var ws = DefaultWorkspace();
+        var card = new Card
+        {
+            Id = Guid.NewGuid(), WorkspaceId = ws.Id,
+            Number = 1, Title = "Test Card", LaneName = "Doing"
+        };
+        var (mediator, cmd) = Build(ws, card);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["--workspace", "test-ws", "--lane", "Backlog"]); }
+        finally { Console.SetOut(originalOut); }
+
+        await mediator.Received(1).Send(
+            Arg.Is<ClaimCardCommand>(c => c.SourceLaneName == "Backlog"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task InvokeAsync_JsonFlag_OutputsValidJsonWithCardFields()
     {
         var ws = DefaultWorkspace();
