@@ -11,14 +11,7 @@ public sealed class GitCli : IGitCli
     public async Task<GetRecentCommitsResult> GetRecentCommitsAsync(
         string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("log");
         psi.ArgumentList.Add("--max-count=5");
         psi.ArgumentList.Add("--format=%h\x1f%H\x1f%B\x1f%aI\x1e");
@@ -91,14 +84,7 @@ public sealed class GitCli : IGitCli
             string? upstreamRef = null;
             HashSet<string> unpushedShas = [];
 
-            var upPsi = new ProcessStartInfo("git")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = workspacePath,
-            };
+            var upPsi = CreateGitProcessStartInfo(workspacePath);
             upPsi.ArgumentList.Add("rev-parse");
             upPsi.ArgumentList.Add("--abbrev-ref");
             upPsi.ArgumentList.Add("--symbolic-full-name");
@@ -117,14 +103,7 @@ public sealed class GitCli : IGitCli
                         {
                             upstreamRef = upOut.Trim();
 
-                            var revPsi = new ProcessStartInfo("git")
-                            {
-                                UseShellExecute = false,
-                                CreateNoWindow = true,
-                                RedirectStandardOutput = true,
-                                RedirectStandardError = true,
-                                WorkingDirectory = workspacePath,
-                            };
+                            var revPsi = CreateGitProcessStartInfo(workspacePath);
                             revPsi.ArgumentList.Add("rev-list");
                             revPsi.ArgumentList.Add("@{u}..HEAD");
 
@@ -164,14 +143,7 @@ public sealed class GitCli : IGitCli
     public async Task<GetCardCommitResult> GetCardCommitAsync(
         int cardNumber, string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("log");
         psi.ArgumentList.Add("--perl-regexp");
         psi.ArgumentList.Add($"--grep=\\(card #?{cardNumber}\\)");
@@ -228,14 +200,7 @@ public sealed class GitCli : IGitCli
 
         try
         {
-            var upPsi = new ProcessStartInfo("git")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = workspacePath,
-            };
+            var upPsi = CreateGitProcessStartInfo(workspacePath);
             upPsi.ArgumentList.Add("rev-parse");
             upPsi.ArgumentList.Add("--abbrev-ref");
             upPsi.ArgumentList.Add("--symbolic-full-name");
@@ -250,14 +215,7 @@ public sealed class GitCli : IGitCli
                     await upProc.WaitForExitAsync(cancellationToken);
                     if (upProc.ExitCode == 0 && !string.IsNullOrWhiteSpace(upOut))
                     {
-                        var revPsi = new ProcessStartInfo("git")
-                        {
-                            UseShellExecute = false,
-                            CreateNoWindow = true,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                            WorkingDirectory = workspacePath,
-                        };
+                        var revPsi = CreateGitProcessStartInfo(workspacePath);
                         revPsi.ArgumentList.Add("rev-list");
                         revPsi.ArgumentList.Add("@{u}..HEAD");
 
@@ -293,14 +251,7 @@ public sealed class GitCli : IGitCli
     public async Task<GetCardCommitResult> GetCommitByHashAsync(
         string fullHash, string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("log");
         psi.ArgumentList.Add(fullHash);
         psi.ArgumentList.Add("-1");
@@ -356,14 +307,7 @@ public sealed class GitCli : IGitCli
 
         try
         {
-            var upPsi = new ProcessStartInfo("git")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = workspacePath,
-            };
+            var upPsi = CreateGitProcessStartInfo(workspacePath);
             upPsi.ArgumentList.Add("rev-parse");
             upPsi.ArgumentList.Add("--abbrev-ref");
             upPsi.ArgumentList.Add("--symbolic-full-name");
@@ -378,14 +322,7 @@ public sealed class GitCli : IGitCli
                     await upProc.WaitForExitAsync(cancellationToken);
                     if (upProc.ExitCode == 0 && !string.IsNullOrWhiteSpace(upOut))
                     {
-                        var revPsi = new ProcessStartInfo("git")
-                        {
-                            UseShellExecute = false,
-                            CreateNoWindow = true,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                            WorkingDirectory = workspacePath,
-                        };
+                        var revPsi = CreateGitProcessStartInfo(workspacePath);
                         revPsi.ArgumentList.Add("rev-list");
                         revPsi.ArgumentList.Add("@{u}..HEAD");
 
@@ -420,14 +357,7 @@ public sealed class GitCli : IGitCli
 
     public async Task<string?> GetOriginUrlAsync(string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("remote");
         psi.ArgumentList.Add("get-url");
         psi.ArgumentList.Add("origin");
@@ -456,14 +386,7 @@ public sealed class GitCli : IGitCli
     public async Task<PushResult> PushAsync(
         string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("push");
 
         Process? proc;
@@ -495,14 +418,7 @@ public sealed class GitCli : IGitCli
     public async Task<PushResult> PushNewBranchAsync(
         string worktreePath, string branchName, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = worktreePath,
-        };
+        var psi = CreateGitProcessStartInfo(worktreePath);
         psi.ArgumentList.Add("push");
         psi.ArgumentList.Add("-u");
         psi.ArgumentList.Add("origin");
@@ -536,14 +452,7 @@ public sealed class GitCli : IGitCli
 
     public async Task ResetHardAsync(string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("reset");
         psi.ArgumentList.Add("--hard");
 
@@ -572,14 +481,7 @@ public sealed class GitCli : IGitCli
 
     public async Task CleanWorkingTreeAsync(string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("clean");
         psi.ArgumentList.Add("-fd");
 
@@ -609,14 +511,7 @@ public sealed class GitCli : IGitCli
     public async Task<GetWorkingTreeStatusResult> GetWorkingTreeStatusAsync(
         string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("status");
         psi.ArgumentList.Add("--porcelain");
 
@@ -664,14 +559,7 @@ public sealed class GitCli : IGitCli
     public async Task<int?> GetCommitCountSinceAsync(
         string sha, string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("rev-list");
         psi.ArgumentList.Add("--count");
         psi.ArgumentList.Add($"{sha}..HEAD");
@@ -705,14 +593,7 @@ public sealed class GitCli : IGitCli
         string workspacePath, string branchName, string baseBranch, string worktreePath,
         CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("worktree");
         psi.ArgumentList.Add("add");
         psi.ArgumentList.Add("-b");
@@ -746,14 +627,7 @@ public sealed class GitCli : IGitCli
     public async Task RemoveWorktreeAsync(
         string workspacePath, string worktreePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("worktree");
         psi.ArgumentList.Add("remove");
         psi.ArgumentList.Add(worktreePath);
@@ -784,14 +658,7 @@ public sealed class GitCli : IGitCli
     public async Task<string> GetCurrentBranchAsync(
         string worktreePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = worktreePath,
-        };
+        var psi = CreateGitProcessStartInfo(worktreePath);
         psi.ArgumentList.Add("rev-parse");
         psi.ArgumentList.Add("--abbrev-ref");
         psi.ArgumentList.Add("HEAD");
@@ -825,14 +692,7 @@ public sealed class GitCli : IGitCli
     public async Task<bool> LocalBranchExistsAsync(
         string workspacePath, string branchName, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("show-ref");
         psi.ArgumentList.Add("--verify");
         psi.ArgumentList.Add("--quiet");
@@ -854,14 +714,7 @@ public sealed class GitCli : IGitCli
     public async Task<IReadOnlyList<string>> GetWorktreeBranchesAsync(
         string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("worktree");
         psi.ArgumentList.Add("list");
         psi.ArgumentList.Add("--porcelain");
@@ -894,14 +747,7 @@ public sealed class GitCli : IGitCli
     public async Task<int?> GetBranchCommitCountAsync(
         string workspacePath, string branchName, string baseBranch, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("rev-list");
         psi.ArgumentList.Add("--count");
         psi.ArgumentList.Add($"{baseBranch}..{branchName}");
@@ -924,14 +770,7 @@ public sealed class GitCli : IGitCli
 
     public async Task StageAllAsync(string workspacePath, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("add");
         psi.ArgumentList.Add("-A");
 
@@ -960,14 +799,7 @@ public sealed class GitCli : IGitCli
 
     public async Task<string> CommitAsync(string workspacePath, string message, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("commit");
         psi.ArgumentList.Add("-m");
         psi.ArgumentList.Add(message);
@@ -994,14 +826,7 @@ public sealed class GitCli : IGitCli
                 throw new InvalidOperationException($"git commit exited {proc.ExitCode}: {stderr.Trim()}");
         }
 
-        var hashPsi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var hashPsi = CreateGitProcessStartInfo(workspacePath);
         hashPsi.ArgumentList.Add("rev-parse");
         hashPsi.ArgumentList.Add("HEAD");
 
@@ -1025,14 +850,7 @@ public sealed class GitCli : IGitCli
     public async Task DeleteLocalBranchAsync(
         string workspacePath, string branchName, CancellationToken cancellationToken = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = workspacePath,
-        };
+        var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("branch");
         psi.ArgumentList.Add("-D");
         psi.ArgumentList.Add(branchName);
@@ -1058,5 +876,19 @@ public sealed class GitCli : IGitCli
             if (proc.ExitCode != 0)
                 throw new InvalidOperationException($"git branch -D exited {proc.ExitCode}: {stderr.Trim()}");
         }
+    }
+
+    internal static ProcessStartInfo CreateGitProcessStartInfo(string workingDirectory)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = workingDirectory,
+        };
+        psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
+        return psi;
     }
 }
