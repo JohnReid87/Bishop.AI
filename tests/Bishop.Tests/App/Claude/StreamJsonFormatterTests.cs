@@ -524,6 +524,15 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
+    public void Format_Tool_Result_With_Error_Flag_Mixed_Content_Array_Extracts_Text_From_Object_Item()
+    {
+        var sut = new StreamJsonFormatter();
+        var line = """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","is_error":true,"content":["ignored string",{"type":"text","text":"extracted text"}]}]}}""";
+
+        sut.Format(line).Should().Be("[error] extracted text");
+    }
+
+    [Fact]
     public void Format_Assistant_Text_Collapses_Multiple_Consecutive_Spaces_Inside_String()
     {
         var sut = new StreamJsonFormatter();
