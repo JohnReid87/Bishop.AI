@@ -1,5 +1,6 @@
 using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.GetCardByNumber;
+using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Git;
 using Bishop.App.Git.GetCardCommit;
 using Bishop.App.Workspaces.ListWorkspaces;
@@ -22,14 +23,19 @@ public sealed class ViewCardCliCommandTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<Workspace>)[ws]);
-        mediator.Send(Arg.Any<GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
-            .Returns(card);
         if (card is not null)
         {
-            mediator.Send(Arg.Any<GetCardQuery>(), Arg.Any<CancellationToken>())
+            mediator.Send(Arg.Is<GetCardByNumberQuery>(q => q.Number == card.Number && q.WorkspaceId == ws.Id), Arg.Any<CancellationToken>())
                 .Returns(card);
-            mediator.Send(Arg.Any<GetCardCommitQuery>(), Arg.Any<CancellationToken>())
+            mediator.Send(Arg.Is<GetCardQuery>(q => q.CardId == card.Id), Arg.Any<CancellationToken>())
+                .Returns(card);
+            mediator.Send(Arg.Is<GetCardCommitQuery>(q => q.CardNumber == card.Number && q.WorkspacePath == ws.Path), Arg.Any<CancellationToken>())
                 .Returns(new GetCardCommitResult.NotFound());
+        }
+        else
+        {
+            mediator.Send(Arg.Any<GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
+                .Returns((Card?)null);
         }
         var cardResolver = new CardResolver(mediator);
         return (mediator, new ViewCardCliCommand(mediator, cardResolver));
@@ -180,5 +186,118 @@ public sealed class ViewCardCliCommandTests
         var exitCode = await cmd.InvokeAsync(["#1", "--workspace", "test-ws"]);
 
         exitCode.Should().NotBe(0);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_AmbiguousPrefix_SetsNonZeroExitCode()
+    {
+        var ws = DefaultWorkspace();
+        var id1 = Guid.Parse("aa000000-0000-0000-0000-000000000001");
+        var id2 = Guid.Parse("aa000000-0000-0000-0000-000000000002");
+        var card1 = new Card { Id = id1, WorkspaceId = ws.Id, Number = 1, Title = "Alpha", LaneName = "To Do" };
+        var card2 = new Card { Id = id2, WorkspaceId = ws.Id, Number = 2, Title = "Beta", LaneName = "To Do" };
+
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Workspace>)[ws]);
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Card>)[card1, card2]);
+
+        var cardResolver = new CardResolver(mediator);
+        var cmd = new ViewCardCliCommand(mediator, cardResolver);
+
+        var originalExitCode = Environment.ExitCode;
+        Environment.ExitCode = 0;
+        try
+        {
+            await cmd.InvokeAsync(["aa", "--workspace", "test-ws"]);
+            Environment.ExitCode.Should().Be(1);
+        }
+        finally
+        {
+            Environment.ExitCode = originalExitCode;
+        }
+    }
+
+    [Fact]
+    public async Task InvokeAsync_GetCardQueryReturnsNull_ExitsNonZero()
+    {
+        var ws = DefaultWorkspace();
+        var cardId = Guid.NewGuid();
+        var resolved = new Card { Id = cardId, WorkspaceId = ws.Id, Number = 1, Title = "Test Card", LaneName = "To Do" };
+
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Workspace>)[ws]);
+        mediator.Send(Arg.Is<GetCardByNumberQuery>(q => q.Number == 1 && q.WorkspaceId == ws.Id), Arg.Any<CancellationToken>())
+            .Returns(resolved);
+        mediator.Send(Arg.Is<GetCardQuery>(q => q.CardId == cardId), Arg.Any<CancellationToken>())
+            .Returns((Card?)null);
+
+        var cardResolver = new CardResolver(mediator);
+        var cmd = new ViewCardCliCommand(mediator, cardResolver);
+
+        var exitCode = await cmd.InvokeAsync(["#1", "--workspace", "test-ws"]);
+
+        exitCode.Should().NotBe(0);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_JsonFlag_FoundCommitWithNullGitHubRepo_CommitUrlIsNull()
+    {
+        var ws = DefaultWorkspace(); // GitHubRepo is null
+        var card = new Card
+        {
+            Id = Guid.NewGuid(), WorkspaceId = ws.Id,
+            Number = 1, Title = "Test Card", LaneName = "To Do"
+        };
+
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Workspace>)[ws]);
+        mediator.Send(Arg.Is<GetCardByNumberQuery>(q => q.Number == card.Number && q.WorkspaceId == ws.Id), Arg.Any<CancellationToken>())
+            .Returns(card);
+        mediator.Send(Arg.Is<GetCardQuery>(q => q.CardId == card.Id), Arg.Any<CancellationToken>())
+            .Returns(card);
+        mediator.Send(Arg.Is<GetCardCommitQuery>(q => q.CardNumber == card.Number && q.WorkspacePath == ws.Path), Arg.Any<CancellationToken>())
+            .Returns(new GetCardCommitResult.Found(
+                new CommitInfo("abc1234", "abc1234def5678901234567890abcdef", "Fix bug", "", DateTimeOffset.UtcNow, false)));
+
+        var cardResolver = new CardResolver(mediator);
+        var cmd = new ViewCardCliCommand(mediator, cardResolver);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try { exitCode = await cmd.InvokeAsync(["#1", "--workspace", "test-ws", "--json"]); }
+        finally { Console.SetOut(originalOut); }
+
+        exitCode.Should().Be(0);
+        using var doc = JsonDocument.Parse(output.ToString());
+        var commitProp = doc.RootElement.GetProperty("commit");
+        commitProp.ValueKind.Should().NotBe(JsonValueKind.Null);
+        commitProp.GetProperty("url").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ZeroClaudeTotals_OmitsClaudeSummaryLine()
+    {
+        var ws = DefaultWorkspace();
+        var card = new Card
+        {
+            Id = Guid.NewGuid(), WorkspaceId = ws.Id,
+            Number = 1, Title = "Test Card", LaneName = "To Do",
+            ClaudeRunCount = 0, TotalInputTokens = 0, TotalOutputTokens = 0
+        };
+        var (_, cmd) = Build(ws, card);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["#1", "--workspace", "test-ws"]); }
+        finally { Console.SetOut(originalOut); }
+
+        output.ToString().Should().NotContain("Claude:");
     }
 }
