@@ -165,6 +165,32 @@ public sealed class ClaudeExecutableResolverTests
     }
 
     [Fact]
+    public void Resolve_UsesInjectedGetEnvDelegate_NotEnvironmentGetEnvironmentVariable()
+    {
+        var queriedKeys = new List<string>();
+        const string controlledPath = "C:\\custom-injected-bin";
+        var exe = Path.Combine(controlledPath, "claude.exe");
+
+        string? InjectGetEnv(string key)
+        {
+            queriedKeys.Add(key);
+            return key switch
+            {
+                "PATH" => controlledPath,
+                "PATHEXT" => ".EXE",
+                _ => null,
+            };
+        }
+
+        var sut = new ClaudeExecutableResolver(InjectGetEnv, p => PathEquals(p, exe), isWindows: true);
+
+        var result = sut.Resolve();
+
+        result.Should().BeEquivalentTo(exe, "resolution must use the path returned by the injected delegate");
+        queriedKeys.Should().Contain("PATH", "the injected getEnv delegate must be invoked for PATH");
+    }
+
+    [Fact]
     public void Resolve_CachesResolvedPath_AcrossCalls()
     {
         var exe = Path.Combine("C:\\bin", "claude.exe");
