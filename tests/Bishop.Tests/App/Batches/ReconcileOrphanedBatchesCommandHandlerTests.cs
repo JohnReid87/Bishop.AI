@@ -58,11 +58,14 @@ public sealed class ReconcileOrphanedBatchesCommandHandlerTests : IClassFixture<
     [Fact]
     public async Task NoBatchesInWorking_DoesNothing()
     {
-        var handler = CreateHandler();
+        await using var dbBefore = await _factory.CreateDbContextAsync(default);
+        var failedCountBefore = await dbBefore.Cards.CountAsync(c => c.LastAutoRunFailedAt != null);
 
-        await handler.Handle(new ReconcileOrphanedBatchesCommand(), default);
+        await CreateHandler().Handle(new ReconcileOrphanedBatchesCommand(), default);
 
-        // no exception and no DB writes — handler is a no-op
+        await using var dbAfter = await _factory.CreateDbContextAsync(default);
+        var failedCountAfter = await dbAfter.Cards.CountAsync(c => c.LastAutoRunFailedAt != null);
+        failedCountAfter.Should().Be(failedCountBefore);
     }
 
     // ── orphan detection: missing lock file ────────────────────────────────────
@@ -102,6 +105,42 @@ public sealed class ReconcileOrphanedBatchesCommandHandlerTests : IClassFixture<
         var (batch, card) = await SetupWorkingBatchWithCardAsync(SystemLaneNames.Doing);
         // int.MaxValue is virtually guaranteed to have no running process on Windows
         WriteLockFile(batch.Id, int.MaxValue, DateTimeOffset.UtcNow);
+
+        await CreateHandler().Handle(new ReconcileOrphanedBatchesCommand(), default);
+
+        await using var db = await _factory.CreateDbContextAsync(default);
+        var updated = await db.Cards.FirstAsync(c => c.Id == card.Id);
+        updated.LastAutoRunFailedAt.Should().NotBeNull();
+    }
+
+    // ── orphan detection: unreadable lock file ────────────────────────────────
+
+    [Fact]
+    public async Task UnreadableLockFile_SetsLastAutoRunFailedAt()
+    {
+        var (batch, card) = await SetupWorkingBatchWithCardAsync(SystemLaneNames.Doing);
+        var lockPath = Path.Combine(_worktreePath, ".bishop", $"batch-{batch.Id}.lock");
+
+        // Hold an exclusive file lock so File.ReadAllText throws — exercises the IsOrphaned catch block.
+        await using var lockedFile = new FileStream(lockPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+        await lockedFile.WriteAsync(System.Text.Encoding.UTF8.GetBytes($"{Environment.ProcessId}\t{DateTimeOffset.UtcNow:O}"));
+        await lockedFile.FlushAsync();
+
+        await CreateHandler().Handle(new ReconcileOrphanedBatchesCommand(), default);
+
+        await using var db = await _factory.CreateDbContextAsync(default);
+        var updated = await db.Cards.FirstAsync(c => c.Id == card.Id);
+        updated.LastAutoRunFailedAt.Should().NotBeNull();
+    }
+
+    // ── orphan detection: invalid PID ─────────────────────────────────────────
+
+    [Fact]
+    public async Task InvalidPidInLockFile_SetsLastAutoRunFailedAt()
+    {
+        var (batch, card) = await SetupWorkingBatchWithCardAsync(SystemLaneNames.Doing);
+        // -1 is an out-of-range PID; Process.GetProcessById throws — exercises the IsProcessAlive catch block.
+        WriteLockFile(batch.Id, -1, DateTimeOffset.UtcNow);
 
         await CreateHandler().Handle(new ReconcileOrphanedBatchesCommand(), default);
 
