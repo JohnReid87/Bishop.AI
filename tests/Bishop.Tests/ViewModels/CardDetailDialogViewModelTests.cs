@@ -205,7 +205,7 @@ public class CardDetailDialogViewModelTests
         var card = NewCard();
         var vm = NewVm(card: card, mediator: mediator);
         mediator.Send(
-            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.Title == "New Title"),
+            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.Title == "New Title" && !c.UpdateTag && c.TagName == null),
             Arg.Any<CancellationToken>())
             .Returns(new Card { Id = Guid.NewGuid(), Title = "New Title", LaneName = "To Do" });
 
@@ -214,6 +214,9 @@ public class CardDetailDialogViewModelTests
         vm.Title.Should().Be("New Title");
         vm.Updated.Should().BeTrue();
         vm.EditError.Should().BeNull();
+        await mediator.Received(1).Send(
+            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.Title == "New Title" && !c.UpdateTag && c.TagName == null),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -319,14 +322,16 @@ public class CardDetailDialogViewModelTests
     public async Task ClearTagAsync_ClearsTagOnSuccess()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do" });
         var card = new CardViewModel
         {
             Id = Guid.NewGuid(), Number = 1, Title = "T", Description = "D",
             LaneName = "To Do", TagName = "feature", TagColour = "#7fa87a",
         };
         var vm = NewVm(card: card, mediator: mediator);
+        mediator.Send(
+            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.UpdateTag && c.TagName == null && c.Title == null && c.Description == null),
+            Arg.Any<CancellationToken>())
+            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do" });
 
         await vm.ClearTagAsync();
 
@@ -334,6 +339,9 @@ public class CardDetailDialogViewModelTests
         vm.TagColour.Should().BeNull();
         vm.Updated.Should().BeTrue();
         vm.EditError.Should().BeNull();
+        await mediator.Received(1).Send(
+            Arg.Is<UpdateCardCommand>(c => c.CardId == vm.CardId && c.UpdateTag && c.TagName == null && c.Title == null && c.Description == null),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -410,9 +418,12 @@ public class CardDetailDialogViewModelTests
     public async Task ToggleClosedAsync_ClosesCardWhenOpen()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<CloseCardCommand>(), Arg.Any<CancellationToken>())
+        var card = NewCard();
+        var vm = NewVm(card: card, mediator: mediator);
+        mediator.Send(
+            Arg.Is<CloseCardCommand>(c => c.CardId == vm.CardId),
+            Arg.Any<CancellationToken>())
             .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do" });
-        var vm = NewVm(mediator: mediator);
 
         await vm.ToggleClosedCommand.ExecuteAsync(null);
 
@@ -428,10 +439,13 @@ public class CardDetailDialogViewModelTests
     public async Task ToggleClosedAsync_ReopensCardWhenClosed()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<ReopenCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do" });
-        var vm = NewVm(mediator: mediator);
+        var card = NewCard();
+        var vm = NewVm(card: card, mediator: mediator);
         vm.IsClosed = true;
+        mediator.Send(
+            Arg.Is<ReopenCardCommand>(c => c.CardId == vm.CardId),
+            Arg.Any<CancellationToken>())
+            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do" });
 
         await vm.ToggleClosedCommand.ExecuteAsync(null);
 
@@ -577,6 +591,19 @@ public class CardDetailDialogViewModelTests
         await vm.LoadCardNumbersAsync();
 
         vm.LinkableDescription.Should().Be("```\n#42\n```");
+    }
+
+    [Fact]
+    public async Task LinkableDescription_RefInsideTildeFencedCodeBlock_NotConverted()
+    {
+        var mediator = Substitute.For<IMediator>();
+        IReadOnlyList<Card> cards = [new Card { Id = Guid.NewGuid(), Number = 42, LaneName = "To Do" }];
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>()).Returns(cards);
+        var vm = NewVm(NewCard(description: "~~~\n#42\n~~~"), mediator: mediator);
+
+        await vm.LoadCardNumbersAsync();
+
+        vm.LinkableDescription.Should().Be("~~~\n#42\n~~~");
     }
 
     [Fact]
