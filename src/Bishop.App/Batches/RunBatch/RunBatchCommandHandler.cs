@@ -83,19 +83,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
         {
             var ws = await _sender.Send(new GetWorkspaceQuery(allCards[0].WorkspaceId), cancellationToken)
                 ?? throw new InvalidOperationException($"Workspace not found for batch '{batch.Name}'.");
-            worktreeWorkspace = new Workspace
-            {
-                Id = ws.Id,
-                Name = ws.Name,
-                Path = batch.WorktreePath,
-                GitHubRepo = ws.GitHubRepo,
-                NextCardNumber = ws.NextCardNumber,
-                Position = ws.Position,
-                IsRemoved = ws.IsRemoved,
-                RemovedAt = ws.RemovedAt,
-                CreatedAt = ws.CreatedAt,
-                UpdatedAt = ws.UpdatedAt,
-            };
+            worktreeWorkspace = CreateBatchWorkspace(ws, batch.WorktreePath);
         }
 
         var lockPath = LockFilePath(batch.WorktreePath, batch.Id);
@@ -260,6 +248,21 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
         var body = string.Join("\n", bullets.Select(b => $"- {b}"));
         return $"{subject}\n\n{body}";
     }
+
+    private static Workspace CreateBatchWorkspace(Workspace original, string worktreePath) =>
+        new()
+        {
+            Id = original.Id,
+            Name = original.Name,
+            Path = worktreePath,
+            GitHubRepo = original.GitHubRepo,
+            NextCardNumber = original.NextCardNumber,
+            Position = original.Position,
+            IsRemoved = original.IsRemoved,
+            RemovedAt = original.RemovedAt,
+            CreatedAt = original.CreatedAt,
+            UpdatedAt = original.UpdatedAt,
+        };
 
     private static IReadOnlyList<int>? ToNullableList(List<int> list) => list.Count > 0 ? list : null;
 
