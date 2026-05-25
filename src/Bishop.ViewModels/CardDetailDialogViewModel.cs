@@ -208,8 +208,17 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         CanGoBack = canGoBack;
     }
 
-    public Task<IReadOnlyList<TagInfo>> GetWorkspaceTagsAsync() =>
-        _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
+    public async Task<IReadOnlyList<TagInfo>> GetWorkspaceTagsAsync()
+    {
+        try
+        {
+            return await _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
+        }
+        catch
+        {
+            return [];
+        }
+    }
 
     public async Task ClearTagAsync()
     {

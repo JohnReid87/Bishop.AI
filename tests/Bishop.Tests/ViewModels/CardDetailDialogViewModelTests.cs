@@ -670,6 +670,19 @@ public class CardDetailDialogViewModelTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task GetWorkspaceTagsAsync_MediatorThrows_ReturnsEmptyWithoutPropagating()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<TagInfo>>(new InvalidOperationException("DB error")));
+        var vm = new CardDetailDialogViewModel(NewCard(), [], Guid.NewGuid(), null, mediator);
+
+        var result = await vm.GetWorkspaceTagsAsync();
+
+        result.Should().BeEmpty();
+    }
+
     private static CardViewModel NewCard(string? description = "D", int? gitHubIssueNumber = null) => new()
     {
         Id = Guid.NewGuid(),
