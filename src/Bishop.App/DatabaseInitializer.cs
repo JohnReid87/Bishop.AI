@@ -87,7 +87,7 @@ internal sealed class DatabaseInitializer : IHostedService
 
     internal static string BuildMutexName(string stampPath)
     {
-        var hash = SHA1.HashData(Encoding.UTF8.GetBytes(stampPath));
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(stampPath));
         var hex = Convert.ToHexString(hash);
         return $"Local\\Bishop.AI.Migrations.{hex}";
     }
