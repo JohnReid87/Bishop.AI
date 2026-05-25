@@ -304,6 +304,62 @@ public class LaneViewModelTests
         vm.LaneItems[0].Should().BeSameAs(firstGroup);
     }
 
+    [Fact]
+    public void IsDropTarget_CanBeSetAndRaisesPropertyChanged()
+    {
+        var vm = NewVm();
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.IsDropTarget = true;
+
+        vm.IsDropTarget.Should().BeTrue();
+        changed.Should().Contain(nameof(LaneViewModel.IsDropTarget));
+    }
+
+    [Fact]
+    public void RebuildLaneItems_EmptyFilteredCards_LaneItemsIsEmpty()
+    {
+        var vm = NewVm();
+
+        vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
+
+        vm.LaneItems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RebuildLaneItems_CardWithBatchIdSetToNull_MovesOutOfGroup()
+    {
+        var batchId = Guid.NewGuid();
+        var vm = NewVm();
+        vm.Cards.Add(new CardViewModel { Title = "C1", BatchId = batchId });
+        vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
+        vm.LaneItems[0].Should().BeOfType<BatchGroupViewModel>();
+
+        vm.Cards.Clear();
+        vm.Cards.Add(new CardViewModel { Title = "C1" });
+        vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
+
+        vm.LaneItems.Should().HaveCount(1);
+        vm.LaneItems[0].Should().BeOfType<CardViewModel>().Which.Title.Should().Be("C1");
+    }
+
+    [Fact]
+    public async Task ConfirmAddCardAsync_WithPreCancelledToken_ExitsGracefully()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromCanceled<Card>(cts.Token));
+        var vm = NewVm(mediator: mediator);
+        vm.NewCardTitle = "Test card";
+
+        Func<Task> act = () => vm.ConfirmAddCardCommand.ExecuteAsync(null);
+
+        await act.Should().NotThrowAsync();
+    }
+
     private static LaneViewModel NewVm(
         string name = "Doing",
         IMediator? mediator = null,
