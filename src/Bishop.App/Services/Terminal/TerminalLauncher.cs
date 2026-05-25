@@ -238,11 +238,15 @@ public sealed class TerminalLauncher : ITerminalLauncher
             @"SYSTEM\CurrentControlSet\Control\Session Manager\Environment");
         using var userEnv = Registry.CurrentUser.OpenSubKey(@"Environment");
 
-        var machine = Environment.ExpandEnvironmentVariables(
-            machineEnv?.GetValue("Path", "") as string ?? "");
-        var user = Environment.ExpandEnvironmentVariables(
-            userEnv?.GetValue("Path", "") as string ?? "");
+        return BuildFullPath(
+            machineEnv?.GetValue("Path", "") as string,
+            userEnv?.GetValue("Path", "") as string);
+    }
 
+    internal static string BuildFullPath(string? machinePath, string? userPath)
+    {
+        var machine = Environment.ExpandEnvironmentVariables(machinePath ?? "");
+        var user = Environment.ExpandEnvironmentVariables(userPath ?? "");
         return CombinePaths(machine, user);
     }
 

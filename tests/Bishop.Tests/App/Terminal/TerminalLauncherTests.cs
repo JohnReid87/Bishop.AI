@@ -22,19 +22,29 @@ public sealed class TerminalLauncherTests
     // ── BuildFullPath ─────────────────────────────────────────────────────────
 
     [Fact]
-    public void BuildFullPath_RegistrySubKeyMissing_ReturnsNonNullString()
+    public void BuildFullPath_BothRegistryKeysMissing_ReturnsEmptyString()
     {
-        // BuildFullPath uses null-coalescing on both OpenSubKey results so the method
-        // never returns null, even when the registry sub-keys don't exist.
-        // Calling via reflection verifies the private static directly.
-        var method = typeof(TerminalLauncher)
-            .GetMethod("BuildFullPath", BindingFlags.NonPublic | BindingFlags.Static)!;
+        // Both OpenSubKey() calls returning null triggers the ?? "" null-coalescing on both
+        // paths; ExpandEnvironmentVariables("") yields "" and CombinePaths("", "") yields "".
+        var result = TerminalLauncher.BuildFullPath(null, null);
 
-        var result = (string)method.Invoke(null, null)!;
+        result.Should().BeEmpty();
+    }
 
-        result.Should().NotBeNull();
-        result.Should().NotBeEmpty();
-        result.Split(';', StringSplitOptions.RemoveEmptyEntries).Should().HaveCountGreaterThan(1);
+    [Fact]
+    public void BuildFullPath_MachinePathPresent_UserPathMissing_ReturnsMachinePath()
+    {
+        var result = TerminalLauncher.BuildFullPath(@"C:\Windows\System32", null);
+
+        result.Should().Be(@"C:\Windows\System32");
+    }
+
+    [Fact]
+    public void BuildFullPath_BothPathsPresent_CombinesWithSemicolon()
+    {
+        var result = TerminalLauncher.BuildFullPath(@"C:\Windows\System32", @"C:\Users\user\bin");
+
+        result.Should().Be(@"C:\Windows\System32;C:\Users\user\bin");
     }
 
     [Fact]
