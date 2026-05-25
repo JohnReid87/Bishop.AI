@@ -67,28 +67,61 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         return batch;
     }
 
-    private ISender CreateSender()
+    private ISender CreateSender() => new BatchTestSender(_factory);
+
+    private sealed class BatchTestSender : ISender
     {
-        var sender = Substitute.For<ISender>();
-        sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
-                .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
-        sender.Send(Arg.Any<RecordClaudeRunCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new RecordClaudeRunCommandHandler(_factory)
-                .Handle(call.ArgAt<RecordClaudeRunCommand>(0), call.ArgAt<CancellationToken>(1)));
-        sender.Send(Arg.Any<RecordAutoRunFailureCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new RecordAutoRunFailureCommandHandler(_factory)
-                .Handle(call.ArgAt<RecordAutoRunFailureCommand>(0), call.ArgAt<CancellationToken>(1)));
-        sender.Send(Arg.Any<SetCardCommitCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new SetCardCommitCommandHandler(_factory)
-                .Handle(call.ArgAt<SetCardCommitCommand>(0), call.ArgAt<CancellationToken>(1)));
-        sender.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new UpdateCardCommandHandler(_factory, sender)
-                .Handle(call.ArgAt<UpdateCardCommand>(0), call.ArgAt<CancellationToken>(1)));
-        sender.Send(Arg.Any<GetWorkspaceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(call => new GetWorkspaceQueryHandler(_factory)
-                .Handle(call.ArgAt<GetWorkspaceQuery>(0), call.ArgAt<CancellationToken>(1)));
-        return sender;
+        private readonly MoveCardCommandHandler _moveCard;
+        private readonly RecordClaudeRunCommandHandler _recordClaudeRun;
+        private readonly RecordAutoRunFailureCommandHandler _recordAutoRunFailure;
+        private readonly SetCardCommitCommandHandler _setCardCommit;
+        private readonly GetWorkspaceQueryHandler _getWorkspace;
+        private readonly UpdateCardCommandHandler _updateCard;
+
+        public BatchTestSender(IDbContextFactory<BishopDbContext> factory)
+        {
+            _moveCard = new(factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance);
+            _recordClaudeRun = new(factory);
+            _recordAutoRunFailure = new(factory);
+            _setCardCommit = new(factory);
+            _getWorkspace = new(factory);
+            _updateCard = new(factory, this);
+        }
+
+        public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default)
+        {
+            if (request is MoveCardCommand cmd1)
+                return (TResponse)(object)(await _moveCard.Handle(cmd1, ct));
+            if (request is SetCardCommitCommand cmd4)
+                return (TResponse)(object)(await _setCardCommit.Handle(cmd4, ct));
+            if (request is UpdateCardCommand cmd5)
+                return (TResponse)(object)(await _updateCard.Handle(cmd5, ct));
+            if (request is GetWorkspaceQuery cmd6)
+            {
+                var ws = await _getWorkspace.Handle(cmd6, ct);
+                if (ws is null) return default!;
+                return (TResponse)(object)ws;
+            }
+            return default!;
+        }
+
+        public Task<object?> Send(object request, CancellationToken ct = default) =>
+            Task.FromResult<object?>(null);
+
+        public async Task Send<TRequest>(TRequest request, CancellationToken ct = default)
+            where TRequest : IRequest
+        {
+            if (request is RecordClaudeRunCommand cmd1)
+                await _recordClaudeRun.Handle(cmd1, ct);
+            else if (request is RecordAutoRunFailureCommand cmd2)
+                await _recordAutoRunFailure.Handle(cmd2, ct);
+        }
+
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken ct = default) =>
+            AsyncEnumerable.Empty<TResponse>();
+
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken ct = default) =>
+            AsyncEnumerable.Empty<object?>();
     }
 
     private static IGitCli GitAlwaysClean()
@@ -635,6 +668,127 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         await git.Received(1).CleanWorkingTreeAsync(_worktreePath, Arg.Any<CancellationToken>());
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
         saved.LastAutoRunFailedAt.Should().NotBeNull();
+    }
+
+    // ── partial success ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task PartialSuccess_FirstCardSucceeds_SecondFails_SucceededAndFailedBothSet()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
+        var c1 = await AddCardAsync(workspace.Id, todo.Name);
+        var c2 = await AddCardAsync(workspace.Id, todo.Name);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id);
+
+        var callCount = 0;
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                if (++callCount == 1)
+                {
+                    var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                    await File.WriteAllTextAsync(path, ValidHandoffJson);
+                    return new ClaudeRunResult(0, null, 0);
+                }
+                return new ClaudeRunResult(7, null, 0);
+            });
+
+        var result = await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        result.StopReason.Should().Be(RunBatchStopReason.CardFailure);
+        result.Succeeded.Should().Be(1);
+        result.FailedCardNumbers.Should().ContainSingle().Which.Should().Be(c2.Number);
+    }
+
+    // ── TagToPrefix ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task NullTag_CommitMessageUsesChorePrefix()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.Clean());
+        git.StageAllAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        string? capturedMessage = null;
+        git.CommitAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                capturedMessage = call.ArgAt<string>(1);
+                return Task.FromResult("deadbeef");
+            });
+
+        await CreateHandler(git: git).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        capturedMessage.Should().NotBeNull().And.StartWith("chore: ");
+    }
+
+    // ── handoff JSON parse failure ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task HandoffJsonSyntaxError_TreatedAsHandoffMissing()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(path, "{{invalid json!");
+                return new ClaudeRunResult(0, null, 0);
+            });
+
+        var result = await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        result.StopReason.Should().Be(RunBatchStopReason.HandoffMissing);
+        result.FailedCardNumbers.Should().ContainSingle().Which.Should().Be(card.Number);
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.LastAutoRunFailedAt.Should().NotBeNull();
+    }
+
+    // ── lock file refresh failure ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task RefreshLockFailure_DoesNotAbortBatch()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
+        var c1 = await AddCardAsync(workspace.Id, todo.Name);
+        var c2 = await AddCardAsync(workspace.Id, todo.Name);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id);
+
+        var lockPath = Path.Combine(_worktreePath, ".bishop", $"batch-{batch.Id}.lock");
+        var gitCallCount = 0;
+
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                // Make the lock file read-only after card 1's git check so card 2's RefreshLockFile fails.
+                if (++gitCallCount == 1 && File.Exists(lockPath))
+                    File.SetAttributes(lockPath, FileAttributes.ReadOnly);
+                return Task.FromResult<GetWorkingTreeStatusResult>(new GetWorkingTreeStatusResult.Clean());
+            });
+        git.StageAllAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        git.CommitAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("deadbeef");
+
+        var result = await CreateHandler(git: git).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        result.StopReason.Should().Be(RunBatchStopReason.Finished);
+        result.Succeeded.Should().Be(2);
+        result.FailedCardNumbers.Should().BeNull();
     }
 
     // ── lock file lifecycle ────────────────────────────────────────────────────
