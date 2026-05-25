@@ -37,7 +37,7 @@ public sealed partial class MainWindow : Window
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
 
-        _ = ViewModel.LoadAsync();
+        _ = SafeAsync.RunAsync(ViewModel.LoadAsync);
     }
 
     private void SetupTitleBar()

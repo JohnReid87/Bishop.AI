@@ -35,9 +35,7 @@ public sealed partial class CardViewModel : ObservableObject
     public bool IsAutoRunFailedIndicatorVisible => LastAutoRunFailedAt.HasValue;
     public string AutoRunFailedTooltip => LastAutoRunFailedAt.HasValue ? $"Auto-run failed at {LastAutoRunFailedAt.Value:yyyy-MM-dd HH:mm}" : string.Empty;
 
-    // Set by WorkspaceDetailPage before cards are rendered so the one-time x:Bind reads the correct value.
-    public static bool IsCardSkillsButtonVisible { get; set; }
-    public bool IsSkillsButtonVisible => IsCardSkillsButtonVisible;
+    public bool IsSkillsButtonVisible { get; init; }
 
     public bool MatchesSearch(string searchText)
     {

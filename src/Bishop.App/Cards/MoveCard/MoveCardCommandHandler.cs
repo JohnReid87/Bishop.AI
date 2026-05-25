@@ -1,21 +1,26 @@
-using Bishop.App.Cards.CloseCard;
-using Bishop.App.Cards.ReopenCard;
+using Bishop.App.Services.GitHub;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Bishop.App.Cards.MoveCard;
 
 public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Card>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
-    private readonly ISender _sender;
+    private readonly IGhCli _ghCli;
+    private readonly ILogger<MoveCardCommandHandler> _logger;
 
-    public MoveCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, ISender sender)
+    public MoveCardCommandHandler(
+        IDbContextFactory<BishopDbContext> dbFactory,
+        IGhCli ghCli,
+        ILogger<MoveCardCommandHandler> logger)
     {
         _dbFactory = dbFactory;
-        _sender = sender;
+        _ghCli = ghCli;
+        _logger = logger;
     }
 
     public async Task<Card> Handle(MoveCardCommand request, CancellationToken cancellationToken)
@@ -29,7 +34,9 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
 
         await using (var db = await _dbFactory.CreateDbContextAsync(cancellationToken))
         {
-            card = await db.Cards.FindAsync([request.CardId], cancellationToken)
+            card = await db.Cards
+                .Include(c => c.Workspace)
+                .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
                 ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
             if (request.ExpectedSourceLaneName is { } expectedLaneName)
@@ -76,13 +83,52 @@ public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Ca
             for (var i = 0; i < targetCards.Count; i++)
                 targetCards[i].Position = i + 1;
 
+            // Inline close/reopen atomically with the move so both writes are in
+            // one SaveChangesAsync call and share the same transaction.
+            if (enteringDone && !request.KeepOpen)
+                card.IsClosed = true;
+            else if (leavingDone)
+                card.IsClosed = false;
+
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        if (enteringDone && !request.KeepOpen)
-            await _sender.Send(new CloseCardCommand(card.Id), cancellationToken);
-        else if (leavingDone)
-            await _sender.Send(new ReopenCardCommand(card.Id), cancellationToken);
+        // GitHub side-effect — best-effort after the atomic DB commit.
+        // A failure here is logged but does not roll back the (consistent) DB state.
+        if (enteringDone && !request.KeepOpen
+            && card.GitHubIssueNumber.HasValue
+            && card.Workspace.GitHubRepo is { } closeRepo)
+        {
+            try
+            {
+                await _ghCli.RunAsync(
+                    ["issue", "close", card.GitHubIssueNumber.ToString()!, "--repo", closeRepo],
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "GitHub issue close failed for card {CardId} (issue #{Issue}); DB state is consistent.",
+                    card.Id, card.GitHubIssueNumber);
+            }
+        }
+        else if (leavingDone
+            && card.GitHubIssueNumber.HasValue
+            && card.Workspace.GitHubRepo is { } reopenRepo)
+        {
+            try
+            {
+                await _ghCli.RunAsync(
+                    ["issue", "reopen", card.GitHubIssueNumber.ToString()!, "--repo", reopenRepo],
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "GitHub issue reopen failed for card {CardId} (issue #{Issue}); DB state is consistent.",
+                    card.Id, card.GitHubIssueNumber);
+            }
+        }
 
         return card;
     }
