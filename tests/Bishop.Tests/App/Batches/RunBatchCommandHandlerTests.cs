@@ -186,6 +186,39 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Working*");
     }
 
+    [Fact]
+    public async Task DuplicateBatchName_Throws()
+    {
+        var repo = new BatchRepository(_factory);
+        var name = U("batch");
+        await repo.CreateAsync(name, $"bishop/{U("br")}", "main", _worktreePath);
+        await repo.CreateAsync(name, $"bishop/{U("br")}", "main", _worktreePath);
+
+        var handler = CreateHandler();
+
+        Func<Task> act = () => handler.Handle(new RunBatchCommand(name, Resume: false), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Multiple batches*");
+    }
+
+    [Fact]
+    public async Task WorkspaceNotFound_Throws()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<GetWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns((Workspace?)null);
+
+        var handler = CreateHandler(sender: sender);
+
+        Func<Task> act = () => handler.Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Workspace not found*");
+    }
+
     // ── happy path ─────────────────────────────────────────────────────────────
 
     [Fact]
@@ -429,7 +462,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             {
                 var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
                 await File.WriteAllTextAsync(path, ValidHandoffJson);
-                return new ClaudeRunResult(0, new ClaudeRunTotals(1000, 250), 0);
+                return new ClaudeRunResult(0, new ClaudeRunTotals(1000, 250, 500, 100), 0);
             });
 
         await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
@@ -437,6 +470,8 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
         saved.TotalInputTokens.Should().Be(1000);
         saved.TotalOutputTokens.Should().Be(250);
+        saved.TotalCacheCreationTokens.Should().Be(500);
+        saved.TotalCacheReadTokens.Should().Be(100);
         saved.ClaudeRunCount.Should().Be(1);
         saved.LaneName.Should().Be(SystemLaneNames.Done);
     }
