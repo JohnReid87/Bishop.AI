@@ -7,11 +7,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
-using Windows.ApplicationModel.DataTransfer;
 
 namespace Bishop.UI;
 
@@ -77,42 +74,7 @@ public partial class App : Application
             var root = MainWindow?.Content?.XamlRoot;
             if (root is null) return;
 
-            var dialog = new ContentDialog
-            {
-                Title = "I'm sorry, Dave. I'm afraid I can't do that.",
-                Content = ExceptionDialogHelper.BuildErrorDialogText(ex),
-                PrimaryButtonText = "Copy details",
-                SecondaryButtonText = "Open log folder",
-                CloseButtonText = "Dismiss",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = root,
-            };
-            try
-            {
-                var result = await dialog.ShowAsync();
-                if (result == ContentDialogResult.Primary)
-                {
-                    var pkg = new DataPackage();
-                    pkg.SetText($"{ex.GetType().FullName}\n{ex.Message}\n\n{ex}");
-                    Clipboard.SetContent(pkg);
-                }
-                else if (result == ContentDialogResult.Secondary)
-                {
-                    var logDir = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                        "Bishop.AI");
-                    Process.Start("explorer.exe", logDir);
-                }
-            }
-            catch (COMException)
-            {
-                // ShowAsync throws COMException when a ContentDialog is already open.
-                // The error is already logged above; swallow to prevent a cascading crash.
-            }
-            catch (Exception showEx)
-            {
-                LogExceptionToFile(showEx);
-            }
+            await ErrorDialog.ShowAsync(root, ex);
         });
 
     private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)

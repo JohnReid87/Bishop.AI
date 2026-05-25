@@ -785,14 +785,7 @@ public sealed partial class WorkspaceDetailPage : Page
             }
             catch (Exception ex)
             {
-                var errDialog = new ContentDialog
-                {
-                    Title = "Finish failed",
-                    Content = ex.Message,
-                    CloseButtonText = "OK",
-                    XamlRoot = XamlRoot,
-                };
-                await errDialog.ShowAsync();
+                await ErrorDialog.ShowAsync(XamlRoot, ex, "Finish failed");
                 return;
             }
 
