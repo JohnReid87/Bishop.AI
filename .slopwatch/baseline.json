@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "createdAt": "2026-05-28T09:50:47.5574609+00:00",
-  "updatedAt": "2026-05-28T09:50:47.5601014+00:00",
-  "description": "Initial baseline created by 'slopwatch init' on 2026-05-28 09:50:47 UTC",
+  "createdAt": "2026-05-28T23:20:37.5979002+00:00",
+  "updatedAt": "2026-05-28T23:20:37.600669+00:00",
+  "description": "Initial baseline created by 'slopwatch init' on 2026-05-28 23:20:37 UTC",
   "entries": [
     {
       "hash": "9bf8cdbbef2b593c",
       "ruleId": "SW003",
       "filePath": "src/Bishop.App/Batches/RunBatch/RunBatchCommandHandler.cs",
-      "lineNumber": 219,
+      "lineNumber": 225,
       "codeSnippet": "catch { }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5598892+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6004486+00:00"
     },
     {
       "hash": "411a507697019dfa",
@@ -20,7 +20,7 @@
       "lineNumber": 43,
       "codeSnippet": "catch { /* label creation is best-effort */ }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600194+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006001+00:00"
     },
     {
       "hash": "76adb2877976d059",
@@ -29,25 +29,7 @@
       "lineNumber": 90,
       "codeSnippet": "catch (InvalidOperationException)\n        {\n            // Not a git repo or git unavailable — branch stays null.\n        }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600268+00:00"
-    },
-    {
-      "hash": "684d6c27220374d7",
-      "ruleId": "SW003",
-      "filePath": "src/Bishop.App/Git/GitCli.cs",
-      "lineNumber": 130,
-      "codeSnippet": "catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)\r\n            {\r\n                // git unavailable for upstream check — no upstream\r\n            }",
-      "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600307+00:00"
-    },
-    {
-      "hash": "59c18f74937d31af",
-      "ruleId": "SW003",
-      "filePath": "src/Bishop.App/Git/GitCli.cs",
-      "lineNumber": 243,
-      "codeSnippet": "catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)\r\n        {\r\n            // git unavailable for upstream check — IsPushed stays false\r\n        }",
-      "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600362+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006094+00:00"
     },
     {
       "hash": "7cf64611ea75dcde",
@@ -56,7 +38,7 @@
       "lineNumber": 104,
       "codeSnippet": "catch (IOException) { }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600428+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006123+00:00"
     },
     {
       "hash": "0701d639acebcceb",
@@ -65,16 +47,16 @@
       "lineNumber": 151,
       "codeSnippet": "catch (ArgumentException) { }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600455+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006177+00:00"
     },
     {
       "hash": "eec8ebe172d963a0",
       "ruleId": "SW003",
       "filePath": "src/Bishop.UI/App.xaml.cs",
-      "lineNumber": 117,
+      "lineNumber": 163,
       "codeSnippet": "catch { }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600492+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.600623+00:00"
     },
     {
       "hash": "b0e3426043804f2f",
@@ -83,43 +65,25 @@
       "lineNumber": 52,
       "codeSnippet": "catch (OperationCanceledException) { }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600514+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006265+00:00"
     },
     {
-      "hash": "62b75379dd988ed3",
+      "hash": "7e6716bc4cc00fcd",
       "ruleId": "SW003",
-      "filePath": "src/Bishop.UI/Views/CardDetailDialog.xaml.cs",
-      "lineNumber": 74,
-      "codeSnippet": "catch\r\n        {\r\n            // Silent fail — row stays hidden.\r\n        }",
-      "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600541+00:00"
-    },
-    {
-      "hash": "86e4a8c53c9ad652",
-      "ruleId": "SW003",
-      "filePath": "src/Bishop.UI/Views/ImportFromGitHubDialog.xaml.cs",
-      "lineNumber": 42,
+      "filePath": "src/Bishop.ViewModels/ImportFromGitHubDialogViewModel.cs",
+      "lineNumber": 64,
       "codeSnippet": "catch\n        {\n            // Label loading is best-effort; the import still works without a filter.\n        }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600569+00:00"
-    },
-    {
-      "hash": "b06d7c6c4f0b22a1",
-      "ruleId": "SW003",
-      "filePath": "src/Bishop.ViewModels/CardDetailDialogViewModel.cs",
-      "lineNumber": 182,
-      "codeSnippet": "catch\r\n        {\r\n            // Description stays unlinked if load fails.\r\n        }",
-      "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600592+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.60063+00:00"
     },
     {
       "hash": "56ed8c3645f66369",
       "ruleId": "SW003",
       "filePath": "src/Bishop.ViewModels/WorkspaceNotesViewModel.cs",
-      "lineNumber": 76,
+      "lineNumber": 78,
       "codeSnippet": "catch (OperationCanceledException) { }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.560061+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006328+00:00"
     },
     {
       "hash": "b5276fbd67220d65",
@@ -128,7 +92,7 @@
       "lineNumber": 472,
       "codeSnippet": "Fact(Skip =\n        \"Cannot reproduce without waiting 60 s — MutexAcquireTimeout has no injection point. \" +\n        \"Timeout path verified by code inspection (DatabaseInitializer.cs:53).\")",
       "message": "Test method 'StartAsync_WhenMutexHoldExceedsAcquireTimeout_ThrowsTimeoutException' is disabled: Cannot reproduce without waiting 60 s — MutexAcquireTimeout has no injection point. \" +\n        \"Timeout path verified by code inspection (DatabaseInitializer.cs:53).",
-      "baselinedAt": "2026-05-28T09:50:47.5600633+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006364+00:00"
     },
     {
       "hash": "66fd89455a8bfa86",
@@ -137,7 +101,7 @@
       "lineNumber": 437,
       "codeSnippet": "Task.Delay(200)",
       "message": "Test uses Task.Delay(200) which may indicate a timing-dependent test",
-      "baselinedAt": "2026-05-28T09:50:47.5600656+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006386+00:00"
     },
     {
       "hash": "6c0bb5c38fe232ba",
@@ -146,7 +110,7 @@
       "lineNumber": 444,
       "codeSnippet": "Task.Delay(TimeSpan.FromSeconds(30))",
       "message": "Test uses Task.Delay(TimeSpan.FromSeconds(30)) which may indicate a timing-dependent test",
-      "baselinedAt": "2026-05-28T09:50:47.5600676+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006406+00:00"
     },
     {
       "hash": "a14e1d11af99a4b9",
@@ -155,16 +119,16 @@
       "lineNumber": 1,
       "codeSnippet": "#pragma warning disable CA1416 // Windows-only; tests run on Windows",
       "message": "#pragma warning disable for warnings CA1416 without matching restore in same scope",
-      "baselinedAt": "2026-05-28T09:50:47.5600695+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006431+00:00"
     },
     {
       "hash": "1e4cf54a0f7f1d1d",
       "ruleId": "SW003",
       "filePath": "tests/Bishop.Tests/App/Terminal/WorkspaceContextSeederTests.cs",
-      "lineNumber": 1204,
+      "lineNumber": 1249,
       "codeSnippet": "catch { /* best-effort cleanup */ }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600714+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006456+00:00"
     },
     {
       "hash": "375186ca2814612f",
@@ -173,43 +137,43 @@
       "lineNumber": 318,
       "codeSnippet": "Task.Delay(10)",
       "message": "Test uses Task.Delay(10) which may indicate a timing-dependent test",
-      "baselinedAt": "2026-05-28T09:50:47.5600738+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006479+00:00"
     },
     {
       "hash": "b16191ac4a56a4c3",
       "ruleId": "SW003",
       "filePath": "tests/Bishop.Tests/ViewModels/MainWindowViewModelTests.cs",
-      "lineNumber": 177,
+      "lineNumber": 178,
       "codeSnippet": "catch (IOException) { /* SaveNavPrefsAsync may still hold the file */ }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600759+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006503+00:00"
     },
     {
       "hash": "63ca91d7c2ace2dd",
       "ruleId": "SW003",
       "filePath": "tests/Bishop.Tests/ViewModels/MainWindowViewModelTests.cs",
-      "lineNumber": 258,
+      "lineNumber": 259,
       "codeSnippet": "catch { }",
       "message": "Empty catch block swallows exceptions without handling",
-      "baselinedAt": "2026-05-28T09:50:47.5600881+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006568+00:00"
     },
     {
       "hash": "19043c0e981749f6",
       "ruleId": "SW004",
       "filePath": "tests/Bishop.Tests/ViewModels/MainWindowViewModelTests.cs",
-      "lineNumber": 746,
+      "lineNumber": 789,
       "codeSnippet": "Task.Delay(10)",
       "message": "Test uses Task.Delay(10) which may indicate a timing-dependent test",
-      "baselinedAt": "2026-05-28T09:50:47.5600995+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006662+00:00"
     },
     {
       "hash": "18b1201c27de5aec",
       "ruleId": "SW004",
       "filePath": "tests/Bishop.Tests/ViewModels/WorkspaceNotesViewModelTests.cs",
-      "lineNumber": 397,
+      "lineNumber": 398,
       "codeSnippet": "Task.Delay(800)",
       "message": "Test uses Task.Delay(800) which may indicate a timing-dependent test",
-      "baselinedAt": "2026-05-28T09:50:47.5601013+00:00"
+      "baselinedAt": "2026-05-28T23:20:37.6006689+00:00"
     }
   ]
 }
