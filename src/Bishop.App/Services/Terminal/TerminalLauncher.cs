@@ -172,6 +172,8 @@ public sealed class TerminalLauncher : ITerminalLauncher
             if (found == 0) return;
 
             ApplySnap(found, snap);
+            await Task.Delay(500);
+            ApplySnap(found, snap);
         });
     }
 
