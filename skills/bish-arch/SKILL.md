@@ -174,8 +174,9 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    to 15. If it returns fewer than 3, that's fine — surface what it found.
 
    If the subagent reports no findings (all applicable dimensions clean),
-   record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-arch`,
-   then congratulate the user and STOP without pushing anything.
+   record this run with an empty findings array — same call shape as
+   step 10, just `"findings": []` — then congratulate the user and STOP
+   without pushing anything.
 
 3. **Echo summary.** Print a one-line overview the user can scan before triage.
    Format (paths shown are illustrative only — use whatever the subagent
@@ -212,6 +213,26 @@ that aren't in this list — the headings above are the floor, not the ceiling.
        again with the user's own rebuttal as a hint.
      - **Defer** — note it but don't card it now.
 
+   - **Track the finding** in a session log (in memory). For each finding
+     captured during the walk, store:
+
+     - `title` — the finding's one-sentence headline
+     - `body` — multi-line description: location(s), what, why-it-matters,
+       suggested-action
+     - `severity` — the subagent's `high` / `med` / `low`
+     - `location` — the finding's `file:line` (or comma-separated locations)
+     - **pending outcome** — derived from the user's choice:
+       - **Card it (new)** → `pending-card:<session-index>` (resolved to
+         `carded:#<N>` after step 8 pushes the card)
+       - **Cluster with #N** → reuse the same `pending-card:<session-index>`
+         that was assigned to the card it was clustered into
+       - **Dismiss — context** → `dismissed`
+       - **Defer** → `parked`
+
+     This log is the input to step 10's `bishop findings record` call. Every
+     finding the subagent surfaced must appear in it, each with one of the
+     three final outcomes (`carded:#<N>` / `dismissed` / `parked`).
+
 5. **Ensure the `arch` tag exists.** If `tags[].name` doesn't include `arch`,
    stop and tell the user: the canonical tags are seeded by `bishop workspace init` — re-running it will restore any missing tags.
 
@@ -246,7 +267,42 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    > resurface — explain the same way or capture the rebuttal in a project
    > memory if it's load-bearing.
 
-10. **Record this run** by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-arch`.
+10. **Record this run.** Resolve any `pending-card:<n>` markers in the session
+    log to `carded:#<N>` using the card numbers returned by step 8, so every
+    tracked finding carries one of the three final outcomes (`carded:#<N>` /
+    `dismissed` / `parked`).
+
+    Then capture HEAD and emit the findings via the Bash tool (single-quoted
+    heredoc — the quotes around the marker prevent shell expansion inside the
+    JSON, so `$` and backticks in finding bodies are passed through unchanged):
+
+    ```bash
+    # First: capture the current SHA.
+    git rev-parse HEAD
+
+    # Then: emit findings, substituting the literal SHA value (no $VAR
+    # expansion — see `Shell selection` in conventions).
+    bishop findings record --skill bish-arch --sha <captured-sha> --file - <<'JSON'
+    {
+      "findings": [
+        {
+          "title": "<short title>",
+          "body": "<full body: locations, what, why-it-matters, suggested-action>",
+          "outcome": "carded:#<N>",
+          "severity": "high",
+          "location": "<file:line[, file:line]>"
+        }
+      ]
+    }
+    JSON
+    ```
+
+    See `## Findings JSON schema` below for the full field rules.
+
+    A successful invocation prints `Recorded N finding(s) for 'bish-arch'`
+    plus the JSON / HTML paths under `.bishop/findings/`. On non-zero exit,
+    surface the error to the user but do not abort — the review is complete
+    whether or not the record write succeeds.
 
 </what-to-do>
 
@@ -273,6 +329,59 @@ Rules:
 - Use bullets in `### Changes` and `### Acceptance`.
 - Omit `### Related` for single-finding cards.
 - Omit `### Changes` when the suggested action is already clear from `### Why`.
+
+## Findings JSON schema
+
+Reference for future skill authors copying this pattern. The `bishop findings
+record --file -` command reads JSON of the shape below; the validator
+(`Bishop.App.Findings.FindingsValidator`) rejects malformed input.
+
+```json
+{
+  "findings": [
+    {
+      "title": "SRP violation — UserHandler does auth + validation + persistence",
+      "body": "Locations: src/Services/UserHandler.cs:42, src/Services/UserHandler.cs:88\n\nThe class handles three unrelated responsibilities. Why it matters: any change touches the same type, making churn unsafe. Suggested action: split into AuthService, ValidationService, and UserRepository.",
+      "outcome": "carded:#704",
+      "severity": "high",
+      "location": "src/Services/UserHandler.cs:42,88"
+    },
+    {
+      "title": "Missing ConfigureAwait in non-UI handler",
+      "body": "src/Handlers/QueryHandler.cs:55 — awaits without ConfigureAwait(false). Negligible in this codebase because there is no SynchronizationContext on the host.",
+      "outcome": "dismissed",
+      "severity": "low",
+      "location": "src/Handlers/QueryHandler.cs:55"
+    },
+    {
+      "title": "Public type that should be internal",
+      "body": "src/Core/InternalHelper.cs:14 — `public` but only used within the assembly. Tightening to `internal` reduces the public surface.",
+      "outcome": "parked",
+      "severity": "med",
+      "location": "src/Core/InternalHelper.cs:14"
+    }
+  ]
+}
+```
+
+Field rules:
+
+- `title` (required) — non-empty string. One-sentence finding headline.
+- `body` (required) — non-empty string. Use `\n` for newlines. Should
+  contain location(s), what's wrong, why it matters, and the suggested
+  action.
+- `outcome` (required) — exactly one of:
+  - `dismissed` — user explained why this isn't an issue
+  - `parked` — user wants to revisit later
+  - `carded:#<n>` — became a Bishop card (the literal `#` is required;
+    `<n>` is the workspace-scoped card Number)
+- `severity` (optional) — `high` / `med` / `low` / `critical`. Drives
+  the HTML chip colour. `null` or absent is allowed.
+- `location` (optional) — `file:line` or comma-separated locations for
+  findings spanning multiple sites.
+
+An empty `findings: []` array is valid and is the right shape for the
+"no findings surfaced" run path.
 
 <guardrails>
 
