@@ -329,6 +329,15 @@ public sealed partial class MainWindow : Window
             AppWindow.MoveAndResize(new RectInt32(wa.X, wa.Y, AppWindow.Size.Width, AppWindow.Size.Height));
         }
         SnapToHalfScreen();
+
+        // DwmGetWindowAttribute returns zero frame extents before the window is shown,
+        // so re-snap once after first activation to apply the correct padding.
+        void OnFirstActivated(object sender, WindowActivatedEventArgs e)
+        {
+            Activated -= OnFirstActivated;
+            SnapToHalfScreen();
+        }
+        Activated += OnFirstActivated;
     }
 
     private static DisplayArea GetDisplayForPosition(int x, int y)
