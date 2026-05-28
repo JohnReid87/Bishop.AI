@@ -8,9 +8,9 @@ using WinRT.Interop;
 
 namespace Bishop.UI.Views;
 
-public sealed partial class CoverageViewerWindow : Window
+public sealed partial class ReportViewerWindow : Window
 {
-    public CoverageViewerWindow()
+    public ReportViewerWindow()
     {
         InitializeComponent();
         SetupTitleBar();
@@ -52,8 +52,8 @@ public sealed partial class CoverageViewerWindow : Window
 
         try
         {
-            await CoverageWebView.EnsureCoreWebView2Async();
-            CoverageWebView.CoreWebView2?.Navigate(uri.AbsoluteUri);
+            await ReportWebView.EnsureCoreWebView2Async();
+            ReportWebView.CoreWebView2?.Navigate(uri.AbsoluteUri);
         }
         catch (Exception ex)
         {

@@ -1194,7 +1194,7 @@ public sealed partial class WorkspaceDetailPage : Page
         if (e.PropertyName == nameof(WorkspaceMonitoringViewModel.SelectedReportUri)
             && Monitoring.SelectedReportUri is { } uri)
         {
-            _ = App.CoverageViewer!.ShowReport(uri);
+            _ = App.ReportViewer!.ShowReport(uri);
         }
     }
 

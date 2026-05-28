@@ -23,7 +23,7 @@ public partial class App : Application
 
     public static MarkdownViewerWindow? MarkdownViewer { get; private set; }
 
-    public static CoverageViewerWindow? CoverageViewer { get; private set; }
+    public static ReportViewerWindow? ReportViewer { get; private set; }
 
     private static volatile bool _isMainWindowClosed;
     private static int _showingErrorDialog;
@@ -91,7 +91,7 @@ public partial class App : Application
         MainWindow.Activate();
 
         MarkdownViewer = new MarkdownViewerWindow();
-        CoverageViewer = new CoverageViewerWindow();
+        ReportViewer = new ReportViewerWindow();
     }
 
     private static async void OnAppUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)

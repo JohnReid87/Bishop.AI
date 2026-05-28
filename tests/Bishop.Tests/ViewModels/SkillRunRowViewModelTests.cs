@@ -158,11 +158,36 @@ public class SkillRunRowViewModelTests
     [InlineData("bish-tests")]
     [InlineData("bish-security")]
     [InlineData("bish-audit-docs")]
-    public void NonCoverageSkill_ReportFilePath_IsNull(string skillName)
+    public void NonCoverageSkill_NoFindingsFile_ReportFilePath_IsNull(string skillName)
     {
         var row = new SkillRunRowViewModel(skillName, null, null, false, @"C:\myrepo");
 
         row.ReportFilePath.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("bish-arch")]
+    [InlineData("bish-tests")]
+    [InlineData("bish-security")]
+    [InlineData("bish-audit-docs")]
+    public void NonCoverageSkill_WithFindingsFile_ReportFilePath_PointsAtIt(string skillName)
+    {
+        var workspace = Path.Combine(Path.GetTempPath(), "bishop-tests-" + Guid.NewGuid().ToString("N"));
+        var findingsDir = Path.Combine(workspace, ".bishop", "findings");
+        Directory.CreateDirectory(findingsDir);
+        var findingsFile = Path.Combine(findingsDir, $"{skillName}.html");
+        File.WriteAllText(findingsFile, "<html></html>");
+
+        try
+        {
+            var row = new SkillRunRowViewModel(skillName, null, null, false, workspace);
+
+            row.ReportFilePath.Should().Be(findingsFile);
+        }
+        finally
+        {
+            Directory.Delete(workspace, recursive: true);
+        }
     }
 
     [Fact]

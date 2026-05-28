@@ -35,9 +35,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable, string workspacePath = "")
     {
         SkillName = skillName;
-        ReportFilePath = skillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(workspacePath)
-            ? Path.Combine(workspacePath, "TestResults", "coverage-report", "index.html")
-            : null;
+        ReportFilePath = ResolveReportFilePath(skillName, workspacePath);
         LastRunText = lastRun is null ? "Never" : FormatRelativeTime(lastRun.Value);
 
         if (lastRun is null)
@@ -62,6 +60,18 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
             StatusTooltip = count < 10 ? "Fresh" : count < 50 ? "Getting stale" : "Stale — re-audit recommended";
             SeverityRank = count < 10 ? 0 : count < 50 ? 1 : 2;
         }
+    }
+
+    private static string? ResolveReportFilePath(string skillName, string workspacePath)
+    {
+        if (string.IsNullOrEmpty(workspacePath))
+            return null;
+
+        if (skillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase))
+            return Path.Combine(workspacePath, "TestResults", "coverage-report", "index.html");
+
+        var findingsPath = Path.Combine(workspacePath, ".bishop", "findings", $"{skillName}.html");
+        return File.Exists(findingsPath) ? findingsPath : null;
     }
 
     private static string FormatRelativeTime(DateTimeOffset timestamp)
