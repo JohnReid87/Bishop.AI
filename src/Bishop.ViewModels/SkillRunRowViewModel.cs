@@ -1,3 +1,4 @@
+using Bishop.App.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.IO;
@@ -15,10 +16,10 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     public string? ReportFilePath { get; }
 
     [ObservableProperty]
-    private string _selectedModelId = "claude-sonnet-4-6";
+    private string _selectedModelId = ClaudeModels.Sonnet46;
 
     [ObservableProperty]
-    private string _selectedModelLabel = "Sonnet 4.6 ▾";
+    private string _selectedModelLabel = ClaudeModels.Sonnet46Display + " ▾";
 
     [ObservableProperty]
     private string _modelSelectionReason = string.Empty;
@@ -27,7 +28,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     private void SelectModel(string modelId)
     {
         SelectedModelId = modelId;
-        var label = SkillModels.All.FirstOrDefault(m => m.Id == modelId)?.Label ?? "Sonnet 4.6";
+        var label = SkillModels.All.FirstOrDefault(m => m.Id == modelId)?.Label ?? ClaudeModels.Sonnet46Display;
         SelectedModelLabel = $"{label} ▾";
     }
 
