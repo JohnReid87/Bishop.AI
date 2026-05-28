@@ -130,11 +130,11 @@ public sealed class GetRecentCommitsTests : IDisposable
     }
 
     [Fact]
-    public async Task GetRecentCommitsAsync_ReturnsAtMostFiveCommits_WhenRepoHasMore()
+    public async Task GetRecentCommitsAsync_ReturnsAtMostFiftyCommits_WhenRepoHasMore()
     {
         // Arrange
         InitRepoWithCommit("Commit 1");
-        for (var i = 2; i <= 7; i++)
+        for (var i = 2; i <= 51; i++)
         {
             File.WriteAllText(Path.Combine(_tempDir, $"file{i}.txt"), $"content {i}");
             Git("add", ".");
@@ -147,7 +147,34 @@ public sealed class GetRecentCommitsTests : IDisposable
 
         // Assert
         var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
-        success.Commits.Should().HaveCount(5);
+        success.Commits.Should().HaveCount(50);
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_UnpushedCountReflectsTrueCount_WhenUpstreamExists()
+    {
+        // Arrange
+        InitRepoWithCommit("Initial commit");
+        var barePath = Path.Combine(_tempDir, "remote.git");
+        Directory.CreateDirectory(barePath);
+        GitInDir(barePath, "init", "--bare");
+        Git("remote", "add", "origin", barePath);
+        Git("push", "-u", "origin", "HEAD");
+        for (var i = 1; i <= 3; i++)
+        {
+            File.WriteAllText(Path.Combine(_tempDir, $"unpushed{i}.txt"), $"content {i}");
+            Git("add", ".");
+            Git("commit", "-m", $"Unpushed commit {i}");
+        }
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
+        success.UnpushedCount.Should().Be(3);
+        success.Commits.Count(c => !c.IsPushed).Should().Be(3);
     }
 
     [Fact]

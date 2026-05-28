@@ -248,7 +248,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
         switch (result)
         {
-            case GetRecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef, UpstreamIsTracked: var upstreamIsTracked }:
+            case GetRecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef, UpstreamIsTracked: var upstreamIsTracked, UnpushedCount: var unpushedCount }:
                 var needsSetUpstream = !upstreamIsTracked;
                 var commitsContainer = new StackPanel { Spacing = 2 };
 
@@ -295,7 +295,7 @@ public sealed partial class WorkspaceDetailPage : Page
                     }
                 }
 
-                void UpdatePushButton(IReadOnlyList<CommitInfo> currentCommits, string? currentUpstream, bool currentIsTracked)
+                void UpdatePushButton(IReadOnlyList<CommitInfo> currentCommits, string? currentUpstream, bool currentIsTracked, int unpushed)
                 {
                     needsSetUpstream = !currentIsTracked;
                     string label;
@@ -307,7 +307,6 @@ public sealed partial class WorkspaceDetailPage : Page
                     }
                     else
                     {
-                        var unpushed = currentCommits.Count(c => !c.IsPushed);
                         if (unpushed == 0)
                         {
                             label = "Up to date";
@@ -336,10 +335,10 @@ public sealed partial class WorkspaceDetailPage : Page
                     if (pushResult.Success)
                     {
                         var refreshed = await Board.GetRecentCommitsAsync(workspacePath);
-                        if (refreshed is GetRecentCommitsResult.Success { Commits: var refreshedCommits, UpstreamRef: var refreshedUpstream, UpstreamIsTracked: var refreshedIsTracked })
+                        if (refreshed is GetRecentCommitsResult.Success { Commits: var refreshedCommits, UpstreamRef: var refreshedUpstream, UpstreamIsTracked: var refreshedIsTracked, UnpushedCount: var refreshedUnpushedCount })
                         {
                             RenderCommits(refreshedCommits, refreshedUpstream);
-                            UpdatePushButton(refreshedCommits, refreshedUpstream, refreshedIsTracked);
+                            UpdatePushButton(refreshedCommits, refreshedUpstream, refreshedIsTracked, refreshedUnpushedCount);
                         }
                         else
                         {
@@ -357,8 +356,8 @@ public sealed partial class WorkspaceDetailPage : Page
                 };
 
                 RenderCommits(commits, upstreamRef);
-                UpdatePushButton(commits, upstreamRef, upstreamIsTracked);
-                panel.Children.Add(commitsContainer);
+                UpdatePushButton(commits, upstreamRef, upstreamIsTracked, unpushedCount);
+                panel.Children.Add(new ScrollViewer { MaxHeight = 400, Content = commitsContainer });
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 4, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
                 panel.Children.Add(errorBlock);
                 panel.Children.Add(pushButton);

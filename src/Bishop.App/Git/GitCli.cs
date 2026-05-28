@@ -13,7 +13,7 @@ public sealed class GitCli : IGitCli
     {
         var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("log");
-        psi.ArgumentList.Add("--max-count=5");
+        psi.ArgumentList.Add("--max-count=50");
         psi.ArgumentList.Add("--format=%h\x1f%H\x1f%B\x1f%aI\x1e");
 
         Process? proc;
@@ -112,7 +112,11 @@ public sealed class GitCli : IGitCli
                 ? commits.Select(c => c with { IsPushed = !unpushedShas.Contains(c.FullHash) }).ToList()
                 : commits;
 
-            return new GetRecentCommitsResult.Success(finalCommits, upstreamRef, upstreamIsTracked);
+            var unpushedCount = upstreamRef is not null
+                ? unpushedShas.Count
+                : finalCommits.Count(c => !c.IsPushed);
+
+            return new GetRecentCommitsResult.Success(finalCommits, upstreamRef, upstreamIsTracked, unpushedCount);
         }
     }
 
