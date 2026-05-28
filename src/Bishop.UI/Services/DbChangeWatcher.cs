@@ -49,7 +49,7 @@ internal sealed class DbChangeWatcher : IDisposable
                 _logger.LogError(ex, "DbChangeWatcher subscriber threw an unhandled exception");
             }
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException) { } // debounce cancelled (disposed or superseded) — nothing to notify
     }
 
     public void Dispose()

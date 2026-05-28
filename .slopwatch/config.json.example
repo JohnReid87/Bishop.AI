@@ -1,10 +1,4 @@
 {
-  "suppressions": [
-    {
-      "ruleId": "SW002",
-      "pattern": "**/Generated/**",
-      "justification": "Generated code from protobuf/gRPC compiler - cannot be modified"
-    }
-  ],
+  "suppressions": [],
   "globalSuppressions": []
 }

@@ -256,7 +256,7 @@ public class MainWindowViewModelTests
         finally
         {
             lockStream.Dispose();
-            try { File.Delete(tempPath); } catch { }
+            try { File.Delete(tempPath); } catch { } // best-effort temp-file cleanup
         }
     }
 
@@ -294,8 +294,8 @@ public class MainWindowViewModelTests
                 restoreAcl.RemoveAccessRule(denyRule);
                 fileInfo.SetAccessControl(restoreAcl);
             }
-            catch { }
-            try { File.Delete(tempPath); } catch { }
+            catch { } // best-effort ACL restore so the temp file can be deleted
+            try { File.Delete(tempPath); } catch { } // best-effort temp-file cleanup
         }
     }
 
@@ -700,7 +700,7 @@ public class MainWindowViewModelTests
         }
         finally
         {
-            try { File.Delete(tempPath); } catch { }
+            try { File.Delete(tempPath); } catch { } // best-effort temp-file cleanup
         }
     }
 
@@ -720,7 +720,7 @@ public class MainWindowViewModelTests
         finally
         {
             lockStream.Dispose();
-            try { File.Delete(tempPath); } catch { }
+            try { File.Delete(tempPath); } catch { } // best-effort temp-file cleanup
         }
     }
 

@@ -75,7 +75,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
             await Task.Delay(500, ct);
             await WriteNotesAsync(NotesContent);
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException) { } // debounce superseded by a newer edit — drop this stale save
     }
 
     public async Task LoadAsync(Guid workspaceId, string workspacePath)

@@ -148,7 +148,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
                 var candidate = Path.Combine(segment.Trim(), "pwsh.exe");
                 if (_fileExists(candidate)) return true;
             }
-            catch (ArgumentException) { }
+            catch (ArgumentException) { } // invalid path chars in this PATH segment — skip it
         }
         return false;
     }
@@ -228,7 +228,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
                 var candidate = Path.Combine(segment.Trim(), "wt.exe");
                 if (_fileExists(candidate)) return candidate;
             }
-            catch (ArgumentException) { }
+            catch (ArgumentException) { } // invalid path chars in this PATH segment — skip it
         }
 
         return null;
