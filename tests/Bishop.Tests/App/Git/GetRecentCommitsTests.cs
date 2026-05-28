@@ -214,4 +214,37 @@ public sealed class GetRecentCommitsTests : IDisposable
         success.UpstreamRef.Should().BeNull();
         success.Commits.Should().AllSatisfy(c => c.IsPushed.Should().BeFalse());
     }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_ReturnsNonNullUpstreamRef_AfterSquashRebaseAndForcePush()
+    {
+        // Arrange — push two commits, squash them via reset+commit, then force-push.
+        // This simulates the scenario where @{u} context resolution fails in a non-interactive
+        // process but git for-each-ref still resolves the upstream from branch config.
+        InitRepoWithCommit("First commit");
+        var barePath = Path.Combine(_tempDir, "remote.git");
+        Directory.CreateDirectory(barePath);
+        GitInDir(barePath, "init", "--bare");
+        Git("remote", "add", "origin", barePath);
+        Git("push", "-u", "origin", "HEAD");
+
+        File.WriteAllText(Path.Combine(_tempDir, "second.txt"), "second");
+        Git("add", ".");
+        Git("commit", "-m", "Second commit");
+        Git("push");
+
+        Git("reset", "--soft", "HEAD~2");
+        Git("commit", "-m", "Squashed commit");
+        Git("push", "--force");
+
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
+        success.UpstreamRef.Should().NotBeNull();
+        success.Commits.Should().AllSatisfy(c => c.IsPushed.Should().BeTrue());
+    }
 }

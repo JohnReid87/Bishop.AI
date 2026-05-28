@@ -81,55 +81,31 @@ public sealed class GitCli : IGitCli
             if (commits.Count == 0)
                 return new GetRecentCommitsResult.NoCommits();
 
-            string? upstreamRef = null;
+            var upstreamRef = await GetUpstreamRefAsync(workspacePath, cancellationToken);
             HashSet<string> unpushedShas = [];
 
-            var upPsi = CreateGitProcessStartInfo(workspacePath);
-            upPsi.ArgumentList.Add("rev-parse");
-            upPsi.ArgumentList.Add("--abbrev-ref");
-            upPsi.ArgumentList.Add("--symbolic-full-name");
-            upPsi.ArgumentList.Add("@{u}");
-
-            try
+            if (upstreamRef is not null)
             {
-                var upProc = Process.Start(upPsi);
-                if (upProc is not null)
+                var revPsi = CreateGitProcessStartInfo(workspacePath);
+                revPsi.ArgumentList.Add("rev-list");
+                revPsi.ArgumentList.Add($"{upstreamRef}..HEAD");
+
+                var revProc = Process.Start(revPsi);
+                if (revProc is not null)
                 {
-                    using (upProc)
+                    using (revProc)
                     {
-                        var upOut = await upProc.StandardOutput.ReadToEndAsync(cancellationToken);
-                        await upProc.WaitForExitAsync(cancellationToken);
-                        if (upProc.ExitCode == 0)
+                        var revOut = await revProc.StandardOutput.ReadToEndAsync(cancellationToken);
+                        await revProc.WaitForExitAsync(cancellationToken);
+                        if (revProc.ExitCode == 0)
                         {
-                            upstreamRef = upOut.Trim();
-
-                            var revPsi = CreateGitProcessStartInfo(workspacePath);
-                            revPsi.ArgumentList.Add("rev-list");
-                            revPsi.ArgumentList.Add("@{u}..HEAD");
-
-                            var revProc = Process.Start(revPsi);
-                            if (revProc is not null)
-                            {
-                                using (revProc)
-                                {
-                                    var revOut = await revProc.StandardOutput.ReadToEndAsync(cancellationToken);
-                                    await revProc.WaitForExitAsync(cancellationToken);
-                                    if (revProc.ExitCode == 0)
-                                    {
-                                        unpushedShas = revOut
-                                            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                                            .Select(s => s.Trim())
-                                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                                    }
-                                }
-                            }
+                            unpushedShas = revOut
+                                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                .Select(s => s.Trim())
+                                .ToHashSet(StringComparer.OrdinalIgnoreCase);
                         }
                     }
                 }
-            }
-            catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
-            {
-                // git unavailable for upstream check — no upstream
             }
 
             var finalCommits = upstreamRef is not null
@@ -197,52 +173,31 @@ public sealed class GitCli : IGitCli
         }
 
         var isPushed = false;
+        var upstreamRef = await GetUpstreamRefAsync(workspacePath, cancellationToken);
 
-        try
+        if (upstreamRef is not null)
         {
-            var upPsi = CreateGitProcessStartInfo(workspacePath);
-            upPsi.ArgumentList.Add("rev-parse");
-            upPsi.ArgumentList.Add("--abbrev-ref");
-            upPsi.ArgumentList.Add("--symbolic-full-name");
-            upPsi.ArgumentList.Add("@{u}");
+            var revPsi = CreateGitProcessStartInfo(workspacePath);
+            revPsi.ArgumentList.Add("rev-list");
+            revPsi.ArgumentList.Add($"{upstreamRef}..HEAD");
 
-            var upProc = Process.Start(upPsi);
-            if (upProc is not null)
+            var revProc = Process.Start(revPsi);
+            if (revProc is not null)
             {
-                using (upProc)
+                using (revProc)
                 {
-                    var upOut = await upProc.StandardOutput.ReadToEndAsync(cancellationToken);
-                    await upProc.WaitForExitAsync(cancellationToken);
-                    if (upProc.ExitCode == 0 && !string.IsNullOrWhiteSpace(upOut))
+                    var revOut = await revProc.StandardOutput.ReadToEndAsync(cancellationToken);
+                    await revProc.WaitForExitAsync(cancellationToken);
+                    if (revProc.ExitCode == 0)
                     {
-                        var revPsi = CreateGitProcessStartInfo(workspacePath);
-                        revPsi.ArgumentList.Add("rev-list");
-                        revPsi.ArgumentList.Add("@{u}..HEAD");
-
-                        var revProc = Process.Start(revPsi);
-                        if (revProc is not null)
-                        {
-                            using (revProc)
-                            {
-                                var revOut = await revProc.StandardOutput.ReadToEndAsync(cancellationToken);
-                                await revProc.WaitForExitAsync(cancellationToken);
-                                if (revProc.ExitCode == 0)
-                                {
-                                    var unpushedShas = revOut
-                                        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                                        .Select(s => s.Trim())
-                                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                                    isPushed = !unpushedShas.Contains(fullHash);
-                                }
-                            }
-                        }
+                        var unpushedShas = revOut
+                            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(s => s.Trim())
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        isPushed = !unpushedShas.Contains(fullHash);
                     }
                 }
             }
-        }
-        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
-        {
-            // git unavailable for upstream check — IsPushed stays false
         }
 
         return new GetCardCommitResult.Found(new CommitInfo(shortHash, fullHash, Subject: "", Body: "", timestamp, isPushed));
@@ -304,52 +259,31 @@ public sealed class GitCli : IGitCli
         }
 
         var isPushed = false;
+        var upstreamRef = await GetUpstreamRefAsync(workspacePath, cancellationToken);
 
-        try
+        if (upstreamRef is not null)
         {
-            var upPsi = CreateGitProcessStartInfo(workspacePath);
-            upPsi.ArgumentList.Add("rev-parse");
-            upPsi.ArgumentList.Add("--abbrev-ref");
-            upPsi.ArgumentList.Add("--symbolic-full-name");
-            upPsi.ArgumentList.Add("@{u}");
+            var revPsi = CreateGitProcessStartInfo(workspacePath);
+            revPsi.ArgumentList.Add("rev-list");
+            revPsi.ArgumentList.Add($"{upstreamRef}..HEAD");
 
-            var upProc = Process.Start(upPsi);
-            if (upProc is not null)
+            var revProc = Process.Start(revPsi);
+            if (revProc is not null)
             {
-                using (upProc)
+                using (revProc)
                 {
-                    var upOut = await upProc.StandardOutput.ReadToEndAsync(cancellationToken);
-                    await upProc.WaitForExitAsync(cancellationToken);
-                    if (upProc.ExitCode == 0 && !string.IsNullOrWhiteSpace(upOut))
+                    var revOut = await revProc.StandardOutput.ReadToEndAsync(cancellationToken);
+                    await revProc.WaitForExitAsync(cancellationToken);
+                    if (revProc.ExitCode == 0)
                     {
-                        var revPsi = CreateGitProcessStartInfo(workspacePath);
-                        revPsi.ArgumentList.Add("rev-list");
-                        revPsi.ArgumentList.Add("@{u}..HEAD");
-
-                        var revProc = Process.Start(revPsi);
-                        if (revProc is not null)
-                        {
-                            using (revProc)
-                            {
-                                var revOut = await revProc.StandardOutput.ReadToEndAsync(cancellationToken);
-                                await revProc.WaitForExitAsync(cancellationToken);
-                                if (revProc.ExitCode == 0)
-                                {
-                                    var unpushedShas = revOut
-                                        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                                        .Select(s => s.Trim())
-                                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                                    isPushed = !unpushedShas.Contains(resolvedFullHash);
-                                }
-                            }
-                        }
+                        var unpushedShas = revOut
+                            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(s => s.Trim())
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        isPushed = !unpushedShas.Contains(resolvedFullHash);
                     }
                 }
             }
-        }
-        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
-        {
-            // git unavailable for upstream check — IsPushed stays false
         }
 
         return new GetCardCommitResult.Found(new CommitInfo(shortHash, resolvedFullHash, Subject: "", Body: "", timestamp, isPushed));
@@ -851,6 +785,54 @@ public sealed class GitCli : IGitCli
             var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
             await proc.WaitForExitAsync(cancellationToken);
             return proc.ExitCode == 0 ? stdout.Trim() : string.Empty;
+        }
+    }
+
+    // Uses git for-each-ref rather than @{u} shorthand: @{u} relies on HEAD context resolution
+    // which fails in Bishop's non-interactive process environment after a squash rebase + force-push.
+    private async Task<string?> GetUpstreamRefAsync(string workspacePath, CancellationToken cancellationToken)
+    {
+        var headPsi = CreateGitProcessStartInfo(workspacePath);
+        headPsi.ArgumentList.Add("rev-parse");
+        headPsi.ArgumentList.Add("--abbrev-ref");
+        headPsi.ArgumentList.Add("HEAD");
+
+        Process? headProc;
+        try { headProc = Process.Start(headPsi); }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return null; }
+
+        if (headProc is null) return null;
+
+        string branchName;
+        using (headProc)
+        {
+            var stdout = await headProc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await headProc.StandardError.ReadToEndAsync(cancellationToken);
+            await headProc.WaitForExitAsync(cancellationToken);
+            if (headProc.ExitCode != 0) return null;
+            branchName = stdout.Trim();
+            if (string.IsNullOrEmpty(branchName) || branchName == "HEAD") return null;
+        }
+
+        var upPsi = CreateGitProcessStartInfo(workspacePath);
+        upPsi.ArgumentList.Add("for-each-ref");
+        upPsi.ArgumentList.Add("--format=%(upstream:short)");
+        upPsi.ArgumentList.Add($"refs/heads/{branchName}");
+
+        Process? upProc;
+        try { upProc = Process.Start(upPsi); }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return null; }
+
+        if (upProc is null) return null;
+
+        using (upProc)
+        {
+            var stdout = await upProc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await upProc.StandardError.ReadToEndAsync(cancellationToken);
+            await upProc.WaitForExitAsync(cancellationToken);
+            if (upProc.ExitCode != 0) return null;
+            var upstream = stdout.Trim();
+            return string.IsNullOrEmpty(upstream) ? null : upstream;
         }
     }
 
