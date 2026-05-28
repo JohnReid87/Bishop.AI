@@ -8,7 +8,7 @@ bishop.stage: false
 bishop.category: review
 ---
 
-> Recommended model: Sonnet 4.6 — grep-based heuristic detection; extended reasoning not required.
+> Recommended model: Opus 4.7 — heuristic-catalogue review with per-finding triage requires sustained multi-step judgement.
 
 The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
@@ -34,29 +34,29 @@ Echo the workspace name on its own line:
 
 ---
 
-## What this skill does
-
-Hunts dead code in the .NET solution at the current Bishop workspace's path. A single Explore subagent applies three heuristic dimensions — unreferenced types/members, MediatR requests never dispatched, and DI registrations never injected — producing a ranked list of candidates. The user triages findings one at a time, dismissing false positives and clustering related ones. Confirmed cards are pushed tagged `chore` to the `To Do` lane.
-
-The skill scans the whole solution. It does not accept a scoping argument — the user dismisses out-of-scope findings during triage. Detection is grep-based, not Roslyn-based: false positives (reflection, dynamic dispatch, runtime discovery) are expected and handled via triage.
-
-**Project agnostic, .NET only.** Works on any .NET solution registered as a Bishop workspace. No specific layout, namespace prefix, or package set is assumed.
-
 ## Review dimensions
 
-The discovery subagent applies the Universal dimensions to every project and the Stack-conditional dimension only when the relevant package is detected. Each finding must cite at least one `file:line` location.
+Dead-code detection is grep-based, not Roslyn-based. False positives (reflection, dynamic dispatch, runtime discovery) are expected and handled via triage. Works on any .NET solution registered as a Bishop workspace; no specific layout or namespace prefix assumed. One Explore subagent (`subagent_type: "Explore"`, `model: "haiku"`) applies the Universal dimensions to every project and the Stack-conditional dimension only when the relevant package is detected. Each finding must cite at least one `file:line` location.
 
 ### Universal — apply to every project in scope
 
 - **Unreferenced C# types** — classes, interfaces, enums, and structs defined in non-generated, non-test source files (exclude `*.g.cs`, `AssemblyInfo.cs`, `GlobalUsings.cs`, and files under `obj/`) with zero references outside their own definition file. Heuristic: grep for the type name across all `.cs` files; flag when the only hits are the definition line itself, or hits exclusively in test files with no production callers. Types decorated with reflection-discovery attributes (`[JsonConverter]`, `[XamlType]`, `[Export]`, source-generator marker attributes) are likely live via runtime discovery — flag with lower confidence and note the attribute.
 
+  *Common false positives:* types instantiated via `Activator.CreateInstance` or `Assembly.GetTypes()`; types referenced only from XAML (`x:Class`, `x:Type`, `DataTemplate` bindings); partial classes whose callers live in a generated or XAML partial; types used solely as generic type arguments.
+
 - **Unreferenced public/internal members** — methods and properties on types that are themselves referenced, but the member has no callers outside its defining file. Exclude: interface-implementation members (the interface's member may be called indirectly), `override` and `virtual` members (runtime/polymorphic dispatch), members attributed `[RelayCommand]` or `[ObservableProperty]` (source-generated counterparts are the public surface), constructors, standard object-method overrides (`ToString`, `Equals`, `GetHashCode`, `GetType`), and event accessors (`add`/`remove`). Heuristic: grep for the member name across all `.cs` files; flag when zero hits appear outside the defining file.
 
+  *Common false positives:* members bound in XAML (`x:Bind`, `Binding Path=`); members accessed via `dynamic` or reflection; public properties on serialised DTO types; the sole implementation of an interface method (the interface, not the concrete type, is the callee).
+
 - **DI registrations never injected** — service types registered via `AddSingleton`, `AddScoped`, `AddTransient`, or `TryAdd*` variants, but whose service type never appears as a constructor parameter anywhere in the solution. Heuristic: collect the concrete or interface type name from each registration call; grep for the type name in constructor parameter position (patterns: `(TypeName `, `, TypeName `, `(TypeName,`). Flag registrations with no constructor-parameter match. Services consumed via `IServiceProvider.GetRequiredService<T>()`, factory methods, or `ActivatorUtilities` won't appear as constructor parameters — note this when flagging so the user can verify.
+
+  *Common false positives:* services resolved via `IServiceProvider.GetRequiredService<T>()` or factory lambdas (already noted inline); `IHostedService` / `BackgroundService` registrations (injected by the host, not constructors); open-generic registrations (`typeof(IRepo<>)` → `typeof(Repo<>)`); services consumed by middleware `Invoke`/`InvokeAsync` directly.
 
 ### Stack-conditional — apply only when the relevant package is detected
 
 - **MediatR IRequest types never dispatched** *(if `MediatR` or a project-local mediator abstraction is referenced)* — types implementing `IRequest`, `IRequest<T>`, `INotification`, or any project-local `ICommand`/`IQuery<T>` aliases, that are never passed to `mediator.Send(...)`, `mediator.Publish(...)`, or `sender.Send(...)`. Heuristic: collect all implementing type names; grep for the type name adjacent to a `.Send(` or `.Publish(` call (patterns: `Send(new TypeName`, `Publish(new TypeName`, `new TypeName(` within a few lines of `.Send(`). Flag types with no dispatch match. Types dispatched via a factory or string-keyed resolver won't appear — flag with medium confidence and note the absence.
+
+  *Common false positives:* requests dispatched from CLI handlers that build instances dynamically; requests exercised only in integration tests (no production callers); requests dispatched via a string-keyed or factory resolver; `INotification` types published via `mediator.Publish` on the base `INotification` interface.
 
 <what-to-do>
 
