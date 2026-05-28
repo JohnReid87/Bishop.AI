@@ -81,7 +81,7 @@ public sealed class GitCli : IGitCli
             if (commits.Count == 0)
                 return new GetRecentCommitsResult.NoCommits();
 
-            var upstreamRef = await GetUpstreamRefAsync(workspacePath, cancellationToken);
+            var (upstreamRef, upstreamIsTracked) = await GetUpstreamRefAsync(workspacePath, cancellationToken);
             HashSet<string> unpushedShas = [];
 
             if (upstreamRef is not null)
@@ -112,7 +112,7 @@ public sealed class GitCli : IGitCli
                 ? commits.Select(c => c with { IsPushed = !unpushedShas.Contains(c.FullHash) }).ToList()
                 : commits;
 
-            return new GetRecentCommitsResult.Success(finalCommits, upstreamRef);
+            return new GetRecentCommitsResult.Success(finalCommits, upstreamRef, upstreamIsTracked);
         }
     }
 
@@ -173,7 +173,7 @@ public sealed class GitCli : IGitCli
         }
 
         var isPushed = false;
-        var upstreamRef = await GetUpstreamRefAsync(workspacePath, cancellationToken);
+        var (upstreamRef, _) = await GetUpstreamRefAsync(workspacePath, cancellationToken);
 
         if (upstreamRef is not null)
         {
@@ -259,7 +259,7 @@ public sealed class GitCli : IGitCli
         }
 
         var isPushed = false;
-        var upstreamRef = await GetUpstreamRefAsync(workspacePath, cancellationToken);
+        var (upstreamRef, _) = await GetUpstreamRefAsync(workspacePath, cancellationToken);
 
         if (upstreamRef is not null)
         {
@@ -322,6 +322,41 @@ public sealed class GitCli : IGitCli
     {
         var psi = CreateGitProcessStartInfo(workspacePath);
         psi.ArgumentList.Add("push");
+
+        Process? proc;
+        try
+        {
+            proc = Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            return new PushResult(Success: false, Message: "git executable not found");
+        }
+
+        if (proc is null)
+            return new PushResult(Success: false, Message: "git executable not found");
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+
+            var message = string.IsNullOrWhiteSpace(stderr) ? stdout.Trim() : stderr.Trim();
+            return new PushResult(
+                Success: proc.ExitCode == 0,
+                Message: string.IsNullOrEmpty(message) ? null : message);
+        }
+    }
+
+    public async Task<PushResult> PushWithSetUpstreamAsync(
+        string workspacePath, CancellationToken cancellationToken = default)
+    {
+        var psi = CreateGitProcessStartInfo(workspacePath);
+        psi.ArgumentList.Add("push");
+        psi.ArgumentList.Add("-u");
+        psi.ArgumentList.Add("origin");
+        psi.ArgumentList.Add("HEAD");
 
         Process? proc;
         try
@@ -790,7 +825,8 @@ public sealed class GitCli : IGitCli
 
     // Uses git for-each-ref rather than @{u} shorthand: @{u} relies on HEAD context resolution
     // which fails in Bishop's non-interactive process environment after a squash rebase + force-push.
-    private async Task<string?> GetUpstreamRefAsync(string workspacePath, CancellationToken cancellationToken)
+    // When no tracking is configured, falls back to origin/<branch> if that remote ref exists.
+    private async Task<(string? UpstreamRef, bool IsTracked)> GetUpstreamRefAsync(string workspacePath, CancellationToken cancellationToken)
     {
         var headPsi = CreateGitProcessStartInfo(workspacePath);
         headPsi.ArgumentList.Add("rev-parse");
@@ -799,9 +835,9 @@ public sealed class GitCli : IGitCli
 
         Process? headProc;
         try { headProc = Process.Start(headPsi); }
-        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return null; }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return (null, false); }
 
-        if (headProc is null) return null;
+        if (headProc is null) return (null, false);
 
         string branchName;
         using (headProc)
@@ -809,9 +845,9 @@ public sealed class GitCli : IGitCli
             var stdout = await headProc.StandardOutput.ReadToEndAsync(cancellationToken);
             var stderr = await headProc.StandardError.ReadToEndAsync(cancellationToken);
             await headProc.WaitForExitAsync(cancellationToken);
-            if (headProc.ExitCode != 0) return null;
+            if (headProc.ExitCode != 0) return (null, false);
             branchName = stdout.Trim();
-            if (string.IsNullOrEmpty(branchName) || branchName == "HEAD") return null;
+            if (string.IsNullOrEmpty(branchName) || branchName == "HEAD") return (null, false);
         }
 
         var upPsi = CreateGitProcessStartInfo(workspacePath);
@@ -821,18 +857,40 @@ public sealed class GitCli : IGitCli
 
         Process? upProc;
         try { upProc = Process.Start(upPsi); }
-        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return null; }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return (null, false); }
 
-        if (upProc is null) return null;
+        if (upProc is null) return (null, false);
 
         using (upProc)
         {
             var stdout = await upProc.StandardOutput.ReadToEndAsync(cancellationToken);
             var stderr = await upProc.StandardError.ReadToEndAsync(cancellationToken);
             await upProc.WaitForExitAsync(cancellationToken);
-            if (upProc.ExitCode != 0) return null;
+            if (upProc.ExitCode != 0) return (null, false);
             var upstream = stdout.Trim();
-            return string.IsNullOrEmpty(upstream) ? null : upstream;
+            if (!string.IsNullOrEmpty(upstream))
+                return (upstream, IsTracked: true);
+        }
+
+        // No tracking configured — check if origin/<branch> exists as a fallback.
+        var fbPsi = CreateGitProcessStartInfo(workspacePath);
+        fbPsi.ArgumentList.Add("for-each-ref");
+        fbPsi.ArgumentList.Add("--format=%(refname:short)");
+        fbPsi.ArgumentList.Add($"refs/remotes/origin/{branchName}");
+
+        Process? fbProc;
+        try { fbProc = Process.Start(fbPsi); }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return (null, false); }
+
+        if (fbProc is null) return (null, false);
+
+        using (fbProc)
+        {
+            var stdout = await fbProc.StandardOutput.ReadToEndAsync(cancellationToken);
+            await fbProc.WaitForExitAsync(cancellationToken);
+            if (fbProc.ExitCode == 0 && !string.IsNullOrWhiteSpace(stdout))
+                return ($"origin/{branchName}", IsTracked: false);
+            return (null, false);
         }
     }
 

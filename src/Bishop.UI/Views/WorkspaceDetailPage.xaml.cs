@@ -248,7 +248,8 @@ public sealed partial class WorkspaceDetailPage : Page
 
         switch (result)
         {
-            case GetRecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef }:
+            case GetRecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef, UpstreamIsTracked: var upstreamIsTracked }:
+                var needsSetUpstream = !upstreamIsTracked;
                 var commitsContainer = new StackPanel { Spacing = 2 };
 
                 var errorBlock = new TextBlock
@@ -294,13 +295,14 @@ public sealed partial class WorkspaceDetailPage : Page
                     }
                 }
 
-                void UpdatePushButton(IReadOnlyList<CommitInfo> currentCommits, string? currentUpstream)
+                void UpdatePushButton(IReadOnlyList<CommitInfo> currentCommits, string? currentUpstream, bool currentIsTracked)
                 {
+                    needsSetUpstream = !currentIsTracked;
                     string label;
                     bool enabled;
                     if (currentUpstream is null)
                     {
-                        label = "No upstream configured";
+                        label = "No remote branch — push with -u to publish";
                         enabled = false;
                     }
                     else
@@ -313,7 +315,9 @@ public sealed partial class WorkspaceDetailPage : Page
                         }
                         else
                         {
-                            label = $"Push {unpushed} commit{(unpushed == 1 ? "" : "s")}";
+                            label = currentIsTracked
+                                ? $"Push {unpushed} commit{(unpushed == 1 ? "" : "s")}"
+                                : $"Push {unpushed} commit{(unpushed == 1 ? "" : "s")} (will set upstream)";
                             enabled = true;
                         }
                     }
@@ -328,14 +332,14 @@ public sealed partial class WorkspaceDetailPage : Page
                     pushButton.IsEnabled = false;
                     pushButton.Content = new ProgressRing { IsActive = true, Width = 16, Height = 16 };
 
-                    var pushResult = await Board.PushAsync(workspacePath);
+                    var pushResult = await Board.PushAsync(workspacePath, setUpstream: needsSetUpstream);
                     if (pushResult.Success)
                     {
                         var refreshed = await Board.GetRecentCommitsAsync(workspacePath);
-                        if (refreshed is GetRecentCommitsResult.Success { Commits: var refreshedCommits, UpstreamRef: var refreshedUpstream })
+                        if (refreshed is GetRecentCommitsResult.Success { Commits: var refreshedCommits, UpstreamRef: var refreshedUpstream, UpstreamIsTracked: var refreshedIsTracked })
                         {
                             RenderCommits(refreshedCommits, refreshedUpstream);
-                            UpdatePushButton(refreshedCommits, refreshedUpstream);
+                            UpdatePushButton(refreshedCommits, refreshedUpstream, refreshedIsTracked);
                         }
                         else
                         {
@@ -353,7 +357,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 };
 
                 RenderCommits(commits, upstreamRef);
-                UpdatePushButton(commits, upstreamRef);
+                UpdatePushButton(commits, upstreamRef, upstreamIsTracked);
                 panel.Children.Add(commitsContainer);
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 4, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
                 panel.Children.Add(errorBlock);
@@ -437,7 +441,7 @@ public sealed partial class WorkspaceDetailPage : Page
         icon.Stroke = commit.IsPushed && upstreamRef is not null ? accentBrush : secondaryBrush;
         string iconTooltip;
         if (upstreamRef is null)
-            iconTooltip = "No upstream configured";
+            iconTooltip = "No remote branch";
         else if (commit.IsPushed)
             iconTooltip = "Pushed";
         else

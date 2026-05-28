@@ -168,6 +168,29 @@ public sealed class GetRecentCommitsTests : IDisposable
         // Assert
         var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
         success.UpstreamRef.Should().NotBeNullOrEmpty();
+        success.UpstreamIsTracked.Should().BeTrue();
+        success.Commits.Should().AllSatisfy(c => c.IsPushed.Should().BeTrue());
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_UsesFallbackUpstream_WhenBranchPushedWithoutTracking()
+    {
+        // Arrange — push without -u so origin/<branch> exists but local tracking is unset.
+        InitRepoWithCommit("Initial commit");
+        var barePath = Path.Combine(_tempDir, "remote.git");
+        Directory.CreateDirectory(barePath);
+        GitInDir(barePath, "init", "--bare");
+        Git("remote", "add", "origin", barePath);
+        Git("push", "origin", "HEAD");
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
+        success.UpstreamRef.Should().StartWith("origin/");
+        success.UpstreamIsTracked.Should().BeFalse();
         success.Commits.Should().AllSatisfy(c => c.IsPushed.Should().BeTrue());
     }
 
@@ -200,9 +223,9 @@ public sealed class GetRecentCommitsTests : IDisposable
     }
 
     [Fact]
-    public async Task GetRecentCommitsAsync_AllCommitsIsPushedFalse_WhenNoUpstreamConfigured()
+    public async Task GetRecentCommitsAsync_AllCommitsIsPushedFalse_WhenNoRemoteBranch()
     {
-        // Arrange
+        // Arrange — no remote configured at all.
         InitRepoWithCommit("Initial commit");
         var sut = new GitCli();
 
@@ -212,6 +235,7 @@ public sealed class GetRecentCommitsTests : IDisposable
         // Assert
         var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
         success.UpstreamRef.Should().BeNull();
+        success.UpstreamIsTracked.Should().BeFalse();
         success.Commits.Should().AllSatisfy(c => c.IsPushed.Should().BeFalse());
     }
 

@@ -10,5 +10,7 @@ public sealed class PushCommandHandler : IRequestHandler<PushCommand, PushResult
     public PushCommandHandler(IGitCli git) => _git = git;
 
     public Task<PushResult> Handle(PushCommand request, CancellationToken cancellationToken)
-        => _git.PushAsync(request.WorkspacePath, cancellationToken);
+        => request.SetUpstream
+            ? _git.PushWithSetUpstreamAsync(request.WorkspacePath, cancellationToken)
+            : _git.PushAsync(request.WorkspacePath, cancellationToken);
 }

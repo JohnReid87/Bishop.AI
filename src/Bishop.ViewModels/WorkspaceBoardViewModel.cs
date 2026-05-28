@@ -257,8 +257,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     public async Task<GetRecentCommitsResult> GetRecentCommitsAsync(string workspacePath)
         => await _mediator.Send(new GetRecentCommitsQuery(workspacePath));
 
-    public async Task<PushResult> PushAsync(string workspacePath)
-        => await _mediator.Send(new PushCommand(workspacePath));
+    public async Task<PushResult> PushAsync(string workspacePath, bool setUpstream = false)
+        => await _mediator.Send(new PushCommand(workspacePath, SetUpstream: setUpstream));
 
     // ── Card operations ──────────────────────────────────────────────────────
 
