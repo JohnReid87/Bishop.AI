@@ -12,6 +12,7 @@ using FluentAssertions;
 using MediatR;
 using NSubstitute;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
@@ -654,6 +655,35 @@ public class MainWindowViewModelTests
         notifier.WorkspacesChanged += Raise.Event<Action>();
 
         vm.SelectedWorkspace.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AddWorkspaceAsync_LeavesNewWorkspaceSelected_WhenBindingClearsSelectionDuringReload()
+    {
+        var newId = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new InitWorkspaceResult(
+                new Workspace { Id = newId, Name = "New", Path = @"C:\new", Position = 1 },
+                Created: true, GitHubLinked: false));
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>
+            {
+                new() { Id = newId, Name = "New", Path = @"C:\new", Position = 1 }
+            });
+        var notifier = new WorkspaceChangeNotifier();
+        var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: new SynchronousDispatcher());
+
+        vm.Workspaces.CollectionChanged += (_, e) =>
+        {
+            if (e.Action == NotifyCollectionChangedAction.Reset)
+                vm.SelectedWorkspace = null;
+        };
+
+        await vm.AddWorkspaceAsync(new AddWorkspaceDialogViewModel { Name = "New", FolderPath = @"C:\new" });
+
+        vm.SelectedWorkspace.Should().NotBeNull();
+        vm.SelectedWorkspace!.Id.Should().Be(newId);
     }
 
     [Fact]

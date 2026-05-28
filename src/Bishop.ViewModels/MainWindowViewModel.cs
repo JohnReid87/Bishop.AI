@@ -77,8 +77,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             var currentId = SelectedWorkspace?.Id;
             await ReloadWorkspacesListAsync();
-            if (currentId is not null && !Workspaces.Any(w => w.Id == currentId))
-                SelectedWorkspace = Workspaces.FirstOrDefault();
+            if (currentId is null)
+                return;
+            SelectedWorkspace = Workspaces.FirstOrDefault(w => w.Id == currentId)
+                ?? Workspaces.FirstOrDefault();
         });
     }
 
