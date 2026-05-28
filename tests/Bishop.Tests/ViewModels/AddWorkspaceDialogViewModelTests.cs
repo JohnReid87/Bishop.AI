@@ -1,0 +1,37 @@
+using Bishop.ViewModels;
+using FluentAssertions;
+
+namespace Bishop.Tests.ViewModels;
+
+public class AddWorkspaceDialogViewModelTests
+{
+    [Fact]
+    public void CanConfirm_FalseWhenNameOrPathBlank()
+    {
+        var vm = new AddWorkspaceDialogViewModel();
+
+        vm.CanConfirm.Should().BeFalse();
+
+        vm.Name = "Project";
+        vm.CanConfirm.Should().BeFalse();
+
+        vm.FolderPath = @"C:\code\project";
+        vm.CanConfirm.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CanConfirm_FalseWhenWhitespaceOnly()
+    {
+        var vm = new AddWorkspaceDialogViewModel { Name = "   ", FolderPath = "   " };
+
+        vm.CanConfirm.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsPickExisting_DefaultsToTrue()
+    {
+        var vm = new AddWorkspaceDialogViewModel();
+
+        vm.IsPickExisting.Should().BeTrue();
+    }
+}

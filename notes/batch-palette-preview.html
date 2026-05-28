@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Batch Accent Palette Preview</title>
+<style>
+  body { background: #0a0a0a; color: #fff; font-family: Segoe UI, sans-serif; padding: 32px; }
+  h2 { color: #99ffffff; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 32px 0 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .card {
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 10px 12px;
+    width: 180px;
+    border-left-width: 3px;
+    font-size: 12px;
+  }
+  .card .name { color: #99ffffff; margin-bottom: 2px; }
+  .card .hex  { color: #55ffffff; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h2>Proposed batch accent palette (neon family)</h2>
+<div class="row">
+  <div class="card" style="border-left-color:#00FF41">
+    <div class="name">neon-green</div>
+    <div class="hex">#00FF41</div>
+  </div>
+  <div class="card" style="border-left-color:#BF40FF">
+    <div class="name">electric-purple</div>
+    <div class="hex">#BF40FF</div>
+  </div>
+  <div class="card" style="border-left-color:#1A8CFF">
+    <div class="name">electric-blue</div>
+    <div class="hex">#1A8CFF</div>
+  </div>
+  <div class="card" style="border-left-color:#FFB700">
+    <div class="name">neon-amber</div>
+    <div class="hex">#FFB700</div>
+  </div>
+</div>
+
+<h2>Existing tag palette (for comparison)</h2>
+<div class="row">
+  <div class="card" style="border-left-color:#6b8caf">
+    <div class="name">arch</div>
+    <div class="hex">#6b8caf</div>
+  </div>
+  <div class="card" style="border-left-color:#c97a8a">
+    <div class="name">bug</div>
+    <div class="hex">#c97a8a</div>
+  </div>
+  <div class="card" style="border-left-color:#9aa86a">
+    <div class="name">chore</div>
+    <div class="hex">#9aa86a</div>
+  </div>
+  <div class="card" style="border-left-color:#5fa89c">
+    <div class="name">docs</div>
+    <div class="hex">#5fa89c</div>
+  </div>
+  <div class="card" style="border-left-color:#7fa87a">
+    <div class="name">feature</div>
+    <div class="hex">#7fa87a</div>
+  </div>
+  <div class="card" style="border-left-color:#7878bc">
+    <div class="name">security</div>
+    <div class="hex">#7878bc</div>
+  </div>
+  <div class="card" style="border-left-color:#9a7ab8">
+    <div class="name">spike</div>
+    <div class="hex">#9a7ab8</div>
+  </div>
+  <div class="card" style="border-left-color:#c4a85f">
+    <div class="name">test</div>
+    <div class="hex">#c4a85f</div>
+  </div>
+</div>
+
+<h2>App accent (reference — signal-green is batch slot 1)</h2>
+<div class="row">
+  <div class="card" style="border-left-color:#00FF41">
+    <div class="name">signal green</div>
+    <div class="hex">#00FF41</div>
+  </div>
+</div>
+
+</body>
+</html>

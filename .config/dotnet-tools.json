@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "dotnet-reportgenerator-globaltool": {
+      "version": "5.4.4",
+      "commands": [
+        "reportgenerator"
+      ],
+      "rollForward": false
+    },
+    "slopwatch.cmd": {
+      "version": "0.4.0",
+      "commands": [
+        "slopwatch"
+      ],
+      "rollForward": false
+    }
+  }
+}

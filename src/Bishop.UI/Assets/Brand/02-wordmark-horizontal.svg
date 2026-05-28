@@ -1,0 +1,12 @@
+<svg width="320" height="80" viewBox="0 0 320 80" xmlns="http://www.w3.org/2000/svg">
+  <title>bishop.ai horizontal lockup</title>
+  <g transform="translate(0, 0)">
+    <g transform="scale(0.32)">
+      <rect x="0" y="0" width="22" height="220" rx="3" fill="#e8e8e8"/>
+      <circle cx="90" cy="150" r="70" fill="none" stroke="#e8e8e8" stroke-width="22"/>
+      <rect x="80" y="72" width="20" height="148" rx="3" fill="#888888"/>
+      <circle cx="90" cy="50" r="12" fill="#00ff41"/>
+    </g>
+    <text x="65" y="55" fill="#e8e8e8" font-family="ui-monospace,'SF Mono',monospace" font-size="32" font-weight="500" letter-spacing="1">bishop<tspan fill="#00ff41">.ai</tspan></text>
+  </g>
+</svg>

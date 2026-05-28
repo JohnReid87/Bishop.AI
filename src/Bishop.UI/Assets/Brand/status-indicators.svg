@@ -1,0 +1,21 @@
+<svg width="100" height="160" viewBox="0 0 100 160" xmlns="http://www.w3.org/2000/svg">
+  <title>bishop.ai status indicators</title>
+
+  <!-- idle -->
+  <circle cx="14" cy="14" r="6" fill="none" stroke="#888888" stroke-width="2"/>
+
+  <!-- thinking -->
+  <circle cx="14" cy="44" r="6" fill="#00ff41" opacity="0.4"/>
+  <circle cx="14" cy="44" r="3" fill="#00ff41"/>
+
+  <!-- ready -->
+  <circle cx="14" cy="74" r="6" fill="#00ff41"/>
+
+  <!-- error -->
+  <circle cx="14" cy="104" r="6" fill="none" stroke="#ff5555" stroke-width="2"/>
+  <line x1="10" y1="100" x2="18" y2="108" stroke="#ff5555" stroke-width="2"/>
+  <line x1="18" y1="100" x2="10" y2="108" stroke="#ff5555" stroke-width="2"/>
+
+  <!-- offline -->
+  <circle cx="14" cy="134" r="6" fill="#333333"/>
+</svg>

@@ -1,0 +1,1 @@
+namespace Bishop.Data.Configurations;

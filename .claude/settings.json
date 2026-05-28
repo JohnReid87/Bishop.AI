@@ -1,0 +1,53 @@
+{
+  "_comment": "Permission scope for bish-auto-card (bishop work-next). See ~/.claude/skills/bish-auto-card/SKILL.md for the canonical tool list this maps to.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bishop hook check-path"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(rm:*)",
+      "Bash(sudo:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(gh:*)",
+      "Bash(npm install:*)",
+      "Bash(dotnet tool install:*)",
+      "Bash(chmod:*)",
+      "Bash(icacls:*)",
+      "Bash(kill:*)",
+      "Bash(taskkill:*)",
+      "Bash(shutdown:*)"
+    ],
+    "allow": [
+      "Bash(bishop:*)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet restore:*)",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Agent",
+      "Bash(wc:*)",
+      "Bash(xargs:*)",
+      "Bash(xxd:*)"
+    ]
+  }
+}

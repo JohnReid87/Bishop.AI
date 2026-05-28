@@ -1,0 +1,90 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- When building inside VS without C++ tools installed, the XAML compiler's GetVCInstallPath
+       target blindly enumerates $(VsInstallRoot)\VC\Tools\MSVC and throws. Pre-setting
+       VCToolsInstallDir skips that enumeration; UseVCMetaManaged=false tells the XAML compiler
+       to use .NET reflection instead of vcmeta.dll (safe for pure-managed projects). -->
+  <PropertyGroup Condition="'$(VsInstallRoot)' != '' and !Exists('$(VsInstallRoot)\VC\Tools\MSVC')">
+    <VCToolsInstallDir>$(VsInstallRoot)\VC\</VCToolsInstallDir>
+    <UseVCMetaManaged>false</UseVCMetaManaged>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Bishop.UI</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSdkBootstrapInitialize>true</WindowsAppSdkBootstrapInitialize>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>Assets\Brand\bishop-ai.ico</ApplicationIcon>
+    <!-- WinUI 3 desktop apps run as x64 in practice. Without an explicit
+         PlatformTarget the WebView2 NuGet targets resolve EffectivePlatform
+         to x86 for AnyCPU managed projects (Common.targets) and copy the
+         x86 native_uap\Microsoft.Web.WebView2.Core.dll next to the exe.
+         The OS then refuses to load it into the x64 process with
+         BadImageFormatException, which surfaces from the WebView2 SDK as
+         COMException 0x8007007E. -->
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\Brand\bishop-ai.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Remove="Assets\Brand\01-logo-mark.svg" />
+    <Content Remove="Assets\Brand\02-wordmark-horizontal.svg" />
+    <Content Remove="Assets\Brand\03-wordmark-type-only.svg" />
+    <Content Remove="Assets\Brand\04-wordmark-terminal.svg" />
+    <Content Remove="Assets\Brand\05-app-icon-dark.svg" />
+    <Content Remove="Assets\Brand\07-app-icon-circular.svg" />
+    <Content Remove="Assets\Brand\08-app-icon-mono.svg" />
+    <Content Remove="Assets\Brand\09-favicon-32.svg" />
+    <Content Remove="Assets\Brand\cat_mode_panel.svg" />
+    <Content Remove="Assets\Brand\icon-branch.svg" />
+    <Content Remove="Assets\Brand\icon-chat.svg" />
+    <Content Remove="Assets\Brand\icon-code.svg" />
+    <Content Remove="Assets\Brand\icon-run.svg" />
+    <Content Remove="Assets\Brand\icon-settings.svg" />
+    <Content Remove="Assets\Brand\icon-terminal.svg" />
+    <Content Remove="Assets\Brand\status-indicators.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.MarkdownTextBlock" Version="0.1.251217-build.2433" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.*" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.*" PrivateAssets="all" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bishop.App\Bishop.App.csproj" />
+    <ProjectReference Include="..\Bishop.Game\Bishop.Game.csproj" />
+    <ProjectReference Include="..\Bishop.ViewModels\Bishop.ViewModels.csproj" />
+  </ItemGroup>
+
+  <!-- WebView2Loader.dll is placed by the NuGet under runtimes\win-<arch>\native\ but
+       LoadLibrary uses the standard DLL search path (app root only). Copy the matching
+       arch DLL to the output root so WebView2 can initialise in unpackaged apps.
+       Uses $(TargetDir) — the absolute, TFM-resolved output path — not $(OutputPath)
+       which omits the framework subfolder and would never find the source file. -->
+  <Target Name="CopyWebView2Loader" AfterTargets="Build">
+    <PropertyGroup>
+      <_Wv2RID Condition="'$(PlatformTarget)' == 'x86'">win-x86</_Wv2RID>
+      <_Wv2RID Condition="'$(PlatformTarget)' == 'ARM64'">win-arm64</_Wv2RID>
+      <_Wv2RID Condition="'$(_Wv2RID)' == ''">win-x64</_Wv2RID>
+    </PropertyGroup>
+    <Copy SourceFiles="$(TargetDir)runtimes\$(_Wv2RID)\native\WebView2Loader.dll"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetDir)runtimes\$(_Wv2RID)\native\WebView2Loader.dll')"/>
+  </Target>
+
+</Project>

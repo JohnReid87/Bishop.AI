@@ -1,0 +1,450 @@
+<Window
+    x:Class="Bishop.UI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Bishop.ViewModels"
+    xmlns:cnv="using:Bishop.UI.Converters"
+    Title="Bishop.AI">
+    <Grid x:Name="RootGrid" PreviewKeyDown="RootGrid_PreviewKeyDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Custom title bar drag region -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0"
+              Background="{StaticResource AppSurfaceBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="138"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       VerticalAlignment="Center"
+                       Margin="12,0,0,0"
+                       FontSize="12"
+                       FontFamily="Cascadia Mono, Consolas, Courier New">
+                <Run Text="bishop" Foreground="{StaticResource AppTextPrimaryBrush}"/><Run Text=".ai" Foreground="{StaticResource AppAccentBrush}"/>
+            </TextBlock>
+
+            <!-- Cat mode toggle: paw button (off state) -->
+            <Button Grid.Column="1"
+                    Width="40" Height="32"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsCatModeActive), Mode=OneWay}"
+                    Command="{x:Bind ViewModel.ToggleCatModeCommand}"
+                    ToolTipService.ToolTip="Pause keyboard input (cat mode)">
+                <Path Data="{StaticResource IconPawPrintData}"
+                      Stroke="{StaticResource AppTextSecondaryBrush}"
+                      StrokeThickness="1.5"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                      Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
+
+            <!-- Cat mode toggle: paw button (on state) -->
+            <Button Grid.Column="1"
+                    Width="40" Height="32"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsCatModeActive), Mode=OneWay}"
+                    Command="{x:Bind ViewModel.ToggleCatModeCommand}"
+                    ToolTipService.ToolTip="Resume keyboard input (cat mode active)">
+                <Path Data="{StaticResource IconPawPrintData}"
+                      Fill="{StaticResource AppTextPrimaryBrush}"
+                      Stroke="{StaticResource AppTextPrimaryBrush}"
+                      StrokeThickness="1.5"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                      Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
+        </Grid>
+
+        <NavigationView
+            x:Name="NavView"
+            Grid.Row="1"
+            PaneDisplayMode="Left"
+            IsSettingsVisible="False"
+            IsBackButtonVisible="Collapsed"
+            IsTitleBarAutoPaddingEnabled="False"
+            OpenPaneLength="130"
+            CompactPaneLength="40"
+            IsPaneOpen="{x:Bind ViewModel.IsPaneOpen, Mode=TwoWay}">
+
+            <NavigationView.PaneCustomContent>
+                <Grid>
+                    <!-- Expanded state -->
+                    <Grid Margin="0,8,0,0" RowSpacing="4"
+                          Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header row: label + add button -->
+                        <Grid Grid.Row="0" Margin="16,0,4,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="WORKSPACES"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <Button Grid.Column="1"
+                                    x:Name="AddWorkspaceButton"
+                                    Style="{StaticResource SubtleIconButtonStyle}"
+                                    Click="AddWorkspaceButton_Click"
+                                    ToolTipService.ToolTip="Add workspace">
+                                <FontIcon Glyph="&#xE710;" FontSize="12" Foreground="{StaticResource AppTextPrimaryBrush}"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- Empty state -->
+                        <TextBlock Grid.Row="1"
+                                   x:Name="EmptyStateText"
+                                   Text="No workspaces yet"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,16,0,0"/>
+
+                        <!-- Workspace list -->
+                        <ListView Grid.Row="1"
+                                  x:Name="WorkspacesListView"
+                                  ItemsSource="{x:Bind ViewModel.Workspaces}"
+                                  SelectedItem="{x:Bind ViewModel.SelectedWorkspace, Mode=TwoWay}"
+                                  CanDragItems="True"
+                                  AllowDrop="True"
+                                  SelectionMode="Single"
+                                  DragItemsStarting="WorkspaceDragItemsStarting"
+                                  DropCompleted="WorkspacesDragCompleted"
+                                  DragOver="WorkspacesDragOver"
+                                  Drop="WorkspacesDrop">
+                            <ListView.Resources>
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#20FFFFFF"/>
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#30FFFFFF"/>
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#40FFFFFF"/>
+                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="#00FF41"/>
+                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPointerOverBrush" Color="#00FF41"/>
+                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPressedBrush" Color="#00FF41"/>
+                            </ListView.Resources>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="vm:WorkspaceItemViewModel">
+                                    <Grid RightTapped="WorkspaceItem_RightTapped">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{x:Bind Name, Mode=OneWay}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <FontIcon Grid.Column="1"
+                                                  Glyph="&#xE7BA;"
+                                                  FontSize="12"
+                                                  Foreground="{StaticResource BrushError}"
+                                                  Margin="4,0,0,0"
+                                                  VerticalAlignment="Center"
+                                                  Visibility="{x:Bind cnv:XamlConvert.ToVis(IsPathMissing), Mode=OneWay}"/>
+                                        <FlyoutBase.AttachedFlyout>
+                                            <MenuFlyout>
+                                                <MenuFlyoutItem Text="Rename" Click="RenameWorkspace_Click">
+                                                    <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8AC;"/></MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
+                                                <MenuFlyoutItem Text="Repath…" Click="RepathWorkspace_Click">
+                                                    <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8DA;"/></MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
+                                                <MenuFlyoutSeparator/>
+                                                <MenuFlyoutItem Text="Remove" Click="DeleteWorkspace_Click">
+                                                    <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;"/></MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
+                                            </MenuFlyout>
+                                        </FlyoutBase.AttachedFlyout>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Padding" Value="12,0,4,0"/>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                        </ListView>
+
+                    </Grid>
+
+                    <!-- Collapsed icon strip (~40px) -->
+                    <Grid Margin="0,8,0,0" RowSpacing="4"
+                          Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- + Add button -->
+                        <Button Grid.Row="0"
+                                Width="200" Height="32"
+                                HorizontalAlignment="Center"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="AddWorkspaceButton_Click"
+                                ToolTipService.ToolTip="Add workspace">
+                            <FontIcon Glyph="&#xE710;" FontSize="13"/>
+                        </Button>
+
+                        <!-- Workspace avatar buttons -->
+                        <ScrollViewer Grid.Row="1"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ListView x:Name="WorkspacesCollapsedListView"
+                                      ItemsSource="{x:Bind ViewModel.Workspaces}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedWorkspace, Mode=TwoWay}"
+                                      CanDragItems="True"
+                                      AllowDrop="True"
+                                      SelectionMode="Single"
+                                      DragItemsStarting="WorkspaceDragItemsStarting"
+                                      DropCompleted="WorkspacesDragCompleted"
+                                      DragOver="WorkspacesDragOver"
+                                      Drop="WorkspacesDrop">
+                                <ListView.Resources>
+                                    <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="Transparent"/>
+                                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="Transparent"/>
+                                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="Transparent"/>
+                                    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="#00FF41"/>
+                                    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPointerOverBrush" Color="#00FF41"/>
+                                    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPressedBrush" Color="#00FF41"/>
+                                </ListView.Resources>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:WorkspaceItemViewModel">
+                                        <Grid Height="40" Width="40" HorizontalAlignment="Left"
+                                              ToolTipService.ToolTip="{x:Bind Name, Mode=OneWay}"
+                                              RightTapped="WorkspaceItem_RightTapped">
+                                            <Button Width="200"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Stretch"
+                                                    Padding="0"
+                                                    IsHitTestVisible="False">
+                                                <TextBlock Text="{x:Bind FirstLetter, Mode=OneWay}"
+                                                           FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{StaticResource AppTextPrimaryBrush}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Button>
+                                            <FlyoutBase.AttachedFlyout>
+                                                <MenuFlyout>
+                                                    <MenuFlyoutItem Text="Rename" Click="RenameWorkspace_Click">
+                                                        <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8AC;"/></MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="Repath…" Click="RepathWorkspace_Click">
+                                                        <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8DA;"/></MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutSeparator/>
+                                                    <MenuFlyoutItem Text="Remove" Click="DeleteWorkspace_Click">
+                                                        <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;"/></MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                </MenuFlyout>
+                                            </FlyoutBase.AttachedFlyout>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="MinHeight" Value="40"/>
+                                        <Setter Property="Margin" Value="0,0,0,4"/>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                            </ListView>
+                        </ScrollViewer>
+
+                    </Grid>
+                </Grid>
+            </NavigationView.PaneCustomContent>
+
+            <NavigationView.PaneFooter>
+                <StackPanel>
+                    <!-- Game button row -->
+                    <Grid>
+                        <!-- Expanded: labelled Play Breakout button -->
+                        <Button HorizontalAlignment="Stretch"
+                                Margin="8,4,8,4"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="GameButton_Click"
+                                ToolTipService.ToolTip="Play Breakout"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE7FC;" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Play Breakout"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Collapsed: icon-only Play Breakout button -->
+                        <Button Width="200" Height="32"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,4"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="GameButton_Click"
+                                ToolTipService.ToolTip="Play Breakout"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <FontIcon Glyph="&#xE7FC;" FontSize="13"/>
+                        </Button>
+                    </Grid>
+                    <!-- Scripts row -->
+                    <Grid>
+                        <!-- Expanded: labelled Scripts button -->
+                        <Button HorizontalAlignment="Stretch"
+                                Margin="8,4,8,4"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="ScriptsButton_Click"
+                                ToolTipService.ToolTip="Scripts"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE756;" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Scripts"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Collapsed: icon-only Scripts button -->
+                        <Button Width="200" Height="32"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,4"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="ScriptsButton_Click"
+                                ToolTipService.ToolTip="Scripts"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <FontIcon Glyph="&#xE756;" FontSize="13"/>
+                        </Button>
+                    </Grid>
+                    <!-- Bishop tools row -->
+                    <Grid>
+                        <!-- Expanded: labelled Bishop tools button -->
+                        <Button HorizontalAlignment="Stretch"
+                                Margin="8,4,8,8"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="SettingsButton_Click"
+                                ToolTipService.ToolTip="Bishop tools"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE713;" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Bishop tools"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Collapsed: icon-only Bishop tools button -->
+                        <Button Width="200" Height="32"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,8"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="SettingsButton_Click"
+                                ToolTipService.ToolTip="Bishop tools"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <FontIcon Glyph="&#xE713;" FontSize="13"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </NavigationView.PaneFooter>
+
+            <Grid Background="{StaticResource AppBackgroundBrush}">
+                <Frame x:Name="ContentFrame"/>
+
+                <!-- Error notification stack -->
+                <ItemsControl ItemsSource="{x:Bind ViewModel.Notifications, Mode=OneWay}"
+                              VerticalAlignment="Top"
+                              Margin="8,8,8,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ErrorNotificationViewModel">
+                            <InfoBar IsOpen="{x:Bind IsOpen, Mode=TwoWay}"
+                                     IsClosable="True"
+                                     Severity="Error"
+                                     Title="{x:Bind Title, Mode=OneWay}"
+                                     Message="{x:Bind Message, Mode=OneWay}"
+                                     Margin="0,0,0,4">
+                                <InfoBar.ActionButton>
+                                    <Button Content="Show details"
+                                            Command="{x:Bind ShowDetailsCommand}"/>
+                                </InfoBar.ActionButton>
+                            </InfoBar>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Cat mode tint: subtle dark overlay across the whole content area -->
+                <Border IsHitTestVisible="False"
+                        Background="#80000000"
+                        Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsCatModeActive), Mode=OneWay}"/>
+
+                <!-- Cat mode mark: centered cat illustration so the state is visible from across the room -->
+                <Viewbox IsHitTestVisible="False"
+                         MaxWidth="420" MaxHeight="420"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsCatModeActive), Mode=OneWay}">
+                    <Path Data="{StaticResource IconCatModePanelData}"
+                          Fill="#CCE8E8E8"
+                          Stretch="Uniform"/>
+                </Viewbox>
+
+                <!-- Empty state: centered brand mark + wordmark + CTAs -->
+                <Grid x:Name="WorkspaceEmptyState"
+                      Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsContentEmpty), Mode=OneWay}">
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="32">
+                        <!-- Large logo mark, recreated from 01-logo-mark.svg -->
+                        <Viewbox Width="160" Height="192" HorizontalAlignment="Center">
+                            <Canvas Width="200" Height="240">
+                                <Rectangle Canvas.Left="15" Canvas.Top="10"
+                                           Width="22" Height="220"
+                                           RadiusX="3" RadiusY="3"
+                                           Fill="#E8E8E8"/>
+                                <Ellipse Canvas.Left="35" Canvas.Top="90"
+                                         Width="140" Height="140"
+                                         Stroke="#E8E8E8"
+                                         StrokeThickness="22"/>
+                                <Rectangle Canvas.Left="95" Canvas.Top="82"
+                                           Width="20" Height="148"
+                                           RadiusX="3" RadiusY="3"
+                                           Fill="#888888"/>
+                                <Ellipse Canvas.Left="93" Canvas.Top="48"
+                                         Width="24" Height="24"
+                                         Fill="{StaticResource AppAccentBrush}"/>
+                            </Canvas>
+                        </Viewbox>
+
+                        <!-- Wordmark: matches 02-wordmark-horizontal.svg text -->
+                        <TextBlock HorizontalAlignment="Center"
+                                   FontFamily="Cascadia Mono, Consolas, Courier New"
+                                   FontSize="40"
+                                   FontWeight="Medium">
+                            <Run Text="bishop" Foreground="{StaticResource AppTextPrimaryBrush}"/><Run Text=".ai" Foreground="{StaticResource AppAccentBrush}"/>
+                        </TextBlock>
+
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Spacing="12"
+                                    Margin="0,16,0,0">
+                            <Button x:Name="CreateWorkspaceCta"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="CreateWorkspaceCta_Click"
+                                    Content="Create your first workspace"/>
+                            <Button x:Name="OpenWorkspaceCta"
+                                    Click="OpenWorkspaceCta_Click"
+                                    Content="Open an existing workspace"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </NavigationView>
+    </Grid>
+</Window>

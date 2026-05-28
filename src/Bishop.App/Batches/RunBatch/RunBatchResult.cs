@@ -1,0 +1,20 @@
+namespace Bishop.App.Batches.RunBatch;
+
+public enum RunBatchStopReason
+{
+    Finished,
+    CardFailure,
+    HandoffMissing,
+    DirtyWorktree,
+    NotAGitRepo,
+    GitNotFound,
+    StopRequested,
+    ExternalContentBlocked,
+}
+
+public sealed record RunBatchResult(
+    int Succeeded,
+    IReadOnlyList<int>? FailedCardNumbers,
+    RunBatchStopReason StopReason,
+    IReadOnlyList<string>? DirtyPaths = null,
+    IReadOnlyList<int>? ExternalContentCardNumbers = null);
