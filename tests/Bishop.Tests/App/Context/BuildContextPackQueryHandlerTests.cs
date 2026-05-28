@@ -194,6 +194,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("arch", new[] { "Shell selection", "Card model", "Skill-Run Recording Procedure" })]
     [InlineData("security", new[] { "Shell selection", "Card model", "Skill-Run Recording Procedure" })]
     [InlineData("tests", new[] { "Shell selection", "Card model", "Skill-Run Recording Procedure" })]
+    [InlineData("dead-code", new[] { "Shell selection", "Card model", "Skill-Run Recording Procedure" })]
     [InlineData("audit-docs", new[] { "Shell selection", "Skill-Run Recording Procedure" })]
     [InlineData("grill-cards", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure", "Source Card Closing Prompt" })]
     [InlineData("grill-docs", new[] { "Shell selection" })]
@@ -248,6 +249,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("tests")]
     [InlineData("audit-docs")]
     [InlineData("grill-docs")]
+    [InlineData("dead-code")]
     public async Task WorkspaceOnlyProviders_SkillSpecificIsNull(string skillName)
     {
         // Arrange
@@ -277,6 +279,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         "chat" => new ChatContextProvider(),
         "auto-card" => new AutoCardContextProvider(),
         "work-on-card" => new WorkOnCardContextProvider(),
+        "dead-code" => new DeadCodeContextProvider(),
         _ => throw new ArgumentOutOfRangeException(nameof(skillName), skillName, null)
     };
 
