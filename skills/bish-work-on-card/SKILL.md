@@ -144,6 +144,27 @@ card was loaded before any move or implementation:
 5. Validate the changes:
    - Run the build (`dotnet build`) and confirm it succeeds.
    - Run the tests (`dotnet test`) and confirm none are broken.
+   - Run `dotnet tool run slopwatch analyze --hook`:
+     - **Exit 0** — no slop introduced; continue to step 6.
+     - **Exit 2** — new violation introduced by this session. Surface the
+       full slopwatch output, then **skip** steps 6–7 (the Agent-notes draft
+       and commit-confirmation prompt). Instead, prompt the user:
+
+       > Append findings to card #N? (`y`/`n`) [y]:
+
+       On `y` (or empty input), pipe the verbatim slopwatch output as a
+       `### Slopwatch findings (YYYY-MM-DD)` block (using today's date) to
+       card edit via stdin:
+       ```
+       bishop card edit <number> --append-description-file -
+       ```
+       Then STOP — leave the card in "Doing" and the working tree untouched.
+       Prefer fixing the violation over suppressing it on a follow-up run;
+       only suppress via `[SlopwatchSuppress("SW00x", "<20+ char reason>")]`
+       when the flagged pattern is genuinely best-effort and the reason is
+       accurate.
+     - **Any other non-zero exit** (e.g. tool not found, config error) —
+       hard failure: surface the error and STOP. Do not commit.
 
 6. Output a concise completion summary:
 
