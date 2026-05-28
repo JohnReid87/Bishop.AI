@@ -24,6 +24,7 @@ using Bishop.Cli.Cards.Remove;
 using Bishop.Cli.Cards.Reopen;
 using Bishop.Cli.Cards.SetCommit;
 using Bishop.Cli.Cards.View;
+using Bishop.Cli.Findings.Record;
 using Bishop.App.Context.ContextPack;
 using Bishop.Cli.Context.Pack;
 using Bishop.Cli.Context.Print;
@@ -123,6 +124,12 @@ root.AddCommand(batchCmd);
 var laneCmd = new Command("lane", "Inspect kanban lanes");
 laneCmd.AddCommand(new ListLanesCliCommand(mediator));
 root.AddCommand(laneCmd);
+
+// ── findings ──────────────────────────────────────────────────────────────────
+
+var findingsCmd = new Command("findings", "Record review-skill findings");
+findingsCmd.AddCommand(new RecordFindingsCliCommand(mediator));
+root.AddCommand(findingsCmd);
 
 // ── install-skills ────────────────────────────────────────────────────────────
 
