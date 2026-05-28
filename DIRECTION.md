@@ -40,7 +40,7 @@ Cut because (a) workspaces attached from existing repos (FotM.IO-style) already 
 ### Skills live in this repo
 The bundled skills are vendored under `skills/` in the Bishop.AI repo, and `bishop install-skills` copies them to `%USERPROFILE%/.claude/skills/`. Skills version with Bishop; CLI evolution and skill text update in the same commit. They group into four categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
 
-- **Review:** `bish-arch`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`
+- **Review:** `bish-arch`, `bish-dead-code`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`
 - **Conversational:** `bish-chat`, `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
 - **Setup-Execute:** `bish-auto-card`, `bish-onboard`, `bish-work-on-card`
 - **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code

@@ -8,6 +8,10 @@ the task instead of doing everything inside a single session.
 
 - `bish-arch` — architectural / SOLID review of the current .NET solution.
   Walks findings one at a time; agreed items become cards tagged `arch`.
+- `bish-dead-code` — dead-code review of the current .NET solution. Hunts
+  unreferenced C# types/members, MediatR requests never dispatched, and DI
+  registrations never injected. Walks findings one at a time; agreed items
+  become cards tagged `chore`.
 - `bish-audit-docs` — audits Markdown docs in the repo for drift against the
   code and edits the docs in place per agreed finding.
 - `bish-coverage` — runs the coverage script, identifies classes below the

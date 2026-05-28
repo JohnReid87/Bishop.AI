@@ -17,7 +17,7 @@ Skills divide into four categories. The category determines the restructure appr
 | Category | Current members | What the skill *is*, fundamentally |
 |---|---|---|
 | **Conversational** | `bish-grill-cards`, `bish-grill-docs`, `bish-chat` | An interview style — relentless interrogation or drift-tolerant chat. The soul is the *quality bar of the conversation*. |
-| **Review** | `bish-arch`, `bish-security`, `bish-tests`, `bish-coverage`, `bish-audit-docs`, `bish-triage` | A body of heuristics applied to the codebase, then walked with the user finding-by-finding. The soul is the *heuristic catalogue*. |
+| **Review** | `bish-arch`, `bish-dead-code`, `bish-security`, `bish-tests`, `bish-coverage`, `bish-audit-docs`, `bish-triage` | A body of heuristics applied to the codebase, then walked with the user finding-by-finding. The soul is the *heuristic catalogue*. |
 | **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card` | A deterministic procedure that mutates state (filesystem, board, git). The soul is the *procedure itself*. |
 | **Bishop-level / meta** | `bish-write-skill`, `bish-audit-skills` | Skills *about* the skill family — authoring guides, audits. Operate on `skills/` directly, not on a workspace's code. |
 
