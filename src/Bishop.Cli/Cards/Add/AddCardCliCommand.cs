@@ -27,12 +27,7 @@ internal sealed class AddCardCliCommand : Command
 
         this.SetHandler(async (string? workspace, string lane, string title, string? description, string? tag, string? descFile, bool bottom) =>
         {
-            var desc = descFile switch
-            {
-                "-" => await Console.In.ReadToEndAsync(),
-                not null => await File.ReadAllTextAsync(descFile),
-                null => description ?? ""
-            };
+            var desc = await ResolveDescriptionAsync(descFile, description, Console.IsInputRedirected, Console.In);
             var ws = await resolver.ResolveAsync(workspace);
             var insertPosition = bottom ? CardInsertPosition.Bottom : CardInsertPosition.Top;
             var card = await mediator.Send(new AddCardCommand(ws.Id, lane, title, desc, tag, insertPosition));
@@ -40,4 +35,15 @@ internal sealed class AddCardCliCommand : Command
             Console.WriteLine($"Added card #{card.Number} — '{card.Title}' → [{card.LaneName}]{tagSuffix}");
         }, CommonOptions.WorkspaceOption, laneNameOpt, titleOpt, descOpt, tagOpt, descFileOpt, bottomOpt);
     }
+
+    // Resolves the card description from the available sources.
+    // Precedence: --description-file (incl. "-" for stdin) > --description > redirected stdin > empty.
+    internal static async Task<string> ResolveDescriptionAsync(
+        string? descriptionFile, string? description, bool isInputRedirected, TextReader stdin) =>
+        descriptionFile switch
+        {
+            "-" => await stdin.ReadToEndAsync(),
+            not null => await File.ReadAllTextAsync(descriptionFile),
+            null => description ?? (isInputRedirected ? await stdin.ReadToEndAsync() : "")
+        };
 }
