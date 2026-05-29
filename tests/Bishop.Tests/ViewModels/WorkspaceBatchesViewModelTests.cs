@@ -342,7 +342,7 @@ public class WorkspaceBatchesViewModelTests
     }
 
     [Fact]
-    public async Task MergeAsync_SendsMergeBatchCommand_ReturnsResult()
+    public async Task MergeAsync_SendsMergeBatchCommand_MapsSuccessResult()
     {
         var (vm, mediator, _) = MakeVm();
         mediator.Send(Arg.Any<Bishop.App.Batches.MergeBatch.MergeBatchCommand>(), Arg.Any<CancellationToken>())
@@ -350,10 +350,30 @@ public class WorkspaceBatchesViewModelTests
 
         var result = await vm.MergeAsync("my-batch", @"C:\repo");
 
+        result.Should().BeOfType<BatchMergeOutcome>();
         result.Success.Should().BeTrue();
+        result.ConflictFiles.Should().BeEmpty();
+        result.ErrorMessage.Should().BeNull();
         await mediator.Received(1).Send(
             Arg.Is<Bishop.App.Batches.MergeBatch.MergeBatchCommand>(c => c.Name == "my-batch"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MergeAsync_Conflict_MapsConflictFilesAndError()
+    {
+        var (vm, mediator, _) = MakeVm();
+        mediator.Send(Arg.Any<Bishop.App.Batches.MergeBatch.MergeBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new Bishop.App.Batches.MergeBatch.MergeBatchResult(
+                false,
+                ["src/A.cs", "src/B.cs"],
+                "merge conflicts"));
+
+        var result = await vm.MergeAsync("my-batch", @"C:\repo");
+
+        result.Success.Should().BeFalse();
+        result.ConflictFiles.Should().BeEquivalentTo(["src/A.cs", "src/B.cs"]);
+        result.ErrorMessage.Should().Be("merge conflicts");
     }
 
     [Fact]

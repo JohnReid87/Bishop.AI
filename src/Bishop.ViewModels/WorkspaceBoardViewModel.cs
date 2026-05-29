@@ -303,11 +303,30 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     // ── Commits ──────────────────────────────────────────────────────────────
 
-    public async Task<GetRecentCommitsResult> GetRecentCommitsAsync(string workspacePath)
-        => await _mediator.Send(new GetRecentCommitsQuery(workspacePath));
+    public async Task<RecentCommitsResult> GetRecentCommitsAsync(string workspacePath)
+    {
+        var result = await _mediator.Send(new GetRecentCommitsQuery(workspacePath));
+        return result switch
+        {
+            GetRecentCommitsResult.Success s => new RecentCommitsResult.Success(
+                s.Commits
+                    .Select(c => new CommitItem(c.ShortHash, c.FullHash, c.Subject, c.Body, c.Timestamp, c.IsPushed))
+                    .ToList(),
+                s.UpstreamRef,
+                s.UpstreamIsTracked,
+                s.UnpushedCount),
+            GetRecentCommitsResult.NotAGitRepo => new RecentCommitsResult.NotAGitRepo(),
+            GetRecentCommitsResult.GitNotFound => new RecentCommitsResult.GitNotFound(),
+            GetRecentCommitsResult.NoCommits => new RecentCommitsResult.NoCommits(),
+            _ => throw new InvalidOperationException($"Unknown GetRecentCommitsResult: {result.GetType().Name}"),
+        };
+    }
 
-    public async Task<PushResult> PushAsync(string workspacePath, bool setUpstream = false)
-        => await _mediator.Send(new PushCommand(workspacePath, SetUpstream: setUpstream));
+    public async Task<PushOutcome> PushAsync(string workspacePath, bool setUpstream = false)
+    {
+        var result = await _mediator.Send(new PushCommand(workspacePath, SetUpstream: setUpstream));
+        return new PushOutcome(result.Success, result.Message);
+    }
 
     // ── Card operations ──────────────────────────────────────────────────────
 

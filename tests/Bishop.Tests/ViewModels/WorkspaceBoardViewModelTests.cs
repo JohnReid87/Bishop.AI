@@ -1298,7 +1298,7 @@ public class WorkspaceBoardViewModelTests
     }
 
     [Fact]
-    public async Task GetRecentCommitsAsync_SendsGetRecentCommitsQuery()
+    public async Task GetRecentCommitsAsync_NoCommits_MapsToVmType()
     {
         var (vm, mediator, _) = MakeVm();
         mediator.Send(Arg.Any<GetRecentCommitsQuery>(), Arg.Any<CancellationToken>())
@@ -1306,24 +1306,96 @@ public class WorkspaceBoardViewModelTests
 
         var result = await vm.GetRecentCommitsAsync(@"C:\repo");
 
-        result.Should().BeOfType<GetRecentCommitsResult.NoCommits>();
+        result.Should().BeOfType<RecentCommitsResult.NoCommits>();
         await mediator.Received(1).Send(
             Arg.Is<GetRecentCommitsQuery>(q => q.WorkspacePath == @"C:\repo"),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task PushAsync_SendsPushCommand_ReturnsResult()
+    public async Task GetRecentCommitsAsync_NotAGitRepo_MapsToVmType()
+    {
+        var (vm, mediator, _) = MakeVm();
+        mediator.Send(Arg.Any<GetRecentCommitsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new GetRecentCommitsResult.NotAGitRepo());
+
+        var result = await vm.GetRecentCommitsAsync(@"C:\repo");
+
+        result.Should().BeOfType<RecentCommitsResult.NotAGitRepo>();
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_GitNotFound_MapsToVmType()
+    {
+        var (vm, mediator, _) = MakeVm();
+        mediator.Send(Arg.Any<GetRecentCommitsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new GetRecentCommitsResult.GitNotFound());
+
+        var result = await vm.GetRecentCommitsAsync(@"C:\repo");
+
+        result.Should().BeOfType<RecentCommitsResult.GitNotFound>();
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_Success_MapsCommitsAndMetadata()
+    {
+        var (vm, mediator, _) = MakeVm();
+        var timestamp = new DateTimeOffset(2026, 5, 29, 12, 0, 0, TimeSpan.Zero);
+        var appCommit = new Bishop.App.Git.CommitInfo(
+            "abc1234", "abc1234deadbeef", "Subject line", "Body text", timestamp, IsPushed: true);
+        mediator.Send(Arg.Any<GetRecentCommitsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new GetRecentCommitsResult.Success(
+                [appCommit],
+                UpstreamRef: "origin/main",
+                UpstreamIsTracked: false,
+                UnpushedCount: 3));
+
+        var result = await vm.GetRecentCommitsAsync(@"C:\repo");
+
+        var success = result.Should().BeOfType<RecentCommitsResult.Success>().Subject;
+        success.UpstreamRef.Should().Be("origin/main");
+        success.UpstreamIsTracked.Should().BeFalse();
+        success.UnpushedCount.Should().Be(3);
+        success.Commits.Should().HaveCount(1);
+        var mapped = success.Commits[0];
+        mapped.ShortHash.Should().Be("abc1234");
+        mapped.FullHash.Should().Be("abc1234deadbeef");
+        mapped.Subject.Should().Be("Subject line");
+        mapped.Body.Should().Be("Body text");
+        mapped.Timestamp.Should().Be(timestamp);
+        mapped.IsPushed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PushAsync_SendsPushCommand_MapsResult()
     {
         var (vm, mediator, _) = MakeVm();
         mediator.Send(Arg.Any<PushCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new PushResult(true, null));
+            .Returns(new PushResult(true, "ok"));
 
         var result = await vm.PushAsync(@"C:\repo");
 
+        result.Should().BeOfType<PushOutcome>();
         result.Success.Should().BeTrue();
+        result.Message.Should().Be("ok");
         await mediator.Received(1).Send(
             Arg.Is<PushCommand>(c => c.WorkspacePath == @"C:\repo"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PushAsync_Failure_PropagatesMessage()
+    {
+        var (vm, mediator, _) = MakeVm();
+        mediator.Send(Arg.Any<PushCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new PushResult(false, "rejected"));
+
+        var result = await vm.PushAsync(@"C:\repo", setUpstream: true);
+
+        result.Success.Should().BeFalse();
+        result.Message.Should().Be("rejected");
+        await mediator.Received(1).Send(
+            Arg.Is<PushCommand>(c => c.WorkspacePath == @"C:\repo" && c.SetUpstream),
             Arg.Any<CancellationToken>());
     }
 

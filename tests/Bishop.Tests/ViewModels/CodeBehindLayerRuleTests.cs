@@ -30,7 +30,6 @@ public class CodeBehindLayerRuleTests
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App.xaml.cs"] = "DI composition root — sanctioned Bishop.App reference",
-            ["WorkspaceDetailPage.xaml.cs"] = "card #752",
         };
 
     [Fact]

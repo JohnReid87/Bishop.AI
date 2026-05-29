@@ -137,8 +137,11 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
     public async Task RequestStopAsync(Guid batchId)
         => await _mediator.Send(new RequestStopBatchCommand(batchId));
 
-    public async Task<MergeBatchResult> MergeAsync(string batchName, string workspacePath)
-        => await _mediator.Send(new MergeBatchCommand(batchName, workspacePath));
+    public async Task<BatchMergeOutcome> MergeAsync(string batchName, string workspacePath)
+    {
+        var result = await _mediator.Send(new MergeBatchCommand(batchName, workspacePath));
+        return new BatchMergeOutcome(result.Success, result.ConflictFiles, result.ErrorMessage);
+    }
 
     public async Task CleanUpAsync(string batchName, string workspacePath)
         => await _mediator.Send(new CleanUpBatchCommand(batchName, workspacePath));

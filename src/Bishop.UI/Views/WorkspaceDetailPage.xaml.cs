@@ -1,9 +1,4 @@
 using CommunityToolkit.WinUI.Controls;
-using Bishop.App.Batches.MergeBatch;
-using Bishop.App.Git;
-using Bishop.App.Git.GetRecentCommits;
-using Bishop.App.Git.Push;
-using Bishop.App.Services.Terminal;
 using Bishop.UI.Services;
 using Bishop.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -243,7 +238,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
         switch (result)
         {
-            case GetRecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef, UpstreamIsTracked: var upstreamIsTracked, UnpushedCount: var unpushedCount }:
+            case RecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef, UpstreamIsTracked: var upstreamIsTracked, UnpushedCount: var unpushedCount }:
                 var commitsContainer = new StackPanel { Spacing = 2 };
 
                 var errorBlock = new TextBlock
@@ -277,7 +272,7 @@ public sealed partial class WorkspaceDetailPage : Page
                     if (pushResult.Success)
                     {
                         var refreshed = await Board.GetRecentCommitsAsync(workspacePath);
-                        if (refreshed is GetRecentCommitsResult.Success { Commits: var refreshedCommits, UpstreamRef: var refreshedUpstream, UpstreamIsTracked: var refreshedIsTracked, UnpushedCount: var refreshedUnpushedCount })
+                        if (refreshed is RecentCommitsResult.Success { Commits: var refreshedCommits, UpstreamRef: var refreshedUpstream, UpstreamIsTracked: var refreshedIsTracked, UnpushedCount: var refreshedUnpushedCount })
                         {
                             RenderCommitsInto(commitsContainer, flyout, refreshedCommits, refreshedUpstream, gitHubRepo);
                             needsSetUpstream = UpdatePushButton(pushButton, refreshedUpstream, refreshedIsTracked, refreshedUnpushedCount);
@@ -302,13 +297,13 @@ public sealed partial class WorkspaceDetailPage : Page
                 panel.Children.Add(errorBlock);
                 panel.Children.Add(pushButton);
                 break;
-            case GetRecentCommitsResult.NotAGitRepo:
+            case RecentCommitsResult.NotAGitRepo:
                 panel.Children.Add(new TextBlock { Text = "Not a git repository", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
                 break;
-            case GetRecentCommitsResult.GitNotFound:
+            case RecentCommitsResult.GitNotFound:
                 panel.Children.Add(new TextBlock { Text = "Git not installed or not on PATH", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
                 break;
-            case GetRecentCommitsResult.NoCommits:
+            case RecentCommitsResult.NoCommits:
                 panel.Children.Add(new TextBlock { Text = "No commits yet", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
                 break;
         }
@@ -317,7 +312,7 @@ public sealed partial class WorkspaceDetailPage : Page
         flyout.ShowAt((FrameworkElement)sender);
         });
 
-    private void RenderCommitsInto(StackPanel container, Flyout flyout, IReadOnlyList<CommitInfo> commits, string? upstreamRef, string? gitHubRepo)
+    private void RenderCommitsInto(StackPanel container, Flyout flyout, IReadOnlyList<CommitItem> commits, string? upstreamRef, string? gitHubRepo)
     {
         container.Children.Clear();
         for (var i = 0; i < commits.Count; i++)
@@ -378,7 +373,7 @@ public sealed partial class WorkspaceDetailPage : Page
         UpdateNotificationPanel();
     }
 
-    private static FrameworkElement MakeCommitRow(CommitInfo commit, string? upstreamRef, Func<Task> onClick)
+    private static FrameworkElement MakeCommitRow(CommitItem commit, string? upstreamRef, Func<Task> onClick)
     {
         var secondaryBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppTextSecondaryBrush"];
 
@@ -728,7 +723,7 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             if (_item is null) return;
             if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
-            MergeBatchResult? result = null;
+            BatchMergeOutcome? result = null;
             try
             {
                 result = await Batches.MergeAsync(batch.Name, _item.Path);
