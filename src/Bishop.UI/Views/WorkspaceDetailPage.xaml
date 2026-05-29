@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Bishop.UI.Views"
     xmlns:vm="using:Bishop.ViewModels"
+    xmlns:skills="using:Bishop.App.Skills"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
     <Page.Resources>
         <DataTemplate x:Key="CardItemTemplate" x:DataType="vm:CardViewModel">
@@ -612,15 +613,18 @@
                                                         VerticalAlignment="Center">
                                                     <Button.Flyout>
                                                         <MenuFlyout>
-                                                            <MenuFlyoutItem Text="Opus 4.7"
+                                                            <MenuFlyoutItem Text="{x:Bind skills:ClaudeModels.Opus48Display}"
                                                                             Command="{x:Bind SelectModelCommand}"
-                                                                            CommandParameter="claude-opus-4-7"/>
-                                                            <MenuFlyoutItem Text="Sonnet 4.6"
+                                                                            CommandParameter="{x:Bind skills:ClaudeModels.Opus48}"/>
+                                                            <MenuFlyoutItem Text="{x:Bind skills:ClaudeModels.Opus47Display}"
                                                                             Command="{x:Bind SelectModelCommand}"
-                                                                            CommandParameter="claude-sonnet-4-6"/>
-                                                            <MenuFlyoutItem Text="Haiku 4.5"
+                                                                            CommandParameter="{x:Bind skills:ClaudeModels.Opus47}"/>
+                                                            <MenuFlyoutItem Text="{x:Bind skills:ClaudeModels.Sonnet46Display}"
                                                                             Command="{x:Bind SelectModelCommand}"
-                                                                            CommandParameter="claude-haiku-4-5-20251001"/>
+                                                                            CommandParameter="{x:Bind skills:ClaudeModels.Sonnet46}"/>
+                                                            <MenuFlyoutItem Text="{x:Bind skills:ClaudeModels.Haiku45Display}"
+                                                                            Command="{x:Bind SelectModelCommand}"
+                                                                            CommandParameter="{x:Bind skills:ClaudeModels.Haiku45}"/>
                                                         </MenuFlyout>
                                                     </Button.Flyout>
                                                 </Button>
