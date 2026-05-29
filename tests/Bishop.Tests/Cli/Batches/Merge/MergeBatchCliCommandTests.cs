@@ -48,6 +48,43 @@ public sealed class MergeBatchCliCommandTests
     }
 
     [Fact]
+    public async Task InvokeAsync_MergeConflict_WritesConflictToStderrAndDoesNotWriteBatchMergedToStdout()
+    {
+        var ws = MakeWorkspace();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Workspace>)[ws]);
+        mediator.Send(Arg.Any<MergeBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new MergeBatchResult(false, ["conflicting.cs"]));
+
+        var cmd = new MergeBatchCliCommand(mediator);
+
+        var output = new StringWriter();
+        var errorOutput = new StringWriter();
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        var savedExitCode = Environment.ExitCode;
+        Console.SetOut(output);
+        Console.SetError(errorOutput);
+        Environment.ExitCode = 0;
+        try
+        {
+            await cmd.InvokeAsync(["Sprint 1", "--workspace", "test-ws"]);
+            Environment.ExitCode.Should().Be(1);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+            Environment.ExitCode = savedExitCode;
+        }
+
+        errorOutput.ToString().Should().Contain("Merge conflict in batch 'Sprint 1'");
+        errorOutput.ToString().Should().Contain("conflicting.cs");
+        output.ToString().Should().NotContain("Batch merged.");
+    }
+
+    [Fact]
     public async Task InvokeAsync_WorkspaceNotFound_ExitsNonZeroAndDoesNotSendMergeCommand()
     {
         var mediator = Substitute.For<IMediator>();

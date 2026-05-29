@@ -23,7 +23,7 @@ internal sealed class MergeBatchCliCommand : Command
                 Console.Error.WriteLine($"Merge conflict in batch '{name}'. Conflicting files:");
                 foreach (var file in result.ConflictFiles)
                     Console.Error.WriteLine($"  {file}");
-                Environment.Exit(1);
+                Environment.ExitCode = 1;
                 return;
             }
             Console.WriteLine("Batch merged.");
