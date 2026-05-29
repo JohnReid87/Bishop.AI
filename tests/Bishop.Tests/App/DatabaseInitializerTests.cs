@@ -101,6 +101,30 @@ public sealed class DatabaseInitializerTests : IDisposable
         }
     }
 
+    private sealed class BlockingMigrationInterceptor : DbCommandInterceptor
+    {
+        private readonly SemaphoreSlim _blocking;
+
+        public BlockingMigrationInterceptor(SemaphoreSlim blocking) => _blocking = blocking;
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("CREATE TABLE", StringComparison.OrdinalIgnoreCase))
+            {
+                _blocking.Release();
+                var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                await using var reg = cancellationToken.UnsafeRegister(
+                    static (state, ct) => ((TaskCompletionSource)state!).TrySetCanceled(ct), tcs);
+                await tcs.Task;
+            }
+            return await base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
     private sealed class WalPragmaThrowingInterceptor : DbCommandInterceptor
     {
         private const string WalPragmaText = "PRAGMA journal_mode=WAL";
@@ -475,6 +499,53 @@ public sealed class DatabaseInitializerTests : IDisposable
     public Task StartAsync_WhenMutexHoldExceedsAcquireTimeout_ThrowsTimeoutException()
     {
         return Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenCancellationTokenCancelledDuringMigration_ThrowsAndReleasesMutex()
+    {
+        // Arrange — interceptor blocks inside CREATE TABLE until the EF Core cancellation token
+        // fires; the blocking semaphore lets the test wait until the block is in effect before cancelling.
+        using var cts = new CancellationTokenSource();
+        var blocking = new SemaphoreSlim(0, 1);
+        var sut1 = new DatabaseInitializer(
+            new TestDbContextFactory(
+                new DbContextOptionsBuilder<BishopDbContext>()
+                    .UseSqlite($"Data Source={_tempDbPath}")
+                    .AddInterceptors(new BlockingMigrationInterceptor(blocking))
+                    .Options),
+            _stampPath);
+        var sut2 = CreateSut();
+
+        // Act — start migration, wait until it is actually blocking, then cancel
+        var startTask = sut1.StartAsync(cts.Token);
+        (await blocking.WaitAsync(TimeSpan.FromSeconds(5))).Should().BeTrue("migration must reach the blocking point");
+        cts.Cancel();
+
+        var act = async () => await startTask;
+        await act.Should().ThrowAsync<OperationCanceledException>("cancellation must propagate from inside MigrateAsync");
+
+        // Assert — mutex must be released so a second initializer succeeds without deadlocking
+        await sut2.StartAsync(default);
+        File.Exists(_stampPath).Should().BeTrue("second init must complete after the cancelled first released the mutex");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenMigrationThrows_MutexIsReleasedSoSubsequentCallSucceeds()
+    {
+        // Arrange — first init throws on migration DDL; mutex must still be released so the
+        // second call is not forced to wait for the 60-second acquire timeout to expire.
+        var sut1 = CreateSut(CreateFactoryWithMigrationDdlThrowingInterceptor());
+        var sut2 = CreateSut();
+
+        // Act
+        var act = () => sut1.StartAsync(default);
+        await act.Should().ThrowAsync<InvalidOperationException>("DDL failure must propagate from StartAsync");
+
+        await sut2.StartAsync(default);
+
+        // Assert
+        File.Exists(_stampPath).Should().BeTrue("second init must complete once the failed first released the mutex");
     }
 
     [Fact]

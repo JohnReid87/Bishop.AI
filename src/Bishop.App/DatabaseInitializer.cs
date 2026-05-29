@@ -9,6 +9,7 @@ namespace Bishop.App;
 internal sealed class DatabaseInitializer : IHostedService
 {
     private static readonly TimeSpan MutexAcquireTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan MigrationTimeout = TimeSpan.FromSeconds(30);
 
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly string _stampPath;
@@ -21,11 +22,11 @@ internal sealed class DatabaseInitializer : IHostedService
         _mutexName = BuildMutexName(stampPath);
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
-    {
-        EnsureSchema(cancellationToken);
-        return Task.CompletedTask;
-    }
+    // Task.Run keeps the UI/host thread free while the blocking WaitOne runs on the thread pool.
+    // EnsureSchema must remain synchronous so WaitOne and ReleaseMutex execute on the same thread
+    // (Mutex has thread affinity; await would break that invariant).
+    public Task StartAsync(CancellationToken cancellationToken) =>
+        Task.Run(() => EnsureSchema(cancellationToken), CancellationToken.None);
 
     private void EnsureSchema(CancellationToken cancellationToken)
     {
@@ -48,17 +49,24 @@ internal sealed class DatabaseInitializer : IHostedService
                 throw new TimeoutException(
                     $"Failed to acquire migration mutex '{_mutexName}' within {MutexAcquireTimeout.TotalSeconds:N0}s.");
 
-            cancellationToken.ThrowIfCancellationRequested();
+            // Link a per-migration timeout to the host token so a stuck holder is
+            // bounded — whichever fires first cancels the in-flight EF operations.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(MigrationTimeout);
+            var token = cts.Token;
+
+            token.ThrowIfCancellationRequested();
 
             using var db = _dbFactory.CreateDbContext();
+            db.Database.SetCommandTimeout((int)MigrationTimeout.TotalSeconds);
 
             if (IsStampCurrent(db))
                 return;
 
             var pending = db.Database.GetPendingMigrations();
             if (pending.Any())
-                db.Database.Migrate();
-            db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+                db.Database.MigrateAsync(token).GetAwaiter().GetResult();
+            db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", token).GetAwaiter().GetResult();
             WriteStamp(db);
         }
         finally
