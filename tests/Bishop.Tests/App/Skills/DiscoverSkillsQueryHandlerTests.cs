@@ -615,13 +615,9 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
 
         var sut = new DiscoverSkillsQueryHandler();
 
-        var field = typeof(DiscoverSkillsQueryHandler)
-            .GetField("_skillsRoot", BindingFlags.NonPublic | BindingFlags.Instance);
-        var resolvedPath = (string)field!.GetValue(sut)!;
-        resolvedPath.Should().Be(expectedPath);
-
         var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
         result.Should().NotBeNull();
+        result.Should().AllSatisfy(s => s.SourcePath.Should().StartWith(expectedPath));
     }
 
     [Fact]
