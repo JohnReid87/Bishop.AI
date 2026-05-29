@@ -6,6 +6,11 @@ namespace Bishop.Tests;
 
 public sealed class DbFixture : IDisposable
 {
+    // Shared, stateless interceptor instance: keeps the DbContextOptions shape identical across
+    // fixtures so EF reuses one cached service provider + compiled model instead of rebuilding
+    // the model on every context instantiation.
+    private static readonly SqliteForeignKeyInterceptor s_fkInterceptor = new();
+
     private readonly DbContextOptions<BishopDbContext> _options;
 
     public SqliteConnection Connection { get; }
@@ -23,8 +28,7 @@ public sealed class DbFixture : IDisposable
 
         _options = new DbContextOptionsBuilder<BishopDbContext>()
             .UseSqlite(connectionString)
-            .AddInterceptors(new SqliteForeignKeyInterceptor())
-            .EnableServiceProviderCaching(false)
+            .AddInterceptors(s_fkInterceptor)
             .Options;
 
         Db = new BishopDbContext(_options);
