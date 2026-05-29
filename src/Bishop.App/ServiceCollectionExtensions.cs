@@ -45,6 +45,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IContextProvider, WorkOnCardContextProvider>();
         services.AddSingleton<IContextProvider, AutoCardContextProvider>();
         services.AddSingleton<IContextProvider, CoverageContextProvider>();
+        services.AddSingleton<IContextProvider, MutationContextProvider>();
         services.AddSingleton<IContextProvider, ArchContextProvider>();
         services.AddSingleton<IContextProvider, DeadCodeContextProvider>();
         services.AddSingleton<IContextProvider, SecurityContextProvider>();

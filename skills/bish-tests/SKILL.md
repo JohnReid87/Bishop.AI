@@ -1,6 +1,6 @@
 ---
 name: bish-tests
-description: Audit test quality for well-covered classes in the current .NET Bishop workspace — read each test file, flag shallow asserts / missing edge cases / brittle mocks / untested public methods across four quality dimensions, and push agreed cards to the board tagged `test`. Use when the user wants to scope test-quality work, mentions "test review" / "test quality", or invokes `/bish-tests`. Targeted mode: pass a class name or folder path.
+description: Audit test quality for coverage-mature classes in the current .NET Bishop workspace — reads mutation-summary.json, finds classes above 80% line coverage but below 60% mutation score, and files per-class cards quoting survived mutants. Also flags brittleness/over-mocking as an orthogonal overlay. Use when the user wants to scope test-quality work, mentions "test review" / "test quality", or invokes `/bish-tests`. Targeted mode: pass a class name or folder path.
 allowed-tools: Read, Glob, Grep, Agent, AskUserQuestion, Bash(bishop:*)
 bishop.scope: workspace
 bishop.command: /bish-tests
@@ -38,48 +38,60 @@ Echo the workspace name back on its own line:
 ## What this skill expects
 
 A .NET workspace with one or more test projects under `tests/` and source
-files under `src/`. For the default (no-argument) flow, the skill also needs
-a coverage summary at `TestResults/coverage-summary.json` in the schema
-documented in the `bish-coverage` skill:
+files under `src/`. For the default (no-argument) flow, the skill needs
+two summary files produced by prior runs of `/bish-coverage` and `mutation.ps1`:
 
+**Coverage summary** at `TestResults/coverage-summary.json`:
 ```json
 {
   "schemaVersion": 1,
   "threshold": 80,
   "modules": [
-    { "name": "<full class name>", "file": "<repo-relative path>", "lineCoverage": 0.0, "linesCoverable": 10 }
+    { "name": "<class name>", "file": "<repo-relative path>", "lineCoverage": 0.0, "linesCoverable": 10 }
+  ]
+}
+```
+
+**Mutation summary** at `TestResults/mutation-summary.json`:
+```json
+{
+  "schemaVersion": 1,
+  "threshold": 60,
+  "generatedAt": "<ISO8601>",
+  "modules": [
+    {
+      "name": "<class name>",
+      "file": "<repo-relative path>",
+      "mutationScore": 0.0,
+      "mutantsCovered": 10,
+      "survived": [
+        { "line": 42, "mutator": "ArithmeticOperator", "original": "x + 1", "replacement": "x - 1" }
+      ]
+    }
   ]
 }
 ```
 
 If the user passes a class name or folder path as the argument, the skill
-skips the coverage requirement and audits the targeted scope directly.
+skips both summary requirements and audits the targeted scope directly.
 
-Coverage tells you _whether_ each line was executed; this skill audits
-_whether the executing tests would actually catch a bug_. Coverage and
-quality are complementary — `/bish-coverage` files cards for under-covered
-classes; `/bish-tests` files cards for well-covered classes whose tests
-are shallow.
+Coverage tells you _whether_ each line was executed. Mutation score tells
+you _whether the tests would actually catch a bug_ — a line can be covered
+yet all mutants on it survive if the tests never assert on the outcome.
+`/bish-tests` targets the intersection: well-covered classes with weak mutation scores.
 
-## Quality dimensions
+## Quality signal
 
-Each test file is audited against four dimensions:
+The primary signal is **survived mutants**: lines where the test suite
+executed but no assertion failed when the code was changed. Each survived
+mutant is a concrete, quoted finding (e.g. `RunFormatting.cs:20 — cache > 0
+→ cache >= 0, no test failed`). Acceptance is closed-loop: re-run
+`mutation.ps1`, the mutant must appear as `Killed`.
 
-1. **Assertion quality.** Are tests asserting on meaningful state
-   (returned value, persisted side effects), or only that no exception
-   was thrown / that a method was called? Tests with no `Should` /
-   `Assert` are red flags.
-2. **Edge-case & error-path coverage.** Are null / empty / boundary /
-   invalid inputs covered? Are the exception paths (`throw` statements
-   in the class under test) exercised?
-3. **Brittleness / over-mocking.** Do mocks verify internal interactions
-   that lock implementation details (e.g. asserting exact call sequences
-   on collaborators when the public output is what matters)? Are real
-   collaborators substituted where a fake DB / in-memory provider would
-   be more representative?
-4. **Public-surface completeness.** Does each public method on the class
-   have at least one direct test? Are there public methods covered only
-   indirectly through another method's tests?
+An orthogonal **brittleness / over-mocking** overlay is applied on top:
+the Explore step also flags mocks that verify internal interactions rather
+than public outcomes. These two concerns are independent — mutation testing
+does not subsume brittle mocks.
 
 ---
 
@@ -87,22 +99,38 @@ Each test file is audited against four dimensions:
 
 1. **Resolve scope.** Two paths:
 
-   **Path A — no argument (default).** Read `TestResults/coverage-summary.json`.
-   - If the file is missing, STOP and tell the user:
+   **Path A — no argument (default).** Read both summary files.
 
-     > **No coverage summary found.** Run `/bish-coverage` first to produce
-     > `TestResults/coverage-summary.json`, then re-run `/bish-tests`.
+   - Read `TestResults/coverage-summary.json`.
+     - If missing, STOP:
+       > **No coverage summary found.** Run `/bish-coverage` first to produce
+       > `TestResults/coverage-summary.json`, then re-run `/bish-tests`.
+     - Validate `schemaVersion == 1`; if future version, STOP and ask the
+       user to update the skill.
+     - Build the **coverage-mature set**: `modules[]` entries with
+       `lineCoverage >= summary.threshold` (typically 80%).
 
-   - Validate `schemaVersion == 1`; if it's a future version the skill
-     doesn't recognise, STOP and ask the user to update the skill.
-   - From `modules[]`, keep entries with `lineCoverage >= summary.threshold`.
-     These are the well-covered classes whose test quality is worth auditing.
+   - Read `TestResults/mutation-summary.json`.
+     - If missing, STOP:
+       > **No mutation summary found.** Run `mutation.ps1` first to produce
+       > `TestResults/mutation-summary.json`, then re-run `/bish-tests`.
+     - Validate `schemaVersion == 1`; if future version, STOP and ask the
+       user to update the skill.
+     - From `modules[]`, keep entries with `mutationScore < summary.threshold`
+       (typically 60). This is the **mutation-weak set**.
+
+   - Intersect: candidates = classes that are in both the coverage-mature
+     set AND the mutation-weak set, matched by `name` (case-insensitive).
+     If the intersection is empty, tell the user:
+     > All coverage-mature classes are above the 60% mutation threshold. Nothing to file.
+
+     Record this run (step 10) and STOP.
 
    **Path B — argument supplied.** Treat the argument as either a class
    name (full or short, case-insensitive) or a folder path under `src/`.
    - Build the candidate list directly: match against `modules[].name` /
-     `modules[].file` when a summary exists; otherwise enumerate matching
-     `.cs` files via `Glob`. Coverage threshold does NOT apply in this mode.
+     `modules[].file` from the mutation summary when it exists; otherwise
+     enumerate matching `.cs` files via `Glob`. Thresholds do NOT apply.
    - If nothing matches, STOP and tell the user no source files matched.
 
 2. **Find the test file for each candidate.** Two strategies, in order:
@@ -116,49 +144,41 @@ Each test file is audited against four dimensions:
      `new <ClassName>(` invocations. Pick the test file with the most
      references.
    - If neither produces a hit, skip the class with the note `no test file
-     found; coverage likely indirect`. Do **not** file a card for it —
-     record it for the summary table only.
+     found; coverage likely indirect`. Do **not** file a card — record it
+     for the summary table only.
 
-3. **Cap and order.** Sort surviving candidates lowest-coverage-first
-   (within the above-threshold set in Path A; by name in Path B) and take
-   at most **15** per run. If more than 15 survive, tell the user after the
-   audit:
+3. **Cap and order.** Sort candidates by `mutationScore` ascending (weakest
+   first) and take at most **15** per run. If more than 15 survive, tell the
+   user after the audit:
 
-   > Audited the lowest-coverage 15 of N candidates. Re-run `/bish-tests`
-   > after working these cards to surface the next batch.
+   > Audited the 15 weakest-mutation-score classes of N candidates. Re-run
+   > `/bish-tests` after working these cards to surface the next batch.
 
-4. **Audit each test file via the Explore subagent.** For each (class,
-   test file) pair, delegate to the `Explore` subagent (via the `Agent`
-   tool with `subagent_type: "Explore"` and `model: "haiku"`). Brief it with:
+4. **Analyse each class via the Explore subagent.** For each (class, test
+   file) pair, delegate to the `Explore` subagent (via the `Agent` tool with
+   `subagent_type: "Explore"` and `model: "haiku"`). Brief it with:
 
-   - The class name and source path.
+   - The class name, source path, mutation score, and the list of survived
+     mutants (from `mutation-summary.json`).
    - The test file path.
-   - The four quality dimensions (below).
+   - Two tasks:
+     1. **Explain each survived mutant** — locate the exact line, show the
+        surrounding context, and explain in plain English why no existing
+        test catches the mutation.
+     2. **Propose the killing assertion** — for each mutant, suggest the
+        specific test method and `Should` assertion that would kill it, e.g.
+        `result.Should().Be(0)` rather than just `result.Should().NotBeNull()`.
+     3. **Brittleness overlay** — additionally flag any mocks that verify
+        internal interactions rather than observable output (e.g. asserting
+        exact call counts on collaborators when the public return value is
+        what matters). This is orthogonal to mutation score.
 
    Ask it to return paths + line numbers + short excerpts (not whole
    files). Only fall back to direct Read/Grep for tight follow-ups on a
    specific range the Explore agent already surfaced.
 
-   **The four dimensions:**
-
-   1. **Assertion quality.** Are tests asserting on meaningful state
-      (returned value, persisted side effects), or only that no exception
-      was thrown / that a method was called? Tests with no `Should` /
-      `Assert` are red flags.
-   2. **Edge-case & error-path coverage.** Are null / empty / boundary /
-      invalid inputs covered? Are the exception paths (`throw` statements
-      in the class under test) exercised?
-   3. **Brittleness / over-mocking.** Do mocks verify internal interactions
-      that lock implementation details (e.g. asserting exact call sequences
-      on collaborators when the public output is what matters)? Are real
-      collaborators substituted where a fake DB / in-memory provider would
-      be more representative?
-   4. **Public-surface completeness.** Does each public method on the class
-      have at least one direct test? Are there public methods covered only
-      indirectly through another method's tests?
-
-5. **Build one suggested card per class with at least one issue.** Classes
-   with no findings are recorded as `clean` for the summary table — do not
+5. **Build one suggested card per class with at least one finding.** Classes
+   with no findings are recorded as `clean` in the summary table — do not
    file a card.
 
    - **Title:** `Improve tests for <ClassName>`.
@@ -169,20 +189,26 @@ Each test file is audited against four dimensions:
 
      ```markdown
      ### Why
-     `<ClassName>` is at `<coverage>%` but the test file has gaps in `<dimensions>`.
+     `<ClassName>` is at `<lineCoverage>%` line coverage but only `<mutationScore>%`
+     mutation score — `<N>` mutant(s) survived.
 
-     ### Issues
-     - **<dimension>**: <description, test method name, quoted offending line>
+     ### Survived mutants
+     - `<ClassName>.cs:<line>` — `<original>` → `<replacement>` (`<mutator>`): <plain-English explanation>
+       - Killing assertion: `<proposed assertion>`
+     - ...
+
+     ### Brittleness (if any)
+     - <description of brittle mock / over-verification, with test method name>
 
      ### Acceptance
-     - <one bullet per listed issue, each addressed in `<FooTests.cs>`>
+     - Re-run `mutation.ps1`; all listed mutants appear as `Killed`.
+     - (One bullet per brittleness finding addressed, if any.)
 
      ### Related
      - `<path/to/FooTests.cs>`
      ```
 
-   `<dimensions>` in `### Why` is a comma-separated list of the dimensions
-   that produced issues for this class (e.g. `assertion quality, edge cases`).
+   Omit `### Brittleness` when the overlay found no issues.
 
 6. **Ensure the `test` tag exists.** Check `tags[].name` from the workspace
    JSON. If `test` is absent, stop and tell the user: the canonical tags are
@@ -201,7 +227,8 @@ Each test file is audited against four dimensions:
    Record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-tests`, then continue to step 9 so the clean-classes summary still prints.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each
-   one, show the class, the test file path, and the issues found. Offer:
+   one, show the class, the test file path, the mutation score, and the
+   survived mutants. Offer:
 
    - **Push as-is (Recommended)** — file the card with the proposed
      title/body.
@@ -209,9 +236,8 @@ Each test file is audited against four dimensions:
    - **Edit title/body** — fall back to a free-text prompt for the
      replacement.
 
-   When two or more suggestions clearly belong together (same dimension
-   gap, same module/folder), offer a fourth option to merge them into one
-   card before pushing.
+   When two or more suggestions clearly belong together (same module/folder),
+   offer a fourth option to merge them into one card before pushing.
 
    Push confirmed cards using `bishop card add` per `Card Push Procedure` (in `conventions`). Use `--tag test`.
 
@@ -219,11 +245,11 @@ Each test file is audited against four dimensions:
    no-test-file skips so the user can tell audited-good from
    skipped-no-test-file from filed:
 
-   | Class | Coverage | Test file | Result |
-   |-------|----------|-----------|--------|
-   | `Foo` | 92% | `tests/.../FooTests.cs` | card #N |
-   | `Bar` | 100% | `tests/.../BarTests.cs` | clean |
-   | `Baz` | 88% | _none found_ | skipped — coverage likely indirect |
+   | Class | Coverage | Mutation score | Test file | Result |
+   |-------|----------|----------------|-----------|--------|
+   | `Foo` | 92% | 45% | `tests/.../FooTests.cs` | card #N |
+   | `Bar` | 100% | 72% | `tests/.../BarTests.cs` | clean |
+   | `Baz` | 88% | 38% | _none found_ | skipped — no test file |
 
    Then offer:
 
@@ -239,11 +265,7 @@ Each test file is audited against four dimensions:
 - Do NOT push cards before the user confirms each suggestion via the
   interview.
 - Do NOT file a card for a class with `no test file found` — flag it in
-  the summary as `skipped — coverage likely indirect` and move on.
-- Do NOT run mutation testing (Stryker.NET) or otherwise execute the test
-  suite as part of this skill. The skill reads test source only; coverage
-  data comes from the latest `/bish-coverage` run. Mutation scoring
-  belongs in a separate spike.
+  the summary as `skipped — no test file` and move on.
 - Do NOT re-file a card whose title matches an existing open card. Re-runs
   must be idempotent.
 - If the `test` tag is missing, stop and tell the user to re-run `bishop workspace init` to restore canonical tags. Never push untagged.
@@ -252,5 +274,8 @@ Each test file is audited against four dimensions:
 - Do NOT assume a specific test framework or mocking library. Mirrored-path
   discovery uses the `<Class>Tests.cs` convention; reference-search
   fallback handles anything else.
+- Do NOT invent test gaps from first principles. All mutation findings must
+  come from the `survived[]` array in `mutation-summary.json`. The Explore
+  step explains and proposes assertions; it does not generate new gaps.
 
 </guardrails>
