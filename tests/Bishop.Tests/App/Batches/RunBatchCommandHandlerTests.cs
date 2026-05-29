@@ -257,7 +257,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     {
         Func<Task> act = () => CreateHandler().Handle(null!, default);
 
-        await act.Should().ThrowAsync<Exception>();
+        await act.Should().ThrowAsync<NullReferenceException>();
     }
 
     [Fact]
@@ -641,7 +641,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task Resume_AllCardsDone_ClosesImmediately()
+    public async Task Resume_AllCardsDone_FinishesImmediately()
     {
         var (workspace, lanes) = await CreateWorkspaceAsync();
         var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
@@ -661,6 +661,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
         saved.Status.Should().Be(BatchStatus.Working);
+        saved.FinishedAt.Should().NotBeNull();
     }
 
     // ── handoff missing ────────────────────────────────────────────────────────

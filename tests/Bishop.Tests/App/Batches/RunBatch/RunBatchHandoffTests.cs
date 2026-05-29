@@ -202,10 +202,8 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
         result.StopReason.Should().Be(RunBatchStopReason.HandoffMissing);
         result.Succeeded.Should().Be(0);
 
-        await git.Received(1).ResetHardAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await git.Received(1).CleanWorkingTreeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.LaneName.Should().Be(SystemLaneNames.Doing);
         saved.LastAutoRunFailedAt.Should().NotBeNull();
     }
 
@@ -275,10 +273,8 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
         result.StopReason.Should().Be(RunBatchStopReason.CardFailure);
         result.Succeeded.Should().Be(0);
 
-        await git.Received(1).ResetHardAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await git.Received(1).CleanWorkingTreeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.LaneName.Should().Be(SystemLaneNames.Doing);
         saved.LastAutoRunFailedAt.Should().NotBeNull();
     }
 
