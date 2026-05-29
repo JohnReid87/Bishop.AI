@@ -11,7 +11,7 @@ using Bishop.App.Services.Terminal;
 using Bishop.App.Skills;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.App.Workspaces.LaunchPlainTerminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
@@ -132,7 +132,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     private async Task RefreshAsync()
     {
         var lanes = await _mediator.Send(new ListLanesByWorkspaceQuery(_workspaceId));
-        var tags = await _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
+        var tags = await _mediator.Send(new ListTagsQuery());
         var tagColourByName = tags.ToDictionary(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
 
         // When the lane structure is unchanged, update only cards that actually changed so
@@ -339,7 +339,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     }
 
     public async Task<IReadOnlyList<TagInfo>> GetTagsAsync()
-        => await _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
+        => await _mediator.Send(new ListTagsQuery());
 
     public async Task UpdateCardTagAsync(Guid cardId, string tagName)
         => await _mediator.Send(new UpdateCardCommand(cardId, null, null, true, tagName));

@@ -1,6 +1,6 @@
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Skills.GetSkillBootstrapInfo;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 using Bishop.Core;
@@ -26,7 +26,7 @@ public sealed class GetSkillBootstrapInfoQueryHandlerTests : IClassFixture<DbFix
     private static IMediator MediatorWith(IReadOnlyList<TagInfo> tags, IReadOnlyList<LaneInfo> lanes)
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(tags);
         mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(lanes);

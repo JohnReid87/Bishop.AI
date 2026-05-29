@@ -1,19 +1,19 @@
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using FluentAssertions;
 
 namespace Bishop.Tests.App.Tags;
 
-public sealed class ListTagsByWorkspaceQueryHandlerTests
+public sealed class ListTagsQueryHandlerTests
 {
-    private static ListTagsByWorkspaceQueryHandler CreateSut() => new();
+    private static ListTagsQueryHandler CreateSut() => new();
 
     [Fact]
     public async Task Handle_ReturnsAllDefaultTags()
     {
         var sut = CreateSut();
 
-        var result = await sut.Handle(new ListTagsByWorkspaceQuery(Guid.NewGuid()), CancellationToken.None);
+        var result = await sut.Handle(new ListTagsQuery(), CancellationToken.None);
 
         result.Should().HaveCount(BrandTagPalette.DefaultColours.Count);
     }
@@ -23,7 +23,7 @@ public sealed class ListTagsByWorkspaceQueryHandlerTests
     {
         var sut = CreateSut();
 
-        var result = await sut.Handle(new ListTagsByWorkspaceQuery(Guid.NewGuid()), CancellationToken.None);
+        var result = await sut.Handle(new ListTagsQuery(), CancellationToken.None);
 
         result.Select(t => t.Name).Should().BeInAscendingOrder(StringComparer.OrdinalIgnoreCase);
     }
@@ -33,7 +33,7 @@ public sealed class ListTagsByWorkspaceQueryHandlerTests
     {
         var sut = CreateSut();
 
-        var result = await sut.Handle(new ListTagsByWorkspaceQuery(Guid.NewGuid()), CancellationToken.None);
+        var result = await sut.Handle(new ListTagsQuery(), CancellationToken.None);
 
         var expected = BrandTagPalette.DefaultColours
             .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
@@ -43,24 +43,13 @@ public sealed class ListTagsByWorkspaceQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WorkspaceIdDoesNotAffectResult()
-    {
-        var sut = CreateSut();
-
-        var resultA = await sut.Handle(new ListTagsByWorkspaceQuery(Guid.NewGuid()), CancellationToken.None);
-        var resultB = await sut.Handle(new ListTagsByWorkspaceQuery(Guid.NewGuid()), CancellationToken.None);
-
-        resultA.Should().BeEquivalentTo(resultB, opts => opts.WithStrictOrdering());
-    }
-
-    [Fact]
     public async Task Handle_CancellationToken_DoesNotThrow()
     {
         var sut = CreateSut();
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => sut.Handle(new ListTagsByWorkspaceQuery(Guid.NewGuid()), cts.Token);
+        var act = () => sut.Handle(new ListTagsQuery(), cts.Token);
 
         await act.Should().NotThrowAsync();
     }

@@ -1,7 +1,7 @@
 using Bishop.App.Git;
 using Bishop.App.Git.GetRecentCommits;
 using Bishop.App.Lanes.ListLanesByWorkspace;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using MediatR;
 
 namespace Bishop.App.Context.ContextPack;
@@ -47,7 +47,7 @@ public sealed class BuildContextPackQueryHandler : IRequestHandler<BuildContextP
     private async Task<WorkspaceBlock> BuildWorkspaceBlockAsync(Bishop.Core.Workspace workspace, CancellationToken cancellationToken)
     {
         var lanes = await _mediator.Send(new ListLanesByWorkspaceQuery(workspace.Id), cancellationToken);
-        var tags = await _mediator.Send(new ListTagsByWorkspaceQuery(workspace.Id), cancellationToken);
+        var tags = await _mediator.Send(new ListTagsQuery(), cancellationToken);
 
         var (contextMd, truncated) = ReadContextMd(workspace.Path);
 

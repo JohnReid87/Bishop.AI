@@ -7,7 +7,7 @@ using Bishop.App.Batches.RemoveBatch;
 using Bishop.App.Batches.RenameBatch;
 using Bishop.App.Batches.RequestStopBatch;
 using Bishop.App.Services.Terminal;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -63,7 +63,7 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
     private async Task RefreshAsync()
     {
         var summaries = await _mediator.Send(new ListBatchesQuery(_workspaceId, _workspacePath));
-        var tags = await _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
+        var tags = await _mediator.Send(new ListTagsQuery());
         var tagColourByName = tags.ToDictionary(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
 
         Batches.Clear();

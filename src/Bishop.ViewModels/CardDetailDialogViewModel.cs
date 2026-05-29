@@ -14,7 +14,7 @@ using Bishop.App.Services.Settings;
 using Bishop.App.Services.Terminal;
 using Bishop.App.Skills;
 using Bishop.App.Skills.LaunchSkill;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -231,7 +231,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     {
         try
         {
-            return await _mediator.Send(new ListTagsByWorkspaceQuery(_workspaceId));
+            return await _mediator.Send(new ListTagsQuery());
         }
         catch (Exception ex)
         {

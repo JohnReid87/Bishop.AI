@@ -11,7 +11,7 @@ using Bishop.App.Services.Terminal;
 using Bishop.App.Skills;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.App.Workspaces.LaunchPlainTerminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
 using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
@@ -69,7 +69,7 @@ public class WorkspaceBoardViewModelTests
                 new() { Id = Guid.NewGuid(), Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" },
                 new() { Id = Guid.NewGuid(), Number = 2, Title = "Beta", LaneName = "To Do", Description = "" },
             });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -93,7 +93,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<Card> { card });
         mediator.Send(Arg.Is<ListCardsByWorkspaceQuery>(q => q.LaneName == "Doing"), Arg.Any<CancellationToken>())
             .Returns(new List<Card>());
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -117,7 +117,7 @@ public class WorkspaceBoardViewModelTests
         var cardBeta = new Card { Id = Guid.NewGuid(), Number = 2, Title = "Beta", LaneName = "To Do", Description = "" };
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { cardAlpha, cardBeta });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -139,7 +139,7 @@ public class WorkspaceBoardViewModelTests
         var card = new Card { Id = Guid.NewGuid(), Number = 1, Title = "T", LaneName = "To Do", Description = "", TagName = "feature" };
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { card });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo> { new("feature", "#7fa87a") });
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -160,7 +160,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -184,7 +184,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { card });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -207,7 +207,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { card1, card2 });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -231,7 +231,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { card1 });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -255,7 +255,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card>());
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -279,7 +279,7 @@ public class WorkspaceBoardViewModelTests
         var card = new Card { Id = Guid.NewGuid(), Number = 1, Title = "T", LaneName = "To Do", Description = "", TagName = "feature" };
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { card });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -301,7 +301,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { card });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -333,7 +333,7 @@ public class WorkspaceBoardViewModelTests
                 new() { Id = cardAlphaId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" },
                 new() { Id = cardBetaId, Number = 2, Title = "Beta", LaneName = "To Do", Description = "" },
             });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -362,7 +362,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { card });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -384,7 +384,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IReadOnlyList<Card>>(new InvalidOperationException("query failed")));
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -409,13 +409,13 @@ public class WorkspaceBoardViewModelTests
     }
 
     [Fact]
-    public async Task LoadAsync_WhenListTagsByWorkspaceQueryThrows_PropagatesException()
+    public async Task LoadAsync_WhenListTagsQueryThrows_PropagatesException()
     {
         var workspaceId = Guid.NewGuid();
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<LaneInfo> { new("To Do", 1) });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IReadOnlyList<TagInfo>>(new InvalidOperationException("tags failed")));
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -433,7 +433,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card>());
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -454,7 +454,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "Old description" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -479,7 +479,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "", TagName = "feature" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo> { new("feature", "#7fa87a") });
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -488,7 +488,7 @@ public class WorkspaceBoardViewModelTests
 
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "", TagName = "bug" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo> { new("feature", "#7fa87a"), new("bug", "#ff0000") });
         await vm.RefreshCommand.ExecuteAsync(null);
 
@@ -506,14 +506,14 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "", TagName = "feature" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo> { new("feature", "#7fa87a") });
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
         await vm.LoadAsync(workspaceId);
         var originalCardVm = vm.Lanes[0].Cards[0];
 
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo> { new("feature", "#ff0000") });
         await vm.RefreshCommand.ExecuteAsync(null);
 
@@ -531,7 +531,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "", TagName = "feature" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo> { new("feature", "#7fa87a") });
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -539,7 +539,7 @@ public class WorkspaceBoardViewModelTests
         var originalCardVm = vm.Lanes[0].Cards[0];
 
         // Tag dictionary key in different casing but same colour — OrdinalIgnoreCase lookup resolves the same colour
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo> { new("FEATURE", "#7fa87a") });
         await vm.RefreshCommand.ExecuteAsync(null);
 
@@ -555,7 +555,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card>());
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -714,7 +714,7 @@ public class WorkspaceBoardViewModelTests
                 new() { Id = Guid.NewGuid(), Number = 2, Title = "Batch-1", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch },
                 new() { Id = Guid.NewGuid(), Number = 3, Title = "Batch-2", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch },
             });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -741,7 +741,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<Card> { new() { Id = Guid.NewGuid(), Number = 1, Title = "C1", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch } });
         mediator.Send(Arg.Is<ListCardsByWorkspaceQuery>(q => q.LaneName == "Done"), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = Guid.NewGuid(), Number = 2, Title = "C2", LaneName = "Done", Description = "", BatchId = batchId, Batch = batch } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -771,7 +771,7 @@ public class WorkspaceBoardViewModelTests
         var card = new Card { Id = Guid.NewGuid(), Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" };
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { card });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>()) { IsCardSkillsButtonVisible = true };
@@ -793,7 +793,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<Card> { new() { Id = Guid.NewGuid(), Number = 1, Title = "Batch Alpha", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch } });
         mediator.Send(Arg.Is<ListCardsByWorkspaceQuery>(q => q.LaneName == "Done"), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = Guid.NewGuid(), Number = 2, Title = "Batch Beta", LaneName = "Done", Description = "", BatchId = batchId, Batch = batch } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -823,7 +823,7 @@ public class WorkspaceBoardViewModelTests
                 new() { Id = Guid.NewGuid(), Number = 2, Title = "New-1", LaneName = "To Do", Description = "", BatchId = batchNewId, Batch = batchNew },
                 new() { Id = Guid.NewGuid(), Number = 1, Title = "Old-1", LaneName = "To Do", Description = "", BatchId = batchOldId, Batch = batchOld },
             });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -849,7 +849,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<Card> { new() { Id = Guid.NewGuid(), Number = 1, Title = "C1", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch } });
         mediator.Send(Arg.Is<ListCardsByWorkspaceQuery>(q => q.LaneName == "Doing"), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = Guid.NewGuid(), Number = 2, Title = "C2", LaneName = "Doing", Description = "", BatchId = batchId, Batch = batch } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -870,7 +870,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -896,7 +896,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1), new("Doing", 2) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card>());
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -927,7 +927,7 @@ public class WorkspaceBoardViewModelTests
                 new() { Id = Guid.NewGuid(), Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" },
                 new() { Id = Guid.NewGuid(), Number = 2, Title = "Beta", LaneName = "To Do", Description = "" },
             });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -955,7 +955,7 @@ public class WorkspaceBoardViewModelTests
                 new() { Id = Guid.NewGuid(), Number = 1, Title = "Dated-1", LaneName = "To Do", Description = "", BatchId = batchWithDateId, Batch = batchWithDate },
                 new() { Id = Guid.NewGuid(), Number = 2, Title = "Undated-1", LaneName = "To Do", Description = "", BatchId = batchNullDateId },
             });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -977,7 +977,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = originalId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -1003,7 +1003,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "", IsClosed = false } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -1028,7 +1028,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -1054,7 +1054,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -1080,7 +1080,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -1104,7 +1104,7 @@ public class WorkspaceBoardViewModelTests
             .Returns(new List<LaneInfo> { new("To Do", 1) });
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Card>());
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -1132,7 +1132,7 @@ public class WorkspaceBoardViewModelTests
                 new() { Id = Guid.NewGuid(), Number = 1, Title = "Standalone Alpha", LaneName = "To Do", Description = "" },
                 new() { Id = Guid.NewGuid(), Number = 2, Title = "Batch Beta", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch },
             });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
@@ -1216,7 +1216,7 @@ public class WorkspaceBoardViewModelTests
             {
                 new() { Id = cardId, Number = 1, Title = "Batch Card", LaneName = "To Do", Description = "", BatchId = batchId, Batch = batch },
             });
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<TagInfo>());
 
         var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());

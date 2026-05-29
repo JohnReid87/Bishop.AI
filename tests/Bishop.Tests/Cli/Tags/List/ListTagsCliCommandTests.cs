@@ -1,4 +1,4 @@
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.Cli.Tags.List;
 using Bishop.Core;
@@ -12,38 +12,20 @@ namespace Bishop.Tests.Cli.Tags.List;
 public sealed class ListTagsCliCommandTests
 {
     [Fact]
-    public async Task InvokeAsync_HappyPath_ExitsZeroAndSendsListTagsByWorkspaceQuery()
+    public async Task InvokeAsync_HappyPath_ExitsZeroAndSendsListTagsQuery()
     {
         var ws = new Workspace { Id = Guid.NewGuid(), Name = "test-ws", Path = @"C:\test" };
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<Workspace>)[ws]);
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<TagInfo>)[]);
 
         var cmd = new ListTagsCliCommand(mediator);
         var exitCode = await cmd.InvokeAsync(["--workspace", "test-ws"]);
 
         exitCode.Should().Be(0);
-        await mediator.Received(1).Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task InvokeAsync_SendsQueryWithCorrectWorkspaceId()
-    {
-        var ws = new Workspace { Id = Guid.NewGuid(), Name = "test-ws", Path = @"C:\test" };
-        var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<Workspace>)[ws]);
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<TagInfo>)[]);
-
-        var cmd = new ListTagsCliCommand(mediator);
-        await cmd.InvokeAsync(["--workspace", "test-ws"]);
-
-        await mediator.Received(1).Send(
-            Arg.Is<ListTagsByWorkspaceQuery>(q => q.WorkspaceId == ws.Id),
-            Arg.Any<CancellationToken>());
+        await mediator.Received(1).Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -54,14 +36,14 @@ public sealed class ListTagsCliCommandTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<Workspace>)[ws]);
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<TagInfo>)[tag]);
 
         var cmd = new ListTagsCliCommand(mediator);
         var exitCode = await cmd.InvokeAsync(["--workspace", "test-ws", "--json"]);
 
         exitCode.Should().Be(0);
-        await mediator.Received(1).Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>());
+        await mediator.Received(1).Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -72,13 +54,13 @@ public sealed class ListTagsCliCommandTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<Workspace>)[ws]);
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<TagInfo>)[tag]);
 
         var cmd = new ListTagsCliCommand(mediator);
         var exitCode = await cmd.InvokeAsync(["--workspace", "test-ws"]);
 
         exitCode.Should().Be(0);
-        await mediator.Received(1).Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>());
+        await mediator.Received(1).Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>());
     }
 }

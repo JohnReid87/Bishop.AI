@@ -428,6 +428,7 @@ FodyWeavers.xsd
 *.msm
 *.msp
 /.claude/settings.local.json
+/.claude/scheduled_tasks.lock
 
 # Bishop runtime files (BISHOP_CONTEXT.md, BISHOP_NOTES.md, worknext.running, etc.)
 .bishop/

@@ -6,7 +6,7 @@ using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git;
 using Bishop.App.Skills;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using Bishop.ViewModels;
 using FluentAssertions;
@@ -762,28 +762,26 @@ public class CardDetailDialogViewModelTests
     // ── GetWorkspaceTagsAsync ─────────────────────────────────────────────────
 
     [Fact]
-    public async Task GetWorkspaceTagsAsync_DelegatesToMediatorWithWorkspaceId()
+    public async Task GetWorkspaceTagsAsync_DelegatesToMediator()
     {
         var mediator = Substitute.For<IMediator>();
         var workspaceId = Guid.NewGuid();
         IReadOnlyList<TagInfo> tags = [];
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(tags);
         var vm = new CardDetailDialogViewModel(NewCard(), [], workspaceId, null, mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
         var result = await vm.GetWorkspaceTagsAsync();
 
         result.Should().BeSameAs(tags);
-        await mediator.Received(1).Send(
-            Arg.Is<ListTagsByWorkspaceQuery>(q => q.WorkspaceId == workspaceId),
-            Arg.Any<CancellationToken>());
+        await mediator.Received(1).Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GetWorkspaceTagsAsync_MediatorThrows_ReturnsEmptyWithoutPropagating()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IReadOnlyList<TagInfo>>(new InvalidOperationException("DB error")));
         var vm = new CardDetailDialogViewModel(NewCard(), [], Guid.NewGuid(), null, mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
@@ -868,7 +866,7 @@ public class CardDetailDialogViewModelTests
         };
         mediator.Send(Arg.Any<Bishop.App.Cards.GetCardByNumber.GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
             .Returns(domainCard);
-        mediator.Send(Arg.Any<Bishop.App.Tags.ListTagsByWorkspace.ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<Bishop.Core.TagInfo>)[]);
 
         var result = await vm.GetCardByNumberAsync(7, isSkillsButtonVisible: true);

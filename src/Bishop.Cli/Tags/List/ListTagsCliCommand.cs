@@ -1,4 +1,4 @@
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using MediatR;
 using System.CommandLine;
 using System.Text.Json;
@@ -24,8 +24,8 @@ internal sealed class ListTagsCliCommand : Command
 
         this.SetHandler(async (string? workspace, bool json) =>
         {
-            var ws = await resolver.ResolveAsync(workspace);
-            var tags = await mediator.Send(new ListTagsByWorkspaceQuery(ws.Id));
+            await resolver.ResolveAsync(workspace);
+            var tags = await mediator.Send(new ListTagsQuery());
             if (json)
                 Console.WriteLine(JsonSerializer.Serialize(tags, s_jsonOpts));
             else

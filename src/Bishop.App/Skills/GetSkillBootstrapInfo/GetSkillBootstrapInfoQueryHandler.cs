@@ -1,5 +1,5 @@
 using Bishop.App.Lanes.ListLanesByWorkspace;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
@@ -26,7 +26,7 @@ public sealed class GetSkillBootstrapInfoQueryHandler : IRequestHandler<GetSkill
             .FirstOrDefaultAsync(w => w.Id == request.WorkspaceId, cancellationToken)
             ?? throw new InvalidOperationException($"Workspace '{request.WorkspaceId}' not found.");
 
-        var tags = await _mediator.Send(new ListTagsByWorkspaceQuery(workspace.Id), cancellationToken);
+        var tags = await _mediator.Send(new ListTagsQuery(), cancellationToken);
         var lanes = await _mediator.Send(new ListLanesByWorkspaceQuery(workspace.Id), cancellationToken);
 
         return new SkillBootstrapInfo(

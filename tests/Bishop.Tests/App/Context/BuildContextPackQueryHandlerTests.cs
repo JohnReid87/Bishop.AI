@@ -6,7 +6,7 @@ using Bishop.App.Context.ContextPack.Providers;
 using Bishop.App.Git;
 using Bishop.App.Git.GetRecentCommits;
 using Bishop.App.Lanes.ListLanesByWorkspace;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
 using Bishop.Data;
@@ -38,9 +38,9 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         sender.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
             .Returns(call => new ListLanesByWorkspaceQueryHandler()
                 .Handle(call.ArgAt<ListLanesByWorkspaceQuery>(0), call.ArgAt<CancellationToken>(1)));
-        sender.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(call => new ListTagsByWorkspaceQueryHandler()
-                .Handle(call.ArgAt<ListTagsByWorkspaceQuery>(0), call.ArgAt<CancellationToken>(1)));
+        sender.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ListTagsQueryHandler()
+                .Handle(call.ArgAt<ListTagsQuery>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
             .Returns(call => new GetCardByNumberQueryHandler(_factory)
                 .Handle(call.ArgAt<GetCardByNumberQuery>(0), call.ArgAt<CancellationToken>(1)));

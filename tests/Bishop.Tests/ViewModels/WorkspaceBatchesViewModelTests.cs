@@ -1,5 +1,5 @@
 using Bishop.App.Batches.ListBatches;
-using Bishop.App.Tags.ListTagsByWorkspace;
+using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using Bishop.ViewModels;
 using FluentAssertions;
@@ -15,7 +15,7 @@ public class WorkspaceBatchesViewModelTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListBatchesQuery>(), Arg.Any<CancellationToken>())
             .Returns(summaries);
-        mediator.Send(Arg.Any<ListTagsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<TagInfo>)[]);
         return mediator;
     }
