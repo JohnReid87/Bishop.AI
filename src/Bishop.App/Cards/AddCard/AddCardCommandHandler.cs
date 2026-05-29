@@ -7,6 +7,8 @@ namespace Bishop.App.Cards.AddCard;
 
 public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card>
 {
+    private const int MaxNumberMintRetries = 5;
+
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
     public AddCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
@@ -24,8 +26,29 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
             tagName = request.TagName;
         }
 
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        DbUpdateException? lastConflict = null;
+        for (var attempt = 0; attempt < MaxNumberMintRetries; attempt++)
+        {
+            try
+            {
+                await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+                return await InsertCardAsync(db, request, tagName, cancellationToken);
+            }
+            catch (DbUpdateException ex) when (IsCardNumberConflict(ex))
+            {
+                lastConflict = ex;
+            }
+        }
 
+        throw lastConflict!;
+    }
+
+    private static async Task<Card> InsertCardAsync(
+        BishopDbContext db,
+        AddCardCommand request,
+        string? tagName,
+        CancellationToken cancellationToken)
+    {
         var workspace = await db.Workspaces.FindAsync([request.WorkspaceId], cancellationToken)
             ?? throw new InvalidOperationException($"Workspace {request.WorkspaceId} not found.");
 
@@ -65,4 +88,8 @@ public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card
         await db.SaveChangesAsync(cancellationToken);
         return card;
     }
+
+    private static bool IsCardNumberConflict(DbUpdateException ex) =>
+        ex.InnerException?.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) == true &&
+        ex.InnerException.Message.Contains("Cards.Number", StringComparison.OrdinalIgnoreCase);
 }

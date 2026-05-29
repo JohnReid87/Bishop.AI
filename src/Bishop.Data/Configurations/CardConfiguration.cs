@@ -20,6 +20,7 @@ internal sealed class CardConfiguration : IEntityTypeConfiguration<Card>
         builder.Property(c => c.TotalOutputTokens).HasDefaultValue(0);
         builder.Property(c => c.TotalCostUsd).HasDefaultValue(0m);
         builder.Property(c => c.ClaudeRunCount).HasDefaultValue(0);
+        builder.HasIndex(c => new { c.WorkspaceId, c.Number }).IsUnique();
         builder.HasOne(c => c.Workspace)
                .WithMany(w => w.Cards)
                .HasForeignKey(c => c.WorkspaceId)
