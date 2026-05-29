@@ -16,6 +16,12 @@ Host-specific:
 
 - The Python binary on this Windows host is `python`, not `python3`. Prefer PowerShell `ConvertFrom-Json` for parsing JSON output instead of Python one-liners.
 
+## Documentation drift resistance
+
+When `CONTEXT.md` and the code disagree, the code wins — surface the drift to the user and fix the doc, don't perpetuate the false claim in further edits or answers.
+
+Load-bearing factual lists in `CONTEXT.md` (the tag set, the lane set) are wrapped in HTML-comment fact-blocks of the form `<!-- bishop-fact:NAME --> … <!-- /bishop-fact -->` and asserted against their canonical code constants (e.g. `TagNames.All`, `SystemLaneNames.All`) by `Bishop.Tests.Docs.ContextMdFactBlockTests`. Edit the block as you would normal Markdown — the next build fails fast if the contents diverge from code. Add new fact-blocks the same way when another doc fact starts drifting.
+
 ## UI conventions
 
 ### No nested ContentDialogs

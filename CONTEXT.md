@@ -43,7 +43,33 @@ Layered, with strict one-way dependencies. Modify in this order when implementin
 Dependency direction: **Core → Data → App → { ViewModels → UI, Cli }**. UI and Cli go through MediatR handlers in App for everything.
 
 ### Kanban model
-A workspace owns a fixed set of four system lanes — "Backlog", "To Do", "Doing", "Done" — seeded on workspace creation; user-defined lanes are not supported. Cards belong to a workspace (via `WorkspaceId` FK) and carry their lane membership as a `LaneName` string + ordered `Position`. Tags are workspace-scoped (with optional colour); a card carries at most one tag as a nullable `TagName` string on the `Cards` table.
+A workspace owns a fixed set of four system lanes, seeded on workspace creation; user-defined lanes are not supported. Cards belong to a workspace (via `WorkspaceId` FK) and carry their lane membership as a `LaneName` string + ordered `Position`.
+
+The lane names are:
+
+<!-- bishop-fact:lanes -->
+- `Backlog`
+- `To Do`
+- `Doing`
+- `Done`
+<!-- /bishop-fact -->
+
+Tags are a global fixed set of 8 names (each with a default colour from `BrandTagPalette`); tags are not user-mutable from the UI. A card carries at most one tag as a nullable `TagName` string on the `Cards` table.
+
+The tag names are:
+
+<!-- bishop-fact:tags -->
+- `feature`
+- `bug`
+- `chore`
+- `docs`
+- `arch`
+- `test`
+- `spike`
+- `security`
+<!-- /bishop-fact -->
+
+The `<!-- bishop-fact:NAME --> … <!-- /bishop-fact -->` markers wrap load-bearing factual lists; their contents are asserted against the corresponding code constants by `Bishop.Tests.Docs.ContextMdFactBlockTests`, so editing the block to disagree with code fails a test. New fact-blocks may be added the same way as more facts become drift-prone.
 
 ### CLI surface (`bishop`)
 The `bishop` console executable is the primary integration surface for skills (e.g. `bish-work-on-card`). Unversioned and additive-only — commands and flags are not renamed or removed once shipped.
@@ -89,7 +115,7 @@ Bishop.UI is the interactive surface; the CLI remains the automation surface for
 - **Workspaces:** left-hand list with drag-to-reorder; add-workspace dialog (create new folder or attach existing); per-workspace "Claude" button (Windows Terminal + `claude` at the workspace path) and a plain "Terminal" button (Windows Terminal at the workspace path, no Claude); per-workspace "Commits" button that opens a flyout of recent git commits (click to open in GitHub when a repo is linked, otherwise copies the full SHA); per-workspace notes panel below the kanban (persisted text + drag-to-resize; expanded state stored per workspace).
 - **Lanes:** fixed system set (Backlog / To Do / Doing / Done). No add / rename / delete / reorder affordances — the workflow is intentionally locked down.
 - **Cards:** view detail dialog; edit title/description/tags; delete; drag-and-drop between lanes and within a lane (writes position immediately).
-- **Tags:** create / remove / recolour via the card edit dialog.
+- **Tags:** fixed global set (see [Kanban model](#kanban-model)). Assigned per card via the card edit dialog; no add / rename / recolour affordances.
 - **Skills:** launcher buttons on each card and on the workspace header — see [Skill integration](#skill-integration).
 - **Theming:** dark theme applied across shell, nav, board chrome, and dialogs.
 

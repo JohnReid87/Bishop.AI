@@ -98,6 +98,12 @@ For every non-`ACCURATE` finding, the subagent must return:
   `MISSING` and needs human input.
 - `classification` — one of the four labels above.
 
+**Skip machine-asserted facts.** Any claim inside a
+`<!-- bishop-fact:* -->` … `<!-- /bishop-fact -->` block (currently used in
+`CONTEXT.md`) is enforced by `Bishop.Tests.Docs.ContextMdFactBlockTests`
+against the canonical code constant. Do not classify these as drift — the
+build catches divergence. Audit only the surrounding prose.
+
 Ask the subagent to return findings as a compact list (one per finding), not
 prose. No paragraphs of analysis.
 
