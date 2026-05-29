@@ -77,4 +77,99 @@ public sealed class CreateBatchCliCommandTests
             Arg.Is<CreateBatchCommand>(c => c.BranchName == "bishop/hello-world"),
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task InvokeAsync_CardsOption_ParsesCommaSeparatedIntegers()
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithWorkspace(ws);
+        var batch = new Batch { Id = Guid.NewGuid(), Name = "Sprint 1", BranchName = "bishop/sprint-1", BaseBranch = "main", WorktreePath = @"C:\repos\MyProject-bishop-worktrees\sprint-1", Status = BatchStatus.Open };
+        mediator.Send(Arg.Any<CreateBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateBatchResult(batch, 3));
+
+        var cmd = new CreateBatchCliCommand(mediator);
+        await cmd.InvokeAsync(["--name", "Sprint 1", "--cards", "1,3,5", "--workspace", "test-ws"]);
+
+        int[] expected = [1, 3, 5];
+        await mediator.Received(1).Send(
+            Arg.Is<CreateBatchCommand>(c => c.CardNumbers.SequenceEqual(expected)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_TagOption_PassesThroughToCommand()
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithWorkspace(ws);
+        var batch = new Batch { Id = Guid.NewGuid(), Name = "Sprint 1", BranchName = "bishop/sprint-1", BaseBranch = "main", WorktreePath = @"C:\repos\MyProject-bishop-worktrees\sprint-1", Status = BatchStatus.Open };
+        mediator.Send(Arg.Any<CreateBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateBatchResult(batch, 0));
+
+        var cmd = new CreateBatchCliCommand(mediator);
+        await cmd.InvokeAsync(["--name", "Sprint 1", "--tag", "urgent", "--workspace", "test-ws"]);
+
+        await mediator.Received(1).Send(
+            Arg.Is<CreateBatchCommand>(c => c.TagName == "urgent"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_LaneOption_PassesThroughToCommand()
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithWorkspace(ws);
+        var batch = new Batch { Id = Guid.NewGuid(), Name = "Sprint 1", BranchName = "bishop/sprint-1", BaseBranch = "main", WorktreePath = @"C:\repos\MyProject-bishop-worktrees\sprint-1", Status = BatchStatus.Open };
+        mediator.Send(Arg.Any<CreateBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateBatchResult(batch, 0));
+
+        var cmd = new CreateBatchCliCommand(mediator);
+        await cmd.InvokeAsync(["--name", "Sprint 1", "--lane", "To Do", "--workspace", "test-ws"]);
+
+        await mediator.Received(1).Send(
+            Arg.Is<CreateBatchCommand>(c => c.LaneName == "To Do"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CardCountGreaterThanZero_WritesCardsAssignedLine()
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithWorkspace(ws);
+        var batch = new Batch { Id = Guid.NewGuid(), Name = "Sprint 1", BranchName = "bishop/sprint-1", BaseBranch = "main", WorktreePath = @"C:\repos\MyProject-bishop-worktrees\sprint-1", Status = BatchStatus.Open };
+        mediator.Send(Arg.Any<CreateBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateBatchResult(batch, 3));
+
+        var cmd = new CreateBatchCliCommand(mediator);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["--name", "Sprint 1", "--workspace", "test-ws"]); }
+        finally { Console.SetOut(originalOut); }
+
+        output.ToString().Should().Contain("Cards:    3 assigned");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_HappyPath_WritesBranchBaseAndWorktreeLines()
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithWorkspace(ws);
+        var batch = new Batch { Id = Guid.NewGuid(), Name = "Sprint 1", BranchName = "bishop/sprint-1", BaseBranch = "main", WorktreePath = @"C:\repos\MyProject-bishop-worktrees\sprint-1", Status = BatchStatus.Open };
+        mediator.Send(Arg.Any<CreateBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateBatchResult(batch, 0));
+
+        var cmd = new CreateBatchCliCommand(mediator);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["--name", "Sprint 1", "--workspace", "test-ws"]); }
+        finally { Console.SetOut(originalOut); }
+
+        var text = output.ToString();
+        text.Should().Contain("Branch:");
+        text.Should().Contain("Base:");
+        text.Should().Contain("Worktree:");
+    }
 }
