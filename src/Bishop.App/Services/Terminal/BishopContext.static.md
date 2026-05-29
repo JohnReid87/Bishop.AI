@@ -230,6 +230,21 @@ they resolve from the current working directory.
 - `bishop card import-from-github [--label <name>] [--limit <N>] [--dry-run] [--json]` — import open GitHub issues as cards
 - `bishop card close <id>` / `bishop card reopen <id>`
 
+### Batch
+
+- `bishop batch create --name <text> [--branch <name>] [--base <branch>] [--cards <n,...>] [--tag <name>] [--lane <name>]` — create a batch and provision a git worktree
+- `bishop batch edit <name> --new-name <text>` — rename a batch
+- `bishop batch list [--json]`
+- `bishop batch view <name> [--json]`
+- `bishop batch add-card <name> <card-id>` — assign a card to a batch
+- `bishop batch remove-card <name> <card-id>` — unassign a card from a batch
+- `bishop batch run <name> [--resume] [--model <model-id>]` — run a batch end-to-end via `bish-auto-card`; stops on card failure; `--resume` continues from the next undone card
+- `bishop batch merge <name>` — merge the batch branch into the base branch with `--no-ff`
+- `bishop batch clean-up <name>` — remove worktree, delete branch, close the batch, and close any Done-lane cards assigned to it (requires merge first); outputs `Closed card #N` for each card closed
+- `bishop batch abandon <name>` — abandon a batch and remove its worktree
+- `bishop batch prune` — remove worktrees for completed or abandoned batches
+- `bishop batch remove <name>` — delete the batch record from the database
+
 ### Lane
 
 - `bishop lane list` — lanes are fixed (Backlog / To Do / Doing / Done); no

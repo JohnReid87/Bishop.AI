@@ -18,8 +18,10 @@ internal sealed class CleanUpBatchCliCommand : Command
         this.SetHandler(async (string name, string? workspace) =>
         {
             var ws = await resolver.ResolveAsync(workspace);
-            await mediator.Send(new CleanUpBatchCommand(name, ws.Path));
-            Console.WriteLine("Batch cleaned up.");
+            var result = await mediator.Send(new CleanUpBatchCommand(name, ws.Path));
+            foreach (var number in result.ClosedCardNumbers)
+                Console.WriteLine($"Closed card #{number}");
+            Console.WriteLine($"Batch cleaned up. ({result.ClosedCardNumbers.Count} card(s) closed)");
         }, nameArg, CommonOptions.WorkspaceOption);
     }
 }

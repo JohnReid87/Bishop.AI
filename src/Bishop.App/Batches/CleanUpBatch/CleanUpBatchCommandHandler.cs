@@ -1,25 +1,36 @@
+using Bishop.App.Cards.CloseCard;
 using Bishop.App.Git;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Bishop.App.Batches.CleanUpBatch;
 
-public sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCommand>
+public sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCommand, CleanUpBatchResult>
 {
     private readonly IBatchRepository _batches;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly ISender _sender;
     private readonly IGitCli _git;
     private readonly ILogger<CleanUpBatchCommandHandler> _logger;
 
-    public CleanUpBatchCommandHandler(IBatchRepository batches, IGitCli git, ILogger<CleanUpBatchCommandHandler> logger)
+    public CleanUpBatchCommandHandler(
+        IBatchRepository batches,
+        IDbContextFactory<BishopDbContext> dbFactory,
+        ISender sender,
+        IGitCli git,
+        ILogger<CleanUpBatchCommandHandler> logger)
     {
         _batches = batches;
+        _dbFactory = dbFactory;
+        _sender = sender;
         _git = git;
         _logger = logger;
     }
 
-    public async Task Handle(CleanUpBatchCommand request, CancellationToken cancellationToken)
+    public async Task<CleanUpBatchResult> Handle(CleanUpBatchCommand request, CancellationToken cancellationToken)
     {
         var matches = await _batches.GetByNameAsync(request.Name, cancellationToken);
         if (matches.Count == 0)
@@ -62,5 +73,21 @@ public sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCom
 
         if (batch.Status != BatchStatus.Closed)
             await _batches.CloseAsync(batch.Id, BatchClosedReason.Finished, cancellationToken);
+
+        // Close Done-lane cards assigned to this batch
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var doneCards = await db.Cards
+            .Where(c => c.BatchId == batch.Id && c.LaneName == SystemLaneNames.Done && !c.IsClosed)
+            .OrderBy(c => c.Number)
+            .ToListAsync(cancellationToken);
+
+        var closedNumbers = new List<int>(doneCards.Count);
+        foreach (var card in doneCards)
+        {
+            await _sender.Send(new CloseCardCommand(card.Id), cancellationToken);
+            closedNumbers.Add(card.Number);
+        }
+
+        return new CleanUpBatchResult(closedNumbers);
     }
 }

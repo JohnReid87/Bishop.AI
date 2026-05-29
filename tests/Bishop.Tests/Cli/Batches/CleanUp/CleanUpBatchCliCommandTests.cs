@@ -22,6 +22,8 @@ public sealed class CleanUpBatchCliCommandTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<Workspace>)[ws]);
+        mediator.Send(Arg.Any<CleanUpBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CleanUpBatchResult([]));
 
         var cmd = new CleanUpBatchCliCommand(mediator);
 
