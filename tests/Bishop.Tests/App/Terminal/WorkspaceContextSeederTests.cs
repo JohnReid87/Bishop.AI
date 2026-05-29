@@ -212,12 +212,13 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
         var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
 
-        var commitIdx = output.IndexOf("## Commit-reference convention", StringComparison.Ordinal);
-        var contractIdx = output.IndexOf("## Auto-card permission contract", StringComparison.Ordinal);
-        var cardModelIdx = output.IndexOf("## Card model", StringComparison.Ordinal);
+        var lines = output.Split('\n');
+        var commitLine = Array.FindIndex(lines, l => l.Contains("## Commit-reference convention"));
+        var contractLine = Array.FindIndex(lines, l => l.Contains("## Auto-card permission contract"));
+        var cardModelLine = Array.FindIndex(lines, l => l.Contains("## Card model"));
 
-        contractIdx.Should().BeGreaterThan(commitIdx);
-        contractIdx.Should().BeLessThan(cardModelIdx);
+        contractLine.Should().BeGreaterThan(commitLine);
+        contractLine.Should().BeLessThan(cardModelLine);
     }
 
     [Fact]
@@ -296,13 +297,14 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
         var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
 
-        var cliIdx = output.IndexOf("## CLI quick reference", StringComparison.Ordinal);
-        var conventionsIdx = output.IndexOf("## Skill conventions", StringComparison.Ordinal);
-        var pushIdx = output.IndexOf("## Card Push Procedure (STABLE)", StringComparison.Ordinal);
+        var lines = output.Split('\n');
+        var cliLine = Array.FindIndex(lines, l => l.Contains("## CLI quick reference"));
+        var conventionsLine = Array.FindIndex(lines, l => l.Contains("## Skill conventions"));
+        var pushLine = Array.FindIndex(lines, l => l.Contains("## Card Push Procedure (STABLE)"));
 
-        cliIdx.Should().BeGreaterThan(0);
-        conventionsIdx.Should().BeGreaterThan(cliIdx);
-        pushIdx.Should().BeGreaterThan(conventionsIdx);
+        cliLine.Should().BeGreaterThan(-1);
+        conventionsLine.Should().BeGreaterThan(cliLine);
+        pushLine.Should().BeGreaterThan(conventionsLine);
     }
 
     [Fact]
@@ -312,8 +314,11 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
         var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
 
-        output.IndexOf("## Workflow", StringComparison.Ordinal)
-            .Should().BeLessThan(output.IndexOf("## Card model", StringComparison.Ordinal));
+        var lines = output.Split('\n');
+        var workflowLine = Array.FindIndex(lines, l => l.Contains("## Workflow"));
+        var cardModelLine = Array.FindIndex(lines, l => l.Contains("## Card model"));
+
+        workflowLine.Should().BeLessThan(cardModelLine);
     }
 
     [Fact]
@@ -372,10 +377,13 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().Contain("# My Project");
         output.Should().Contain(WorkspaceContextSeeder.PointerLine);
         output.Should().Contain("Intro paragraph.");
-        output.IndexOf("# My Project", StringComparison.Ordinal)
-            .Should().BeLessThan(output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal));
-        output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal)
-            .Should().BeLessThan(output.IndexOf("Intro paragraph.", StringComparison.Ordinal));
+        var lines = output.Split('\n');
+        var h1Line = Array.FindIndex(lines, l => l.Contains("# My Project"));
+        var pointerLine = Array.FindIndex(lines, l => l.Contains(WorkspaceContextSeeder.PointerLine));
+        var introLine = Array.FindIndex(lines, l => l.Contains("Intro paragraph."));
+
+        h1Line.Should().BeLessThan(pointerLine);
+        pointerLine.Should().BeLessThan(introLine);
     }
 
     [Fact]
@@ -386,11 +394,13 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
         var output = WorkspaceContextSeeder.EnsureContextMd(existing, workspace);
 
-        var pointerIdx = output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal);
-        var firstH1Idx = output.IndexOf("# First Header", StringComparison.Ordinal);
-        var secondH1Idx = output.IndexOf("# Second Header", StringComparison.Ordinal);
-        pointerIdx.Should().BeGreaterThan(firstH1Idx, "pointer must follow the first H1");
-        pointerIdx.Should().BeLessThan(secondH1Idx, "pointer must not be pushed past the second H1");
+        var lines = output.Split('\n');
+        var pointerLineIdx = Array.FindIndex(lines, l => l.Contains(WorkspaceContextSeeder.PointerLine));
+        var firstH1LineIdx = Array.FindIndex(lines, l => l.Contains("# First Header"));
+        var secondH1LineIdx = Array.FindIndex(lines, l => l.Contains("# Second Header"));
+
+        pointerLineIdx.Should().BeGreaterThan(firstH1LineIdx, "pointer must follow the first H1");
+        pointerLineIdx.Should().BeLessThan(secondH1LineIdx, "pointer must not be pushed past the second H1");
     }
 
     [Fact]
@@ -464,10 +474,13 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().Contain("# My Project");
         output.Should().Contain(WorkspaceContextSeeder.PointerLine);
         output.Should().Contain("Claude-specific notes.");
-        output.IndexOf("# My Project", StringComparison.Ordinal)
-            .Should().BeLessThan(output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal));
-        output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal)
-            .Should().BeLessThan(output.IndexOf("Claude-specific notes.", StringComparison.Ordinal));
+        var lines = output.Split('\n');
+        var h1Line = Array.FindIndex(lines, l => l.Contains("# My Project"));
+        var pointerLine = Array.FindIndex(lines, l => l.Contains(WorkspaceContextSeeder.PointerLine));
+        var notesLine = Array.FindIndex(lines, l => l.Contains("Claude-specific notes."));
+
+        h1Line.Should().BeLessThan(pointerLine);
+        pointerLine.Should().BeLessThan(notesLine);
     }
 
     [Fact]
@@ -478,11 +491,13 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
         var output = WorkspaceContextSeeder.EnsureClaudeMd(existing, workspace);
 
-        var pointerIdx = output.IndexOf(WorkspaceContextSeeder.PointerLine, StringComparison.Ordinal);
-        var firstH1Idx = output.IndexOf("# First Header", StringComparison.Ordinal);
-        var secondH1Idx = output.IndexOf("# Second Header", StringComparison.Ordinal);
-        pointerIdx.Should().BeGreaterThan(firstH1Idx, "pointer must follow the first H1");
-        pointerIdx.Should().BeLessThan(secondH1Idx, "pointer must not be pushed past the second H1");
+        var lines = output.Split('\n');
+        var pointerLineIdx = Array.FindIndex(lines, l => l.Contains(WorkspaceContextSeeder.PointerLine));
+        var firstH1LineIdx = Array.FindIndex(lines, l => l.Contains("# First Header"));
+        var secondH1LineIdx = Array.FindIndex(lines, l => l.Contains("# Second Header"));
+
+        pointerLineIdx.Should().BeGreaterThan(firstH1LineIdx, "pointer must follow the first H1");
+        pointerLineIdx.Should().BeLessThan(secondH1LineIdx, "pointer must not be pushed past the second H1");
     }
 
     [Fact]

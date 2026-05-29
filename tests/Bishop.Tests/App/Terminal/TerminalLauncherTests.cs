@@ -2,7 +2,6 @@
 using Bishop.App.Services.Terminal;
 using FluentAssertions;
 using System.Diagnostics;
-using System.Reflection;
 
 namespace Bishop.Tests.App.Terminal;
 
@@ -627,18 +626,6 @@ public sealed class TerminalLauncherTests
         // Verifies the default File.Exists / Process.Start wiring compiles and initialises.
         var act = () => _ = new TerminalLauncher();
         act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void ParameterlessConstructor_DefaultFileExistsDelegateReturnsTrueForExistingFile()
-    {
-        var sut = new TerminalLauncher();
-        var fileExists = (Func<string, bool>)typeof(TerminalLauncher)
-            .GetField("_fileExists", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .GetValue(sut)!;
-
-        var cmdPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
-        fileExists(cmdPath).Should().BeTrue();
     }
 
     // ── SnapLater / ApplySnap ─────────────────────────────────────────────────

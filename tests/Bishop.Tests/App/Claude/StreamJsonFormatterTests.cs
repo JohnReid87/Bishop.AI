@@ -60,10 +60,10 @@ public sealed class StreamJsonFormatterTests
     [Fact]
     public void Format_System_NonDenialSubtype_DoesNotInvokeCallback()
     {
-        var callbackHits = 0;
-        var sut = new StreamJsonFormatter(onDenial: _ => callbackHits++);
+        PermissionDeniedEvent? captured = null;
+        var sut = new StreamJsonFormatter(onDenial: ev => captured = ev);
         sut.Format("""{"type":"system","subtype":"init"}""");
-        callbackHits.Should().Be(0);
+        captured.Should().BeNull();
     }
 
     [Fact]
@@ -487,12 +487,12 @@ public sealed class StreamJsonFormatterTests
     [Fact]
     public void OnStatus_DoesNotFire_WhenToolUseHasNoName()
     {
-        var callbackHits = 0;
-        var sut = new StreamJsonFormatter(_ => callbackHits++);
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
 
         sut.Format("""{"type":"assistant","message":{"content":[{"type":"tool_use","input":{"command":"ls"}}]}}""");
 
-        callbackHits.Should().Be(0);
+        statuses.Should().BeEmpty();
     }
 
     [Fact]
