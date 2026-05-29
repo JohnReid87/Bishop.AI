@@ -129,4 +129,78 @@ public sealed class RunBatchCliCommandTests
             Environment.ExitCode = saved;
         }
     }
+
+    [Fact]
+    public async Task InvokeAsync_HandoffMissing_SetsExitCodeOneAndWritesStderr()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RunBatchResult(0, null, RunBatchStopReason.HandoffMissing));
+
+        var cmd = new RunBatchCliCommand(mediator);
+
+        var errorOutput = new StringWriter();
+        var originalErr = Console.Error;
+        var saved = Environment.ExitCode;
+        Console.SetError(errorOutput);
+        Environment.ExitCode = 0;
+        try
+        {
+            await cmd.InvokeAsync(["Sprint 1"]);
+            Environment.ExitCode.Should().Be(1);
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+            Environment.ExitCode = saved;
+        }
+
+        errorOutput.ToString().Should().Contain("Batch stopped: card exited 0 but wrote no valid handoff.json; resolve and --resume or abandon.");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ExternalContentBlocked_SetsExitCodeOneAndWritesStderr()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RunBatchResult(0, null, RunBatchStopReason.ExternalContentBlocked, null, [42, 99]));
+
+        var cmd = new RunBatchCliCommand(mediator);
+
+        var errorOutput = new StringWriter();
+        var originalErr = Console.Error;
+        var saved = Environment.ExitCode;
+        Console.SetError(errorOutput);
+        Environment.ExitCode = 0;
+        try
+        {
+            await cmd.InvokeAsync(["Sprint 1"]);
+            Environment.ExitCode.Should().Be(1);
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+            Environment.ExitCode = saved;
+        }
+
+        var stderr = errorOutput.ToString();
+        stderr.Should().Contain("Card #42");
+        stderr.Should().Contain("Card #99");
+        stderr.Should().Contain("Pass --allow-external-content to proceed.");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_AllowExternalContent_PassesThroughToCommand()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RunBatchResult(1, null, RunBatchStopReason.Finished));
+
+        var cmd = new RunBatchCliCommand(mediator);
+        await cmd.InvokeAsync(["Sprint 1", "--allow-external-content"]);
+
+        await mediator.Received(1).Send(
+            Arg.Is<RunBatchCommand>(c => c.AllowExternalContent),
+            Arg.Any<CancellationToken>());
+    }
 }
