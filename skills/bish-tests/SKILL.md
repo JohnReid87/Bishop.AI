@@ -13,7 +13,7 @@ reRunModel: claude-sonnet-4-6
 
 > Recommended model: Opus 4.7 — test-quality heuristic catalogue requires sustained multi-step judgement.
 
-The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Skill-Run Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Findings Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---
 
@@ -28,7 +28,7 @@ Parse the JSON and extract:
 - `workspace.name` — echoed back as confirmation
 - `workspace.tags` — existing tag names (the skill needs a `test` tag; see step 6)
 - `workspace.lanes` — lane names (defaults to `To Do` when pushing)
-- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Skill-Run Recording Procedure)
+- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Findings Recording Procedure)
 
 Echo the workspace name back on its own line:
 
@@ -146,7 +146,8 @@ you flag as equivalent during the interview.
      If the intersection is empty, tell the user:
      > All coverage-mature classes are above the 60% mutation threshold. Nothing to file.
 
-     Record this run (step 10) and STOP.
+     Record this run via the no-findings path of `Findings Recording Procedure`
+     (in `conventions`) with `--skill bish-tests` and STOP.
 
    **Path B — argument supplied.** Treat the argument as either a class
    name (full or short, case-insensitive) or a folder path under `src/`.
@@ -246,7 +247,7 @@ you flag as equivalent during the interview.
    > All audited classes already have open quality cards on the board.
    > Nothing new to file.
 
-   Record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-tests`, then continue to step 9 so the clean-classes summary still prints.
+   Record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-tests`, then continue to step 9 so the clean-classes summary still prints.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each
    class, show the class name, test file path, mutation score, and the list
@@ -282,6 +283,14 @@ you flag as equivalent during the interview.
    - **Some remain** → include only the non-dismissed mutants in
      `### Survived mutants` when filing the card.
 
+   **Track each class** in a session log per the "Track findings during triage"
+   sub-step of `Findings Recording Procedure` (in `conventions`) — one entry per
+   audited class, using `title` = `Improve tests for <ClassName>`, `location` =
+   the class file, and a pending outcome from the interview choice: **Push
+   as-is** / **Edit** / **Merge** → `pending-card:<session-index>` (resolved to
+   `carded:#<N>` after push); **Skip** → `parked`; **All dismissed** →
+   `dismissed`. Classes with no findings (recorded `clean`) need no entry.
+
    Push confirmed cards using `bishop card add` per `Card Push Procedure` (in `conventions`). Use `--tag test`.
 
 9. **Print a summary table.** Include audited-but-clean classes and
@@ -300,7 +309,11 @@ you flag as equivalent during the interview.
    > Re-run `/bish-tests` after the new cards are worked. Dedupe makes
    > repeated runs safe.
 
-10. **Record this run** by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-tests`.
+10. **Record this run** by following `Findings Recording Procedure` (in
+    `conventions`) with `--skill bish-tests`. Before emitting, resolve any
+    `pending-card:<n>` markers in the session log to `carded:#<N>` using the
+    card numbers returned by step 8's push, so every tracked class carries one
+    of the three final outcomes (`carded:#<N>` / `dismissed` / `parked`).
 
 </what-to-do>
 

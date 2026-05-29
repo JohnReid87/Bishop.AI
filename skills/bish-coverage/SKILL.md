@@ -12,7 +12,7 @@ reRunModel: claude-sonnet-4-6
 
 > Recommended model: Sonnet 4.6 — procedure-following; extended reasoning not required.
 
-The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Skill-Run Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Findings Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---
 
@@ -27,7 +27,7 @@ Parse the JSON and extract:
 - `workspace.name` — echoed back as confirmation
 - `workspace.tags` — existing tag names (the skill needs a `test` tag; see step 6)
 - `workspace.lanes` — lane names (defaults to `To Do` when pushing)
-- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Skill-Run Recording Procedure)
+- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Findings Recording Procedure)
 
 Echo the workspace name back on its own line:
 
@@ -113,7 +113,7 @@ makes no assumption about specific namespace prefixes — it works for any
      can still hide a guard, null check, or mapping worth testing, and the
      user decides per-card in the interview whether it's worth filing.
 
-   If nothing survives, record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-coverage`,
+   If nothing survives, record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-coverage`,
    then congratulate the user — coverage is at or above the threshold — and STOP without pushing anything.
 
 5. **Cluster gaps by source-file directory.** Use the `file` field's parent
@@ -175,7 +175,7 @@ makes no assumption about specific namespace prefixes — it works for any
    > All under-covered areas already have open cards on the board. Nothing new
    > to file.
 
-   Record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-coverage`, then STOP.
+   Record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-coverage`, then STOP.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each one,
    show the cluster name, then each class in the cluster with its coverage
@@ -187,6 +187,13 @@ makes no assumption about specific namespace prefixes — it works for any
 
    When two or more suggestions clearly belong together (same top-level folder,
    same theme), offer a fourth option to merge them into one card before pushing.
+
+   **Track each suggestion** in a session log per the "Track findings during
+   triage" sub-step of `Findings Recording Procedure` (in `conventions`) — one
+   entry per cluster, using the suggested card title and the cluster's source
+   file(s) as `location`, with a pending outcome from the choice: **Push
+   as-is** / **Edit** / **Merge** → `pending-card:<session-index>` (resolved to
+   `carded:#<N>` after step 9 pushes); **Skip** → `parked`.
 
 9. **Push confirmed cards** using `bishop card add` per `Card Push Procedure`
    (in `conventions`). Use `--tag test`.
@@ -203,7 +210,11 @@ makes no assumption about specific namespace prefixes — it works for any
     > `/bish-tests` to audit the test files of well-covered classes.
     > Dedupe makes repeated runs safe.
 
-11. **Record this run** by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-coverage`.
+11. **Record this run** by following `Findings Recording Procedure` (in
+    `conventions`) with `--skill bish-coverage`. Before emitting, resolve any
+    `pending-card:<n>` markers in the session log to `carded:#<N>` using the
+    card numbers returned by step 9, so every tracked cluster carries one of
+    the three final outcomes (`carded:#<N>` / `dismissed` / `parked`).
 
 </what-to-do>
 

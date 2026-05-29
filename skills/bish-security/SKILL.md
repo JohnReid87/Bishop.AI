@@ -12,7 +12,7 @@ reRunModel: claude-sonnet-4-6
 
 > Recommended model: Opus 4.7 — security heuristic catalogue requires sustained multi-step judgement.
 
-The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Skill-Run Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Findings Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---
 
@@ -28,7 +28,7 @@ Parse the JSON and extract:
 - `workspace.path` — repo root used by the discovery subagent
 - `workspace.tags` — existing tag names (the skill needs a `security` tag; see step 3)
 - `workspace.lanes` — lane names (defaults to `To Do` when pushing)
-- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Skill-Run Recording Procedure)
+- `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Findings Recording Procedure)
 
 Echo the workspace name back on its own line:
 
@@ -222,8 +222,9 @@ surface, because the same code often gets copy-pasted into production.
 
    If the subagent reports **no findings** (all applicable dimensions
    clean, no vulnerable packages, no workflow misconfig), record this
-   run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-security`,
-   then congratulate the user and STOP without pushing anything.
+   run via the no-findings path of `Findings Recording Procedure` (in
+   `conventions`) with `--skill bish-security`, then congratulate the user
+   and STOP without pushing anything.
 
 6. **Echo summary.** Print a one-line overview the user can scan before
    triage. Format (paths shown are illustrative):
@@ -245,7 +246,7 @@ surface, because the same code often gets copy-pasted into production.
    > All security findings already have open cards on the board.
    > Nothing new to file.
 
-   Record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-security`, then STOP.
+   Record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-security`, then STOP.
 
 8. **Triage loop.** Walk surviving findings in severity order. For each
    finding:
@@ -271,6 +272,14 @@ surface, because the same code often gets copy-pasted into production.
        re-ask.
      - **Defer** — note it but don't card it now.
 
+   - **Track the finding** in a session log per the "Track findings during
+     triage" sub-step of `Findings Recording Procedure` (in `conventions`).
+     Map this skill's triage choices to pending outcomes: **Card it (new)** and
+     **Cluster with #N** → `pending-card:<session-index>` (the cluster reuses
+     the index assigned to the card it folds into); **Dismiss — context** →
+     `dismissed`; **Defer** → `parked`. Every finding surfaced must appear in
+     the log; it is the input to step 12's record call.
+
 9. **Granularity pass.** Before pushing, re-read the agreed cards:
 
    - Merge cards that share the same dimension AND touch the same
@@ -295,7 +304,11 @@ surface, because the same code often gets copy-pasted into production.
     > will resurface — capture load-bearing rebuttals as a project memory
     > so future runs don't re-ask.
 
-12. **Record this run** by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-security`.
+12. **Record this run** by following `Findings Recording Procedure` (in
+    `conventions`) with `--skill bish-security`. Before emitting, resolve any
+    `pending-card:<n>` markers in the session log to `carded:#<N>` using the
+    card numbers returned by step 10, so every tracked finding carries one of
+    the three final outcomes (`carded:#<N>` / `dismissed` / `parked`).
 
 </what-to-do>
 

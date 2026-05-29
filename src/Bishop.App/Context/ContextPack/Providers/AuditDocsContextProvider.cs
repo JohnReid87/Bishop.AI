@@ -10,7 +10,7 @@ public sealed class AuditDocsContextProvider : IContextProvider
     public IReadOnlyList<string> RequiredSections { get; } = new[]
     {
         "Shell selection",
-        "Skill-Run Recording Procedure"
+        "Findings Recording Procedure"
     };
 
     public Task<object?> BuildSkillSpecificAsync(

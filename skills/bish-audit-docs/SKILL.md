@@ -17,7 +17,7 @@ reRunModel: claude-sonnet-4-6
 Audit the repo's Markdown documentation for drift against the current code,
 confirm each finding with the user, and apply the agreed edits in place.
 
-The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Skill-Run Recording Procedure) when running inside a Bishop workspace — canonical source: `.bishop/BISHOP_CONTEXT.md`.
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Findings Recording Procedure) when running inside a Bishop workspace — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ## Drift classifications
 
@@ -39,7 +39,7 @@ Run `bishop context-pack audit-docs`.
 
 - On success, parse the JSON and extract:
   - `workspace.name` — echoed back as confirmation
-  - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Skill-Run Recording Procedure)
+  - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Findings Recording Procedure)
 
   Echo the workspace name:
 
@@ -101,6 +101,11 @@ For every non-`ACCURATE` finding, the subagent must return:
 Ask the subagent to return findings as a compact list (one per finding), not
 prose. No paragraphs of analysis.
 
+If the subagent returns no findings, say so plainly and — when running inside a
+Bishop workspace — record this run via the no-findings path of `Findings
+Recording Procedure` (in `conventions`) with `--skill bish-audit-docs`, then STOP.
+Do not invent drift to justify the run.
+
 ---
 
 **4. Per-finding confirmation.**
@@ -122,6 +127,15 @@ For `MISSING` findings, the options collapse to:
   add.
 - **Surface in summary only** — defer; do not edit any file.
 - **Skip**.
+
+When running inside a Bishop workspace, **track each finding** in a session log
+per the "Track findings during triage" sub-step of `Findings Recording
+Procedure` (in `conventions`). This skill resolves findings by editing docs in
+place rather than carding, so it never produces a `carded:#<N>` outcome; map its
+choices to: **Accept** / **Edit** / **Add wording** (edit applied in place) →
+`dismissed` with a body note that the doc was fixed; **Reject** → `dismissed`;
+**Skip** / **Surface in summary only** → `parked`. Use the `doc_path:doc_line` as
+`location`.
 
 ---
 
@@ -169,7 +183,11 @@ If no edits were applied, skip this step.
 
 ---
 
-**8. Record this run** by following `Skill-Run Recording Procedure` (in `conventions`, if in a Bishop workspace) with `--skill bish-audit-docs`.
+**8. Record this run** by following `Findings Recording Procedure` (in
+`conventions`, if in a Bishop workspace) with `--skill bish-audit-docs`, emitting
+the session log from step 4. Every entry is already final (`dismissed` / `parked`
+— this skill produces no `carded:#<N>` outcomes), so no marker resolution is
+needed.
 
 </what-to-do>
 
@@ -184,7 +202,8 @@ If no edits were applied, skip this step.
   the user's call.
 - Do NOT create Bishop cards from findings. This skill edits docs in place;
   card creation is `bish-grill-cards`'s job.
-- If the Explore subagent returns no findings, say so plainly and stop —
-  do not invent drift to justify the run.
+- If the Explore subagent returns no findings, say so plainly and stop
+  (recording the run via the no-findings path first when in a Bishop workspace,
+  per step 3) — do not invent drift to justify the run.
 
 </guardrails>

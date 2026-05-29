@@ -11,7 +11,7 @@ public sealed class SecurityContextProvider : IContextProvider
     {
         "Shell selection",
         "Card model",
-        "Skill-Run Recording Procedure"
+        "Findings Recording Procedure"
     };
 
     public Task<object?> BuildSkillSpecificAsync(

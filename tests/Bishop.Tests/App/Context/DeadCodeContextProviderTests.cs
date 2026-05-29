@@ -24,7 +24,7 @@ public sealed class DeadCodeContextProviderTests
         {
             "Shell selection",
             "Card model",
-            "Skill-Run Recording Procedure"
+            "Findings Recording Procedure"
         });
     }
 

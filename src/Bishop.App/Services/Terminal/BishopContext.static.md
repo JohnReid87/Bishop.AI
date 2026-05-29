@@ -407,31 +407,111 @@ be one card, folded into another, or split.
   or when they could ship in separate PRs without one blocking the
   other.
 
-## Skill-Run Recording Procedure (STABLE)
+## Findings Recording Procedure (STABLE)
 
-Call this procedure as the **final step** of any review skill that completes
-its normal flow. "Normal flow" means the skill ran its full review and the user
-was walked through findings — including runs where there were no findings, or
-all findings were already carded. Do NOT call it on error STOPs (failed
-`bishop skill bootstrap`, missing workspace, etc.).
+Review skills (`bish-arch`, `bish-security`, `bish-tests`, `bish-coverage`,
+`bish-audit-docs`) record their findings as the **final step** of a completed
+run via `bishop findings record`. "Completed run" means the skill ran its full
+review and the user was walked through every finding — including runs with no
+findings, or where all findings were already carded. Do NOT call it on error
+STOPs (failed `bishop skill bootstrap`, missing workspace, etc.). The command
+writes `.bishop/findings/<skill>.json` and `.bishop/findings/<skill>.html`; the
+Monitoring tab reads these for `Last run` / `Commits since`.
 
-1. Capture the current HEAD:
+### Track findings during triage
 
-   ```bash
-   git rev-parse HEAD
-   ```
+While walking findings one at a time (see `Per-finding Walk Pattern`), keep a
+session log (in memory) with one entry per surfaced finding:
 
-2. Record the run, substituting the kebab-case name of the calling skill (e.g.
-   `bish-arch`, `bish-security`, `bish-tests`, `bish-coverage`,
-   `bish-audit-docs`) for `<skill-name>`:
+- `title` — the finding's one-sentence headline.
+- `body` — multi-line description: location(s), what, why-it-matters,
+  suggested-action.
+- `severity` — the finding's `high` / `med` / `low` (or `critical`).
+- `location` — `file:line` (or comma-separated locations).
+- **pending outcome** — derived from the user's triage choice:
+  - **Card it (new)** → `pending-card:<session-index>` (resolved to
+    `carded:#<N>` once the card is pushed and its Number is known).
+  - **Cluster with #N** → reuse the `pending-card:<session-index>` assigned to
+    the card it was clustered into.
+  - **Dismiss — context** → `dismissed`.
+  - **Defer** → `parked`.
 
-   ```bash
-   bishop workspace record-skill-run --skill <skill-name> --sha <sha>
-   ```
+Every finding the skill surfaced must appear in the log. After cards are pushed,
+resolve each `pending-card:<n>` marker to `carded:#<N>` using the returned card
+Numbers, so every entry carries one of the three final outcomes
+(`carded:#<N>` / `dismissed` / `parked`).
 
-A successful invocation prints one confirmation line. On non-zero exit, surface
-the error to the user but do not abort — the run is complete whether or not the
+### Record the run
+
+Capture HEAD, then emit the findings via the Bash tool using a single-quoted
+heredoc (the quotes around the marker prevent shell expansion, so `$` and
+backticks inside finding bodies pass through unchanged — see `Shell selection`):
+
+```bash
+# First: capture the current SHA.
+git rev-parse HEAD
+
+# Then: emit findings, substituting the literal SHA value (no $VAR expansion)
+# and the kebab-case name of the calling skill for <skill-name>.
+bishop findings record --skill <skill-name> --sha <captured-sha> --file - <<'JSON'
+{
+  "findings": [
+    {
+      "title": "<short title>",
+      "body": "<full body: locations, what, why-it-matters, suggested-action>",
+      "outcome": "carded:#<N>",
+      "severity": "high",
+      "location": "<file:line[, file:line]>"
+    }
+  ]
+}
+JSON
+```
+
+A successful invocation prints `Recorded N finding(s) for '<skill-name>'` plus
+the JSON / HTML paths under `.bishop/findings/`. On non-zero exit, surface the
+error to the user but do not abort — the review is complete whether or not the
 record write succeeds.
+
+### No-findings path
+
+When the skill surfaces no findings (all dimensions clean, nothing to triage),
+record the run with an empty array — the same call shape, just `"findings": []`:
+
+```bash
+git rev-parse HEAD
+
+bishop findings record --skill <skill-name> --sha <captured-sha> --file - <<'JSON'
+{
+  "findings": []
+}
+JSON
+```
+
+Then congratulate the user and STOP without pushing anything.
+
+### Findings JSON schema
+
+The `bishop findings record --file -` command reads JSON of the shape above; the
+validator (`Bishop.App.Findings.FindingsValidator`) rejects malformed input.
+
+Field rules:
+
+- `title` (required) — non-empty string. One-sentence finding headline.
+- `body` (required) — non-empty string. Use `\n` for newlines. Should contain
+  location(s), what's wrong, why it matters, and the suggested action.
+- `outcome` (required) — exactly one of:
+  - `dismissed` — user explained why this isn't an issue.
+  - `parked` — user wants to revisit later.
+  - `carded:#<n>` — became a Bishop card (the literal `#` is required; `<n>` is
+    the workspace-scoped card Number).
+- `severity` (optional) — `high` / `med` / `low` / `critical`. Drives the HTML
+  chip colour. `null` or absent is allowed.
+- `location` (optional) — `file:line` or comma-separated locations for findings
+  spanning multiple sites.
+
+An empty `findings: []` array is valid and is the right shape for the
+no-findings run path.
 
 ## Per-finding Walk Pattern (TUNABLE)
 
