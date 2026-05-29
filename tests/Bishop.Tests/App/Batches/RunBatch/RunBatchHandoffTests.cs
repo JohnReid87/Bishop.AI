@@ -58,11 +58,30 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
 
     private async Task<Batch> CreateBatchAsync(params Guid[] cardIds)
     {
-        var repo = new BatchRepository(_factory);
+        await using var db = await _factory.CreateDbContextAsync();
         var slug = U("br");
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{slug}", "main", _worktreePath);
-        foreach (var id in cardIds)
-            await repo.AssignCardAsync(batch.Id, id);
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = U("batch"),
+            BranchName = $"bishop/{slug}",
+            BaseBranch = "main",
+            WorktreePath = _worktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+
+        if (cardIds.Length > 0)
+        {
+            var cards = await db.Cards.Where(c => cardIds.Contains(c.Id)).ToListAsync();
+            foreach (var card in cards)
+                card.BatchId = batch.Id;
+            await db.SaveChangesAsync();
+        }
+
         return batch;
     }
 

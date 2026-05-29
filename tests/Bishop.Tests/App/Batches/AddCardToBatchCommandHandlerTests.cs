@@ -23,8 +23,8 @@ public sealed class AddCardToBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     private static string U(string prefix = "x") => $"{prefix}-{Guid.NewGuid():N}"[..20];
-    private BatchRepository Repo() => new(_factory);
-    private AddCardToBatchCommandHandler Handler() => new(Repo());
+
+    private AddCardToBatchCommandHandler Handler() => new(_factory);
 
     private async Task<Workspace> CreateWorkspaceAsync()
     {
@@ -37,6 +37,41 @@ public sealed class AddCardToBatchCommandHandlerTests : IClassFixture<DbFixture>
         => await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspaceId, SystemLaneNames.ToDo, U("card")), default);
 
+    private async Task<Batch> CreateBatchAsync(string name, string branch, BatchStatus status = BatchStatus.Open)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = name,
+            BranchName = branch,
+            BaseBranch = "main",
+            WorktreePath = WorktreePath,
+            Status = status,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        return batch;
+    }
+
+    private async Task TransitionToWorkingAsync(Guid batchId)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = await db.Batches.FindAsync(batchId);
+        batch!.TransitionToWorking();
+        await db.SaveChangesAsync();
+    }
+
+    private async Task CloseAsync(Guid batchId, BatchClosedReason reason)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = await db.Batches.FindAsync(batchId);
+        batch!.Close(reason, DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task BatchNotFound_Throws()
     {
@@ -48,10 +83,9 @@ public sealed class AddCardToBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task MultipleBatchesSameName_Throws()
     {
-        var repo = Repo();
         var name = U("batch");
-        await repo.CreateAsync(_wsId, name, U("br1"), "main", WorktreePath);
-        await repo.CreateAsync(_wsId, name, U("br2"), "main", WorktreePath);
+        await CreateBatchAsync(name, U("br1"));
+        await CreateBatchAsync(name, U("br2"));
 
         Func<Task> act = () => Handler().Handle(new AddCardToBatchCommand(name, Guid.NewGuid()), default);
 
@@ -61,9 +95,8 @@ public sealed class AddCardToBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task BatchWorking_Throws()
     {
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
+        var batch = await CreateBatchAsync(U("batch"), U("br"));
+        await TransitionToWorkingAsync(batch.Id);
 
         Func<Task> act = () => Handler().Handle(new AddCardToBatchCommand(batch.Name, Guid.NewGuid()), default);
 
@@ -73,10 +106,9 @@ public sealed class AddCardToBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task BatchClosed_Throws()
     {
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
-        await repo.CloseAsync(batch.Id, BatchClosedReason.Abandoned);
+        var batch = await CreateBatchAsync(U("batch"), U("br"));
+        await TransitionToWorkingAsync(batch.Id);
+        await CloseAsync(batch.Id, BatchClosedReason.Abandoned);
 
         Func<Task> act = () => Handler().Handle(new AddCardToBatchCommand(batch.Name, Guid.NewGuid()), default);
 
@@ -88,12 +120,47 @@ public sealed class AddCardToBatchCommandHandlerTests : IClassFixture<DbFixture>
     {
         var ws = await CreateWorkspaceAsync();
         var card = await AddCardAsync(ws.Id);
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
+        var batch = await CreateBatchAsync(U("batch"), U("br"));
 
         await Handler().Handle(new AddCardToBatchCommand(batch.Name, card.Id), default);
 
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
         saved.BatchId.Should().Be(batch.Id);
+    }
+
+    [Fact]
+    public async Task CardAlreadyInOpenBatch_Throws()
+    {
+        // Arrange — card assigned to batch1 (Open)
+        var ws = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(ws.Id);
+        var batch1 = await CreateBatchAsync(U("batch1"), U("br1"));
+        await Handler().Handle(new AddCardToBatchCommand(batch1.Name, card.Id), default);
+
+        // batch2 is open; trying to steal the card should fail
+        var batch2 = await CreateBatchAsync(U("batch2"), U("br2"));
+
+        Func<Task> act = () => Handler().Handle(new AddCardToBatchCommand(batch2.Name, card.Id), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not Closed*");
+    }
+
+    [Fact]
+    public async Task CardInClosedBatch_AllowsReassignment()
+    {
+        // Arrange — card assigned to batch1 which is then Closed
+        var ws = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(ws.Id);
+        var batch1 = await CreateBatchAsync(U("batch1"), U("br1"));
+        await Handler().Handle(new AddCardToBatchCommand(batch1.Name, card.Id), default);
+        await TransitionToWorkingAsync(batch1.Id);
+        await CloseAsync(batch1.Id, BatchClosedReason.Finished);
+
+        // Reassigning to batch2 should succeed
+        var batch2 = await CreateBatchAsync(U("batch2"), U("br2"));
+        await Handler().Handle(new AddCardToBatchCommand(batch2.Name, card.Id), default);
+
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.BatchId.Should().Be(batch2.Id);
     }
 }

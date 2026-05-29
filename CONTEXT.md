@@ -34,7 +34,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 Layered, with strict one-way dependencies. Modify in this order when implementing a feature:
 
 1. **Bishop.Core** — entities (Workspace, Lane, Card, Tag, CardTag), domain primitives, enums. No external deps.
-2. **Bishop.Data** — `BishopDbContext`, EF Core configurations, migrations, repository interfaces + implementations. References Core.
+2. **Bishop.Data** — `BishopDbContext`, EF Core configurations, migrations, query-extension helpers (`BatchQueries`, etc.). No repository abstractions. References Core.
 3. **Bishop.App** — MediatR `IRequest` types and handlers, application services (e.g. the terminal launcher), validators. References Core + Data.
 4. **Bishop.ViewModels** — presentation-framework-agnostic ViewModels. Targets `net10.0`; references `Bishop.App` so VMs can take `IMediator`. **Must not** reference `Microsoft.UI.*`, `Windows.UI.*`, or `Microsoft.WindowsAppSDK` — compile-time absence is the layer enforcement. UI-thread marshalling goes through the `IUiDispatcher` abstraction defined here; visual mapping (e.g. `Visibility`) lives in XAML converters, not VMs.
 5. **Bishop.UI** and **Bishop.Cli** — presentation peers. UI is the WinUI 3 desktop app (Views, DI composition root, `WinUiDispatcher : IUiDispatcher`); it references App + ViewModels. Cli is the `bishop` console executable; references App. Neither references Data directly.
@@ -112,7 +112,8 @@ Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are instal
 - **Async:** all I/O async; `Async` suffix; pass `CancellationToken` through handlers.
 - **MVVM:** ViewModels derive from `ObservableObject`; commands use `[RelayCommand]`. No code-behind beyond constructor + `InitializeComponent`.
 - **MediatR:** one request + one handler per file, colocated. Validators (if any) live next to the request.
-- **EF Core:** entities are persistence-ignorant POCOs; configuration via `IEntityTypeConfiguration<T>` classes, not data annotations.
+- **EF Core:** entities are POCOs free of EF/persistence concerns; configuration via `IEntityTypeConfiguration<T>` classes, not data annotations. Entities may carry guarded domain-transition methods (e.g. `Batch.Close`, `Batch.TransitionToWorking`) that enforce invariants without knowing about the DB.
+- **Data access (Contract):** handlers in `Bishop.App` inject `IDbContextFactory<BishopDbContext>` directly — no Repository abstraction. Cross-aggregate invariants (e.g. assigning a card to a batch) live in `internal static` helper classes (e.g. `BatchAssignment`) called by the handler inside a caller-opened `IsolationLevel.Serializable` transaction. An architecture test (`DataAccessLayerRuleTests`) enforces this: no type in `Bishop.Data` ending in `Repository`, and no handler injecting one.
 - **Migrations:** generated via `dotnet ef migrations add` from the Data project; checked in.
 - **Tests:** Arrange/Act/Assert with blank lines between sections; `FluentAssertions` for all assertions.
 - **Formatting:** `dotnet format` clean; `.editorconfig` at repo root.

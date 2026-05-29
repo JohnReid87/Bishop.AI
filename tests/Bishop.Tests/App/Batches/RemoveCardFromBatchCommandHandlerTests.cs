@@ -23,8 +23,8 @@ public sealed class RemoveCardFromBatchCommandHandlerTests : IClassFixture<DbFix
     }
 
     private static string U(string prefix = "x") => $"{prefix}-{Guid.NewGuid():N}"[..20];
-    private BatchRepository Repo() => new(_factory);
-    private RemoveCardFromBatchCommandHandler Handler() => new(Repo());
+
+    private RemoveCardFromBatchCommandHandler Handler() => new(_factory);
 
     private async Task<Workspace> CreateWorkspaceAsync()
     {
@@ -37,6 +37,49 @@ public sealed class RemoveCardFromBatchCommandHandlerTests : IClassFixture<DbFix
         => await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspaceId, SystemLaneNames.ToDo, U("card")), default);
 
+    private async Task<Batch> CreateBatchAsync(string name, string branch)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = name,
+            BranchName = branch,
+            BaseBranch = "main",
+            WorktreePath = WorktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        return batch;
+    }
+
+    private async Task TransitionToWorkingAsync(Guid batchId)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = await db.Batches.FindAsync(batchId);
+        batch!.TransitionToWorking();
+        await db.SaveChangesAsync();
+    }
+
+    private async Task CloseAsync(Guid batchId, BatchClosedReason reason)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = await db.Batches.FindAsync(batchId);
+        batch!.Close(reason, DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync();
+    }
+
+    private async Task AssignCardAsync(Guid batchId, Guid cardId)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var card = await db.Cards.FindAsync(cardId);
+        card!.BatchId = batchId;
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task BatchNotFound_Throws()
     {
@@ -48,10 +91,9 @@ public sealed class RemoveCardFromBatchCommandHandlerTests : IClassFixture<DbFix
     [Fact]
     public async Task MultipleBatchesSameName_Throws()
     {
-        var repo = Repo();
         var name = U("batch");
-        await repo.CreateAsync(_wsId, name, U("br1"), "main", WorktreePath);
-        await repo.CreateAsync(_wsId, name, U("br2"), "main", WorktreePath);
+        await CreateBatchAsync(name, U("br1"));
+        await CreateBatchAsync(name, U("br2"));
 
         Func<Task> act = () => Handler().Handle(new RemoveCardFromBatchCommand(name, Guid.NewGuid()), default);
 
@@ -61,9 +103,8 @@ public sealed class RemoveCardFromBatchCommandHandlerTests : IClassFixture<DbFix
     [Fact]
     public async Task BatchWorking_Throws()
     {
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
+        var batch = await CreateBatchAsync(U("batch"), U("br"));
+        await TransitionToWorkingAsync(batch.Id);
 
         Func<Task> act = () => Handler().Handle(new RemoveCardFromBatchCommand(batch.Name, Guid.NewGuid()), default);
 
@@ -73,10 +114,9 @@ public sealed class RemoveCardFromBatchCommandHandlerTests : IClassFixture<DbFix
     [Fact]
     public async Task BatchClosed_Throws()
     {
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
-        await repo.CloseAsync(batch.Id, BatchClosedReason.Abandoned);
+        var batch = await CreateBatchAsync(U("batch"), U("br"));
+        await TransitionToWorkingAsync(batch.Id);
+        await CloseAsync(batch.Id, BatchClosedReason.Abandoned);
 
         Func<Task> act = () => Handler().Handle(new RemoveCardFromBatchCommand(batch.Name, Guid.NewGuid()), default);
 
@@ -88,9 +128,8 @@ public sealed class RemoveCardFromBatchCommandHandlerTests : IClassFixture<DbFix
     {
         var ws = await CreateWorkspaceAsync();
         var card = await AddCardAsync(ws.Id);
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
-        await repo.AssignCardAsync(batch.Id, card.Id);
+        var batch = await CreateBatchAsync(U("batch"), U("br"));
+        await AssignCardAsync(batch.Id, card.Id);
 
         await Handler().Handle(new RemoveCardFromBatchCommand(batch.Name, card.Id), default);
 

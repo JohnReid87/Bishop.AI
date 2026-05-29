@@ -33,10 +33,23 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
 
     private async Task<Batch> CreateWorkingBatchAsync()
     {
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{U("br")}", "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
-        return await repo.GetAsync(batch.Id) ?? throw new InvalidOperationException("Batch not found");
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = U("batch"),
+            BranchName = $"bishop/{U("br")}",
+            BaseBranch = "main",
+            WorktreePath = WorktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        batch.TransitionToWorking();
+        await db.SaveChangesAsync();
+        return batch;
     }
 
     private async Task<Card> AddCardAsync(string laneName)
@@ -44,7 +57,12 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
             .Handle(new AddCardCommand(_wsId, laneName, U("card")), default);
 
     private async Task AssignCardToBatchAsync(Batch batch, Card card)
-        => await new BatchRepository(_factory).AssignCardAsync(batch.Id, card.Id);
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var dbCard = await db.Cards.FindAsync(card.Id);
+        dbCard!.BatchId = batch.Id;
+        await db.SaveChangesAsync();
+    }
 
     private static IGitCli GitMergedNoBranchNoWorktree()
     {

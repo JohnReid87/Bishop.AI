@@ -1,3 +1,4 @@
+using System.Data;
 using Bishop.App.Git;
 using Bishop.Core;
 using Bishop.Data;
@@ -8,13 +9,11 @@ namespace Bishop.App.Batches.CreateBatch;
 
 public sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchCommand, CreateBatchResult>
 {
-    private readonly IBatchRepository _batches;
     private readonly IGitCli _git;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public CreateBatchCommandHandler(IBatchRepository batches, IGitCli git, IDbContextFactory<BishopDbContext> dbFactory)
+    public CreateBatchCommandHandler(IGitCli git, IDbContextFactory<BishopDbContext> dbFactory)
     {
-        _batches = batches;
         _git = git;
         _dbFactory = dbFactory;
     }
@@ -28,10 +27,31 @@ public sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchComma
 
         await _git.CreateWorktreeAsync(request.WorkspacePath, request.BranchName, baseBranch, request.WorktreePath, cancellationToken);
 
-        var batch = await _batches.CreateAsync(request.WorkspaceId, request.Name, request.BranchName, baseBranch, request.WorktreePath, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = request.WorkspaceId,
+            Name = request.Name,
+            BranchName = request.BranchName,
+            BaseBranch = baseBranch,
+            WorktreePath = request.WorktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync(cancellationToken);
 
         foreach (var cardId in cardIds)
-            await _batches.AssignCardAsync(batch.Id, cardId, cancellationToken);
+        {
+            await using var txDb = await _dbFactory.CreateDbContextAsync(cancellationToken);
+            await using var tx = await txDb.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var batchInTx = await txDb.Batches.FirstOrDefaultAsync(b => b.Id == batch.Id, cancellationToken)
+                ?? throw new InvalidOperationException($"Batch {batch.Id} not found.");
+            await BatchAssignment.AssignAsync(txDb, batchInTx, cardId, cancellationToken);
+            await txDb.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+        }
 
         return new CreateBatchResult(batch, cardIds.Count);
     }

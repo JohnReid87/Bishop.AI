@@ -33,14 +33,25 @@ public sealed class ReconcileOrphanedBatchesCommandHandlerTests : IClassFixture<
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, U("card")), default);
 
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{U("br")}", "main", _worktreePath);
-        await repo.AssignCardAsync(batch.Id, card.Id);
-        batch = await repo.TransitionToWorkingAsync(batch.Id);
-
         await using var db = await _factory.CreateDbContextAsync(default);
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = U("batch"),
+            BranchName = $"bishop/{U("br")}",
+            BaseBranch = "main",
+            WorktreePath = _worktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+
         var dbCard = await db.Cards.FirstAsync(c => c.Id == card.Id);
+        dbCard.BatchId = batch.Id;
         dbCard.LaneName = cardLaneName;
+        batch.TransitionToWorking();
         await db.SaveChangesAsync();
 
         return (batch, card);

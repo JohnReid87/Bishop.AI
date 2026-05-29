@@ -25,11 +25,24 @@ public sealed class RemoveBatchCommandHandlerTests : IClassFixture<DbFixture>
 
     private async Task<Batch> CreateClosedBatchAsync()
     {
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{U("br")}", "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
-        await repo.CloseAsync(batch.Id, BatchClosedReason.Finished);
-        return await repo.GetAsync(batch.Id) ?? throw new InvalidOperationException("Batch not found");
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = U("batch"),
+            BranchName = $"bishop/{U("br")}",
+            BaseBranch = "main",
+            WorktreePath = WorktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        batch.TransitionToWorking();
+        batch.Close(BatchClosedReason.Finished, DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync();
+        return batch;
     }
 
     private RemoveBatchCommandHandler CreateHandler()
@@ -50,8 +63,14 @@ public sealed class RemoveBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task OpenBatch_Throws()
     {
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{U("br")}", "main", WorktreePath);
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = U("batch"), BranchName = $"bishop/{U("br")}",
+            BaseBranch = "main", WorktreePath = WorktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
 
         Func<Task> act = () => CreateHandler().Handle(new RemoveBatchCommand(batch.Name), default);
 
@@ -61,9 +80,16 @@ public sealed class RemoveBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task WorkingBatch_Throws()
     {
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{U("br")}", "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = U("batch"), BranchName = $"bishop/{U("br")}",
+            BaseBranch = "main", WorktreePath = WorktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        batch.TransitionToWorking();
+        await db.SaveChangesAsync();
 
         Func<Task> act = () => CreateHandler().Handle(new RemoveBatchCommand(batch.Name), default);
 

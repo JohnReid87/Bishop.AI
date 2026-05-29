@@ -9,18 +9,15 @@ namespace Bishop.App.Batches.AbandonBatch;
 
 public sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCommand, AbandonBatchResult>
 {
-    private readonly IBatchRepository _batches;
     private readonly IGitCli _git;
     private readonly ISender _sender;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
     public AbandonBatchCommandHandler(
-        IBatchRepository batches,
         IGitCli git,
         ISender sender,
         IDbContextFactory<BishopDbContext> dbFactory)
     {
-        _batches = batches;
         _git = git;
         _sender = sender;
         _dbFactory = dbFactory;
@@ -28,7 +25,9 @@ public sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCom
 
     public async Task<AbandonBatchResult> Handle(AbandonBatchCommand request, CancellationToken cancellationToken)
     {
-        var matches = await _batches.GetByNameAsync(request.Name, cancellationToken);
+        await using var readDb = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var matches = await readDb.Batches.AsNoTracking().ByName(request.Name).ToListAsync(cancellationToken);
         if (matches.Count == 0)
             throw new InvalidOperationException($"No batch named '{request.Name}' found.");
         if (matches.Count > 1)
@@ -41,8 +40,7 @@ public sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCom
             throw new InvalidOperationException(
                 $"Batch '{request.Name}' must be Working to abandon; current status is {batch.Status}.");
 
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var cards = await db.Cards.AsNoTracking()
+        var cards = await readDb.Cards.AsNoTracking()
             .Where(c => c.BatchId == batch.Id)
             .OrderBy(c => c.Number)
             .ToListAsync(cancellationToken);
@@ -50,10 +48,16 @@ public sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCom
         foreach (var card in cards)
             await _sender.Send(new MoveCardCommand(card.Id, SystemLaneNames.ToDo, 1), cancellationToken);
 
-        foreach (var card in cards)
-            await _batches.UnassignCardAsync(batch.Id, card.Id, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var trackedCards = await db.Cards.Where(c => c.BatchId == batch.Id).ToListAsync(cancellationToken);
+        foreach (var card in trackedCards)
+            card.BatchId = null;
 
-        await _batches.CloseAsync(batch.Id, BatchClosedReason.Abandoned, cancellationToken: cancellationToken);
+        var batchToClose = await db.Batches.FirstOrDefaultAsync(b => b.Id == batch.Id, cancellationToken)
+            ?? throw new InvalidOperationException($"Batch {batch.Id} not found.");
+        batchToClose.Close(BatchClosedReason.Abandoned, DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync(cancellationToken);
+
         await _git.RemoveWorktreeAsync(request.WorkspacePath, batch.WorktreePath, cancellationToken);
 
         return new AbandonBatchResult(cards.Count);

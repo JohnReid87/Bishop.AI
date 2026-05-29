@@ -13,13 +13,11 @@ namespace Bishop.Tests.App.Batches;
 public sealed class CreateBatchCommandHandlerTests : IClassFixture<DbFixture>
 {
     private readonly IDbContextFactory<BishopDbContext> _factory;
-    private readonly IBatchRepository _batchRepo;
     private readonly IGitCli _git;
 
     public CreateBatchCommandHandlerTests(DbFixture fixture)
     {
         _factory = fixture.Factory;
-        _batchRepo = new BatchRepository(_factory);
         _git = Substitute.For<IGitCli>();
         _git.GetCurrentBranchAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("main");
@@ -36,7 +34,7 @@ public sealed class CreateBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     private CreateBatchCommandHandler MakeHandler() =>
-        new(_batchRepo, _git, _factory);
+        new(_git, _factory);
 
     [Fact]
     public async Task Handle_NoCards_CreatesBatchWithWorktree()

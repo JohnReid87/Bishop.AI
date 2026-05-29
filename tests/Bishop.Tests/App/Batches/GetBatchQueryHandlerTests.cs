@@ -22,7 +22,6 @@ public sealed class GetBatchQueryHandlerTests : IClassFixture<DbFixture>
     }
 
     private static string U(string prefix = "x") => $"{prefix}-{Guid.NewGuid():N}"[..20];
-    private BatchRepository Repo() => new(_factory);
     private GetBatchQueryHandler Handler() => new(_factory);
 
     private async Task<Workspace> CreateWorkspaceAsync()
@@ -36,6 +35,33 @@ public sealed class GetBatchQueryHandlerTests : IClassFixture<DbFixture>
         => await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspaceId, SystemLaneNames.ToDo, U("card")), default);
 
+    private async Task<Batch> CreateBatchAsync(string name, string branch)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = name,
+            BranchName = branch,
+            BaseBranch = "main",
+            WorktreePath = WorktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        return batch;
+    }
+
+    private async Task AssignCardAsync(Guid batchId, Guid cardId)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var card = await db.Cards.FindAsync(cardId);
+        card!.BatchId = batchId;
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task BatchNotFound_Throws()
     {
@@ -47,10 +73,9 @@ public sealed class GetBatchQueryHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task MultipleBatchesSameName_Throws()
     {
-        var repo = Repo();
         var name = U("batch");
-        await repo.CreateAsync(_wsId, name, U("br1"), "main", WorktreePath);
-        await repo.CreateAsync(_wsId, name, U("br2"), "main", WorktreePath);
+        await CreateBatchAsync(name, U("br1"));
+        await CreateBatchAsync(name, U("br2"));
 
         Func<Task> act = () => Handler().Handle(new GetBatchQuery(name), default);
 
@@ -60,8 +85,7 @@ public sealed class GetBatchQueryHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task NoCards_ReturnsBatchWithEmptyList()
     {
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
+        var batch = await CreateBatchAsync(U("batch"), U("br"));
 
         var result = await Handler().Handle(new GetBatchQuery(batch.Name), default);
 
@@ -76,11 +100,10 @@ public sealed class GetBatchQueryHandlerTests : IClassFixture<DbFixture>
         var card1 = await AddCardAsync(ws.Id);
         var card2 = await AddCardAsync(ws.Id);
         var card3 = await AddCardAsync(ws.Id);
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
-        await repo.AssignCardAsync(batch.Id, card3.Id);
-        await repo.AssignCardAsync(batch.Id, card1.Id);
-        await repo.AssignCardAsync(batch.Id, card2.Id);
+        var batch = await CreateBatchAsync(U("batch"), U("br"));
+        await AssignCardAsync(batch.Id, card3.Id);
+        await AssignCardAsync(batch.Id, card1.Id);
+        await AssignCardAsync(batch.Id, card2.Id);
 
         var result = await Handler().Handle(new GetBatchQuery(batch.Name), default);
 
@@ -93,11 +116,10 @@ public sealed class GetBatchQueryHandlerTests : IClassFixture<DbFixture>
         var ws = await CreateWorkspaceAsync();
         var card1 = await AddCardAsync(ws.Id);
         var card2 = await AddCardAsync(ws.Id);
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br1"), "main", WorktreePath);
-        var otherBatch = await repo.CreateAsync(_wsId, U("other"), U("br2"), "main", WorktreePath);
-        await repo.AssignCardAsync(batch.Id, card1.Id);
-        await repo.AssignCardAsync(otherBatch.Id, card2.Id);
+        var batch = await CreateBatchAsync(U("batch"), U("br1"));
+        var otherBatch = await CreateBatchAsync(U("other"), U("br2"));
+        await AssignCardAsync(batch.Id, card1.Id);
+        await AssignCardAsync(otherBatch.Id, card2.Id);
 
         var result = await Handler().Handle(new GetBatchQuery(batch.Name), default);
 

@@ -24,8 +24,21 @@ public sealed class RenameBatchCommandHandlerTests : IClassFixture<DbFixture>
 
     private async Task<Batch> CreateBatchAsync(string? name = null)
     {
-        var repo = new BatchRepository(_factory);
-        return await repo.CreateAsync(_wsId, name ?? U("batch"), U("br"), "main", WorktreePath);
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = name ?? U("batch"),
+            BranchName = U("br"),
+            BaseBranch = "main",
+            WorktreePath = WorktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        return batch;
     }
 
     private RenameBatchCommandHandler CreateHandler() => new(_factory);
@@ -113,8 +126,11 @@ public sealed class RenameBatchCommandHandlerTests : IClassFixture<DbFixture>
     public async Task ConflictCheckIgnoresClosedBatches()
     {
         var closed = await CreateBatchAsync();
-        var repo = new BatchRepository(_factory);
-        await repo.CloseAsync(closed.Id, BatchClosedReason.Finished);
+        await using var db = await _factory.CreateDbContextAsync();
+        var batchToClose = await db.Batches.FindAsync(closed.Id);
+        batchToClose!.TransitionToWorking();
+        batchToClose.Close(BatchClosedReason.Finished, DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync();
 
         var target = await CreateBatchAsync();
 

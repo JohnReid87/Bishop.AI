@@ -27,10 +27,23 @@ public sealed class MergeBatchCommandHandlerTests : IClassFixture<DbFixture>
 
     private async Task<Batch> CreateWorkingBatchAsync()
     {
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{U("br")}", "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
-        return await repo.GetAsync(batch.Id) ?? throw new InvalidOperationException("Batch not found");
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = U("batch"),
+            BranchName = $"bishop/{U("br")}",
+            BaseBranch = "main",
+            WorktreePath = WorktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        batch.TransitionToWorking();
+        await db.SaveChangesAsync();
+        return batch;
     }
 
     private static IGitCli GitMergeSucceeds(string currentBranch = "main")
@@ -59,8 +72,14 @@ public sealed class MergeBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task BatchOpen_Throws()
     {
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = U("batch"), BranchName = U("br"),
+            BaseBranch = "main", WorktreePath = WorktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
 
         Func<Task> act = () => CreateHandler().Handle(new MergeBatchCommand(batch.Name, WorkspacePath), default);
 
@@ -70,10 +89,17 @@ public sealed class MergeBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task BatchClosed_Throws()
     {
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
-        await repo.CloseAsync(batch.Id, BatchClosedReason.Finished);
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = U("batch"), BranchName = U("br"),
+            BaseBranch = "main", WorktreePath = WorktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        batch.TransitionToWorking();
+        batch.Close(BatchClosedReason.Finished, DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync();
 
         Func<Task> act = () => CreateHandler().Handle(new MergeBatchCommand(batch.Name, WorkspacePath), default);
 

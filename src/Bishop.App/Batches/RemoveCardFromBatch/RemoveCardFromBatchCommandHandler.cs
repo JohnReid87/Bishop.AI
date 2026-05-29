@@ -1,18 +1,21 @@
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.RemoveCardFromBatch;
 
 public sealed class RemoveCardFromBatchCommandHandler : IRequestHandler<RemoveCardFromBatchCommand, Unit>
 {
-    private readonly IBatchRepository _batches;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
-    public RemoveCardFromBatchCommandHandler(IBatchRepository batches) => _batches = batches;
+    public RemoveCardFromBatchCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
     public async Task<Unit> Handle(RemoveCardFromBatchCommand request, CancellationToken cancellationToken)
     {
-        var matches = await _batches.GetByNameAsync(request.BatchName, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var matches = await db.Batches.ByName(request.BatchName).ToListAsync(cancellationToken);
 
         if (matches.Count == 0)
             throw new InvalidOperationException($"No batch named '{request.BatchName}' found.");
@@ -28,7 +31,12 @@ public sealed class RemoveCardFromBatchCommandHandler : IRequestHandler<RemoveCa
             throw new InvalidOperationException(
                 $"Batch '{batch.Name}' is {batch.Status} — only Open batches accept card changes.");
 
-        await _batches.UnassignCardAsync(batch.Id, request.CardId, cancellationToken);
+        var card = await db.Cards
+            .FirstOrDefaultAsync(c => c.Id == request.CardId && c.BatchId == batch.Id, cancellationToken)
+            ?? throw new InvalidOperationException($"Card {request.CardId} is not assigned to batch {batch.Id}.");
+
+        card.BatchId = null;
+        await db.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;
     }

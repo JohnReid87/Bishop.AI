@@ -25,20 +25,26 @@ public sealed class GetBatchPruneCandidatesQueryHandlerTests : IClassFixture<DbF
     private async Task<Batch> CreateClosedBatchAsync(
         BatchClosedReason reason, DateTimeOffset? closedAt = null)
     {
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{U("br")}", "main", @"C:\wt");
-        await repo.TransitionToWorkingAsync(batch.Id);
-        var closed = await repo.CloseAsync(batch.Id, reason);
-
-        if (closedAt.HasValue)
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
         {
-            await using var db = await _factory.CreateDbContextAsync();
-            var row = await db.Batches.FindAsync(batch.Id);
-            row!.ClosedAt = closedAt.Value;
-            await db.SaveChangesAsync();
-        }
-
-        return closed;
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = U("batch"),
+            BranchName = $"bishop/{U("br")}",
+            BaseBranch = "main",
+            WorktreePath = @"C:\wt",
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        batch.TransitionToWorking();
+        batch.Close(reason, DateTimeOffset.UtcNow);
+        if (closedAt.HasValue)
+            batch.ClosedAt = closedAt.Value;
+        await db.SaveChangesAsync();
+        return batch;
     }
 
     private GetBatchPruneCandidatesQueryHandler CreateHandler(IGitCli git)
@@ -73,8 +79,14 @@ public sealed class GetBatchPruneCandidatesQueryHandlerTests : IClassFixture<DbF
     [Fact]
     public async Task ExcludesOpenBatches()
     {
-        var repo = new BatchRepository(_factory);
-        var open = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{U("br")}", "main", @"C:\wt");
+        await using var dbSetup = await _factory.CreateDbContextAsync();
+        var open = new Batch
+        {
+            Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = U("batch"), BranchName = $"bishop/{U("br")}",
+            BaseBranch = "main", WorktreePath = @"C:\wt", Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow
+        };
+        dbSetup.Batches.Add(open);
+        await dbSetup.SaveChangesAsync();
 
         var git = Substitute.For<IGitCli>();
         git.GetWorktreeBranchesAsync(WorkspacePath, Arg.Any<CancellationToken>()).Returns([]);

@@ -22,8 +22,21 @@ public sealed class BatchQueriesTests : IClassFixture<DbFixture>
 
     private async Task<Batch> CreateBatchAsync(Guid workspaceId, string? name = null)
     {
-        var repo = new BatchRepository(_factory);
-        return await repo.CreateAsync(workspaceId, name ?? U("batch"), $"bishop/{U("br")}", "main", @"C:\wt");
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = workspaceId,
+            Name = name ?? U("batch"),
+            BranchName = $"bishop/{U("br")}",
+            BaseBranch = "main",
+            WorktreePath = @"C:\wt",
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        return batch;
     }
 
     // ── ByWorkspace ────────────────────────────────────────────────────────────

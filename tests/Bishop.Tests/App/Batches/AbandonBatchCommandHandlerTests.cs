@@ -42,15 +42,35 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
         => await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspaceId, laneName, U("card")), default);
 
-    private async Task<Batch> CreateWorkingBatchAsync(params Guid[] cardIds)
+    private async Task<Batch> CreateBatchAsync(params Guid[] cardIds)
     {
-        var repo = new BatchRepository(_factory);
+        await using var db = await _factory.CreateDbContextAsync();
         var slug = U("br");
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{slug}", "main", WorktreePath);
-        foreach (var id in cardIds)
-            await repo.AssignCardAsync(batch.Id, id);
-        await repo.TransitionToWorkingAsync(batch.Id);
-        return await repo.GetAsync(batch.Id) ?? throw new InvalidOperationException("Batch not found");
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = U("batch"),
+            BranchName = $"bishop/{slug}",
+            BaseBranch = "main",
+            WorktreePath = WorktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+
+        if (cardIds.Length > 0)
+        {
+            var cards = await db.Cards.Where(c => cardIds.Contains(c.Id)).ToListAsync();
+            foreach (var card in cards)
+                card.BatchId = batch.Id;
+            await db.SaveChangesAsync();
+        }
+
+        batch.TransitionToWorking();
+        await db.SaveChangesAsync();
+        return batch;
     }
 
     private ISender CreateSender()
@@ -63,20 +83,15 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
         return sender;
     }
 
-    private AbandonBatchCommandHandler CreateHandler(IGitCli? git = null, ISender? sender = null)
-    {
-        var gitSub = git ?? Substitute.For<IGitCli>();
-        return new(new BatchRepository(_factory), gitSub, sender ?? CreateSender(), _factory);
-    }
+    private AbandonBatchCommandHandler CreateHandler(IGitCli? git = null, ISender? sender = null) =>
+        new(git ?? Substitute.For<IGitCli>(), sender ?? CreateSender(), _factory);
 
     // ── status validation ──────────────────────────────────────────────────────
 
     [Fact]
     public async Task BatchNotFound_Throws()
     {
-        var handler = CreateHandler();
-
-        Func<Task> act = () => handler.Handle(new AbandonBatchCommand("no-such", WorkspacePath), default);
+        Func<Task> act = () => CreateHandler().Handle(new AbandonBatchCommand("no-such", WorkspacePath), default);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*no-such*");
     }
@@ -84,7 +99,14 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task BatchOpen_Throws()
     {
-        var batch = await new BatchRepository(_factory).CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = U("batch"), BranchName = U("br"),
+            BaseBranch = "main", WorktreePath = WorktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
 
         Func<Task> act = () => CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 
@@ -94,10 +116,17 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task BatchAlreadyClosed_Throws()
     {
-        var repo = new BatchRepository(_factory);
-        var batch = await repo.CreateAsync(_wsId, U("batch"), U("br"), "main", WorktreePath);
-        await repo.TransitionToWorkingAsync(batch.Id);
-        await repo.CloseAsync(batch.Id, BatchClosedReason.Abandoned);
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = U("batch"), BranchName = U("br"),
+            BaseBranch = "main", WorktreePath = WorktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        batch.TransitionToWorking();
+        batch.Close(BatchClosedReason.Abandoned, DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync();
 
         Func<Task> act = () => CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 
@@ -109,12 +138,13 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task EmptyBatch_ClosesWithAbandoned_ReturnsZeroCards()
     {
-        var batch = await CreateWorkingBatchAsync();
+        var batch = await CreateBatchAsync();
 
         var result = await CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 
         result.CardsRestored.Should().Be(0);
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
+        _db.Entry(saved).Reload();
         saved.Status.Should().Be(BatchStatus.Closed);
         saved.ClosedReason.Should().Be(BatchClosedReason.Abandoned);
         saved.ClosedAt.Should().NotBeNull();
@@ -126,7 +156,7 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
         var workspace = await CreateWorkspaceAsync();
         var c1 = await AddCardAsync(workspace.Id);
         var c2 = await AddCardAsync(workspace.Id);
-        var batch = await CreateWorkingBatchAsync(c1.Id, c2.Id);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id);
 
         await CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 
@@ -141,7 +171,7 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
     {
         var workspace = await CreateWorkspaceAsync();
         var card = await AddCardAsync(workspace.Id);
-        var batch = await CreateWorkingBatchAsync(card.Id);
+        var batch = await CreateBatchAsync(card.Id);
 
         var sender = CreateSender();
         await new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
@@ -159,11 +189,12 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
     {
         var workspace = await CreateWorkspaceAsync();
         var card = await AddCardAsync(workspace.Id);
-        var batch = await CreateWorkingBatchAsync(card.Id);
+        var batch = await CreateBatchAsync(card.Id);
 
         await CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        _db.Entry(saved).Reload();
         saved.BatchId.Should().BeNull();
     }
 
@@ -174,7 +205,7 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
         var c1 = await AddCardAsync(workspace.Id);
         var c2 = await AddCardAsync(workspace.Id);
         var c3 = await AddCardAsync(workspace.Id);
-        var batch = await CreateWorkingBatchAsync(c1.Id, c2.Id, c3.Id);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id, c3.Id);
 
         var result = await CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 
@@ -184,7 +215,7 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task WorktreeRemovedWithWorkspacePath()
     {
-        var batch = await CreateWorkingBatchAsync();
+        var batch = await CreateBatchAsync();
         var git = Substitute.For<IGitCli>();
 
         await CreateHandler(git: git).Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);

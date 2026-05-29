@@ -63,11 +63,30 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
     private async Task<Batch> CreateBatchAsync(params Guid[] cardIds)
     {
-        var repo = new BatchRepository(_factory);
+        await using var db = await _factory.CreateDbContextAsync();
         var slug = U("br");
-        var batch = await repo.CreateAsync(_wsId, U("batch"), $"bishop/{slug}", "main", _worktreePath);
-        foreach (var id in cardIds)
-            await repo.AssignCardAsync(batch.Id, id);
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = U("batch"),
+            BranchName = $"bishop/{slug}",
+            BaseBranch = "main",
+            WorktreePath = _worktreePath,
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+
+        if (cardIds.Length > 0)
+        {
+            var cards = await db.Cards.Where(c => cardIds.Contains(c.Id)).ToListAsync();
+            foreach (var card in cards)
+                card.BatchId = batch.Id;
+            await db.SaveChangesAsync();
+        }
+
         return batch;
     }
 
@@ -200,7 +219,10 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var (workspace, lanes) = await CreateWorkspaceAsync();
         var card = await AddCardAsync(workspace.Id, SystemLaneNames.ToDo);
         var batch = await CreateBatchAsync(card.Id);
-        await new BatchRepository(_factory).TransitionToWorkingAsync(batch.Id);
+        await using var txDb1 = await _factory.CreateDbContextAsync();
+        var b1 = await txDb1.Batches.FindAsync(batch.Id);
+        b1!.TransitionToWorking();
+        await txDb1.SaveChangesAsync();
 
         var handler = CreateHandler();
 
@@ -213,9 +235,11 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     public async Task BatchClosed_WithoutResume_Throws()
     {
         var batch = await CreateBatchAsync();
-        var repo = new BatchRepository(_factory);
-        await repo.TransitionToWorkingAsync(batch.Id);
-        await repo.CloseAsync(batch.Id, BatchClosedReason.Finished);
+        await using var txDb2 = await _factory.CreateDbContextAsync();
+        var b2 = await txDb2.Batches.FindAsync(batch.Id);
+        b2!.TransitionToWorking();
+        b2.Close(BatchClosedReason.Finished, DateTimeOffset.UtcNow);
+        await txDb2.SaveChangesAsync();
 
         var handler = CreateHandler();
 
@@ -239,10 +263,11 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task DuplicateBatchName_Throws()
     {
-        var repo = new BatchRepository(_factory);
         var name = U("batch");
-        await repo.CreateAsync(_wsId, name, $"bishop/{U("br")}", "main", _worktreePath);
-        await repo.CreateAsync(_wsId, name, $"bishop/{U("br")}", "main", _worktreePath);
+        await using var txDb3 = await _factory.CreateDbContextAsync();
+        txDb3.Batches.Add(new Batch { Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = name, BranchName = $"bishop/{U("br")}", BaseBranch = "main", WorktreePath = _worktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow });
+        txDb3.Batches.Add(new Batch { Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = name, BranchName = $"bishop/{U("br")}", BaseBranch = "main", WorktreePath = _worktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow });
+        await txDb3.SaveChangesAsync();
 
         var handler = CreateHandler();
 
@@ -647,8 +672,10 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var c2 = await AddCardAsync(workspace.Id, todo.Name);
         var batch = await CreateBatchAsync(c1.Id, c2.Id);
 
-        var repo = new BatchRepository(_factory);
-        await repo.TransitionToWorkingAsync(batch.Id);
+        await using var txDb4 = await _factory.CreateDbContextAsync();
+        var b4 = await txDb4.Batches.FindAsync(batch.Id);
+        b4!.TransitionToWorking();
+        await txDb4.SaveChangesAsync();
 
         // Manually move c1 to Done to simulate a previously completed card
         await new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
@@ -685,8 +712,10 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var card = await AddCardAsync(workspace.Id, todo.Name);
         var batch = await CreateBatchAsync(card.Id);
 
-        var repo = new BatchRepository(_factory);
-        await repo.TransitionToWorkingAsync(batch.Id);
+        await using var txDb5 = await _factory.CreateDbContextAsync();
+        var b5 = await txDb5.Batches.FindAsync(batch.Id);
+        b5!.TransitionToWorking();
+        await txDb5.SaveChangesAsync();
         await new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
             .Handle(new MoveCardCommand(card.Id, SystemLaneNames.Done, 0, KeepOpen: true), default);
 

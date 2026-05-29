@@ -19,8 +19,6 @@ public sealed class ListBatchesQueryHandlerTests : IClassFixture<DbFixture>
         _wsId = fixture.SeedWorkspace();
     }
 
-    private BatchRepository Repo() => new(_factory);
-
     private ListBatchesQueryHandler Handler(IGitCli? git = null)
     {
         if (git is null)
@@ -37,14 +35,48 @@ public sealed class ListBatchesQueryHandlerTests : IClassFixture<DbFixture>
 
     private static string U(string prefix = "b") => $"{prefix}-{Guid.NewGuid():N}"[..20];
 
+    private async Task<Batch> CreateBatchAsync(string name, string branch)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = _wsId,
+            Name = name,
+            BranchName = branch,
+            BaseBranch = "main",
+            WorktreePath = @"C:\wt",
+            Status = BatchStatus.Open,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        return batch;
+    }
+
+    private async Task TransitionToWorkingAsync(Guid batchId)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = await db.Batches.FindAsync(batchId);
+        batch!.TransitionToWorking();
+        await db.SaveChangesAsync();
+    }
+
+    private async Task CloseAsync(Guid batchId, BatchClosedReason reason)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = await db.Batches.FindAsync(batchId);
+        batch!.Close(reason, DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task ReturnsOpenAndWorkingBatches()
     {
         // Arrange
-        var repo = Repo();
-        var open = await repo.CreateAsync(_wsId, U("name"), U("br"), "main", @"C:\wt");
-        var working = await repo.CreateAsync(_wsId, U("name"), U("br"), "main", @"C:\wt");
-        await repo.TransitionToWorkingAsync(working.Id);
+        var open = await CreateBatchAsync(U("name"), U("br"));
+        var working = await CreateBatchAsync(U("name"), U("br"));
+        await TransitionToWorkingAsync(working.Id);
 
         // Act
         var results = await Handler().Handle(new ListBatchesQuery(_wsId, string.Empty), default);
@@ -58,9 +90,8 @@ public sealed class ListBatchesQueryHandlerTests : IClassFixture<DbFixture>
     public async Task IncludesClosedBatch()
     {
         // Arrange
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("name"), U("br"), "main", @"C:\wt");
-        await repo.CloseAsync(batch.Id, BatchClosedReason.Abandoned);
+        var batch = await CreateBatchAsync(U("name"), U("br"));
+        await CloseAsync(batch.Id, BatchClosedReason.Abandoned);
 
         // Act
         var results = await Handler().Handle(new ListBatchesQuery(_wsId, string.Empty), default);
@@ -73,11 +104,9 @@ public sealed class ListBatchesQueryHandlerTests : IClassFixture<DbFixture>
     public async Task Cards_AreAttachedToBatchSummary()
     {
         // Arrange
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("name"), U("br"), "main", @"C:\wt");
+        var batch = await CreateBatchAsync(U("name"), U("br"));
 
         await using var db = await _factory.CreateDbContextAsync();
-        var workspace = await db.Workspaces.FindAsync(_wsId);
         var card = new Card
         {
             Id = Guid.NewGuid(),
@@ -107,8 +136,7 @@ public sealed class ListBatchesQueryHandlerTests : IClassFixture<DbFixture>
     public async Task SurfacesGitState()
     {
         // Arrange
-        var repo = Repo();
-        var batch = await repo.CreateAsync(_wsId, U("name"), U("br"), "main", @"C:\wt");
+        var batch = await CreateBatchAsync(U("name"), U("br"));
 
         var git = Substitute.For<IGitCli>();
         git.LocalBranchExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
