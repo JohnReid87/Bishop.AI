@@ -249,7 +249,6 @@ public sealed partial class WorkspaceDetailPage : Page
         switch (result)
         {
             case GetRecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef, UpstreamIsTracked: var upstreamIsTracked, UnpushedCount: var unpushedCount }:
-                var needsSetUpstream = !upstreamIsTracked;
                 var commitsContainer = new StackPanel { Spacing = 2 };
 
                 var errorBlock = new TextBlock
@@ -269,60 +268,8 @@ public sealed partial class WorkspaceDetailPage : Page
                     Margin = new Thickness(0, 4, 0, 0),
                 };
 
-                void RenderCommits(IReadOnlyList<CommitInfo> currentCommits, string? currentUpstream)
-                {
-                    commitsContainer.Children.Clear();
-                    foreach (var (commit, i) in currentCommits.Select((c, idx) => (c, idx)))
-                    {
-                        var capturedCommit = commit;
-                        commitsContainer.Children.Add(MakeCommitRow(commit, currentUpstream, async () =>
-                        {
-                            flyout.Hide();
-                            if (gitHubRepo is not null)
-                            {
-                                await Launcher.LaunchUriAsync(new Uri($"https://github.com/{gitHubRepo}/commit/{capturedCommit.FullHash}"));
-                            }
-                            else
-                            {
-                                var pkg = new DataPackage();
-                                pkg.SetText(capturedCommit.FullHash);
-                                Clipboard.SetContent(pkg);
-                                await ShowCopiedToastAsync();
-                            }
-                        }));
-                        if (i < currentCommits.Count - 1)
-                            commitsContainer.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
-                    }
-                }
-
-                void UpdatePushButton(IReadOnlyList<CommitInfo> currentCommits, string? currentUpstream, bool currentIsTracked, int unpushed)
-                {
-                    needsSetUpstream = !currentIsTracked;
-                    string label;
-                    bool enabled;
-                    if (currentUpstream is null)
-                    {
-                        label = "No remote branch — push with -u to publish";
-                        enabled = false;
-                    }
-                    else
-                    {
-                        if (unpushed == 0)
-                        {
-                            label = "Up to date";
-                            enabled = false;
-                        }
-                        else
-                        {
-                            label = currentIsTracked
-                                ? $"Push {unpushed} commit{(unpushed == 1 ? "" : "s")}"
-                                : $"Push {unpushed} commit{(unpushed == 1 ? "" : "s")} (will set upstream)";
-                            enabled = true;
-                        }
-                    }
-                    pushButton.Content = new TextBlock { Text = label, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center };
-                    pushButton.IsEnabled = enabled;
-                }
+                RenderCommitsInto(commitsContainer, flyout, commits, upstreamRef, gitHubRepo);
+                var needsSetUpstream = UpdatePushButton(pushButton, upstreamRef, upstreamIsTracked, unpushedCount);
 
                 pushButton.Click += async (_, _) =>
                 {
@@ -337,8 +284,8 @@ public sealed partial class WorkspaceDetailPage : Page
                         var refreshed = await Board.GetRecentCommitsAsync(workspacePath);
                         if (refreshed is GetRecentCommitsResult.Success { Commits: var refreshedCommits, UpstreamRef: var refreshedUpstream, UpstreamIsTracked: var refreshedIsTracked, UnpushedCount: var refreshedUnpushedCount })
                         {
-                            RenderCommits(refreshedCommits, refreshedUpstream);
-                            UpdatePushButton(refreshedCommits, refreshedUpstream, refreshedIsTracked, refreshedUnpushedCount);
+                            RenderCommitsInto(commitsContainer, flyout, refreshedCommits, refreshedUpstream, gitHubRepo);
+                            needsSetUpstream = UpdatePushButton(pushButton, refreshedUpstream, refreshedIsTracked, refreshedUnpushedCount);
                         }
                         else
                         {
@@ -355,8 +302,6 @@ public sealed partial class WorkspaceDetailPage : Page
                     }
                 };
 
-                RenderCommits(commits, upstreamRef);
-                UpdatePushButton(commits, upstreamRef, upstreamIsTracked, unpushedCount);
                 panel.Children.Add(new ScrollViewer { MaxHeight = 400, Content = commitsContainer });
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 4, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
                 panel.Children.Add(errorBlock);
@@ -376,6 +321,58 @@ public sealed partial class WorkspaceDetailPage : Page
         flyout.Content = panel;
         flyout.ShowAt((FrameworkElement)sender);
         });
+
+    private void RenderCommitsInto(StackPanel container, Flyout flyout, IReadOnlyList<CommitInfo> commits, string? upstreamRef, string? gitHubRepo)
+    {
+        container.Children.Clear();
+        for (var i = 0; i < commits.Count; i++)
+        {
+            var commit = commits[i];
+            container.Children.Add(MakeCommitRow(commit, upstreamRef, async () =>
+            {
+                flyout.Hide();
+                if (gitHubRepo is not null)
+                {
+                    await Launcher.LaunchUriAsync(new Uri($"https://github.com/{gitHubRepo}/commit/{commit.FullHash}"));
+                }
+                else
+                {
+                    var pkg = new DataPackage();
+                    pkg.SetText(commit.FullHash);
+                    Clipboard.SetContent(pkg);
+                    await ShowCopiedToastAsync();
+                }
+            }));
+            if (i < commits.Count - 1)
+                container.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
+        }
+    }
+
+    private static bool UpdatePushButton(Button pushButton, string? upstreamRef, bool upstreamIsTracked, int unpushedCount)
+    {
+        string label;
+        bool enabled;
+        if (upstreamRef is null)
+        {
+            label = "No remote branch — push with -u to publish";
+            enabled = false;
+        }
+        else if (unpushedCount == 0)
+        {
+            label = "Up to date";
+            enabled = false;
+        }
+        else
+        {
+            label = upstreamIsTracked
+                ? $"Push {unpushedCount} commit{(unpushedCount == 1 ? "" : "s")}"
+                : $"Push {unpushedCount} commit{(unpushedCount == 1 ? "" : "s")} (will set upstream)";
+            enabled = true;
+        }
+        pushButton.Content = new TextBlock { Text = label, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center };
+        pushButton.IsEnabled = enabled;
+        return !upstreamIsTracked;
+    }
 
     private async Task ShowCopiedToastAsync()
     {
