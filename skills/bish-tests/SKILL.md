@@ -93,6 +93,27 @@ the Explore step also flags mocks that verify internal interactions rather
 than public outcomes. These two concerns are independent — mutation testing
 does not subsume brittle mocks.
 
+### Equivalent mutants
+
+Some survived mutants are *equivalent*: the mutation is semantically identical
+to the original and can never be killed by any test (e.g. flipping a boundary
+comparison on a value that never reaches that boundary). Filing a card for an
+equivalent mutant is wasted effort — dismiss it so it does not re-surface.
+
+**Dismissal mechanism:** add a `// Stryker disable once <MutatorName>` comment
+on the line immediately **above** the mutated expression in the source file:
+
+```csharp
+// Stryker disable once ArithmeticOperator
+return x + 1;
+```
+
+On the next `mutation.ps1` run Stryker marks the mutant `Ignored`. The
+transform's `status == 'Survived'` filter already excludes `Ignored` mutants,
+so the dismissed entry will not appear in `survived[]` or trigger a card on
+any future run. The per-finding walk (step 8) will prompt you for each mutant
+you flag as equivalent during the interview.
+
 ---
 
 <what-to-do>
@@ -227,17 +248,38 @@ does not subsume brittle mocks.
    Record this run by following `Skill-Run Recording Procedure` (in `conventions`) with `--skill bish-tests`, then continue to step 9 so the clean-classes summary still prints.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each
-   one, show the class, the test file path, the mutation score, and the
-   survived mutants. Offer:
+   class, show the class name, test file path, mutation score, and the list
+   of survived mutants with the Explore agent's explanations. Offer:
 
-   - **Push as-is (Recommended)** — file the card with the proposed
-     title/body.
+   - **Push as-is (Recommended)** — file the card with all survived mutants.
+   - **Mark equivalent mutants** — review each mutant individually and
+     dismiss any that are equivalent (see sub-step 8a below).
    - **Skip** — do not file this card.
    - **Edit title/body** — fall back to a free-text prompt for the
      replacement.
 
    When two or more suggestions clearly belong together (same module/folder),
-   offer a fourth option to merge them into one card before pushing.
+   offer a fifth option to merge them into one card before pushing.
+
+   **Sub-step 8a — Per-mutant equivalence review.** For each survived mutant
+   in the class, show the line, mutator, original, replacement, and
+   explanation, then ask: "Equivalent (dismiss) or killable (include in card)?"
+
+   For each mutant marked **equivalent**, output the exact dismissal comment
+   to add to the source file:
+
+   > Add to `<file>`, line `<N-1>` (the line above the expression):
+   > ```
+   > // Stryker disable once <MutatorName>
+   > ```
+   > After adding this comment, re-run `mutation.ps1`. Stryker will mark the
+   > mutant `Ignored` and it will not appear in future `survived[]` arrays.
+
+   After reviewing all mutants for the class:
+   - **All dismissed** → do NOT file a card; record the class as
+     `all-dismissed` in the step 9 summary table.
+   - **Some remain** → include only the non-dismissed mutants in
+     `### Survived mutants` when filing the card.
 
    Push confirmed cards using `bishop card add` per `Card Push Procedure` (in `conventions`). Use `--tag test`.
 
@@ -250,6 +292,7 @@ does not subsume brittle mocks.
    | `Foo` | 92% | 45% | `tests/.../FooTests.cs` | card #N |
    | `Bar` | 100% | 72% | `tests/.../BarTests.cs` | clean |
    | `Baz` | 88% | 38% | _none found_ | skipped — no test file |
+   | `Qux` | 90% | 35% | `tests/.../QuxTests.cs` | all-dismissed |
 
    Then offer:
 
@@ -277,5 +320,8 @@ does not subsume brittle mocks.
 - Do NOT invent test gaps from first principles. All mutation findings must
   come from the `survived[]` array in `mutation-summary.json`. The Explore
   step explains and proposes assertions; it does not generate new gaps.
+- Do NOT file a card when all survived mutants in a class have been marked
+  equivalent — record the class as `all-dismissed` in the summary table
+  instead.
 
 </guardrails>

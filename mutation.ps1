@@ -85,6 +85,7 @@ if ($null -eq $reportJson) {
 
         $mutants  = @($fileEntry.mutants)
         $killed   = @($mutants | Where-Object { $_.status -eq 'Killed' -or $_.status -eq 'Timeout' })
+        # Mutants annotated with `// Stryker disable once` carry status 'Ignored' and are excluded here automatically.
         $survived = @($mutants | Where-Object { $_.status -eq 'Survived' })
         $covered  = $killed.Count + $survived.Count
 
