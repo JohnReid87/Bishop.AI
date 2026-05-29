@@ -62,4 +62,42 @@ public sealed class CardResolverTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*deadbeef*");
     }
+
+    [Fact]
+    public async Task ResolveAsync_HashPrefixedNumber_ResolvesSameCardAsPlainNumber()
+    {
+        var ws = MakeWorkspace();
+        var card = MakeCard(ws.Id, number: 42);
+        var resolver = new CardResolver(BuildMediator(ws, cardByNumber: card));
+
+        var result = await resolver.ResolveAsync(ws.Name, "#42");
+
+        result.Should().NotBeNull();
+        result!.Value.cardId.Should().Be(card.Id);
+        result.Value.cardNumber.Should().Be(42);
+        result.Value.ws.Id.Should().Be(ws.Id);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_CardNotFound_ThrowsInvalidOperationExceptionWithCardNumber()
+    {
+        var ws = MakeWorkspace();
+        var resolver = new CardResolver(BuildMediator(ws, cardByNumber: null));
+
+        var act = () => resolver.ResolveAsync(ws.Name, "42");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*#42*");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_EmptyStringInput_ThrowsInvalidOperationException()
+    {
+        var ws = MakeWorkspace();
+        var resolver = new CardResolver(BuildMediator(ws));
+
+        var act = () => resolver.ResolveAsync(ws.Name, "");
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
 }
