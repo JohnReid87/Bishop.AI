@@ -31,8 +31,6 @@ public class CodeBehindLayerRuleTests
         {
             ["App.xaml.cs"] = "DI composition root — sanctioned Bishop.App reference",
             ["WorkspaceDetailPage.xaml.cs"] = "card #752",
-            ["CardDetailDialog.xaml.cs"] = "card #751",
-            ["SettingsDialog.xaml.cs"] = "card #751",
         };
 
     [Fact]

@@ -32,6 +32,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     public bool IsCardSkillsButtonVisible { get; set; }
 
+    public string WorkspacePath { get; set; } = string.Empty;
+
     public SkillMenuItem[] CardSkills { get; private set; } = [];
     public SkillMenuItem[] WorkspaceSkills { get; private set; } = [];
 
@@ -235,14 +237,61 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         IsCardSkillsButtonVisible = CardSkills.Length > 0;
     }
 
-    public async Task LaunchSkillAsync(string workspacePath, string rendered, TerminalSnap snap, string? modelId)
-        => await _mediator.Send(new LaunchSkillCommand(workspacePath, rendered, snap, modelId));
+    public Task<IReadOnlyList<SkillLaunchItem>> BuildWorkspaceSkillLaunchItemsAsync() =>
+        BuildLaunchItemsAsync(WorkspaceSkills, card: null);
 
-    public async Task<string?> GetSkillModelAsync(string skillName)
-        => SkillModelOptions.ResolveModelId(await _appSettings.GetAsync($"skill.{skillName}.last_model"));
+    public Task<IReadOnlyList<SkillLaunchItem>> BuildCardSkillLaunchItemsAsync(CardViewModel card) =>
+        BuildLaunchItemsAsync(CardSkills, card);
+
+    public async Task LaunchAsync(SkillLaunchItem item, string? stagedText, TerminalSnap snap, string modelId)
+    {
+        var command = string.IsNullOrWhiteSpace(stagedText)
+            ? item.RenderedCommand
+            : $"{item.RenderedCommand} {stagedText}";
+        await _mediator.Send(new LaunchSkillCommand(WorkspacePath, command, snap, modelId));
+    }
+
+    public async Task LaunchWorkspaceSkillByNameAsync(string skillName, string modelId, TerminalSnap snap)
+    {
+        var menuItem = WorkspaceSkills.FirstOrDefault(s => string.Equals(s.Skill.Name, skillName, StringComparison.OrdinalIgnoreCase));
+        if (menuItem is null) return;
+        var item = await BuildLaunchItemAsync(menuItem, card: null);
+        await LaunchAsync(item, stagedText: null, snap, modelId);
+    }
 
     public async Task SetSkillModelAsync(string skillName, string modelId)
         => await _appSettings.SetAsync($"skill.{skillName}.last_model", modelId);
+
+    private async Task<IReadOnlyList<SkillLaunchItem>> BuildLaunchItemsAsync(SkillMenuItem[] source, CardViewModel? card)
+    {
+        var items = new List<SkillLaunchItem>(source.Length);
+        foreach (var menuItem in source)
+            items.Add(await BuildLaunchItemAsync(menuItem, card));
+        return items;
+    }
+
+    private async Task<SkillLaunchItem> BuildLaunchItemAsync(SkillMenuItem menuItem, CardViewModel? card)
+    {
+        var skill = menuItem.Skill;
+        var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, WorkspacePath);
+        var savedModel = SkillModelOptions.ResolveModelId(
+            await _appSettings.GetAsync($"skill.{skill.Name}.last_model"));
+
+        var requiresStage = SkillStaging.ShouldShowStageDialog(skill, hasCard: card is not null);
+        var prefill = skill.StagePrefill is null
+            ? null
+            : SkillCommandRenderer.Render(skill.StagePrefill, card?.Number, card?.Title, card?.Description, WorkspacePath).Trim();
+
+        return new SkillLaunchItem(
+            Name: menuItem.Name,
+            GroupHeader: menuItem.GroupHeader,
+            SavedModelId: savedModel,
+            RenderedCommand: rendered,
+            RequiresStage: requiresStage,
+            StagePrompt: skill.StagePrompt,
+            StagePrefill: string.IsNullOrEmpty(prefill) ? null : prefill,
+            MarkdownBody: skill.MarkdownBody);
+    }
 
     // ── Workspace launch ─────────────────────────────────────────────────────
 

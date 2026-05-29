@@ -440,11 +440,36 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
 
     // ── Skill launch + model persistence ─────────────────────────────────────
 
-    public async Task LaunchSkillAsync(string rendered, TerminalSnap snap, string? modelId = null)
-        => await _mediator.Send(new LaunchSkillCommand(_workspacePath, rendered, snap, modelId));
+    public async Task<IReadOnlyList<SkillLaunchItem>> BuildSkillLaunchItemsAsync()
+    {
+        var items = new List<SkillLaunchItem>(CardSkills.Length);
+        foreach (var menuItem in CardSkills)
+        {
+            var skill = menuItem.Skill;
+            var rendered = SkillCommandRenderer.Render(skill.Command!, Number, Title, Description, _workspacePath);
+            var savedModel = SkillModelOptions.ResolveModelId(
+                await _appSettings.GetAsync($"skill.{skill.Name}.last_model"));
 
-    public async Task<string?> GetSkillModelAsync(string skillName)
-        => SkillModelOptions.ResolveModelId(await _appSettings.GetAsync($"skill.{skillName}.last_model"));
+            items.Add(new SkillLaunchItem(
+                Name: menuItem.Name,
+                GroupHeader: menuItem.GroupHeader,
+                SavedModelId: savedModel,
+                RenderedCommand: rendered,
+                RequiresStage: SkillStaging.ShouldShowStageDialog(skill, hasCard: true),
+                StagePrompt: skill.StagePrompt,
+                StagePrefill: null,
+                MarkdownBody: skill.MarkdownBody));
+        }
+        return items;
+    }
+
+    public async Task LaunchAsync(SkillLaunchItem item, string? stagedText, TerminalSnap snap, string modelId)
+    {
+        var command = string.IsNullOrWhiteSpace(stagedText)
+            ? item.RenderedCommand
+            : $"{item.RenderedCommand} {stagedText}";
+        await _mediator.Send(new LaunchSkillCommand(_workspacePath, command, snap, modelId));
+    }
 
     public async Task SetSkillModelAsync(string skillName, string modelId)
         => await _appSettings.SetAsync($"skill.{skillName}.last_model", modelId);

@@ -17,7 +17,7 @@ public sealed partial class BishopSettingsViewModel : ObservableObject
 
     public string WorkspacePath { get; set; } = string.Empty;
 
-    public ObservableCollection<InstalledSkill> MetaSkills { get; } = [];
+    public ObservableCollection<SkillLaunchItem> MetaSkills { get; } = [];
 
     public BishopSettingsViewModel(ISender mediator, IAppSettings appSettings)
     {
@@ -28,28 +28,50 @@ public sealed partial class BishopSettingsViewModel : ObservableObject
     public async Task LoadAsync()
     {
         var skills = await _mediator.Send(new DiscoverSkillsQuery());
+        var path = ResolveWorkspacePath();
         MetaSkills.Clear();
-        foreach (var s in skills.Where(s => s.Category == SkillCategory.Meta))
-            MetaSkills.Add(s);
+        foreach (var skill in skills.Where(s => s.Category == SkillCategory.Meta))
+            MetaSkills.Add(await BuildLaunchItemAsync(skill, path));
     }
 
-    public async Task LaunchAsync(InstalledSkill skill)
+    public async Task LaunchAsync(SkillLaunchItem item, string? stagedText, TerminalSnap snap, string modelId)
     {
-        var command = string.IsNullOrWhiteSpace(skill.Command)
-            ? $"/{skill.Name}"
-            : skill.Command;
-        var path = string.IsNullOrWhiteSpace(WorkspacePath)
-            ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-            : WorkspacePath;
-        await _mediator.Send(new LaunchSkillCommand(path, command));
+        var command = string.IsNullOrWhiteSpace(stagedText)
+            ? item.RenderedCommand
+            : $"{item.RenderedCommand} {stagedText}";
+        await _mediator.Send(new LaunchSkillCommand(ResolveWorkspacePath(), command, snap, modelId));
     }
-
-    public async Task LaunchCommandAsync(string workspacePath, string command, TerminalSnap snap, string? modelId)
-        => await _mediator.Send(new LaunchSkillCommand(workspacePath, command, snap, modelId));
-
-    public async Task<string?> GetSkillModelAsync(string skillName)
-        => SkillModelOptions.ResolveModelId(await _appSettings.GetAsync($"skill.{skillName}.last_model"));
 
     public async Task SetSkillModelAsync(string skillName, string modelId)
         => await _appSettings.SetAsync($"skill.{skillName}.last_model", modelId);
+
+    private async Task<SkillLaunchItem> BuildLaunchItemAsync(InstalledSkill skill, string workspacePath)
+    {
+        var command = string.IsNullOrWhiteSpace(skill.Command)
+            ? $"/{skill.Name}"
+            : SkillCommandRenderer.Render(skill.Command, null, null, null, workspacePath);
+
+        var savedModel = SkillModelOptions.ResolveModelId(
+            await _appSettings.GetAsync($"skill.{skill.Name}.last_model"));
+
+        var requiresStage = SkillStaging.ShouldShowStageDialog(skill, hasCard: false);
+        var prefill = skill.StagePrefill is null
+            ? null
+            : SkillCommandRenderer.Render(skill.StagePrefill, null, null, null, workspacePath).Trim();
+
+        return new SkillLaunchItem(
+            Name: skill.Name,
+            GroupHeader: null,
+            SavedModelId: savedModel,
+            RenderedCommand: command,
+            RequiresStage: requiresStage,
+            StagePrompt: skill.StagePrompt,
+            StagePrefill: string.IsNullOrEmpty(prefill) ? null : prefill,
+            MarkdownBody: skill.MarkdownBody);
+    }
+
+    private string ResolveWorkspacePath() =>
+        string.IsNullOrWhiteSpace(WorkspacePath)
+            ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+            : WorkspacePath;
 }

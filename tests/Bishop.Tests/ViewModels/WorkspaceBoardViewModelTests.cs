@@ -1412,39 +1412,112 @@ public class WorkspaceBoardViewModelTests
     }
 
     [Fact]
-    public async Task LaunchSkillAsync_SendsLaunchSkillCommand()
+    public async Task LaunchAsync_UsesWorkspacePathAndRenderedCommand()
     {
         var (vm, mediator, _) = MakeVm();
         mediator.Send(Arg.Any<LaunchSkillCommand>(), Arg.Any<CancellationToken>()).Returns(true);
+        vm.WorkspacePath = @"C:\repo";
 
-        await vm.LaunchSkillAsync(@"C:\repo", "/bish-work-on-card 42", new TerminalSnap(), "claude-sonnet-4-6");
+        var item = new SkillLaunchItem("bish-arch", null, "claude-sonnet-4-6",
+            RenderedCommand: "/bish-arch", RequiresStage: false, StagePrompt: null, StagePrefill: null, MarkdownBody: "");
+
+        await vm.LaunchAsync(item, stagedText: null, new TerminalSnap(), "claude-opus-4-7");
 
         await mediator.Received(1).Send(
-            Arg.Is<LaunchSkillCommand>(c => c.WorkspacePath == @"C:\repo" && c.RenderedCommand == "/bish-work-on-card 42"),
+            Arg.Is<LaunchSkillCommand>(c =>
+                c.WorkspacePath == @"C:\repo" &&
+                c.RenderedCommand == "/bish-arch" &&
+                c.ModelId == "claude-opus-4-7"),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task GetSkillModelAsync_ReadsFromAppSettings()
+    public async Task LaunchAsync_AppendsStagedTextToRenderedCommand()
     {
-        var (vm, _, appSettings) = MakeVm();
-        appSettings.GetAsync("skill.bish-arch.last_model", Arg.Any<CancellationToken>())
-            .Returns("claude-opus-4-7");
+        var (vm, mediator, _) = MakeVm();
+        mediator.Send(Arg.Any<LaunchSkillCommand>(), Arg.Any<CancellationToken>()).Returns(true);
+        vm.WorkspacePath = @"C:\repo";
 
-        var result = await vm.GetSkillModelAsync("bish-arch");
+        var item = new SkillLaunchItem("bish-write-skill", null, "claude-sonnet-4-6",
+            RenderedCommand: "/bish-write-skill", RequiresStage: true, StagePrompt: null, StagePrefill: null, MarkdownBody: "");
 
-        result.Should().Be("claude-opus-4-7");
+        await vm.LaunchAsync(item, stagedText: "new-name", new TerminalSnap(), "claude-sonnet-4-6");
+
+        await mediator.Received(1).Send(
+            Arg.Is<LaunchSkillCommand>(c => c.RenderedCommand == "/bish-write-skill new-name"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task GetSkillModelAsync_ReturnsDefaultWhenSettingAbsent()
+    public async Task BuildWorkspaceSkillLaunchItemsAsync_RendersWithoutCardContextAndPropagatesSavedModel()
     {
-        var (vm, _, appSettings) = MakeVm();
-        appSettings.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((string?)null);
+        var (vm, mediator, appSettings) = MakeVm();
+        mediator.Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<InstalledSkill>
+            {
+                new("bish-arch", "", ["workspace"], "/bish-arch --cd {{workspace_path}}"),
+            });
+        appSettings.GetAsync("skill.bish-arch.last_model", Arg.Any<CancellationToken>())
+            .Returns("claude-opus-4-7");
+        await vm.LoadSkillsAsync();
+        vm.WorkspacePath = @"C:\repo";
 
-        var result = await vm.GetSkillModelAsync("bish-arch");
+        var items = await vm.BuildWorkspaceSkillLaunchItemsAsync();
 
-        result.Should().Be(SkillModelOptions.DefaultModelId);
+        items.Should().ContainSingle();
+        items[0].RenderedCommand.Should().Be(@"/bish-arch --cd C:\repo");
+        items[0].SavedModelId.Should().Be("claude-opus-4-7");
+    }
+
+    [Fact]
+    public async Task BuildCardSkillLaunchItemsAsync_RendersCardPlaceholders()
+    {
+        var (vm, mediator, _) = MakeVm();
+        mediator.Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<InstalledSkill>
+            {
+                new("bish-work-on-card", "", ["card"], "/bish-work-on-card {{card_number}}"),
+            });
+        await vm.LoadSkillsAsync();
+        vm.WorkspacePath = @"C:\repo";
+
+        var card = new CardViewModel { Id = Guid.NewGuid(), Number = 42, Title = "T", Description = "D", LaneName = "Doing" };
+        var items = await vm.BuildCardSkillLaunchItemsAsync(card);
+
+        items.Should().ContainSingle()
+            .Which.RenderedCommand.Should().Be("/bish-work-on-card 42");
+    }
+
+    [Fact]
+    public async Task LaunchWorkspaceSkillByNameAsync_LooksUpAndLaunchesByName()
+    {
+        var (vm, mediator, _) = MakeVm();
+        mediator.Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<InstalledSkill>
+            {
+                new("bish-arch", "", ["workspace"], "/bish-arch"),
+            });
+        mediator.Send(Arg.Any<LaunchSkillCommand>(), Arg.Any<CancellationToken>()).Returns(true);
+        await vm.LoadSkillsAsync();
+        vm.WorkspacePath = @"C:\repo";
+
+        await vm.LaunchWorkspaceSkillByNameAsync("bish-arch", "claude-opus-4-7", new TerminalSnap());
+
+        await mediator.Received(1).Send(
+            Arg.Is<LaunchSkillCommand>(c =>
+                c.WorkspacePath == @"C:\repo" &&
+                c.RenderedCommand == "/bish-arch" &&
+                c.ModelId == "claude-opus-4-7"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LaunchWorkspaceSkillByNameAsync_UnknownNameIsNoOp()
+    {
+        var (vm, mediator, _) = MakeVm();
+        await vm.LaunchWorkspaceSkillByNameAsync("missing", "claude-sonnet-4-6", new TerminalSnap());
+
+        await mediator.DidNotReceive().Send(Arg.Any<LaunchSkillCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

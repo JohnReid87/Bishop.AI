@@ -4,10 +4,8 @@ using Bishop.App.Git;
 using Bishop.App.Git.GetRecentCommits;
 using Bishop.App.Git.Push;
 using Bishop.App.Services.Terminal;
-using Bishop.App.Skills;
 using Bishop.UI.Services;
 using Bishop.ViewModels;
-using Bishop.Core.Skills;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.IO;
@@ -146,6 +144,7 @@ public sealed partial class WorkspaceDetailPage : Page
             WorkspaceNameText.Text = vm.Name;
             WorkspacePathText.Text = vm.Path;
             ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
+            Board.WorkspacePath = vm.Path;
             UpdatePathStatus();
             ApplyGitHubRepoToBacklogLane();
             ApplyGitHubRepoToDoneLane();
@@ -202,31 +201,27 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             if (_item is null || Board.WorkspaceSkills.Length == 0) return;
 
+            var items = await Board.BuildWorkspaceSkillLaunchItemsAsync();
             var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
             var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
 
-            foreach (var item in Board.WorkspaceSkills)
+            foreach (var item in items)
             {
                 if (item.GroupHeader is not null)
                     panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
 
-                var skill = item.Skill;
-                var rendered = SkillCommandRenderer.Render(skill.Command!, null, null, null, _item.Path);
-                var workspacePath = _item.Path;
-                var settingKey = skill.Name;
-                var savedModel = await Board.GetSkillModelAsync(settingKey);
-
-                panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel,
+                var captured = item;
+                panel.Children.Add(SkillRowFactory.MakeRow(captured.Name, captured.SavedModelId,
                     onLaunch: async chosenModel =>
                     {
-                        await Board.SetSkillModelAsync(settingKey, chosenModel);
+                        await Board.SetSkillModelAsync(captured.Name, chosenModel);
                         flyout.Hide();
-                        await LaunchSkillAsync(skill, rendered, workspacePath, card: null, chosenModel);
+                        await LaunchSkillAsync(captured, chosenModel);
                     },
                     onView: () =>
                     {
                         flyout.Hide();
-                        App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
+                        App.MarkdownViewer!.ShowContent(captured.Name, captured.MarkdownBody);
                         return Task.CompletedTask;
                     }));
             }
@@ -574,31 +569,27 @@ public sealed partial class WorkspaceDetailPage : Page
             if (_item is null || Board.CardSkills.Length == 0) return;
             if (GetCardFromSender(sender) is not CardViewModel card) return;
 
+            var items = await Board.BuildCardSkillLaunchItemsAsync(card);
             var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
             var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
 
-            foreach (var item in Board.CardSkills)
+            foreach (var item in items)
             {
                 if (item.GroupHeader is not null)
                     panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
 
-                var skill = item.Skill;
-                var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, _item.Path);
-                var workspacePath = _item.Path;
-                var settingKey = skill.Name;
-                var savedModel = await Board.GetSkillModelAsync(settingKey);
-
-                panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel,
+                var captured = item;
+                panel.Children.Add(SkillRowFactory.MakeRow(captured.Name, captured.SavedModelId,
                     onLaunch: async chosenModel =>
                     {
-                        await Board.SetSkillModelAsync(settingKey, chosenModel);
+                        await Board.SetSkillModelAsync(captured.Name, chosenModel);
                         flyout.Hide();
-                        await LaunchSkillAsync(skill, rendered, workspacePath, card, chosenModel);
+                        await LaunchSkillAsync(captured, chosenModel);
                     },
                     onView: () =>
                     {
                         flyout.Hide();
-                        App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
+                        App.MarkdownViewer!.ShowContent(captured.Name, captured.MarkdownBody);
                         return Task.CompletedTask;
                     }));
             }
@@ -676,24 +667,17 @@ public sealed partial class WorkspaceDetailPage : Page
         flyout.ShowAt(anchor);
     }
 
-    private async Task LaunchSkillAsync(InstalledSkill skill, string rendered, string workspacePath, CardViewModel? card, string? modelId = null)
+    private async Task LaunchSkillAsync(SkillLaunchItem item, string modelId)
     {
-        if (SkillStaging.ShouldShowStageDialog(skill, card is not null))
+        string? stagedText = null;
+        if (item.RequiresStage)
         {
-            var prefill = skill.StagePrefill is null
-                ? null
-                : SkillCommandRenderer.Render(skill.StagePrefill, card?.Number, card?.Title, card?.Description, workspacePath).Trim();
-            var initialText = string.IsNullOrEmpty(prefill) ? null : prefill;
-            var dialog = new SkillStageDialog(skill.Name, skill.StagePrompt, initialText) { XamlRoot = XamlRoot };
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
-                return;
-
-            var input = dialog.InputText?.Trim() ?? string.Empty;
-            if (input.Length > 0)
-                rendered = $"{rendered} {input}";
+            var dialog = new SkillStageDialog(item.Name, item.StagePrompt, item.StagePrefill) { XamlRoot = XamlRoot };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+            stagedText = dialog.InputText?.Trim();
         }
 
-        await Board.LaunchSkillAsync(workspacePath, rendered, SnapHelper.ComputeSnap(), modelId);
+        await Board.LaunchAsync(item, stagedText, SnapHelper.ComputeSnap(), modelId);
     }
 
     private async void RunNowSkillButton_Click(object sender, RoutedEventArgs e)
@@ -701,10 +685,7 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             if (_item is null) return;
             if ((sender as FrameworkElement)?.DataContext is not SkillRunRowViewModel row) return;
-            var skillItem = Board.WorkspaceSkills.FirstOrDefault(s => string.Equals(s.Skill.Name, row.SkillName, StringComparison.OrdinalIgnoreCase));
-            if (skillItem is null) return;
-            var rendered = SkillCommandRenderer.Render(skillItem.Skill.Command!, null, null, null, _item.Path);
-            await LaunchSkillAsync(skillItem.Skill, rendered, _item.Path, card: null, modelId: row.SelectedModelId);
+            await Board.LaunchWorkspaceSkillByNameAsync(row.SkillName, row.SelectedModelId, SnapHelper.ComputeSnap());
         });
 
     private static FrameworkElement MakeCategoryHeader(string text) =>

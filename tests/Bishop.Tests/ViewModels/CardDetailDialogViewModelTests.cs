@@ -895,7 +895,69 @@ public class CardDetailDialogViewModelTests
     }
 
     [Fact]
-    public async Task LaunchSkillAsync_SendsLaunchSkillCommand()
+    public async Task BuildSkillLaunchItemsAsync_RendersCardContextIntoCommand()
+    {
+        var menuItem = new Bishop.App.Skills.SkillMenuItem(
+            Name: "bish-work-on-card",
+            Skill: new Bishop.Core.Skills.InstalledSkill(
+                Name: "bish-work-on-card",
+                Description: "",
+                Scope: ["card"],
+                Command: "/bish-work-on-card {{card_number}}"));
+
+        var card = new CardViewModel { Id = Guid.NewGuid(), Number = 42, Title = "T", Description = "D", LaneName = "Doing" };
+        var vm = new CardDetailDialogViewModel(
+            card, [menuItem], Guid.NewGuid(), null, Substitute.For<IMediator>(),
+            Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
+            NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+
+        var items = await vm.BuildSkillLaunchItemsAsync();
+
+        items.Should().ContainSingle()
+            .Which.RenderedCommand.Should().Be("/bish-work-on-card 42");
+    }
+
+    [Fact]
+    public async Task BuildSkillLaunchItemsAsync_PropagatesSavedModelFromAppSettings()
+    {
+        var menuItem = new Bishop.App.Skills.SkillMenuItem(
+            Name: "bish-arch",
+            Skill: new Bishop.Core.Skills.InstalledSkill(
+                Name: "bish-arch", Description: "", Scope: ["card"], Command: "/bish-arch"));
+
+        var appSettings = Substitute.For<Bishop.App.Services.Settings.IAppSettings>();
+        appSettings.GetAsync("skill.bish-arch.last_model", Arg.Any<CancellationToken>())
+            .Returns("claude-opus-4-7");
+        var vm = new CardDetailDialogViewModel(
+            NewCard(), [menuItem], Guid.NewGuid(), null, Substitute.For<IMediator>(), appSettings,
+            string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+
+        var items = await vm.BuildSkillLaunchItemsAsync();
+
+        items.Single().SavedModelId.Should().Be("claude-opus-4-7");
+    }
+
+    [Fact]
+    public async Task BuildSkillLaunchItemsAsync_NeverRequiresStageForCardContext()
+    {
+        var menuItem = new Bishop.App.Skills.SkillMenuItem(
+            Name: "bish-write-skill",
+            Skill: new Bishop.Core.Skills.InstalledSkill(
+                Name: "bish-write-skill", Description: "", Scope: ["card"], Command: "/bish-write-skill",
+                Stage: true, StagePrompt: "Name?"));
+
+        var vm = new CardDetailDialogViewModel(
+            NewCard(), [menuItem], Guid.NewGuid(), null, Substitute.For<IMediator>(),
+            Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
+            NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+
+        var items = await vm.BuildSkillLaunchItemsAsync();
+
+        items.Single().RequiresStage.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task LaunchAsync_SendsLaunchSkillCommandWithRenderedCommand()
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<Bishop.App.Skills.LaunchSkill.LaunchSkillCommand>(), Arg.Any<CancellationToken>())
@@ -905,27 +967,16 @@ public class CardDetailDialogViewModelTests
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
             NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
-        await vm.LaunchSkillAsync("/bish-work-on-card 42", new Bishop.App.Services.Terminal.TerminalSnap(), "claude-sonnet-4-6");
+        var item = new SkillLaunchItem("bish-work-on-card", null, "claude-sonnet-4-6",
+            RenderedCommand: "/bish-work-on-card 42", RequiresStage: false, StagePrompt: null, StagePrefill: null, MarkdownBody: "");
+
+        await vm.LaunchAsync(item, stagedText: null, new Bishop.App.Services.Terminal.TerminalSnap(), "claude-sonnet-4-6");
 
         await mediator.Received(1).Send(
             Arg.Is<Bishop.App.Skills.LaunchSkill.LaunchSkillCommand>(c =>
                 c.WorkspacePath == @"C:\repo" &&
                 c.RenderedCommand == "/bish-work-on-card 42"),
             Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task GetSkillModelAsync_ReadsFromAppSettings()
-    {
-        var mediator = Substitute.For<IMediator>();
-        var appSettings = Substitute.For<Bishop.App.Services.Settings.IAppSettings>();
-        appSettings.GetAsync("skill.bish-arch.last_model", Arg.Any<CancellationToken>())
-            .Returns("claude-opus-4-7");
-        var vm = new CardDetailDialogViewModel(NewCard(), [], Guid.NewGuid(), null, mediator, appSettings, string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
-
-        var result = await vm.GetSkillModelAsync("bish-arch");
-
-        result.Should().Be("claude-opus-4-7");
     }
 
     [Fact]
@@ -987,18 +1038,22 @@ public class CardDetailDialogViewModelTests
     }
 
     [Fact]
-    public async Task GetSkillModelAsync_NullSavedModel_ReturnsDefault()
+    public async Task BuildSkillLaunchItemsAsync_NullSavedModel_FallsBackToDefault()
     {
+        var menuItem = new Bishop.App.Skills.SkillMenuItem(
+            Name: "bish-arch",
+            Skill: new Bishop.Core.Skills.InstalledSkill(
+                Name: "bish-arch", Description: "", Scope: ["card"], Command: "/bish-arch"));
         var appSettings = Substitute.For<Bishop.App.Services.Settings.IAppSettings>();
         appSettings.GetAsync("skill.bish-arch.last_model", Arg.Any<CancellationToken>())
             .Returns((string?)null);
         var vm = new CardDetailDialogViewModel(
-            NewCard(), [], Guid.NewGuid(), null, Substitute.For<IMediator>(), appSettings,
+            NewCard(), [menuItem], Guid.NewGuid(), null, Substitute.For<IMediator>(), appSettings,
             string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
-        var result = await vm.GetSkillModelAsync("bish-arch");
+        var items = await vm.BuildSkillLaunchItemsAsync();
 
-        result.Should().Be(Bishop.App.Skills.SkillModelOptions.DefaultModelId);
+        items.Single().SavedModelId.Should().Be(Bishop.App.Skills.SkillModelOptions.DefaultModelId);
     }
 
     [Fact]

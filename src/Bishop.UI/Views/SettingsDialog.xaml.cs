@@ -1,5 +1,3 @@
-using Bishop.App.Skills;
-using Bishop.Core.Skills;
 using Bishop.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -20,23 +18,19 @@ public sealed partial class SettingsDialog : ContentDialog
     private async Task LoadSkillsAsync()
     {
         await ViewModel.Skills.LoadAsync();
-        var workspacePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-        foreach (var skill in ViewModel.Skills.MetaSkills)
+        foreach (var item in ViewModel.Skills.MetaSkills)
         {
-            var capturedSkill = skill;
-            var settingKey = skill.Name;
-            var savedModel = await ViewModel.Skills.GetSkillModelAsync(settingKey);
-
+            var captured = item;
             SkillsPanel.Children.Add(SkillRowFactory.MakeRow(
-                skill.Name,
-                savedModel,
-                onLaunch: async chosenModel =>
+                captured.Name,
+                captured.SavedModelId,
+                onLaunch: chosenModel => LaunchAsync(captured, chosenModel),
+                onView: () =>
                 {
-                    await ViewModel.Skills.SetSkillModelAsync(settingKey, chosenModel);
-                    await LaunchMetaSkillAsync(capturedSkill, workspacePath, chosenModel);
-                },
-                onView: async () => await ShowSkillContentAsync(capturedSkill)));
+                    App.MarkdownViewer!.ShowContent(captured.Name, captured.MarkdownBody);
+                    return Task.CompletedTask;
+                }));
         }
 
         if (ViewModel.Skills.MetaSkills.Count == 0)
@@ -48,31 +42,20 @@ public sealed partial class SettingsDialog : ContentDialog
             });
     }
 
-    private async Task LaunchMetaSkillAsync(InstalledSkill skill, string workspacePath, string? modelId)
+    private async Task LaunchAsync(SkillLaunchItem item, string chosenModel)
     {
-        var command = string.IsNullOrWhiteSpace(skill.Command)
-            ? $"/{skill.Name}"
-            : SkillCommandRenderer.Render(skill.Command, null, null, null, workspacePath);
+        await ViewModel.Skills.SetSkillModelAsync(item.Name, chosenModel);
 
-        if (SkillStaging.ShouldShowStageDialog(skill, hasCard: false))
+        string? stagedText = null;
+        if (item.RequiresStage)
         {
-            var prefill = skill.StagePrefill is null
-                ? null
-                : SkillCommandRenderer.Render(skill.StagePrefill, null, null, null, workspacePath).Trim();
-            var stageDialog = new SkillStageDialog(skill.Name, skill.StagePrompt, prefill?.Length > 0 ? prefill : null) { XamlRoot = XamlRoot };
-            if (await stageDialog.ShowAsync() != ContentDialogResult.Primary) return;
-            var input = stageDialog.InputText?.Trim() ?? string.Empty;
-            if (input.Length > 0) command = $"{command} {input}";
+            var dialog = new SkillStageDialog(item.Name, item.StagePrompt, item.StagePrefill) { XamlRoot = XamlRoot };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+            stagedText = dialog.InputText?.Trim();
         }
 
-        await ViewModel.Skills.LaunchCommandAsync(workspacePath, command, SnapHelper.ComputeSnap(), modelId);
+        await ViewModel.Skills.LaunchAsync(item, stagedText, SnapHelper.ComputeSnap(), chosenModel);
     }
 
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
-
-    private Task ShowSkillContentAsync(InstalledSkill skill)
-    {
-        App.MarkdownViewer!.ShowContent(skill.Name, skill.MarkdownBody);
-        return Task.CompletedTask;
-    }
 }

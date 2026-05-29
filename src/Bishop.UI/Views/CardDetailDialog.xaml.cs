@@ -1,4 +1,3 @@
-using Bishop.App.Skills;
 using Bishop.ViewModels;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
@@ -226,24 +225,21 @@ public sealed partial class CardDetailDialog : ContentDialog
         {
             if (ViewModel.CardSkills.Length == 0) return;
 
+            var items = await ViewModel.BuildSkillLaunchItemsAsync();
             var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
             var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
 
-            foreach (var item in ViewModel.CardSkills)
+            foreach (var item in items)
             {
                 if (item.GroupHeader is not null)
                     panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
 
-                var skill = item.Skill;
-                var rendered = SkillCommandRenderer.Render(skill.Command!, ViewModel.Number, ViewModel.Title, ViewModel.Description, ViewModel.WorkspacePath);
-                var settingKey = skill.Name;
-                var savedModel = await ViewModel.GetSkillModelAsync(settingKey);
-
-                panel.Children.Add(SkillRowFactory.MakeRow(item.Name, savedModel, async chosenModel =>
+                var captured = item;
+                panel.Children.Add(SkillRowFactory.MakeRow(captured.Name, captured.SavedModelId, async chosenModel =>
                 {
-                    await ViewModel.SetSkillModelAsync(settingKey, chosenModel);
+                    await ViewModel.SetSkillModelAsync(captured.Name, chosenModel);
                     flyout.Hide();
-                    await ViewModel.LaunchSkillAsync(rendered, SnapHelper.ComputeSnap(), chosenModel);
+                    await ViewModel.LaunchAsync(captured, stagedText: null, SnapHelper.ComputeSnap(), chosenModel);
                 }));
             }
 
