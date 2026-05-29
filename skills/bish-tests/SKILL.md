@@ -4,7 +4,8 @@ description: Audit test quality for coverage-mature classes in the current .NET 
 allowed-tools: Read, Glob, Grep, Agent, AskUserQuestion, Bash(bishop:*)
 bishop.scope: workspace
 bishop.command: /bish-tests
-bishop.stage: false
+bishop.stage: true
+bishop.stage_prompt: "Class name or folder path (leave blank for full workspace)"
 bishop.category: review
 firstRunModel: claude-opus-4-7
 reRunModel: claude-sonnet-4-6
