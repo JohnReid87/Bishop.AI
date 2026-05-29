@@ -8,26 +8,29 @@ namespace Bishop.App.Batches.ListBatches;
 
 public sealed class ListBatchesQueryHandler : IRequestHandler<ListBatchesQuery, IReadOnlyList<BatchSummary>>
 {
-    private readonly IBatchRepository _batches;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGitCli _git;
 
-    public ListBatchesQueryHandler(IBatchRepository batches, IDbContextFactory<BishopDbContext> dbFactory, IGitCli git)
+    public ListBatchesQueryHandler(IDbContextFactory<BishopDbContext> dbFactory, IGitCli git)
     {
-        _batches = batches;
         _dbFactory = dbFactory;
         _git = git;
     }
 
     public async Task<IReadOnlyList<BatchSummary>> Handle(ListBatchesQuery request, CancellationToken cancellationToken)
     {
-        var all = await _batches.ListAsync(request.WorkspaceId, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var all = (await db.Batches.AsNoTracking()
+            .ByWorkspace(request.WorkspaceId)
+            .ToListAsync(cancellationToken))
+            .OrderBy(b => b.CreatedAt)
+            .ToList();
 
         if (all.Count == 0)
             return [];
 
         var batchIds = all.Select(b => b.Id).ToList();
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
         var allCards = await db.Cards.AsNoTracking()
             .Where(c => c.BatchId.HasValue && batchIds.Contains(c.BatchId!.Value))

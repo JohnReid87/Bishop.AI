@@ -2,25 +2,32 @@ using Bishop.App.Git;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.GetBatchPruneCandidates;
 
 public sealed class GetBatchPruneCandidatesQueryHandler
     : IRequestHandler<GetBatchPruneCandidatesQuery, IReadOnlyList<PruneBatchCandidate>>
 {
-    private readonly IBatchRepository _batches;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGitCli _git;
 
-    public GetBatchPruneCandidatesQueryHandler(IBatchRepository batches, IGitCli git)
+    public GetBatchPruneCandidatesQueryHandler(IDbContextFactory<BishopDbContext> dbFactory, IGitCli git)
     {
-        _batches = batches;
+        _dbFactory = dbFactory;
         _git = git;
     }
 
     public async Task<IReadOnlyList<PruneBatchCandidate>> Handle(
         GetBatchPruneCandidatesQuery request, CancellationToken cancellationToken)
     {
-        var allBatches = await _batches.ListAsync(request.WorkspaceId, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var allBatches = (await db.Batches.AsNoTracking()
+            .ByWorkspace(request.WorkspaceId)
+            .ToListAsync(cancellationToken))
+            .OrderBy(b => b.CreatedAt)
+            .ToList();
+
         IEnumerable<Batch> closed = allBatches.Where(b => b.Status == BatchStatus.Closed && b.ClosedAt.HasValue);
 
         if (request.AbandonedOnly)

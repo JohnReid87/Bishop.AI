@@ -2,23 +2,29 @@ using Bishop.App.Git;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.MergeBatch;
 
 public sealed class MergeBatchCommandHandler : IRequestHandler<MergeBatchCommand, MergeBatchResult>
 {
-    private readonly IBatchRepository _batches;
+    private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGitCli _git;
 
-    public MergeBatchCommandHandler(IBatchRepository batches, IGitCli git)
+    public MergeBatchCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, IGitCli git)
     {
-        _batches = batches;
+        _dbFactory = dbFactory;
         _git = git;
     }
 
     public async Task<MergeBatchResult> Handle(MergeBatchCommand request, CancellationToken cancellationToken)
     {
-        var matches = await _batches.GetByNameAsync(request.Name, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var matches = await db.Batches.AsNoTracking()
+            .ByName(request.Name)
+            .ToListAsync(cancellationToken);
+
         if (matches.Count == 0)
             throw new InvalidOperationException($"No batch named '{request.Name}' found.");
         if (matches.Count > 1)

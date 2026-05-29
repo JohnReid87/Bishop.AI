@@ -125,7 +125,6 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
 
     private RunBatchCommandHandler CreateHandler(IGitCli? git = null, IClaudeCliRunner? claude = null, ISender? sender = null)
         => new(
-            new BatchRepository(_factory),
             git ?? GitAlwaysClean(),
             claude ?? ClaudeSucceedsNoHandoff(),
             sender ?? CreateSender(),

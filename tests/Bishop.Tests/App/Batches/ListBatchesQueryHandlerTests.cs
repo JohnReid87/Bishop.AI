@@ -30,9 +30,9 @@ public sealed class ListBatchesQueryHandlerTests : IClassFixture<DbFixture>
                 .Returns(false);
             stub.IsBranchMergedIntoAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(false);
-            return new(Repo(), _factory, stub);
+            return new(_factory, stub);
         }
-        return new(Repo(), _factory, git);
+        return new(_factory, git);
     }
 
     private static string U(string prefix = "b") => $"{prefix}-{Guid.NewGuid():N}"[..20];

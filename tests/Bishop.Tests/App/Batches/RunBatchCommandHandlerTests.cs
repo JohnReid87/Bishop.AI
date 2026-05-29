@@ -174,10 +174,8 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         IGitCli? git = null,
         IClaudeCliRunner? claude = null,
         ISender? sender = null,
-        IBatchRepository? batchRepo = null,
         Exception? contextPackException = null)
         => new(
-            batchRepo ?? new BatchRepository(_factory),
             git ?? GitAlwaysClean(),
             claude ?? ClaudeAlwaysSucceeds(),
             sender ?? CreateSender(contextPackException),
@@ -1004,29 +1002,40 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     // ── stop requested ────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task StoppedAt_SetOnBatch_ExitsLoopEarly_NoCardMoved()
+    public async Task StoppedAt_SetDuringRun_ExitsBeforeNextCard_WithStopRequested()
     {
         var (workspace, lanes) = await CreateWorkspaceAsync();
-        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
-        var batch = await CreateBatchAsync(card.Id);
+        var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
+        var c1 = await AddCardAsync(workspace.Id, todo.Name);
+        var c2 = await AddCardAsync(workspace.Id, todo.Name);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id);
 
-        await using var setupDb = _factory.CreateDbContext();
-        var b = await setupDb.Batches.SingleAsync(x => x.Id == batch.Id);
-        b.StoppedAt = DateTimeOffset.UtcNow;
-        await setupDb.SaveChangesAsync();
-        await setupDb.DisposeAsync();
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                // Simulate an external stop request while card 1 is running
+                await using var db = _factory.CreateDbContext();
+                var b = await db.Batches.SingleAsync(x => x.Id == batch.Id);
+                b.StoppedAt = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync();
+                var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(path, ValidHandoffJson);
+                return new ClaudeRunResult(0, null, 0);
+            });
 
-        var batchRepo = new PreserveStopRequestedBatchRepository(new BatchRepository(_factory));
-
-        var result = await CreateHandler(batchRepo: batchRepo)
+        var result = await CreateHandler(claude: claude)
             .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
         result.StopReason.Should().Be(RunBatchStopReason.StopRequested);
-        result.Succeeded.Should().Be(0);
+        result.Succeeded.Should().Be(1);
         result.FailedCardNumbers.Should().BeNull();
 
-        var savedCard = await _db.Cards.SingleAsync(c => c.Id == card.Id);
-        savedCard.LaneName.Should().Be(SystemLaneNames.ToDo);
+        var savedC1 = await _db.Cards.SingleAsync(c => c.Id == c1.Id);
+        savedC1.LaneName.Should().Be(SystemLaneNames.Done);
+
+        var savedC2 = await _db.Cards.SingleAsync(c => c.Id == c2.Id);
+        savedC2.LaneName.Should().Be(SystemLaneNames.ToDo);
     }
 
     // ── lock file lifecycle ────────────────────────────────────────────────────
@@ -1126,52 +1135,4 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         result.ExternalContentCardNumbers.Should().BeNull();
     }
 
-    private sealed class PreserveStopRequestedBatchRepository : IBatchRepository
-    {
-        private readonly IBatchRepository _inner;
-
-        public PreserveStopRequestedBatchRepository(IBatchRepository inner) => _inner = inner;
-
-        public async Task<Batch> SetStoppedAtAsync(Guid batchId, DateTimeOffset? value, CancellationToken cancellationToken = default)
-        {
-            // no-op: preserves the existing StoppedAt so the StopRequested path can be exercised
-            return (await _inner.GetAsync(batchId, cancellationToken))!;
-        }
-
-        public Task<Batch> CreateAsync(Guid workspaceId, string name, string branchName, string baseBranch, string worktreePath, CancellationToken cancellationToken = default) =>
-            _inner.CreateAsync(workspaceId, name, branchName, baseBranch, worktreePath, cancellationToken);
-
-        public Task<Batch?> GetAsync(Guid batchId, CancellationToken cancellationToken = default) =>
-            _inner.GetAsync(batchId, cancellationToken);
-
-        public Task<Batch?> GetByBranchNameAsync(string branchName, CancellationToken cancellationToken = default) =>
-            _inner.GetByBranchNameAsync(branchName, cancellationToken);
-
-        public Task<IReadOnlyList<Batch>> GetByNameAsync(string name, CancellationToken cancellationToken = default) =>
-            _inner.GetByNameAsync(name, cancellationToken);
-
-        public Task<IReadOnlyList<Batch>> ListAsync(Guid workspaceId, CancellationToken cancellationToken = default) =>
-            _inner.ListAsync(workspaceId, cancellationToken);
-
-        public Task<Batch> TransitionToWorkingAsync(Guid batchId, CancellationToken cancellationToken = default) =>
-            _inner.TransitionToWorkingAsync(batchId, cancellationToken);
-
-        public Task<Batch> CloseAsync(Guid batchId, BatchClosedReason reason, CancellationToken cancellationToken = default) =>
-            _inner.CloseAsync(batchId, reason, cancellationToken);
-
-        public Task AssignCardAsync(Guid batchId, Guid cardId, CancellationToken cancellationToken = default) =>
-            _inner.AssignCardAsync(batchId, cardId, cancellationToken);
-
-        public Task UnassignCardAsync(Guid batchId, Guid cardId, CancellationToken cancellationToken = default) =>
-            _inner.UnassignCardAsync(batchId, cardId, cancellationToken);
-
-        public Task<Batch> RenameAsync(Guid batchId, string newName, CancellationToken cancellationToken = default) =>
-            _inner.RenameAsync(batchId, newName, cancellationToken);
-
-        public Task DeleteAsync(Guid batchId, CancellationToken cancellationToken = default) =>
-            _inner.DeleteAsync(batchId, cancellationToken);
-
-        public Task<Batch> SetFinishedAtAsync(Guid batchId, DateTimeOffset? value, CancellationToken cancellationToken = default) =>
-            _inner.SetFinishedAtAsync(batchId, value, cancellationToken);
-    }
 }

@@ -44,7 +44,7 @@ public sealed class MergeBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     private MergeBatchCommandHandler CreateHandler(IGitCli? git = null) =>
-        new(new BatchRepository(_factory), git ?? GitMergeSucceeds());
+        new(_factory, git ?? GitMergeSucceeds());
 
     // ── status validation ──────────────────────────────────────────────────────
 

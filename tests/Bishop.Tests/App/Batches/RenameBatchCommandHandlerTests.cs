@@ -28,7 +28,7 @@ public sealed class RenameBatchCommandHandlerTests : IClassFixture<DbFixture>
         return await repo.CreateAsync(_wsId, name ?? U("batch"), U("br"), "main", WorktreePath);
     }
 
-    private RenameBatchCommandHandler CreateHandler() => new(new BatchRepository(_factory));
+    private RenameBatchCommandHandler CreateHandler() => new(_factory);
 
     // ── validation ─────────────────────────────────────────────────────────────
 

@@ -23,7 +23,7 @@ public sealed class GetBatchQueryHandlerTests : IClassFixture<DbFixture>
 
     private static string U(string prefix = "x") => $"{prefix}-{Guid.NewGuid():N}"[..20];
     private BatchRepository Repo() => new(_factory);
-    private GetBatchQueryHandler Handler() => new(Repo(), _factory);
+    private GetBatchQueryHandler Handler() => new(_factory);
 
     private async Task<Workspace> CreateWorkspaceAsync()
     {

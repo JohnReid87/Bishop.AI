@@ -10,20 +10,17 @@ namespace Bishop.App.Batches.CleanUpBatch;
 
 public sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCommand, CleanUpBatchResult>
 {
-    private readonly IBatchRepository _batches;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly ISender _sender;
     private readonly IGitCli _git;
     private readonly ILogger<CleanUpBatchCommandHandler> _logger;
 
     public CleanUpBatchCommandHandler(
-        IBatchRepository batches,
         IDbContextFactory<BishopDbContext> dbFactory,
         ISender sender,
         IGitCli git,
         ILogger<CleanUpBatchCommandHandler> logger)
     {
-        _batches = batches;
         _dbFactory = dbFactory;
         _sender = sender;
         _git = git;
@@ -32,7 +29,9 @@ public sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCom
 
     public async Task<CleanUpBatchResult> Handle(CleanUpBatchCommand request, CancellationToken cancellationToken)
     {
-        var matches = await _batches.GetByNameAsync(request.Name, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var matches = await db.Batches.ByName(request.Name).ToListAsync(cancellationToken);
         if (matches.Count == 0)
             throw new InvalidOperationException($"No batch named '{request.Name}' found.");
         if (matches.Count > 1)
@@ -72,10 +71,12 @@ public sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCom
         }
 
         if (batch.Status != BatchStatus.Closed)
-            await _batches.CloseAsync(batch.Id, BatchClosedReason.Finished, cancellationToken);
+        {
+            batch.Close(BatchClosedReason.Finished, DateTimeOffset.UtcNow);
+            await db.SaveChangesAsync(cancellationToken);
+        }
 
         // Close Done-lane cards assigned to this batch
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var doneCards = await db.Cards
             .Where(c => c.BatchId == batch.Id && c.LaneName == SystemLaneNames.Done && !c.IsClosed)
             .OrderBy(c => c.Number)

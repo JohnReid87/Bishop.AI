@@ -19,4 +19,21 @@ public sealed class Batch
 
     [JsonIgnore]
     public ICollection<Card> Cards { get; set; } = [];
+
+    public void TransitionToWorking()
+    {
+        if (Status != BatchStatus.Open)
+            throw new InvalidOperationException(
+                $"Batch must be Open to transition to Working; current status is {Status}.");
+        Status = BatchStatus.Working;
+    }
+
+    public void Close(BatchClosedReason reason, DateTimeOffset now)
+    {
+        if (Status == BatchStatus.Closed)
+            throw new InvalidOperationException($"Batch {Id} is already Closed.");
+        Status = BatchStatus.Closed;
+        ClosedReason = reason;
+        ClosedAt = now;
+    }
 }

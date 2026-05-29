@@ -33,7 +33,7 @@ public sealed class RemoveBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     private RemoveBatchCommandHandler CreateHandler()
-        => new(new BatchRepository(_factory));
+        => new(_factory);
 
     // ── guard: batch not found ─────────────────────────────────────────────────
 

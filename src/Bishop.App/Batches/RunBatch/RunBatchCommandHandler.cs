@@ -18,7 +18,6 @@ namespace Bishop.App.Batches.RunBatch;
 
 public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, RunBatchResult>
 {
-    private readonly IBatchRepository _batches;
     private readonly IGitCli _git;
     private readonly IClaudeCliRunner _claude;
     private readonly ISender _sender;
@@ -26,14 +25,12 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
     private readonly ILogger<RunBatchCommandHandler> _logger;
 
     public RunBatchCommandHandler(
-        IBatchRepository batches,
         IGitCli git,
         IClaudeCliRunner claude,
         ISender sender,
         IDbContextFactory<BishopDbContext> dbFactory,
         ILogger<RunBatchCommandHandler> logger)
     {
-        _batches = batches;
         _git = git;
         _claude = claude;
         _sender = sender;
@@ -43,36 +40,42 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
 
     public async Task<RunBatchResult> Handle(RunBatchCommand request, CancellationToken cancellationToken)
     {
-        var matches = await _batches.GetByNameAsync(request.Name, cancellationToken);
-        if (matches.Count == 0)
-            throw new InvalidOperationException($"No batch named '{request.Name}' found.");
-        if (matches.Count > 1)
-            throw new InvalidOperationException(
-                $"Multiple batches named '{request.Name}' exist; use the branch name to disambiguate: "
-                + string.Join(", ", matches.Select(b => b.BranchName)));
-
-        var batch = matches[0];
-
-        if (!request.Resume)
+        Batch batch;
         {
-            if (batch.Status == BatchStatus.Working)
+            await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+            var matches = await db.Batches.ByName(request.Name).ToListAsync(cancellationToken);
+
+            if (matches.Count == 0)
+                throw new InvalidOperationException($"No batch named '{request.Name}' found.");
+            if (matches.Count > 1)
                 throw new InvalidOperationException(
-                    $"Batch '{request.Name}' is already running (Working); use --resume to continue or abandon it first.");
-            if (batch.Status == BatchStatus.Closed)
-                throw new InvalidOperationException($"Batch '{request.Name}' is closed.");
-            batch = await _batches.TransitionToWorkingAsync(batch.Id, cancellationToken);
-        }
-        else
-        {
-            if (batch.Status != BatchStatus.Working)
-                throw new InvalidOperationException(
-                    $"Batch '{request.Name}' is not in Working state (current: {batch.Status}); remove --resume to start a fresh run.");
+                    $"Multiple batches named '{request.Name}' exist; use the branch name to disambiguate: "
+                    + string.Join(", ", matches.Select(b => b.BranchName)));
+
+            batch = matches[0];
+
+            if (!request.Resume)
+            {
+                if (batch.Status == BatchStatus.Working)
+                    throw new InvalidOperationException(
+                        $"Batch '{request.Name}' is already running (Working); use --resume to continue or abandon it first.");
+                if (batch.Status == BatchStatus.Closed)
+                    throw new InvalidOperationException($"Batch '{request.Name}' is closed.");
+                batch.TransitionToWorking();
+            }
+            else
+            {
+                if (batch.Status != BatchStatus.Working)
+                    throw new InvalidOperationException(
+                        $"Batch '{request.Name}' is not in Working state (current: {batch.Status}); remove --resume to start a fresh run.");
+            }
+
+            batch.StoppedAt = null;
+            await db.SaveChangesAsync(cancellationToken);
         }
 
-        await _batches.SetStoppedAtAsync(batch.Id, null, cancellationToken);
-
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var allCards = await db.Cards.AsNoTracking()
+        await using var cardsDb = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var allCards = await cardsDb.Cards.AsNoTracking()
             .Where(c => c.BatchId == batch.Id)
             .OrderBy(c => c.Number)
             .ToListAsync(cancellationToken);
@@ -111,7 +114,9 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
             {
                 RefreshLockFile(lockPath);
 
-                var current = await _batches.GetAsync(batch.Id, cancellationToken);
+                await using var stopCheckDb = await _dbFactory.CreateDbContextAsync(cancellationToken);
+                var current = await stopCheckDb.Batches.AsNoTracking()
+                    .FirstOrDefaultAsync(b => b.Id == batch.Id, cancellationToken);
                 if (current?.StoppedAt is not null)
                     return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.StopRequested);
 
@@ -162,7 +167,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                         await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
                         await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
                         failedNumbers.Add(card.Number);
-                        await _batches.SetStoppedAtAsync(batch.Id, DateTimeOffset.UtcNow, cancellationToken);
+                        await SetBatchStoppedAtNowAsync(batch.Id, cancellationToken);
                         return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.HandoffMissing);
                     }
 
@@ -182,7 +187,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                         await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
                         await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
                         failedNumbers.Add(card.Number);
-                        await _batches.SetStoppedAtAsync(batch.Id, DateTimeOffset.UtcNow, cancellationToken);
+                        await SetBatchStoppedAtNowAsync(batch.Id, cancellationToken);
                         return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
                     }
 
@@ -203,18 +208,36 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
                     await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
                     failedNumbers.Add(card.Number);
-                    await _batches.SetStoppedAtAsync(batch.Id, DateTimeOffset.UtcNow, cancellationToken);
+                    await SetBatchStoppedAtNowAsync(batch.Id, cancellationToken);
                     return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
                 }
             }
 
-            await _batches.SetFinishedAtAsync(batch.Id, DateTimeOffset.UtcNow, cancellationToken);
+            await SetBatchFinishedAtNowAsync(batch.Id, cancellationToken);
             return new RunBatchResult(succeeded, null, RunBatchStopReason.Finished);
         }
         finally
         {
             DeleteLockFile(lockPath);
         }
+    }
+
+    private async Task SetBatchStoppedAtNowAsync(Guid batchId, CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var b = await db.Batches.FirstOrDefaultAsync(x => x.Id == batchId, cancellationToken)
+            ?? throw new InvalidOperationException($"Batch {batchId} not found.");
+        b.StoppedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SetBatchFinishedAtNowAsync(Guid batchId, CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var b = await db.Batches.FirstOrDefaultAsync(x => x.Id == batchId, cancellationToken)
+            ?? throw new InvalidOperationException($"Batch {batchId} not found.");
+        b.FinishedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private static string LockFilePath(string worktreePath, Guid batchId) =>

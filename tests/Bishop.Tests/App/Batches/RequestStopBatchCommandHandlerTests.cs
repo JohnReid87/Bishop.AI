@@ -31,7 +31,7 @@ public sealed class RequestStopBatchCommandHandlerTests : IClassFixture<DbFixtur
     }
 
     private RequestStopBatchCommandHandler CreateHandler() =>
-        new(new BatchRepository(_factory));
+        new(_factory);
 
     // ── validation ─────────────────────────────────────────────────────────────
 

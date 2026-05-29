@@ -64,7 +64,7 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
     {
         var gh = ghCli ?? Substitute.For<IGhCli>();
         ISender sender = new CleanUpBatchTestSender(_factory, gh);
-        return new(new BatchRepository(_factory), _factory, sender,
+        return new(_factory, sender,
                    git ?? GitMergedNoBranchNoWorktree(),
                    NullLogger<CleanUpBatchCommandHandler>.Instance);
     }
