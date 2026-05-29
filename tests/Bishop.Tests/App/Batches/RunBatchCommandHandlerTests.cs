@@ -10,6 +10,7 @@ using Bishop.App.Git;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Services.Claude;
 using Bishop.App.Services.GitHub;
+using Bishop.App.Skills;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.GetWorkspace;
 using Bishop.Core;
@@ -560,7 +561,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             {
                 var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
                 await File.WriteAllTextAsync(path, ValidHandoffJson);
-                return new ClaudeRunResult(0, new ClaudeRunTotals(1000, 250, 500, 100), 0);
+                return new ClaudeRunResult(0, new ClaudeRunTotals(1000, 250, 500, 100, 0.42m), 0);
             });
 
         await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
@@ -570,8 +571,46 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         saved.TotalOutputTokens.Should().Be(250);
         saved.TotalCacheCreationTokens.Should().Be(500);
         saved.TotalCacheReadTokens.Should().Be(100);
+        saved.TotalCostUsd.Should().Be(0.42m);
         saved.ClaudeRunCount.Should().Be(1);
         saved.LaneName.Should().Be(SystemLaneNames.Done);
+    }
+
+    [Fact]
+    public async Task SuccessfulCard_AppendsCostFindingToDescription()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(path, ValidHandoffJson);
+                return new ClaudeRunResult(0, new ClaudeRunTotals(1000, 250, 500, 100, 0.42m), 0);
+            });
+
+        await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false, ClaudeModels.Sonnet46), default);
+
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.Description.Should().Contain("Auto-run cost (est.):").And.Contain("$0.42");
+    }
+
+    [Fact]
+    public async Task SuccessfulCard_NoCostReported_DoesNotAppendCostFinding()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        // ClaudeAlwaysSucceeds returns null Totals → no cost line
+        await CreateHandler().Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.Description.Should().NotContain("Auto-run cost");
+        saved.TotalCostUsd.Should().Be(0m);
     }
 
     // ── commit recording ───────────────────────────────────────────────────────

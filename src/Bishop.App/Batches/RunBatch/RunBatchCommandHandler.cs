@@ -83,6 +83,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
 
         var succeeded = 0;
         var failedNumbers = new List<int>();
+        var batchCostUsd = 0m;
 
         Workspace? worktreeWorkspace = null;
         if (pendingCards.Count > 0)
@@ -139,13 +140,18 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                 var prompt = $"<bishop-context>\n{contextJson}\n</bishop-context>\n\n/bish-auto-card #{card.Number}";
                 var runResult = await _claude.RunPromptAsync(batch.WorktreePath, prompt, request.Model, card.Number, cancellationToken);
 
-                Console.Out.WriteLine($"exit {runResult.ExitCode}");
+                var runCostUsd = runResult.Totals?.CostUsd ?? 0m;
+                batchCostUsd += runCostUsd;
+                var costEcho = runResult.Totals is null
+                    ? string.Empty
+                    : $"  ·  est. {ClaudeCostFormatter.FormatUsd(runCostUsd)}  ·  batch total {ClaudeCostFormatter.FormatUsd(batchCostUsd)}";
+                Console.Out.WriteLine($"exit {runResult.ExitCode}{costEcho}");
 
                 if (runResult.ExitCode == 0)
                 {
                     var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
                     await _sender.Send(
-                        new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens, totals.CacheCreationTokens, totals.CacheReadTokens),
+                        new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens, totals.CacheCreationTokens, totals.CacheReadTokens, totals.CostUsd),
                         cancellationToken);
 
                     var handoff = await ReadAndDeleteHandoffAsync(batch.WorktreePath, cancellationToken);
@@ -181,9 +187,10 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     }
 
                     await _sender.Send(new SetCardCommitCommand(card.Id, commitHash, batch.BranchName), cancellationToken);
+                    var costFinding = ClaudeCostFormatter.FormatCardFinding(request.Model, runResult.Totals);
                     await _sender.Send(
                         new UpdateCardCommand(card.Id, null, null, false, null,
-                            AppendDescription: handoff.Notes,
+                            AppendDescription: CombineNotes(handoff.Notes, costFinding),
                             ToLaneName: SystemLaneNames.Done,
                             KeepOpen: true),
                         cancellationToken);
@@ -254,6 +261,15 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
         }
 
         return result;
+    }
+
+    private static string? CombineNotes(string? notes, string? costFinding)
+    {
+        if (string.IsNullOrWhiteSpace(costFinding))
+            return notes;
+        if (string.IsNullOrWhiteSpace(notes))
+            return costFinding;
+        return $"{notes}\n\n{costFinding}";
     }
 
     private static string TagToPrefix(string? tag) => tag switch

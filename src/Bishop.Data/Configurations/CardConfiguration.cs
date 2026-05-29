@@ -18,6 +18,7 @@ internal sealed class CardConfiguration : IEntityTypeConfiguration<Card>
         builder.Property(c => c.BranchName).HasMaxLength(300);
         builder.Property(c => c.TotalInputTokens).HasDefaultValue(0);
         builder.Property(c => c.TotalOutputTokens).HasDefaultValue(0);
+        builder.Property(c => c.TotalCostUsd).HasDefaultValue(0m);
         builder.Property(c => c.ClaudeRunCount).HasDefaultValue(0);
         builder.HasOne(c => c.Workspace)
                .WithMany(w => w.Cards)

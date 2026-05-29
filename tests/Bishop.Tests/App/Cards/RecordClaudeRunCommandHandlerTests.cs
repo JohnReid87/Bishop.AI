@@ -91,6 +91,23 @@ public sealed class RecordClaudeRunCommandHandlerTests : IClassFixture<DbFixture
     }
 
     [Fact]
+    public async Task Handle_AccumulatesCostUsd_AcrossRuns()
+    {
+        // Arrange
+        var card = await CreateCardAsync();
+        var sut = new RecordClaudeRunCommandHandler(_factory);
+
+        // Act
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 1000, 300, CostUsd: 0.42m), default);
+        await sut.Handle(new RecordClaudeRunCommand(card.Id, 500, 150, CostUsd: 0.0143m), default);
+
+        // Assert
+        var saved = await _db.Cards.AsNoTracking().SingleAsync(c => c.Id == card.Id);
+        saved.TotalCostUsd.Should().Be(0.4343m);
+        saved.ClaudeRunCount.Should().Be(2);
+    }
+
+    [Fact]
     public async Task Handle_Throws_WhenCardDoesNotExist()
     {
         var sut = new RecordClaudeRunCommandHandler(_factory);

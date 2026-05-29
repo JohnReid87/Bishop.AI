@@ -188,10 +188,11 @@ public sealed class StreamJsonFormatter
             duration = RunFormatting.FormatDuration(TimeSpan.FromMilliseconds(durMs));
         }
 
+        var costUsd = ReadDecimal(root, "total_cost_usd");
         if (TryReadModelUsageTotals(root, out var modelUsageTotals))
-            Totals = modelUsageTotals;
+            Totals = modelUsageTotals! with { CostUsd = costUsd };
         else if (RunningInputTokens > 0 || RunningOutputTokens > 0)
-            Totals = new ClaudeRunTotals(RunningInputTokens, RunningOutputTokens, RunningCacheCreationTokens, RunningCacheReadTokens);
+            Totals = new ClaudeRunTotals(RunningInputTokens, RunningOutputTokens, RunningCacheCreationTokens, RunningCacheReadTokens, costUsd);
 
         var parts = new List<string>
         {
@@ -269,6 +270,17 @@ public sealed class StreamJsonFormatter
             return v;
         }
         return 0;
+    }
+
+    private static decimal ReadDecimal(JsonElement obj, string name)
+    {
+        if (obj.TryGetProperty(name, out var prop)
+            && prop.ValueKind == JsonValueKind.Number
+            && prop.TryGetDecimal(out var v))
+        {
+            return v;
+        }
+        return 0m;
     }
 
     private static bool TryGetMessage(JsonElement root, out JsonElement message)

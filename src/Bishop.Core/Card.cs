@@ -21,6 +21,7 @@ public sealed class Card : IAuditable
     public int TotalOutputTokens { get; set; }
     public int TotalCacheCreationTokens { get; set; }
     public int TotalCacheReadTokens { get; set; }
+    public decimal TotalCostUsd { get; set; }
     public int ClaudeRunCount { get; set; }
     public DateTimeOffset? LastAutoRunFailedAt { get; set; }
 

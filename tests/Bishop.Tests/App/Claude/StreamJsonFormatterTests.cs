@@ -342,7 +342,26 @@ public sealed class StreamJsonFormatterTests
         sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":3100,"output_tokens":900},"content":[{"type":"text","text":"bye"}]}}""");
         sut.Format("""{"type":"result","total_cost_usd":0.12}""");
 
-        sut.Totals.Should().Be(new ClaudeRunTotals(8100, 2400));
+        sut.Totals.Should().Be(new ClaudeRunTotals(8100, 2400, 0, 0, 0.12m));
+    }
+
+    [Fact]
+    public void Totals_CapturesCostUsd_FromResultTotalCostUsd_WithModelUsage()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"result","duration_ms":1000,"total_cost_usd":0.4267,"modelUsage":{"claude-sonnet-4-6":{"inputTokens":443,"outputTokens":18,"cacheCreationInputTokens":8400,"cacheReadInputTokens":23800}}}""");
+
+        sut.Totals.Should().Be(new ClaudeRunTotals(443, 18, 8400, 23800, 0.4267m));
+    }
+
+    [Fact]
+    public void Totals_CostUsdIsZero_WhenResultOmitsTotalCostUsd()
+    {
+        var sut = new StreamJsonFormatter();
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":5000,"output_tokens":1200},"content":[{"type":"text","text":"hi"}]}}""");
+        sut.Format("""{"type":"result","duration_ms":900}""");
+
+        sut.Totals!.CostUsd.Should().Be(0m);
     }
 
     [Fact]

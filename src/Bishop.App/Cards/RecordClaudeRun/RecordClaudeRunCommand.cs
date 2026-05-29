@@ -7,4 +7,5 @@ public sealed record RecordClaudeRunCommand(
     int InputTokens,
     int OutputTokens,
     int CacheCreationTokens = 0,
-    int CacheReadTokens = 0) : IRequest;
+    int CacheReadTokens = 0,
+    decimal CostUsd = 0m) : IRequest;

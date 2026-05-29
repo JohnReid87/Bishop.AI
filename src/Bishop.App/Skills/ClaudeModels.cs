@@ -11,4 +11,14 @@ public static class ClaudeModels
     public const string Opus47Display = "Opus 4.7";
     public const string Sonnet46Display = "Sonnet 4.6";
     public const string Haiku45Display = "Haiku 4.5";
+
+    /// <summary>Friendly display name for a model ID, or the raw ID when unrecognised.</summary>
+    public static string DisplayFor(string modelId) => modelId switch
+    {
+        Opus48 => Opus48Display,
+        Opus47 => Opus47Display,
+        Sonnet46 => Sonnet46Display,
+        Haiku45 => Haiku45Display,
+        _ => modelId,
+    };
 }
