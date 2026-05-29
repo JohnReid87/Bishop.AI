@@ -7,24 +7,11 @@ namespace Bishop.Tests.App.Git;
 public sealed class GetRecentCommitsTests : IDisposable
 {
     private readonly string _tempDir;
-    private readonly string? _gitPath = ResolveGitPath();
 
     public GetRecentCommitsTests()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(_tempDir);
-    }
-
-    private static string? ResolveGitPath()
-    {
-        var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-        foreach (var dir in pathEnv.Split(Path.PathSeparator))
-        {
-            var gitCandidate = Path.Combine(dir, "git.exe");
-            if (File.Exists(gitCandidate))
-                return gitCandidate;
-        }
-        return null;
     }
 
     public void Dispose()
@@ -37,19 +24,7 @@ public sealed class GetRecentCommitsTests : IDisposable
 
     private void Git(params string[] args) => GitInDir(_tempDir, args);
 
-    private void GitInDir(string workingDir, params string[] args)
-    {
-        var gitExe = _gitPath ?? "git";
-        var psi = new System.Diagnostics.ProcessStartInfo(gitExe)
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WorkingDirectory = workingDir,
-        };
-        foreach (var a in args) psi.ArgumentList.Add(a);
-        using var proc = System.Diagnostics.Process.Start(psi)!;
-        proc.WaitForExit();
-    }
+    private static void GitInDir(string workingDir, params string[] args) => TestGit.Run(workingDir, args);
 
     private void InitRepoWithCommit(string subject = "Initial commit")
     {

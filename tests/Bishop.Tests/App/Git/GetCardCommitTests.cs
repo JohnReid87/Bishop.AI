@@ -21,18 +21,7 @@ public sealed class GetCardCommitTests : IDisposable
         Directory.Delete(_tempDir, recursive: true);
     }
 
-    private static void Git(string workingDir, params string[] args)
-    {
-        var psi = new System.Diagnostics.ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WorkingDirectory = workingDir,
-        };
-        foreach (var a in args) psi.ArgumentList.Add(a);
-        using var proc = System.Diagnostics.Process.Start(psi)!;
-        proc.WaitForExit();
-    }
+    private static void Git(string workingDir, params string[] args) => TestGit.Run(workingDir, args);
 
     private void InitRepo()
     {
@@ -141,21 +130,8 @@ public sealed class GetCardCommitTests : IDisposable
         // The most recent commit's hash should not equal the first commit's hash.
         // We verify this by checking the first commit is no longer what git log -1 returns.
         // Re-run with -2 to get both and confirm ordering.
-        var psi = new System.Diagnostics.ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            WorkingDirectory = _tempDir,
-        };
-        psi.ArgumentList.Add("log");
-        psi.ArgumentList.Add("--perl-regexp");
-        psi.ArgumentList.Add("--grep=\\(card #?42\\)");
-        psi.ArgumentList.Add("-2");
-        psi.ArgumentList.Add("--format=%H");
-        using var proc = System.Diagnostics.Process.Start(psi)!;
-        var output = await proc.StandardOutput.ReadToEndAsync();
-        await proc.WaitForExitAsync();
+        var output = TestGit.Capture(
+            _tempDir, "log", "--perl-regexp", "--grep=\\(card #?42\\)", "-2", "--format=%H");
 
         var hashes = output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(h => h.Trim())

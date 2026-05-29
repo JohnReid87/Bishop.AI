@@ -26,18 +26,7 @@ public sealed class WorktreeTests : IDisposable
         Directory.Delete(_root, recursive: true);
     }
 
-    private static void Git(string workingDir, params string[] args)
-    {
-        var psi = new System.Diagnostics.ProcessStartInfo("git")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WorkingDirectory = workingDir,
-        };
-        foreach (var a in args) psi.ArgumentList.Add(a);
-        using var proc = System.Diagnostics.Process.Start(psi)!;
-        proc.WaitForExit();
-    }
+    private static void Git(string workingDir, params string[] args) => TestGit.Run(workingDir, args);
 
     private void InitRepoWithCommit()
     {
