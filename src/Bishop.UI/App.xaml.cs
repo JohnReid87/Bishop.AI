@@ -160,7 +160,11 @@ public partial class App : Application
                     $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}] {ex.GetType().FullName}: {ex.Message}{Environment.NewLine}");
             }
         }
-        catch { } // intentional: file logging is best-effort; failure must not crash the error handler
+        catch (Exception logEx)
+        {
+            // intentional: file logging is best-effort; failure must not crash the error handler
+            Debug.WriteLine($"[Bishop] LogExceptionToFile failed: {logEx.GetType().FullName}: {logEx.Message}");
+        }
 
         Debug.WriteLine($"[Bishop] Unhandled exception: {ex.GetType().FullName}: {ex.Message}");
     }
