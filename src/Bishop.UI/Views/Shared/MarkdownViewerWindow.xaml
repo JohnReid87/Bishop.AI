@@ -1,0 +1,29 @@
+<Window
+    x:Class="Bishop.UI.Views.Shared.MarkdownViewerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    Title="Skill Viewer">
+    <Grid Background="{StaticResource AppSurfaceBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="AppTitleBar" Grid.Row="0"
+              Background="{StaticResource AppSurfaceBrush}">
+            <TextBlock x:Name="TitleText"
+                       VerticalAlignment="Center"
+                       Margin="12,0,0,0"
+                       FontSize="12"
+                       FontFamily="Cascadia Mono, Consolas, Courier New"
+                       Foreground="{StaticResource AppTextPrimaryBrush}"/>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" Padding="16" VerticalScrollBarVisibility="Auto">
+            <controls:MarkdownTextBlock
+                x:Name="MarkdownContent"
+                Foreground="{StaticResource AppTextPrimaryBrush}"/>
+        </ScrollViewer>
+    </Grid>
+</Window>

@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Bishop.UI.Views;
+using Bishop.UI.Views.Cards;
 
 namespace Bishop.UI.Services;
 

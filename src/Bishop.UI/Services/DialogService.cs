@@ -1,7 +1,9 @@
 using Bishop.App.Services.GitHub;
 using Bishop.App.Services.Settings;
 using Bishop.App.Skills;
-using Bishop.UI.Views;
+using Bishop.UI.Views.Cards;
+using Bishop.UI.Views.GitHub;
+using Bishop.UI.Views.Settings;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
 using Bishop.ViewModels.GitHub;

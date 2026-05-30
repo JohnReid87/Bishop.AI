@@ -1,6 +1,6 @@
 using Bishop.App;
 using Bishop.UI.Services;
-using Bishop.UI.Views;
+using Bishop.UI.Views.Shared;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
 using Bishop.ViewModels.Scripts;

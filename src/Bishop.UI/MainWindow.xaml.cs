@@ -1,5 +1,7 @@
 using Bishop.UI.Services;
-using Bishop.UI.Views;
+using Bishop.UI.Views.Game;
+using Bishop.UI.Views.Scripts;
+using Bishop.UI.Views.Workspaces;
 using Bishop.ViewModels.Shared;
 using Bishop.ViewModels.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -262,7 +264,7 @@ public sealed partial class MainWindow : Window
     {
         ViewModel.IsWorkspacelessPageActive = true;
         ViewModel.SelectedWorkspace = null;
-        ContentFrame.Navigate(typeof(Views.ScriptsPage));
+        ContentFrame.Navigate(typeof(ScriptsPage));
     }
 
     private async void SettingsButton_Click(object sender, RoutedEventArgs e)
