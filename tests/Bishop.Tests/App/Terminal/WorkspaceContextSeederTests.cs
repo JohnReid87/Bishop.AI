@@ -121,7 +121,8 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().Contain("`### Acceptance`");
         output.Should().Contain("`### Changes`");
         output.Should().Contain("`### Decided`");
-        output.Should().Contain("--description-file -");
+        output.Should().Contain("--description-file");
+        output.Should().Contain(".bishop/");
     }
 
     [Fact]
@@ -249,16 +250,18 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public void BuildBishopContext_CardPushProcedure_DocumentsHeredocAndFlags()
+    public void BuildBishopContext_CardPushProcedure_DocumentsTempFileFlow()
     {
         var workspace = MakeWorkspace();
 
         var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
 
         output.Should().Contain("## Card Push Procedure (STABLE)");
-        output.Should().Contain("--description-file -");
+        output.Should().Contain("--description-file");
         output.Should().Contain("--bottom");
-        output.Should().Contain("<< 'BODY'");
+        output.Should().Contain(".bishop/tmp-card-");
+        output.Should().Contain("Remove-Item");
+        output.Should().Contain("PowerShell");
     }
 
     [Fact]

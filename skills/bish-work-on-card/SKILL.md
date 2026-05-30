@@ -152,11 +152,13 @@ card was loaded before any move or implementation:
 
        > Append findings to card #N? (`y`/`n`) [y]:
 
-       On `y` (or empty input), pipe the verbatim slopwatch output as a
-       `### Slopwatch findings (YYYY-MM-DD)` block (using today's date) to
-       card edit via stdin:
+       On `y` (or empty input), append the verbatim slopwatch output as a
+       `### Slopwatch findings (YYYY-MM-DD)` block (using today's date) via
+       the temp-file procedure (see `Card Push Procedure` in
+       `BishopContext.static.md` — `--append-description-file` follows the
+       same write→push→remove flow):
        ```
-       bishop card edit <number> --append-description-file -
+       bishop card edit <number> --append-description-file ".bishop/tmp-card-slopwatch.md"
        ```
        Then STOP — leave the card in "Doing" and the working tree untouched.
        Prefer fixing the violation over suppressing it on a follow-up run;
@@ -222,11 +224,13 @@ card was loaded before any move or implementation:
    > to leave the card in "Doing" and the working tree untouched)
 
    - On `y` (or an edited commit message) → run in order:
-     1. Pipe the drafted `### Agent notes` block to `card edit` via stdin:
+     1. Append the drafted `### Agent notes` block via the temp-file
+        procedure (see `Card Push Procedure` in `BishopContext.static.md`):
+        write the notes to `.bishop/tmp-card-agent-notes.md`, run `card
+        edit`, then `Remove-Item` via the `PowerShell` tool.
         ```
-        bishop card edit <number> --append-description-file - --to-lane "Done"
+        bishop card edit <number> --append-description-file ".bishop/tmp-card-agent-notes.md" --to-lane "Done"
         ```
-        (Pipe the notes block as stdin — use a shell heredoc or equivalent.)
      2. Commit:
         ```
         git add -A && git commit -m "<message>"

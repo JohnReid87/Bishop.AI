@@ -155,7 +155,7 @@ Keep heuristics inline in the review skill.
    3. **Workspace detection** — does it call `bishop skill bootstrap` (or, for `bish-onboard`, carry a one-line comment explaining why bespoke detection is required)? If inline workspace-detection prose remains, flag it.
    4. **Card push** — if the skill pushes cards, the body references
       `## Card Push Procedure (STABLE)` rather than restating the
-      heredoc.
+      write→push→remove temp-file procedure.
    5. **Task-list previews** — if the skill emits a multi-card
       preview, it references `## Task List Preview Format (STABLE)`.
    6. **Source-card closing** — if the skill spawns child cards from

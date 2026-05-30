@@ -63,7 +63,7 @@ via §7 of `SKILL_FAMILY.md` when judging an edge case.
 
 4. **Card push** — skills that push cards reference
    [bishop context print --section "Card Push Procedure"](.bishop/BISHOP_CONTEXT.md#card-push-procedure-stable) (STABLE) rather than
-   restating the `bishop card add` heredoc.
+   restating the write→push→remove temp-file procedure.
 
 5. **Task-list preview** — skills that emit a multi-card preview
    reference `## Task List Preview Format (STABLE)` rather than
@@ -74,8 +74,8 @@ via §7 of `SKILL_FAMILY.md` when judging an edge case.
    rather than restating the `close` / `done` / `leave` options.
 
 7. **STABLE-section paraphrase** — the body does not paraphrase any
-   STABLE section anywhere. Restated heredoc, restated preview format,
-   restated closing prompt → finding.
+   STABLE section anywhere. Restated card-push procedure, restated
+   preview format, restated closing prompt → finding.
 
 8. **Heuristic content (Review skills only)** — the heuristic catalogue
    still dominates the file in line count and visual weight. If

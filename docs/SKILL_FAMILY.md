@@ -47,7 +47,7 @@ Counts taken from `skills/*/SKILL.md` at the time the grill closed. Refresh befo
 | Repeated block | Skills carrying it | Approximate size per copy |
 |---|---|---|
 | Workspace detection preamble (`bishop workspace current --json` + STOP-message) | 11 | ~13 lines + a 4-line STOP message |
-| Card push procedure (`bishop card add` heredoc + `--bottom` + `--description-file -`) | 7 | ~10 lines |
+| Card push procedure (`bishop card add` temp-file flow + `--bottom` + `--description-file <path>`) | 7 | ~10 lines |
 | Task-list preview format (H3 cards, Tag/Lane line, body sections, `---` separators) | ~7 | ~12 lines |
 | Source-card closing prompt (close / done / leave + CLI mapping) | 3 | ~15 lines |
 
@@ -165,7 +165,7 @@ For each skill in `skills/`:
 1. **Category** — is the skill correctly tagged Conversational / Review / Setup-Execute / Bishop-level? (Frontmatter `bishop.category` once introduced.)
 2. **Leading content** — does the SKILL.md lead with the category-appropriate content (see §2)? If a Conversational skill leads with workspace-detection, flag it.
 3. **Workspace detection** — does the skill use one of the two accepted patterns: `bishop context-pack <skill-name>` (preferred) or `bishop skill bootstrap` (legacy, valid for skills not yet migrated to context-pack)? No inline `bishop workspace current --json` preamble. The only documented exception is `bish-onboard` (the workspace does not yet exist when it runs); the exception must carry a one-line comment explaining why. Bishop-level / meta skills must not call bootstrap or context-pack. If inline workspace-detection prose remains, flag it.
-4. **Card push** — if the skill pushes cards, does it reference the BISHOP_CONTEXT `Card Push Procedure (STABLE)` section rather than restating the heredoc?
+4. **Card push** — if the skill pushes cards, does it reference the BISHOP_CONTEXT `Card Push Procedure (STABLE)` section rather than restating the write→push→remove temp-file procedure?
 5. **Task-list previews** — if the skill emits a multi-card preview, does it reference `Task List Preview Format (STABLE)`?
 6. **Source-card closing** — if the skill spawns child cards from a source card, does it reference `Source Card Closing Prompt (STABLE)`?
 7. **STABLE sections** — does the skill paraphrase a STABLE section anywhere? If yes, replace with a reference.

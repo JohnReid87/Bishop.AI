@@ -204,15 +204,15 @@ When the user confirms with `push`:
      **full intended list**, not just additions; the flag replaces all
      tags). Use `--clear-tags` instead if the chat decided to remove all
      tags.
-   - `--description-file -` when the description changed; pipe the new
-     body via a single-quoted heredoc so `$` and backticks stay literal.
+   - `--description-file <path>` when the description changed; write the
+     new body to a temp file under `.bishop/` per `Card Push Procedure`
+     (in `conventions`) — write→edit→remove, with `Remove-Item` via the
+     `PowerShell` tool.
 
    Example with all three changes:
 
-   ```bash
-   bishop card edit <number> --title "<new>" --tag "<tagA>" --tag "<tagB>" --description-file - << 'BODY'
-   <new description body>
-   BODY
+   ```
+   bishop card edit <number> --title "<new>" --tag "<tagA>" --tag "<tagB>" --description-file ".bishop/tmp-card-<slug>.md"
    ```
 
 2. **Add each follow-up card** in order using `bishop card add` per
