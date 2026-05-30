@@ -35,10 +35,10 @@ block pre-assembled by the calling automation. Read it now:
 - `workspace.path` — set this as `$WORKSPACE_PATH` (the workspace boundary
   enforced throughout this run)
 - `workspace.name`, `workspace.lanes`, `workspace.tags` — workspace bootstrap data
-- `card` — the claimed card's metadata (number, title, description, lane_name, tag, is_closed)
+- `skill_specific.card` — the claimed card's metadata (number, title, description, lane_name, tag, is_closed)
 - `git.commits` — the 20 most recent commits (equivalent to `git log --oneline -20`)
 - `conventions["Shell selection"]`, `conventions["Commit-reference convention"]`, `conventions["Auto-card permission contract"]`, `conventions["Card model"]` — the four procedure sections pre-sliced for this skill
-- `related_cards` — summaries of cards referenced in the card's `### Related` section
+- `skill_specific.related_cards` — summaries of cards referenced in the card's `### Related` section
 
 Do **not** run `bishop skill bootstrap`, `bishop card view`, `git log`, or
 related-card lookups — this data is already here.
@@ -47,7 +47,7 @@ Echo the workspace name and card title from the context block so the parent
 log records the destination:
 
 > **Workspace:** <workspace.name>
-> **Card #N:** <card.title>
+> **Card #N:** <skill_specific.card.title>
 
 ---
 
@@ -161,7 +161,7 @@ sequence.
    - `test` → `test`
    - no tag or unrecognised tag → `chore`
 
-   Take the tag from `card.tag` in the pre-supplied context block. The host
+   Take the tag from `skill_specific.card.tag` in the pre-supplied context block. The host
    composes the final commit message as `<prefix>: <title> (card N)` plus the
    bullets as the body — you supply the bullets, not the subject line.
 
