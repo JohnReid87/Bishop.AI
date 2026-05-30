@@ -31,3 +31,7 @@ tests/Bishop.Tests/
 **NSubstitute for services with process or network boundaries.** Services that shell out (e.g. `GitCli`, `TerminalLauncher`) accept delegates or interfaces at their boundaries so tests can inject fakes without spawning real processes. Use NSubstitute for interface fakes where needed.
 
 **80% line coverage per project is the target.** Run `.\coverage.ps1` at the repo root to generate a coverage report.
+
+## Not present: Bishop.UI.Tests
+
+A `tests/Bishop.UI.Tests/` project does not exist and is not planned. WinUI 3 rendering and code-behind orchestration are intentionally out of test scope (see CONTEXT.md — "No tests target `net10.0-windows`"). The solution file references only `tests/Bishop.Tests/Bishop.Tests.csproj`.
