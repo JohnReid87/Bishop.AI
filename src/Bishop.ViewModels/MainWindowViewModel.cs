@@ -106,14 +106,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnSelectedWorkspaceChanged(WorkspaceItemViewModel? value)
     {
-        foreach (var w in Workspaces)
-            w.IsSelected = w == value;
+        SyncSelectedWorkspaceSelection(value);
         if (value is not null)
         {
             IsWorkspacelessPageActive = false;
             value.IsPathMissing = !Directory.Exists(value.Path);
         }
         _ = SafeAsync.RunAsync(SaveNavPrefsAsync);
+    }
+
+    private void SyncSelectedWorkspaceSelection(WorkspaceItemViewModel? selected)
+    {
+        foreach (var w in Workspaces)
+            w.IsSelected = w == selected;
     }
 
     partial void OnIsPaneOpenChanged(bool value) => _dispatcher.TryEnqueue(async () => await SaveNavPrefsAsync());
