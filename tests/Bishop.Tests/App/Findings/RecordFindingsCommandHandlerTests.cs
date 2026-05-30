@@ -76,6 +76,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             .SingleAsync(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-dead-code");
         run.GitSha.Should().Be("abc1234");
         run.RecordedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
+        run.FindingsCount.Should().Be(2);
     }
 
     [Fact]
@@ -121,6 +122,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             .ToListAsync();
         runs.Should().HaveCount(1);
         runs[0].GitSha.Should().Be("sha2");
+        runs[0].FindingsCount.Should().Be(1);
     }
 
     [Fact]

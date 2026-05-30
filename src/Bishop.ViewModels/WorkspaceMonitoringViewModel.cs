@@ -96,7 +96,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
                 ? SkillModelOptions.ResolveModelId(skill?.FirstRunModel)
                 : SkillModelOptions.ResolveModelId(skill?.ReRunModel);
 
-            var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable, _workspacePath);
+            var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable, _workspacePath, run?.FindingsCount);
             row.SelectModelCommand.Execute(defaultModelId);
             row.ModelSelectionReason = isFirstRun ? "(first run)" : "(re-run default)";
             rows.Add(row);

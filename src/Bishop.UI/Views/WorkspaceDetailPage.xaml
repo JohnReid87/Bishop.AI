@@ -540,6 +540,7 @@
                                     <ColumnDefinition Width="160"/>
                                     <ColumnDefinition Width="130"/>
                                     <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="70"/>
                                     <ColumnDefinition Width="50"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
@@ -552,7 +553,10 @@
                                 <TextBlock Grid.Column="2" Text="Commits since"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
-                                <TextBlock Grid.Column="3" Text="Status"
+                                <TextBlock Grid.Column="3" Text="Findings"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBlock Grid.Column="4" Text="Status"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
                             </Grid>
@@ -579,6 +583,7 @@
                                                 <ColumnDefinition Width="160"/>
                                                 <ColumnDefinition Width="130"/>
                                                 <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="70"/>
                                                 <ColumnDefinition Width="50"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
@@ -596,13 +601,28 @@
                                                        Text="{x:Bind CommitsSinceText}"
                                                        FontSize="12"
                                                        VerticalAlignment="Center"/>
-                                            <Ellipse Grid.Column="3"
+                                            <Grid Grid.Column="3"
+                                                  MinWidth="24" MinHeight="16"
+                                                  HorizontalAlignment="Left"
+                                                  VerticalAlignment="Center"
+                                                  Visibility="{x:Bind FindingsBadgeIsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                  ToolTipService.ToolTip="Findings from last run">
+                                                <Rectangle RadiusX="8" RadiusY="8"
+                                                           Fill="#5d8fa8"/>
+                                                <TextBlock Text="{x:Bind FindingsCount}"
+                                                           Foreground="Black"
+                                                           FontSize="11"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Margin="6,1"/>
+                                            </Grid>
+                                            <Ellipse Grid.Column="4"
                                                      Width="10"
                                                      Height="10"
                                                      Fill="{x:Bind StatusDotColor, Converter={StaticResource HexColorToBrushConverter}}"
                                                      VerticalAlignment="Center"
                                                      ToolTipService.ToolTip="{x:Bind StatusTooltip}"/>
-                                            <StackPanel Grid.Column="4"
+                                            <StackPanel Grid.Column="5"
                                                         Orientation="Horizontal"
                                                         Spacing="6"
                                                         VerticalAlignment="Center">

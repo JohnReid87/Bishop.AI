@@ -14,6 +14,8 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     public string StatusTooltip { get; }
     public int SeverityRank { get; }
     public string? ReportFilePath { get; }
+    public int? FindingsCount { get; }
+    public bool FindingsBadgeIsVisible => FindingsCount.HasValue;
 
     [ObservableProperty]
     private string _selectedModelId = ClaudeModels.Sonnet46;
@@ -32,10 +34,11 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         SelectedModelLabel = $"{label} ▾";
     }
 
-    public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable, string workspacePath = "")
+    public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable, string workspacePath = "", int? findingsCount = null)
     {
         SkillName = skillName;
         ReportFilePath = ResolveReportFilePath(skillName, workspacePath);
+        FindingsCount = findingsCount;
         LastRunText = lastRun is null ? "Never" : FormatRelativeTime(lastRun.Value);
 
         if (lastRun is null)

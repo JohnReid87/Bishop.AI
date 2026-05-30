@@ -48,6 +48,8 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
         var run = await db.WorkspaceSkillRuns
             .FirstOrDefaultAsync(r => r.WorkspaceId == request.WorkspaceId && r.SkillName == request.SkillName, cancellationToken);
 
+        var findingsCount = document.Findings.Count;
+
         if (run is null)
         {
             db.WorkspaceSkillRuns.Add(new WorkspaceSkillRun
@@ -57,12 +59,14 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
                 SkillName = request.SkillName,
                 GitSha = request.GitSha,
                 RecordedAt = recordedAt,
+                FindingsCount = findingsCount,
             });
         }
         else
         {
             run.GitSha = request.GitSha;
             run.RecordedAt = recordedAt;
+            run.FindingsCount = findingsCount;
         }
 
         await db.SaveChangesAsync(cancellationToken);

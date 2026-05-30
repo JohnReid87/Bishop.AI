@@ -197,4 +197,31 @@ public class SkillRunRowViewModelTests
 
         row.ReportFilePath.Should().BeNull();
     }
+
+    [Fact]
+    public void FindingsBadgeIsVisible_WhenFindingsCountNull_IsFalse()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", null, null, false, findingsCount: null);
+
+        row.FindingsCount.Should().BeNull();
+        row.FindingsBadgeIsVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public void FindingsBadgeIsVisible_WhenFindingsCountZero_IsTrue()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow, 0, false, findingsCount: 0);
+
+        row.FindingsCount.Should().Be(0);
+        row.FindingsBadgeIsVisible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void FindingsBadgeIsVisible_WhenFindingsCountPositive_IsTrue()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow, 0, false, findingsCount: 5);
+
+        row.FindingsCount.Should().Be(5);
+        row.FindingsBadgeIsVisible.Should().BeTrue();
+    }
 }
