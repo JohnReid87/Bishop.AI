@@ -1,6 +1,8 @@
+using Bishop.ViewModels;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.Web.WebView2.Core;
 using System.IO;
 using Windows.Graphics;
 using Windows.UI;
@@ -10,8 +12,14 @@ namespace Bishop.UI.Views;
 
 public sealed partial class ReportViewerWindow : Window
 {
-    public ReportViewerWindow()
+    private readonly ReportViewerWindowViewModel _viewModel;
+    private Uri? _currentSourceUri;
+    private bool _webMessageWired;
+
+    public ReportViewerWindow(ReportViewerWindowViewModel viewModel)
     {
+        _viewModel = viewModel;
+
         InitializeComponent();
         SetupTitleBar();
 
@@ -53,6 +61,12 @@ public sealed partial class ReportViewerWindow : Window
         try
         {
             await ReportWebView.EnsureCoreWebView2Async();
+            if (!_webMessageWired && ReportWebView.CoreWebView2 is { } core)
+            {
+                core.WebMessageReceived += OnWebMessageReceived;
+                _webMessageWired = true;
+            }
+            _currentSourceUri = uri;
             ReportWebView.CoreWebView2?.Navigate(uri.AbsoluteUri);
         }
         catch (Exception ex)
@@ -63,6 +77,10 @@ public sealed partial class ReportViewerWindow : Window
         PositionOnOppositeHalf();
         Activate();
     }
+
+    private async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+        => await SafeAsync.RunAsync(() =>
+            _viewModel.HandleConvertToCardAsync(args.WebMessageAsJson, _currentSourceUri, ReportWebView.XamlRoot));
 
     private void OnMainWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {

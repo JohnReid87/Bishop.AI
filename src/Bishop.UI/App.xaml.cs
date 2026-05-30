@@ -55,6 +55,9 @@ public partial class App : Application
                 services.AddSingleton<IUiDispatcher>(_ => new WinUiDispatcher(dispatcherQueue));
                 services.AddSingleton<IErrorBus, ErrorBus>();
                 services.AddSingleton<IDialogService, DialogService>();
+                services.AddSingleton<ICardDetailDialogService, CardDetailDialogService>();
+                services.AddSingleton<ISkillTagMap, SkillTagMap>();
+                services.AddTransient<ReportViewerWindowViewModel>();
                 services.AddTransient<SettingsDialogViewModel>();
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<WorkspaceBoardViewModel>();
@@ -94,7 +97,7 @@ public partial class App : Application
         MainWindow.Activate();
 
         MarkdownViewer = new MarkdownViewerWindow();
-        ReportViewer = new ReportViewerWindow();
+        ReportViewer = new ReportViewerWindow(_host.Services.GetRequiredService<ReportViewerWindowViewModel>());
     }
 
     // async void event handler — required by the UnhandledException signature.
