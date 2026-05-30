@@ -22,6 +22,8 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
     {
         if (string.IsNullOrWhiteSpace(request.SkillName))
             throw new InvalidOperationException("Skill name must be provided.");
+        if (Path.GetFileName(request.SkillName) != request.SkillName)
+            throw new InvalidOperationException("Skill name must not contain path separators or traversal sequences.");
         if (string.IsNullOrWhiteSpace(request.WorkspacePath))
             throw new InvalidOperationException("Workspace path must be provided.");
         if (string.IsNullOrWhiteSpace(request.GitSha))

@@ -24,7 +24,8 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
 
     public void Dispose()
     {
-        try { Directory.Delete(_tempRoot, recursive: true); } catch { /* best-effort cleanup */ }
+        if (Directory.Exists(_tempRoot))
+            Directory.Delete(_tempRoot, recursive: true);
     }
 
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
@@ -192,6 +193,27 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             default);
 
         await act.Should().ThrowAsync<FindingsValidationException>();
+    }
+
+    [Theory]
+    [InlineData(@"..\..\evil")]
+    [InlineData("../../evil")]
+    [InlineData(@"sub\dir")]
+    [InlineData("sub/dir")]
+    public async Task Handle_SkillNameWithPathTraversal_Throws(string skillName)
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory);
+
+        var act = () => sut.Handle(
+            new RecordFindingsCommand(ws.Id, ws.Path, skillName, ValidJson, "sha"),
+            default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*path separators*");
+
+        var findingsDir = Path.Combine(ws.Path, ".bishop", "findings");
+        Directory.Exists(findingsDir).Should().BeFalse("no file write should occur before the guard throws");
     }
 
     [Fact]
