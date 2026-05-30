@@ -1,6 +1,7 @@
 using Bishop.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Bishop.UI.Views;
 
@@ -58,4 +59,15 @@ public sealed partial class SettingsDialog : ContentDialog
     }
 
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
+
+    private async void CopyDbPathButton_Click(object sender, RoutedEventArgs e)
+    {
+        var pkg = new DataPackage();
+        pkg.SetText(ViewModel.DbPath);
+        Clipboard.SetContent(pkg);
+
+        CopiedBar.IsOpen = true;
+        await Task.Delay(2000);
+        CopiedBar.IsOpen = false;
+    }
 }
