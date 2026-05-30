@@ -61,6 +61,23 @@ public sealed class PushCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_SetUpstreamTrue_CallsPushWithSetUpstreamAsync()
+    {
+        // Arrange
+        var git = Substitute.For<IGitCli>();
+        git.PushWithSetUpstreamAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new PushResult(true, null));
+        var sut = CreateSut(git);
+
+        // Act
+        await sut.Handle(new PushCommand(WorkspacePath, SetUpstream: true), CancellationToken.None);
+
+        // Assert
+        await git.Received(1).PushWithSetUpstreamAsync(WorkspacePath, Arg.Any<CancellationToken>());
+        await git.DidNotReceive().PushAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_ReturnsFailureResult()
     {
         // Arrange
