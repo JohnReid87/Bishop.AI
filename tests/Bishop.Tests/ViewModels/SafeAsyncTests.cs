@@ -53,14 +53,21 @@ public class SafeAsyncTests : IDisposable
     }
 
     [Fact]
-    public async Task RunAsync_DoesNotThrow_WhenBothLoggerAndOnExceptionAreNull()
+    public async Task RunAsync_FiresDebugAssert_WhenLoggerIsNullAndExceptionOccurs()
     {
         SafeAsync.Logger = null;
         SafeAsync.OnException = null;
 
         var act = () => SafeAsync.RunAsync(() => throw new InvalidOperationException("orphaned"));
 
+#if DEBUG
+        // Debug.Assert fires (and propagates as an exception in the test runner) when Logger is null
+        // and an exception occurs — the init-order contract violation is visible in debug builds.
+        await act.Should().ThrowAsync<Exception>();
+#else
+        // In release builds the assert is a no-op; the exception is silently dropped.
         await act.Should().NotThrowAsync();
+#endif
     }
 
     [Fact]
