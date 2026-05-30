@@ -265,7 +265,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 RenderCommitsInto(commitsContainer, flyout, commits, upstreamRef, gitHubRepo);
                 var needsSetUpstream = UpdatePushButton(pushButton, upstreamRef, upstreamIsTracked, unpushedCount);
 
-                pushButton.Click += async (_, _) =>
+                pushButton.Click += (_, _) => SafeAsync.RunAsync(async () =>
                 {
                     errorBlock.Visibility = Visibility.Collapsed;
                     var previousContent = pushButton.Content;
@@ -294,7 +294,7 @@ public sealed partial class WorkspaceDetailPage : Page
                         pushButton.Content = previousContent;
                         pushButton.IsEnabled = true;
                     }
-                };
+                });
 
                 panel.Children.Add(new ScrollViewer { MaxHeight = 400, Content = commitsContainer });
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 4, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
@@ -453,7 +453,7 @@ public sealed partial class WorkspaceDetailPage : Page
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(4, 4, 4, 4),
         };
-        btn.Click += async (_, _) => await onClick();
+        btn.Click += (_, _) => SafeAsync.RunAsync(onClick);
 
         var tooltipText = string.IsNullOrEmpty(commit.Body) ? commit.Subject : $"{commit.Subject}\n\n{commit.Body}";
         if (commit.IsPushed && upstreamRef is not null)

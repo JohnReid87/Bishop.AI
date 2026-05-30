@@ -12,7 +12,7 @@ public sealed partial class ImportFromGitHubDialog : ContentDialog
         ViewModel = vm;
         InitializeComponent();
         IsPrimaryButtonEnabled = false;
-        Loaded += async (_, _) => await ViewModel.LoadLabelsAsync();
+        Loaded += (_, _) => SafeAsync.RunAsync(ViewModel.LoadLabelsAsync);
         PrimaryButtonClick += OnImportClick;
     }
 

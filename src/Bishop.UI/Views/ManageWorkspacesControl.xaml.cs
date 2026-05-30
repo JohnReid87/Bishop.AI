@@ -13,7 +13,7 @@ public sealed partial class ManageWorkspacesControl : UserControl
     {
         ViewModel = App.Services.GetRequiredService<WorkspaceManagerViewModel>();
         InitializeComponent();
-        Loaded += async (_, _) => await ViewModel.LoadAsync();
+        Loaded += (_, _) => SafeAsync.RunAsync(ViewModel.LoadAsync);
     }
 
     private async void RemoveButton_Click(object sender, RoutedEventArgs e)
