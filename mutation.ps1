@@ -36,6 +36,15 @@ if ($Project) {
         exit 1
     }
     $strykerArgs += '--project', $projPath
+
+    # Stryker's mutate globs are resolved relative to the project being mutated,
+    # not the repo root. The repo-level stryker-config.json uses `src/**/*.cs`
+    # (root-relative) which silently filters out every mutant for a `--project`
+    # run. Default to `**/*.cs` (project-relative) so `-Project Foo` always
+    # mutates Foo. Explicit `-Mutate` still wins.
+    if (-not $Mutate) {
+        $Mutate = '**/*.cs'
+    }
 }
 
 if ($Mutate) {
