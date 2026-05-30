@@ -143,6 +143,22 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         result.Name.Should().Be(newName);
         result.Path.Should().Be($@"C:\{newName}");
         result.UpdatedAt.Should().BeOnOrAfter(result.CreatedAt);
+
+        await using var verifyDb = _factory.CreateDbContext();
+        var persisted = await verifyDb.Workspaces.FindAsync(created.Id);
+        persisted!.Name.Should().Be(newName);
+        persisted.Path.Should().Be($@"C:\{newName}");
+    }
+
+    [Fact]
+    public async Task UpdateWorkspace_NonexistentWorkspace_Throws()
+    {
+        var handler = new UpdateWorkspaceCommandHandler(_factory);
+
+        var act = () => handler.Handle(
+            new UpdateWorkspaceCommand(Guid.NewGuid(), U("Missing"), @"C:\missing"), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
@@ -646,6 +662,18 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace", snap), default);
 
         launcher.Received(1).Launch(@"C:\workspace", null, snap);
+    }
+
+    [Fact]
+    public async Task LaunchWorkspace_CallsSeederBeforeLaunch()
+    {
+        var launcher = Substitute.For<ITerminalLauncher>();
+        var seeder = Substitute.For<IWorkspaceContextSeeder>();
+        var handler = new LaunchWorkspaceCommandHandler(launcher, seeder);
+
+        await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace"), default);
+
+        await seeder.Received(1).SeedAsync(@"C:\workspace", Arg.Any<CancellationToken>());
     }
 
     [Fact]

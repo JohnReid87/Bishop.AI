@@ -40,6 +40,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         tracked.IsClosed = card.IsClosed;
         tracked.GitHubIssueNumber = card.GitHubIssueNumber;
         tracked.GitHubPushedAt = card.GitHubPushedAt;
+        tracked.Description = card.Description;
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
     }
@@ -190,7 +191,8 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         var act = async () => await handler.Handle(new PushCardCommand(Guid.NewGuid()), default);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
     }
 
     [Fact]
@@ -249,6 +251,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         result.GitHubIssueNumber.Should().Be(42);
         result.GitHubPushedAt.Should().NotBeNull().And.BeOnOrAfter(before);
         (await _db.Cards.FindAsync(card.Id))!.GitHubIssueNumber.Should().Be(42);
+        await _ghCli.Received(1).RunCaptureAsync(
+            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "create" && a.Contains("--repo")),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -289,7 +294,9 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         await _ghCli.Received(1).RunAsync(
-            Arg.Is<string[]>(a => a[0] == "label" && a[1] == "create" && a[2] == "feature"),
+            Arg.Is<string[]>(a =>
+                a[0] == "label" && a[1] == "create" && a[2] == "feature"
+                && a.Contains("--color") && a.Contains("--repo") && a.Contains("--force")),
             Arg.Any<CancellationToken>());
     }
 
@@ -312,7 +319,99 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         await _ghCli.Received(1).RunAsync(
-            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "close" && a[2] == "99"),
+            Arg.Is<string[]>(a =>
+                a[0] == "issue" && a[1] == "close" && a[2] == "99" && a.Contains("--repo")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PushCard_WithDescription_IncludesDescriptionInBody()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "Task"), default);
+        card.Description = "Has body text";
+        await PersistMutationAsync(card);
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("https://github.com/owner/repo/issues/1"));
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
+
+        // Act
+        await handler.Handle(new PushCardCommand(card.Id), default);
+
+        // Assert — body starts with the description text (not the "---" separator)
+        await _ghCli.Received(1).RunCaptureAsync(
+            Arg.Is<string[]>(a => a[6] == "--body" && a[7].StartsWith("Has body text")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PushCard_EmptyDescription_TreatsAsEmpty()
+    {
+        // Arrange — AddCardCommand defaults Description to ""
+        const string repo = "owner/repo";
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "Task"), default);
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("https://github.com/owner/repo/issues/1"));
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
+
+        // Act
+        await handler.Handle(new PushCardCommand(card.Id), default);
+
+        // Assert — body starts with the "---" separator (no description line)
+        await _ghCli.Received(1).RunCaptureAsync(
+            Arg.Is<string[]>(a => a[6] == "--body" && a[7].StartsWith("---")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PushCard_WhitespaceDescription_TreatsAsEmpty()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "Task"), default);
+        card.Description = "   \t\n  ";
+        await PersistMutationAsync(card);
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("https://github.com/owner/repo/issues/1"));
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
+
+        // Act
+        await handler.Handle(new PushCardCommand(card.Id), default);
+
+        // Assert — whitespace-only description is treated the same as empty
+        await _ghCli.Received(1).RunCaptureAsync(
+            Arg.Is<string[]>(a => a[6] == "--body" && a[7].StartsWith("---")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PushCard_WithTag_AddsLabelToIssue()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "Task", TagName: "feature"), default);
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("https://github.com/owner/repo/issues/7"));
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
+
+        // Act
+        await handler.Handle(new PushCardCommand(card.Id), default);
+
+        // Assert — issue create args include `--label feature`
+        await _ghCli.Received(1).RunCaptureAsync(
+            Arg.Is<string[]>(a =>
+                a[0] == "issue" && a[1] == "create"
+                && Array.IndexOf(a, "--label") >= 0
+                && a[Array.IndexOf(a, "--label") + 1] == "feature"),
             Arg.Any<CancellationToken>());
     }
 

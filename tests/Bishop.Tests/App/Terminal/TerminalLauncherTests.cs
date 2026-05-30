@@ -629,6 +629,235 @@ public sealed class TerminalLauncherTests
         act.Should().NotThrow();
     }
 
+    // ── WT-branch ArgumentList ordering ───────────────────────────────────────
+    // Pins the exact argv token sequence the WT branch shells to cmd.exe with.
+    // Kills the String mutants on "-d", "cmd.exe", "/k", "claude" (Launch),
+    // on the command literal (LaunchCommand) and on the shell literal (LaunchPlain).
+
+    [Fact]
+    public void Launch_WtFound_ArgumentListInExpectedOrder()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.Launch(@"C:\Repo", null, null);
+
+        _started.Single().ArgumentList.Should().ContainInOrder("-d", @"C:\Repo", "cmd.exe", "/k", "claude");
+    }
+
+    [Fact]
+    public void Launch_WtFound_WithModelId_AppendsModelFlagAfterClaude()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.Launch(@"C:\Repo", null, null, "claude-opus-4");
+
+        _started.Single().ArgumentList.Should().ContainInOrder("claude", "--model", "claude-opus-4");
+    }
+
+    [Fact]
+    public void Launch_WtFound_WithoutModelId_NoModelFlag()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.Launch(@"C:\Repo", null, null);
+
+        _started.Single().ArgumentList.Should().NotContain("--model");
+    }
+
+    [Fact]
+    public void LaunchCommand_WtFound_ArgumentListInExpectedOrder()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run"], null);
+
+        _started.Single().ArgumentList.Should().Equal("-d", @"C:\Repo", "cmd.exe", "/k", "bishop", "batch", "run");
+    }
+
+    [Fact]
+    public void LaunchPlain_WtFound_ArgumentListInExpectedOrder()
+    {
+        var sut = CreateSut(wtExists: true, pwshExists: false);
+
+        sut.LaunchPlain(@"C:\Repo", null);
+
+        _started.Single().ArgumentList.Should().Equal("-d", @"C:\Repo", "powershell.exe");
+    }
+
+    // ── PS-fallback ArgumentList ordering ─────────────────────────────────────
+
+    [Fact]
+    public void Launch_WtNotFound_ArgumentListInExpectedOrder()
+    {
+        var sut = CreateSut(wtExists: false);
+
+        sut.Launch(@"C:\Repo", null, null);
+
+        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "claude");
+    }
+
+    [Fact]
+    public void LaunchPlain_WtNotFound_ArgumentListIsNoExitOnly()
+    {
+        var sut = CreateSut(wtExists: false);
+
+        sut.LaunchPlain(@"C:\Repo", null);
+
+        _started.Single().ArgumentList.Should().Equal("-NoExit");
+    }
+
+    // ── UseShellExecute on WT branch ──────────────────────────────────────────
+    // The existing Launch_SetsUseShellExecuteToFalse only covers the PS-fallback
+    // ProcessStartInfo initializer. These pin the WT-branch initializer too.
+
+    [Fact]
+    public void Launch_WtFound_UseShellExecuteIsFalse()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.Launch(@"C:\Repo", null, null);
+
+        _started.Single().UseShellExecute.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LaunchCommand_WtFound_UseShellExecuteIsFalse()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run"], null);
+
+        _started.Single().UseShellExecute.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LaunchPlain_WtFound_UseShellExecuteIsFalse()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.LaunchPlain(@"C:\Repo", null);
+
+        _started.Single().UseShellExecute.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LaunchCommand_WtNotFound_UseShellExecuteIsFalse()
+    {
+        var sut = CreateSut(wtExists: false);
+
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run"], null);
+
+        _started.Single().UseShellExecute.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LaunchPlain_WtNotFound_UseShellExecuteIsFalse()
+    {
+        var sut = CreateSut(wtExists: false);
+
+        sut.LaunchPlain(@"C:\Repo", null);
+
+        _started.Single().UseShellExecute.Should().BeFalse();
+    }
+
+    // ── PATH key on every launch path ─────────────────────────────────────────
+    // Kills the String mutants on the "PATH" literal across all six launch paths
+    // by asserting the key is present (mutating "PATH" → "" would leave PATH absent).
+
+    [Fact]
+    public void Launch_WtFound_PsiEnvironmentContainsPathKey()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.Launch(@"C:\Repo", null, null);
+
+        _started.Single().Environment.Should().ContainKey("PATH");
+    }
+
+    [Fact]
+    public void LaunchCommand_WtFound_PsiEnvironmentContainsPathKey()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run"], null);
+
+        _started.Single().Environment.Should().ContainKey("PATH");
+    }
+
+    [Fact]
+    public void LaunchPlain_WtFound_PsiEnvironmentContainsPathKey()
+    {
+        var sut = CreateSut(wtExists: true);
+
+        sut.LaunchPlain(@"C:\Repo", null);
+
+        _started.Single().Environment.Should().ContainKey("PATH");
+    }
+
+    [Fact]
+    public void LaunchPlain_WtNotFound_PsiEnvironmentContainsPathKey()
+    {
+        var sut = CreateSut(wtExists: false);
+
+        sut.LaunchPlain(@"C:\Repo", null);
+
+        _started.Single().Environment.Should().ContainKey("PATH");
+    }
+
+    // ── FindWindowsTerminal: null PATH and PATH-resolved wt.exe ───────────────
+
+    [Fact]
+    public void Launch_PathEnvVarUnset_DoesNotThrowAndFallsBackToPowerShell()
+    {
+        // FindWindowsTerminal calls (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';')
+        // The ?? "" coalesce kicks in only when PATH is genuinely null; this test exercises that
+        // path and kills the NullCoalescing + String("PATH") mutants there.
+        var originalPath = Environment.GetEnvironmentVariable("PATH");
+        try
+        {
+            Environment.SetEnvironmentVariable("PATH", null);
+            var sut = CreateSut(wtExists: false);
+
+            var act = () => sut.Launch(@"C:\Repo", null, null);
+
+            act.Should().NotThrow();
+            _started.Single().FileName.Should().Be("powershell.exe");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PATH", originalPath);
+        }
+    }
+
+    [Fact]
+    public void Launch_WtNotInAliasButOnPath_ResolvesFromPathSegment()
+    {
+        // Kills the String mutant on "wt.exe" inside the PATH scan loop:
+        // the FileExists predicate returns true only for the PATH-built candidate.
+        var alias = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Microsoft", "WindowsApps", "wt.exe");
+        var pathDir = @"C:\FakeBin";
+        var expectedCandidate = Path.Combine(pathDir, "wt.exe");
+        var originalPath = Environment.GetEnvironmentVariable("PATH");
+        try
+        {
+            Environment.SetEnvironmentVariable("PATH", pathDir);
+            var sut = new TerminalLauncher(
+                path => path != alias && path.Equals(expectedCandidate, StringComparison.OrdinalIgnoreCase),
+                psi => _started.Add(psi));
+
+            var result = sut.Launch(@"C:\Repo", null, null);
+
+            result.Should().BeTrue();
+            _started.Single().FileName.Should().Be(expectedCandidate);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PATH", originalPath);
+        }
+    }
+
     // ── SnapLater / ApplySnap ─────────────────────────────────────────────────
     // ApplySnap and the inner window-poll loop in SnapLater depend on real win32
     // window handles (EnumWindows, DwmGetWindowAttribute, SetWindowPos). They are

@@ -46,6 +46,8 @@ public sealed class ListBatchesQueryHandler : IRequestHandler<ListBatchesQuery, 
             var branchExistsTask = _git.LocalBranchExistsAsync(request.WorkspacePath, b.BranchName, cancellationToken);
             var isMergedTask = _git.IsBranchMergedIntoAsync(request.WorkspacePath, b.BranchName, b.BaseBranch, cancellationToken);
             var worktreeExists = !string.IsNullOrEmpty(b.WorktreePath) && Directory.Exists(b.WorktreePath);
+            // Stryker disable once Statement: redundant with the awaits on the next line; removing this
+            // does not change observable behaviour because each task is already awaited individually below.
             await Task.WhenAll(branchExistsTask, isMergedTask);
             return (b.Id, IsMerged: await isMergedTask, BranchExists: await branchExistsTask, WorktreeExists: worktreeExists);
         }).ToList();

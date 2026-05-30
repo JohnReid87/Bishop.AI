@@ -139,4 +139,82 @@ public sealed class ListCardsByWorkspaceQueryHandlerTests : IClassFixture<DbFixt
         page[0].Title.Should().Be(all[1].Title);
         page[1].Title.Should().Be(all[2].Title);
     }
+
+    [Fact]
+    public async Task Handle_NoLaneFilter_OrdersBySystemLaneRank()
+    {
+        // Arrange — insert in reverse rank order so insertion-order cannot satisfy the assertion.
+        var (wsId, _) = await CreateWorkspaceAsync();
+        var add = new AddCardCommandHandler(_factory);
+        await add.Handle(new AddCardCommand(wsId, SystemLaneNames.Done, "in-done"), default);
+        await add.Handle(new AddCardCommand(wsId, SystemLaneNames.Doing, "in-doing"), default);
+        await add.Handle(new AddCardCommand(wsId, SystemLaneNames.ToDo, "in-todo"), default);
+        await add.Handle(new AddCardCommand(wsId, SystemLaneNames.Backlog, "in-backlog"), default);
+        var handler = new ListCardsByWorkspaceQueryHandler(_factory);
+
+        // Act
+        var result = await handler.Handle(new ListCardsByWorkspaceQuery(wsId), default);
+
+        // Assert
+        result.Select(c => c.LaneName).Should().Equal(
+            SystemLaneNames.Backlog,
+            SystemLaneNames.ToDo,
+            SystemLaneNames.Doing,
+            SystemLaneNames.Done);
+    }
+
+    [Fact]
+    public async Task Handle_LaneFilter_OrdersByPositionAscending()
+    {
+        // Arrange
+        var (wsId, lanes) = await CreateWorkspaceAsync();
+        var todoLane = lanes.First(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_factory);
+        for (var i = 0; i < 4; i++)
+            await add.Handle(new AddCardCommand(wsId, todoLane.Name, $"Card {i + 1}"), default);
+        var handler = new ListCardsByWorkspaceQueryHandler(_factory);
+
+        // Act
+        var result = await handler.Handle(new ListCardsByWorkspaceQuery(wsId, LaneName: todoLane.Name), default);
+
+        // Assert
+        result.Select(c => c.Position).Should().BeInAscendingOrder();
+        result.Select(c => c.Position).Should().Equal(1, 2, 3, 4);
+    }
+
+    [Fact]
+    public async Task Handle_SkipZero_ReturnsAllRecords()
+    {
+        // Arrange
+        var (wsId, lanes) = await CreateWorkspaceAsync();
+        var todoLane = lanes.First(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_factory);
+        for (var i = 0; i < 3; i++)
+            await add.Handle(new AddCardCommand(wsId, todoLane.Name, $"Card {i + 1}"), default);
+        var handler = new ListCardsByWorkspaceQueryHandler(_factory);
+
+        // Act
+        var result = await handler.Handle(new ListCardsByWorkspaceQuery(wsId, LaneName: todoLane.Name, Skip: 0), default);
+
+        // Assert
+        result.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Handle_TakeMaxValue_ReturnsAllRecords()
+    {
+        // Arrange
+        var (wsId, lanes) = await CreateWorkspaceAsync();
+        var todoLane = lanes.First(l => l.Name == "To Do");
+        var add = new AddCardCommandHandler(_factory);
+        for (var i = 0; i < 3; i++)
+            await add.Handle(new AddCardCommand(wsId, todoLane.Name, $"Card {i + 1}"), default);
+        var handler = new ListCardsByWorkspaceQueryHandler(_factory);
+
+        // Act
+        var result = await handler.Handle(new ListCardsByWorkspaceQuery(wsId, LaneName: todoLane.Name, Take: int.MaxValue), default);
+
+        // Assert
+        result.Should().HaveCount(3);
+    }
 }
