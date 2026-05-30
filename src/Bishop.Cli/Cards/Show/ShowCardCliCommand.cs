@@ -7,9 +7,9 @@ using System.CommandLine;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Bishop.Cli.Cards.View;
+namespace Bishop.Cli.Cards.Show;
 
-internal sealed class ViewCardCliCommand : Command
+internal sealed class ShowCardCliCommand : Command
 {
     private static readonly JsonSerializerOptions s_jsonOpts = new()
     {
@@ -18,7 +18,7 @@ internal sealed class ViewCardCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ViewCardCliCommand(ISender mediator, CardResolver cardResolver)
+    public ShowCardCliCommand(ISender mediator, CardResolver cardResolver)
         : base("show", "Show details of a card")
     {
         var cardViewIdArg = new Argument<string>("card-id", "Card short ID or prefix");

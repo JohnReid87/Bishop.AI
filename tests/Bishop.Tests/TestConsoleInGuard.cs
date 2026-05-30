@@ -7,7 +7,7 @@ namespace Bishop.Tests;
 // Under `dotnet test`, the test host's stdin is a redirected-but-never-closed pipe, so
 // Console.IsInputRedirected is true while Console.In.ReadToEndAsync() (a SyncTextReader over the
 // synchronous console read) blocks waiting for an EOF that never arrives. Any CLI command a test
-// invokes without piping input — e.g. AddCardCliCommand reading the description from stdin — then
+// invokes without piping input — e.g. CreateCardCliCommand reading the description from stdin — then
 // deadlocks a thread, which stalls test-host shutdown until the blame-hang timeout fires. (Visual
 // Studio's Test Explorer hides this because there Console.IsInputRedirected is false.)
 //

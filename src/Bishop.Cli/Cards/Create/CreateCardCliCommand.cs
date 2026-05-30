@@ -3,11 +3,11 @@ using Bishop.Core;
 using MediatR;
 using System.CommandLine;
 
-namespace Bishop.Cli.Cards.Add;
+namespace Bishop.Cli.Cards.Create;
 
-internal sealed class AddCardCliCommand : Command
+internal sealed class CreateCardCliCommand : Command
 {
-    public AddCardCliCommand(ISender mediator) : base("create", "Add a card to a lane")
+    public CreateCardCliCommand(ISender mediator) : base("create", "Add a card to a lane")
     {
         var resolver = new WorkspaceResolver(mediator);
         var laneNameOpt = new Option<string>("--lane", "Lane name") { IsRequired = true };

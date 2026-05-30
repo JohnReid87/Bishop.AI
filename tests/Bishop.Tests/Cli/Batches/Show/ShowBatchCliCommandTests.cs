@@ -1,15 +1,15 @@
 using Bishop.App.Batches.GetBatch;
-using Bishop.Cli.Batches.View;
+using Bishop.Cli.Batches.Show;
 using Bishop.Core;
 using FluentAssertions;
 using MediatR;
 using NSubstitute;
 using System.CommandLine;
 
-namespace Bishop.Tests.Cli.Batches.View;
+namespace Bishop.Tests.Cli.Batches.Show;
 
 [Collection("ConsoleTests")]
-public sealed class ViewBatchCliCommandTests
+public sealed class ShowBatchCliCommandTests
 {
     private static Batch MakeBatch(string name = "Sprint 1") => new()
     {
@@ -29,7 +29,7 @@ public sealed class ViewBatchCliCommandTests
         mediator.Send(Arg.Any<GetBatchQuery>(), Arg.Any<CancellationToken>())
             .Returns(new GetBatchResult(MakeBatch(), []));
 
-        var cmd = new ViewBatchCliCommand(mediator);
+        var cmd = new ShowBatchCliCommand(mediator);
         var exitCode = await cmd.InvokeAsync(["Sprint 1"]);
 
         exitCode.Should().Be(0);
@@ -45,7 +45,7 @@ public sealed class ViewBatchCliCommandTests
         mediator.Send(Arg.Any<GetBatchQuery>(), Arg.Any<CancellationToken>())
             .Returns(new GetBatchResult(MakeBatch("my-batch"), []));
 
-        var cmd = new ViewBatchCliCommand(mediator);
+        var cmd = new ShowBatchCliCommand(mediator);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -71,7 +71,7 @@ public sealed class ViewBatchCliCommandTests
         mediator.Send(Arg.Any<GetBatchQuery>(), Arg.Any<CancellationToken>())
             .Returns(new GetBatchResult(MakeBatch(), []));
 
-        var cmd = new ViewBatchCliCommand(mediator);
+        var cmd = new ShowBatchCliCommand(mediator);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -104,7 +104,7 @@ public sealed class ViewBatchCliCommandTests
         mediator.Send(Arg.Any<GetBatchQuery>(), Arg.Any<CancellationToken>())
             .Returns(new GetBatchResult(batch, [card]));
 
-        var cmd = new ViewBatchCliCommand(mediator);
+        var cmd = new ShowBatchCliCommand(mediator);
 
         var output = new StringWriter();
         var original = Console.Out;

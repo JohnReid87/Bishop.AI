@@ -23,7 +23,7 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
     private static readonly string RepoRoot = FindRepoRoot();
     private static readonly string SkillsRoot = Path.Combine(RepoRoot, "skills");
 
-    // ViewCardCliCommand uses the default System.Text.Json options — no naming
+    // ShowCardCliCommand uses the default System.Text.Json options — no naming
     // policy override, so anonymous-type property names land verbatim (camelCase).
     private static readonly JsonSerializerOptions s_camelCaseOpts = new()
     {
@@ -76,7 +76,7 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
         failures.Should().BeEmpty(
             $"every backticked camelCase token documented near `bishop card show --json` in " +
             $"skills/{skillDirName}/SKILL.md must resolve in the serialized payload — " +
-            $"ViewCardCliCommand emits an anonymous type with no PropertyNamingPolicy, so the " +
+            $"ShowCardCliCommand emits an anonymous type with no PropertyNamingPolicy, so the " +
             $"property names land verbatim. Drift means agents capture the wrong field. " +
             $"Mismatches:{Environment.NewLine}{string.Join(Environment.NewLine, failures)}");
     }
@@ -108,9 +108,9 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
 
     /// <summary>
     /// Mirrors the anonymous-type shape emitted by
-    /// <see cref="Bishop.Cli.Cards.View.ViewCardCliCommand"/> — kept in sync by
+    /// <see cref="Bishop.Cli.Cards.Show.ShowCardCliCommand"/> — kept in sync by
     /// reading the same fields off the same <see cref="Card"/> type. If
-    /// ViewCardCliCommand's shape changes, update both sides; this test guards
+    /// ShowCardCliCommand's shape changes, update both sides; this test guards
     /// the doc against the shape, not the shape itself.
     /// </summary>
     private static string SerializeSampleCardViewPayload(Card card)

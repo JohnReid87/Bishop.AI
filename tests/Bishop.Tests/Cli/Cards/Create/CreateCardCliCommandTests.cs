@@ -1,15 +1,15 @@
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Workspaces.ListWorkspaces;
-using Bishop.Cli.Cards.Add;
+using Bishop.Cli.Cards.Create;
 using Bishop.Core;
 using FluentAssertions;
 using MediatR;
 using NSubstitute;
 using System.CommandLine;
 
-namespace Bishop.Tests.Cli.Cards.Add;
+namespace Bishop.Tests.Cli.Cards.Create;
 
-public sealed class AddCardCliCommandTests
+public sealed class CreateCardCliCommandTests
 {
     [Fact]
     public async Task InvokeAsync_HappyPath_ExitsZeroAndSendsAddCardCommand()
@@ -22,7 +22,7 @@ public sealed class AddCardCliCommandTests
         mediator.Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>())
             .Returns(card);
 
-        var cmd = new AddCardCliCommand(mediator);
+        var cmd = new CreateCardCliCommand(mediator);
         var exitCode = await cmd.InvokeAsync(["--lane", "To Do", "--title", "Test Card", "--workspace", "test-ws"]);
 
         exitCode.Should().Be(0);
@@ -34,7 +34,7 @@ public sealed class AddCardCliCommandTests
     {
         var stdin = new StringReader("piped body");
 
-        var desc = await AddCardCliCommand.ResolveDescriptionAsync(null, null, isInputRedirected: true, stdin);
+        var desc = await CreateCardCliCommand.ResolveDescriptionAsync(null, null, isInputRedirected: true, stdin);
 
         desc.Should().Be("piped body");
     }
@@ -44,7 +44,7 @@ public sealed class AddCardCliCommandTests
     {
         var stdin = new StringReader("ignored");
 
-        var desc = await AddCardCliCommand.ResolveDescriptionAsync(null, null, isInputRedirected: false, stdin);
+        var desc = await CreateCardCliCommand.ResolveDescriptionAsync(null, null, isInputRedirected: false, stdin);
 
         desc.Should().BeEmpty();
     }
@@ -54,7 +54,7 @@ public sealed class AddCardCliCommandTests
     {
         var stdin = new StringReader("piped body");
 
-        var desc = await AddCardCliCommand.ResolveDescriptionAsync(null, "explicit", isInputRedirected: true, stdin);
+        var desc = await CreateCardCliCommand.ResolveDescriptionAsync(null, "explicit", isInputRedirected: true, stdin);
 
         desc.Should().Be("explicit");
     }
@@ -64,7 +64,7 @@ public sealed class AddCardCliCommandTests
     {
         var stdin = new StringReader("sentinel body");
 
-        var desc = await AddCardCliCommand.ResolveDescriptionAsync("-", "explicit", isInputRedirected: false, stdin);
+        var desc = await CreateCardCliCommand.ResolveDescriptionAsync("-", "explicit", isInputRedirected: false, stdin);
 
         desc.Should().Be("sentinel body");
     }

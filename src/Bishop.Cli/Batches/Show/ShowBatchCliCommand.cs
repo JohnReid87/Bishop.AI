@@ -4,9 +4,9 @@ using System.CommandLine;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Bishop.Cli.Batches.View;
+namespace Bishop.Cli.Batches.Show;
 
-internal sealed class ViewBatchCliCommand : Command
+internal sealed class ShowBatchCliCommand : Command
 {
     private static readonly JsonSerializerOptions s_jsonOpts = new()
     {
@@ -15,7 +15,7 @@ internal sealed class ViewBatchCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ViewBatchCliCommand(ISender mediator) : base("show", "Show batch details and card list")
+    public ShowBatchCliCommand(ISender mediator) : base("show", "Show batch details and card list")
     {
         var nameArg = new Argument<string>("name", "Batch name");
 

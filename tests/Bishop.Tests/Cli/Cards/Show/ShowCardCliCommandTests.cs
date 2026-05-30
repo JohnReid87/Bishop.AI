@@ -4,7 +4,7 @@ using Bishop.App.Git;
 using Bishop.App.Git.GetCardCommit;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.Cli;
-using Bishop.Cli.Cards.View;
+using Bishop.Cli.Cards.Show;
 using Bishop.Core;
 using FluentAssertions;
 using MediatR;
@@ -12,12 +12,12 @@ using NSubstitute;
 using System.CommandLine;
 using System.Text.Json;
 
-namespace Bishop.Tests.Cli.Cards.View;
+namespace Bishop.Tests.Cli.Cards.Show;
 
 [Collection("ConsoleTests")]
-public sealed class ViewCardCliCommandTests
+public sealed class ShowCardCliCommandTests
 {
-    private static (IMediator mediator, ViewCardCliCommand cmd) Build(Workspace ws, Card? card, GetCardCommitResult? commitResult = null)
+    private static (IMediator mediator, ShowCardCliCommand cmd) Build(Workspace ws, Card? card, GetCardCommitResult? commitResult = null)
     {
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
@@ -37,7 +37,7 @@ public sealed class ViewCardCliCommandTests
                 .Returns((Card?)null);
         }
         var cardResolver = new CardResolver(mediator);
-        return (mediator, new ViewCardCliCommand(mediator, cardResolver));
+        return (mediator, new ShowCardCliCommand(mediator, cardResolver));
     }
 
     private static Workspace DefaultWorkspace() =>
@@ -204,7 +204,7 @@ public sealed class ViewCardCliCommandTests
             .Returns((Card?)null);
 
         var cardResolver = new CardResolver(mediator);
-        var cmd = new ViewCardCliCommand(mediator, cardResolver);
+        var cmd = new ShowCardCliCommand(mediator, cardResolver);
 
         var exitCode = await cmd.InvokeAsync(["#1", "--workspace", "test-ws"]);
 
@@ -233,7 +233,7 @@ public sealed class ViewCardCliCommandTests
                 new CommitInfo("abc1234", "abc1234def5678901234567890abcdef", "Fix bug", "", DateTimeOffset.UtcNow, false)));
 
         var cardResolver = new CardResolver(mediator);
-        var cmd = new ViewCardCliCommand(mediator, cardResolver);
+        var cmd = new ShowCardCliCommand(mediator, cardResolver);
 
         var output = new StringWriter();
         var originalOut = Console.Out;
