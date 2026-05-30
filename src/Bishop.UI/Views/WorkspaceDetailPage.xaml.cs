@@ -667,7 +667,9 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             if (_item is null) return;
             if ((sender as FrameworkElement)?.DataContext is not SkillRunRowViewModel row) return;
-            await Board.LaunchWorkspaceSkillByNameAsync(row.SkillName, row.SelectedModelId, SnapHelper.ComputeSnap());
+            var item = await Board.BuildWorkspaceSkillLaunchItemAsync(row.SkillName);
+            if (item is null) return;
+            await LaunchSkillAsync(item, row.SelectedModelId);
         });
 
     private static FrameworkElement MakeCategoryHeader(string text) =>

@@ -21,8 +21,8 @@
         <TextBox x:Name="InputBox"
                  AcceptsReturn="True"
                  TextWrapping="Wrap"
-                 MinHeight="120"
-                 MaxHeight="320"
+                 MinHeight="60"
+                 MaxHeight="160"
                  ScrollViewer.VerticalScrollBarVisibility="Auto"/>
     </StackPanel>
 </ContentDialog>

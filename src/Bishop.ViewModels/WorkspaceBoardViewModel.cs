@@ -266,10 +266,16 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     public async Task LaunchWorkspaceSkillByNameAsync(string skillName, string modelId, TerminalSnap snap)
     {
-        var menuItem = WorkspaceSkills.FirstOrDefault(s => string.Equals(s.Skill.Name, skillName, StringComparison.OrdinalIgnoreCase));
-        if (menuItem is null) return;
-        var item = await BuildLaunchItemAsync(menuItem, card: null);
+        var item = await BuildWorkspaceSkillLaunchItemAsync(skillName);
+        if (item is null) return;
         await LaunchAsync(item, stagedText: null, snap, modelId);
+    }
+
+    public async Task<SkillLaunchItem?> BuildWorkspaceSkillLaunchItemAsync(string skillName)
+    {
+        var menuItem = WorkspaceSkills.FirstOrDefault(s => string.Equals(s.Skill.Name, skillName, StringComparison.OrdinalIgnoreCase));
+        if (menuItem is null) return null;
+        return await BuildLaunchItemAsync(menuItem, card: null);
     }
 
     public async Task SetSkillModelAsync(string skillName, string modelId)
