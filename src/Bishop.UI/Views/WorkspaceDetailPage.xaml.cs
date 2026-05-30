@@ -649,7 +649,12 @@ public sealed partial class WorkspaceDetailPage : Page
         string? stagedText = null;
         if (item.RequiresStage)
         {
-            var dialog = new SkillStageDialog(item.Name, item.StagePrompt, item.StagePrefill) { XamlRoot = XamlRoot };
+            var dialog = new SkillStageDialog(
+                item.Name,
+                item.StagePrompt,
+                item.StagePrefill,
+                item.StageProjects,
+                Board.WorkspacePath) { XamlRoot = XamlRoot };
             if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
             stagedText = dialog.InputText?.Trim();
         }

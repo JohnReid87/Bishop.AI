@@ -6,6 +6,7 @@ bishop.scope: workspace
 bishop.command: /bish-tests
 bishop.stage: true
 bishop.stage_prompt: "Class name or folder path (leave blank for full workspace)"
+bishop.stage_projects: true
 bishop.category: review
 firstRunModel: claude-opus-4-7
 reRunModel: claude-sonnet-4-6

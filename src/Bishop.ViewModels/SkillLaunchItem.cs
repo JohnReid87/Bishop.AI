@@ -14,4 +14,5 @@ public sealed record SkillLaunchItem(
     bool RequiresStage,
     string? StagePrompt,
     string? StagePrefill,
-    string MarkdownBody);
+    string MarkdownBody,
+    bool StageProjects = false);

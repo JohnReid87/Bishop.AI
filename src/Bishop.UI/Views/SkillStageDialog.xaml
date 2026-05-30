@@ -13,6 +13,11 @@
         <TextBlock x:Name="PromptText"
                    Style="{StaticResource CaptionTextBlockStyle}"
                    TextWrapping="Wrap"/>
+        <ComboBox x:Name="ProjectsCombo"
+                  Visibility="Collapsed"
+                  HorizontalAlignment="Stretch"
+                  PlaceholderText="Project"
+                  SelectionChanged="ProjectsCombo_SelectionChanged"/>
         <TextBox x:Name="InputBox"
                  AcceptsReturn="True"
                  TextWrapping="Wrap"

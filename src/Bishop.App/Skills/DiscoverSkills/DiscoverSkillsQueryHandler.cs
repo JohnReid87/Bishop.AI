@@ -41,6 +41,7 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
             fm.TryGetValue("bishop.stage", out var stage);
             fm.TryGetValue("bishop.stage_prompt", out var stagePrompt);
             fm.TryGetValue("bishop.stage_prefill", out var stagePrefill);
+            fm.TryGetValue("bishop.stage_projects", out var stageProjects);
             fm.TryGetValue("bishop.category", out var category);
             fm.TryGetValue("firstRunModel", out var firstRunModel);
             fm.TryGetValue("reRunModel", out var reRunModel);
@@ -57,7 +58,8 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
                 skillFile,
                 ParseCategory(category),
                 string.IsNullOrWhiteSpace(firstRunModel) ? null : firstRunModel,
-                string.IsNullOrWhiteSpace(reRunModel) ? null : reRunModel));
+                string.IsNullOrWhiteSpace(reRunModel) ? null : reRunModel,
+                string.Equals(stageProjects, "true", StringComparison.OrdinalIgnoreCase)));
         }
 
         return Task.FromResult<IReadOnlyList<InstalledSkill>>(skills);
