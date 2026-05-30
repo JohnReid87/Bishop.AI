@@ -21,7 +21,6 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>Assets\Brand\bishop-ai.ico</ApplicationIcon>
     <!-- WinUI 3 desktop apps run as x64 in practice. Without an explicit
          PlatformTarget the WebView2 NuGet targets resolve EffectivePlatform

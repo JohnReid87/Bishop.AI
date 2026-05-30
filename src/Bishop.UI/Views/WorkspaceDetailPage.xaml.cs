@@ -265,7 +265,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 RenderCommitsInto(commitsContainer, flyout, commits, upstreamRef, gitHubRepo);
                 var needsSetUpstream = UpdatePushButton(pushButton, upstreamRef, upstreamIsTracked, unpushedCount);
 
-                pushButton.Click += async (_, _) =>
+                pushButton.Click += (_, _) => SafeAsync.RunAsync(async () =>
                 {
                     errorBlock.Visibility = Visibility.Collapsed;
                     var previousContent = pushButton.Content;
@@ -294,7 +294,7 @@ public sealed partial class WorkspaceDetailPage : Page
                         pushButton.Content = previousContent;
                         pushButton.IsEnabled = true;
                     }
-                };
+                });
 
                 panel.Children.Add(new ScrollViewer { MaxHeight = 400, Content = commitsContainer });
                 panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 4, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
@@ -453,7 +453,7 @@ public sealed partial class WorkspaceDetailPage : Page
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(4, 4, 4, 4),
         };
-        btn.Click += async (_, _) => await onClick();
+        btn.Click += (_, _) => SafeAsync.RunAsync(onClick);
 
         var tooltipText = string.IsNullOrEmpty(commit.Body) ? commit.Subject : $"{commit.Subject}\n\n{commit.Body}";
         if (commit.IsPushed && upstreamRef is not null)
@@ -974,33 +974,15 @@ public sealed partial class WorkspaceDetailPage : Page
         var scrollViewer = FindVisualChild<ScrollViewer>(sender as DependencyObject);
         if (scrollViewer is not null)
         {
-            const double EdgeZone = 48.0;
-            const double MinSpeed = 400.0;
-            const double MaxSpeed = 3000.0;
-            const double TickMs = 16.0;
-
             var pos = e.GetPosition(scrollViewer);
-            var viewportHeight = scrollViewer.ViewportHeight;
-            double velocity = 0;
-
-            if (pos.Y < EdgeZone)
-            {
-                var depth = (EdgeZone - pos.Y) / EdgeZone;
-                velocity = -(MinSpeed + (MaxSpeed - MinSpeed) * depth) * TickMs / 1000.0;
-            }
-            else if (pos.Y > viewportHeight - EdgeZone)
-            {
-                var depth = (pos.Y - (viewportHeight - EdgeZone)) / EdgeZone;
-                velocity = (MinSpeed + (MaxSpeed - MinSpeed) * depth) * TickMs / 1000.0;
-            }
-
+            var velocity = DragDropComputer.ComputeScrollVelocity(pos.Y, scrollViewer.ViewportHeight);
             if (velocity != 0)
             {
                 _autoScrollTarget = scrollViewer;
                 _autoScrollVelocity = velocity;
                 if (_autoScrollTimer is null)
                 {
-                    _autoScrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TickMs) };
+                    _autoScrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
                     _autoScrollTimer.Tick += AutoScrollTimer_Tick;
                 }
                 if (!_autoScrollTimer.IsEnabled)

@@ -13,7 +13,7 @@ public sealed partial class SettingsDialog : ContentDialog
     {
         ViewModel = vm;
         InitializeComponent();
-        Loaded += async (_, _) => await LoadSkillsAsync();
+        Loaded += (_, _) => SafeAsync.RunAsync(LoadSkillsAsync);
     }
 
     private async Task LoadSkillsAsync()
