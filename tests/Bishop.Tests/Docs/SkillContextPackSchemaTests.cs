@@ -59,12 +59,7 @@ public sealed class SkillContextPackSchemaTests : IClassFixture<DbFixture>
     [InlineData("bish-chat", "chat")]
     [InlineData("bish-triage", "triage")]
     [InlineData("bish-auto-card", "auto-card")]
-    // bish-spec-cards documents `bishop context-pack spec-cards` but no such
-    // provider is registered yet. Its skill_specific shape is documented as
-    // identical to grill-cards (same conventions, same card/related_cards
-    // fields), so we validate the documented paths against a grill-cards pack
-    // as a stand-in. Replace when a real SpecCardsContextProvider lands.
-    [InlineData("bish-spec-cards", "grill-cards")]
+    [InlineData("bish-spec-cards", "spec-cards")]
     // bish-write-skill is a meta-skill describing the pack schema for skill
     // authors; it only references universal roots (workspace, conventions).
     // grill-cards stands in for the skill_specific shape if any path snuck in.
@@ -260,6 +255,7 @@ public sealed class SkillContextPackSchemaTests : IClassFixture<DbFixture>
     {
         "work-on-card" => new WorkOnCardContextProvider(),
         "grill-cards" => new GrillCardsContextProvider(),
+        "spec-cards" => new SpecCardsContextProvider(),
         "chat" => new ChatContextProvider(),
         "triage" => new TriageContextProvider(),
         "auto-card" => new AutoCardContextProvider(),

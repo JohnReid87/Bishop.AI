@@ -197,6 +197,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("dead-code", new[] { "Shell selection", "Card model", "Findings Recording Procedure" })]
     [InlineData("audit-docs", new[] { "Shell selection", "Findings Recording Procedure" })]
     [InlineData("grill-cards", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure", "Source Card Closing Prompt" })]
+    [InlineData("spec-cards", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure", "Source Card Closing Prompt" })]
     [InlineData("grill-docs", new[] { "Shell selection" })]
     [InlineData("triage", new[] { "Shell selection", "Card Push Procedure", "Source Card Closing Prompt" })]
     [InlineData("chat", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure" })]
@@ -221,6 +222,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
 
     [Theory]
     [InlineData("grill-cards")]
+    [InlineData("spec-cards")]
     [InlineData("triage")]
     [InlineData("chat")]
     public async Task CardAwareProviders_LoadCardWhenArgProvided(string skillName)
@@ -274,6 +276,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         "tests" => new TestsContextProvider(),
         "audit-docs" => new AuditDocsContextProvider(),
         "grill-cards" => new GrillCardsContextProvider(),
+        "spec-cards" => new SpecCardsContextProvider(),
         "grill-docs" => new GrillDocsContextProvider(),
         "triage" => new TriageContextProvider(),
         "chat" => new ChatContextProvider(),
@@ -287,6 +290,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("work-on-card")]
     [InlineData("auto-card")]
     [InlineData("grill-cards")]
+    [InlineData("spec-cards")]
     [InlineData("triage")]
     [InlineData("chat")]
     public async Task CardProviders_NoRelatedSection_EmitsEmptyRelatedCards(string skillName)
@@ -312,6 +316,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("work-on-card")]
     [InlineData("auto-card")]
     [InlineData("grill-cards")]
+    [InlineData("spec-cards")]
     [InlineData("triage")]
     [InlineData("chat")]
     public async Task CardProviders_WithRelatedSection_LoadsReferencedCards(string skillName)
