@@ -7,8 +7,13 @@ namespace Bishop.App.Cards.RecordAutoRunFailure;
 public sealed class RecordAutoRunFailureCommandHandler : IRequestHandler<RecordAutoRunFailureCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly TimeProvider _timeProvider;
 
-    public RecordAutoRunFailureCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
+    public RecordAutoRunFailureCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, TimeProvider timeProvider)
+    {
+        _dbFactory = dbFactory;
+        _timeProvider = timeProvider;
+    }
 
     public async Task Handle(RecordAutoRunFailureCommand request, CancellationToken cancellationToken)
     {
@@ -17,7 +22,7 @@ public sealed class RecordAutoRunFailureCommandHandler : IRequestHandler<RecordA
             .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
             ?? throw new InvalidOperationException($"Card {request.CardId} not found.");
 
-        card.LastAutoRunFailedAt = DateTimeOffset.UtcNow;
+        card.LastAutoRunFailedAt = _timeProvider.GetUtcNow();
 
         await db.SaveChangesAsync(cancellationToken);
     }

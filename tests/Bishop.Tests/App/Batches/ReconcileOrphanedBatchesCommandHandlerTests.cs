@@ -64,7 +64,7 @@ public sealed class ReconcileOrphanedBatchesCommandHandlerTests : IClassFixture<
     }
 
     private ReconcileOrphanedBatchesCommandHandler CreateHandler() =>
-        new(_factory);
+        new(_factory, TimeProvider.System);
 
     // ── no Working batches ─────────────────────────────────────────────────────
 

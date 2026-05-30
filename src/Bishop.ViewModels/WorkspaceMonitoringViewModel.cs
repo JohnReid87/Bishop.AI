@@ -22,6 +22,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
 
     private readonly ISender _mediator;
     private readonly IGitCli _gitCli;
+    private readonly TimeProvider _timeProvider;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
 
@@ -55,10 +56,11 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             : null;
     }
 
-    public WorkspaceMonitoringViewModel(ISender mediator, IGitCli gitCli)
+    public WorkspaceMonitoringViewModel(ISender mediator, IGitCli gitCli, TimeProvider timeProvider)
     {
         _mediator = mediator;
         _gitCli = gitCli;
+        _timeProvider = timeProvider;
     }
 
     public async Task LoadAsync(Guid workspaceId, string workspacePath)
@@ -96,7 +98,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
                 ? SkillModelOptions.ResolveModelId(skill?.FirstRunModel)
                 : SkillModelOptions.ResolveModelId(skill?.ReRunModel);
 
-            var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable, _workspacePath, run?.FindingsCount);
+            var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable, _workspacePath, run?.FindingsCount, _timeProvider);
             row.SelectModelCommand.Execute(defaultModelId);
             row.ModelSelectionReason = isFirstRun ? "(first run)" : "(re-run default)";
             rows.Add(row);

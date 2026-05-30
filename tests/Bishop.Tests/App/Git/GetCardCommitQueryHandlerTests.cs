@@ -111,7 +111,7 @@ public sealed class GetCardCommitQueryHandlerTests : IClassFixture<DbFixture>
             .Handle(new CreateWorkspaceCommand("ws-with-hash", wsPath), default);
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, "To Do", "Card with hash", ""), default);
-        await new SetCardCommitCommandHandler(_factory)
+        await new SetCardCommitCommandHandler(_factory, TimeProvider.System)
             .Handle(new SetCardCommitCommand(card.Id, persistedHash, "main"), default);
 
         var commit = new CommitInfo("abcdef12", persistedHash, "", "", DateTimeOffset.UtcNow, true);

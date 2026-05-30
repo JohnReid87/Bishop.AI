@@ -11,11 +11,13 @@ public sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchComma
 {
     private readonly IGitCli _git;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly TimeProvider _timeProvider;
 
-    public CreateBatchCommandHandler(IGitCli git, IDbContextFactory<BishopDbContext> dbFactory)
+    public CreateBatchCommandHandler(IGitCli git, IDbContextFactory<BishopDbContext> dbFactory, TimeProvider timeProvider)
     {
         _git = git;
         _dbFactory = dbFactory;
+        _timeProvider = timeProvider;
     }
 
     public async Task<CreateBatchResult> Handle(CreateBatchCommand request, CancellationToken cancellationToken)
@@ -37,7 +39,7 @@ public sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchComma
             BaseBranch = baseBranch,
             WorktreePath = request.WorktreePath,
             Status = BatchStatus.Open,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = _timeProvider.GetUtcNow()
         };
         db.Batches.Add(batch);
         await db.SaveChangesAsync(cancellationToken);

@@ -14,17 +14,20 @@ public sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCom
     private readonly ISender _sender;
     private readonly IGitCli _git;
     private readonly ILogger<CleanUpBatchCommandHandler> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public CleanUpBatchCommandHandler(
         IDbContextFactory<BishopDbContext> dbFactory,
         ISender sender,
         IGitCli git,
-        ILogger<CleanUpBatchCommandHandler> logger)
+        ILogger<CleanUpBatchCommandHandler> logger,
+        TimeProvider timeProvider)
     {
         _dbFactory = dbFactory;
         _sender = sender;
         _git = git;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     public async Task<CleanUpBatchResult> Handle(CleanUpBatchCommand request, CancellationToken cancellationToken)
@@ -72,7 +75,7 @@ public sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCom
 
         if (batch.Status != BatchStatus.Closed)
         {
-            batch.Close(BatchClosedReason.Finished, DateTimeOffset.UtcNow);
+            batch.Close(BatchClosedReason.Finished, _timeProvider.GetUtcNow());
             await db.SaveChangesAsync(cancellationToken);
         }
 

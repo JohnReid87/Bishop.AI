@@ -48,7 +48,7 @@ public sealed class GetBatchPruneCandidatesQueryHandlerTests : IClassFixture<DbF
     }
 
     private GetBatchPruneCandidatesQueryHandler CreateHandler(IGitCli git)
-        => new(_factory, git);
+        => new(_factory, git, TimeProvider.System);
 
     private static IGitCli GitWhere(string branchName, bool exists, int commitCount = 0, bool checkedOut = false)
     {

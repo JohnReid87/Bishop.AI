@@ -84,7 +84,8 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
         ISender sender = new CleanUpBatchTestSender(_factory, gh);
         return new(_factory, sender,
                    git ?? GitMergedNoBranchNoWorktree(),
-                   NullLogger<CleanUpBatchCommandHandler>.Instance);
+                   NullLogger<CleanUpBatchCommandHandler>.Instance,
+                   TimeProvider.System);
     }
 
     private sealed class CleanUpBatchTestSender : ISender

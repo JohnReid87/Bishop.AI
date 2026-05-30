@@ -60,7 +60,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_HappyPath_WritesJsonAndHtmlAndRecordsRun()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
 
         var result = await sut.Handle(
             new RecordFindingsCommand(ws.Id, ws.Path, "bish-dead-code", ValidJson, "abc1234"),
@@ -83,7 +83,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_HtmlContainsFindingTitles()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
 
         var result = await sut.Handle(
             new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", ValidJson, "sha1"),
@@ -101,7 +101,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_OverwritesExistingFiles_OnSecondRun()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
 
         await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", ValidJson, "sha1"), default);
 
@@ -129,7 +129,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_MalformedJson_Throws()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
 
         var act = () => sut.Handle(
             new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", "{not json", "sha"),
@@ -143,7 +143,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_MissingFindingsArray_Throws()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
 
         var act = () => sut.Handle(
             new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", "{}", "sha"),
@@ -157,7 +157,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_MissingTitle_Throws()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
         const string json = """{ "findings": [ { "body": "x", "outcome": "dismissed" } ] }""";
 
         var act = () => sut.Handle(
@@ -172,7 +172,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_InvalidOutcome_Throws()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
         const string json = """{ "findings": [ { "title": "x", "body": "y", "outcome": "skipped" } ] }""";
 
         var act = () => sut.Handle(
@@ -187,7 +187,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_CardedOutcomeMustBeNumeric()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
         const string json = """{ "findings": [ { "title": "x", "body": "y", "outcome": "carded:#abc" } ] }""";
 
         var act = () => sut.Handle(
@@ -205,7 +205,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_SkillNameWithPathTraversal_Throws(string skillName)
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
 
         var act = () => sut.Handle(
             new RecordFindingsCommand(ws.Id, ws.Path, skillName, ValidJson, "sha"),
@@ -222,7 +222,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_EmptyFindingsArray_Succeeds()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
         const string json = """{ "findings": [] }""";
 
         var result = await sut.Handle(

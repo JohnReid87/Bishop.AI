@@ -23,19 +23,22 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
     private readonly ISender _sender;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly ILogger<RunBatchCommandHandler> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public RunBatchCommandHandler(
         IGitCli git,
         IClaudeCliRunner claude,
         ISender sender,
         IDbContextFactory<BishopDbContext> dbFactory,
-        ILogger<RunBatchCommandHandler> logger)
+        ILogger<RunBatchCommandHandler> logger,
+        TimeProvider timeProvider)
     {
         _git = git;
         _claude = claude;
         _sender = sender;
         _dbFactory = dbFactory;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     public async Task<RunBatchResult> Handle(RunBatchCommand request, CancellationToken cancellationToken)
@@ -135,7 +138,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     new UpdateCardCommand(card.Id, null, null, false, null, ToLaneName: SystemLaneNames.Doing),
                     cancellationToken);
 
-                var stamp = DateTimeOffset.Now.ToString("HH:mm:ss");
+                var stamp = _timeProvider.GetLocalNow().ToString("HH:mm:ss");
                 Console.Out.WriteLine($"== [{stamp}] Card #{card.Number}: {card.Title}  [{request.Model}] ==");
 
                 var contextPack = await _sender.Send(
@@ -227,7 +230,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var b = await db.Batches.FirstOrDefaultAsync(x => x.Id == batchId, cancellationToken)
             ?? throw new InvalidOperationException($"Batch {batchId} not found.");
-        b.StoppedAt = DateTimeOffset.UtcNow;
+        b.StoppedAt = _timeProvider.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
     }
 
@@ -236,23 +239,23 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var b = await db.Batches.FirstOrDefaultAsync(x => x.Id == batchId, cancellationToken)
             ?? throw new InvalidOperationException($"Batch {batchId} not found.");
-        b.FinishedAt = DateTimeOffset.UtcNow;
+        b.FinishedAt = _timeProvider.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
     }
 
     private static string LockFilePath(string worktreePath, Guid batchId) =>
         Path.Combine(worktreePath, ".bishop", $"batch-{batchId}.lock");
 
-    private static void WriteLockFile(string lockPath)
+    private void WriteLockFile(string lockPath)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
-        File.WriteAllText(lockPath, $"{Environment.ProcessId}\t{DateTimeOffset.UtcNow:O}");
+        File.WriteAllText(lockPath, $"{Environment.ProcessId}\t{_timeProvider.GetUtcNow():O}");
     }
 
-    private static void RefreshLockFile(string lockPath)
+    private void RefreshLockFile(string lockPath)
     {
         // intentional: best-effort lock-file refresh; failure does not interrupt batch execution
-        try { File.WriteAllText(lockPath, $"{Environment.ProcessId}\t{DateTimeOffset.UtcNow:O}"); } catch { }
+        try { File.WriteAllText(lockPath, $"{Environment.ProcessId}\t{_timeProvider.GetUtcNow():O}"); } catch { }
     }
 
     private static void DeleteLockFile(string lockPath)

@@ -62,7 +62,7 @@ public sealed class PushLaneHandlerTests : IClassFixture<DbFixture>
     {
         var sender = Substitute.For<ISender>();
         sender.Send(Arg.Any<PushCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(ci => new PushCardCommandHandler(_factory, _ghCli)
+            .Returns(ci => new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System)
                 .Handle(ci.Arg<PushCardCommand>(), ci.Arg<CancellationToken>()));
         return sender;
     }

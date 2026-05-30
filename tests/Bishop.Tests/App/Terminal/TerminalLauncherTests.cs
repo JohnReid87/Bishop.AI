@@ -621,10 +621,10 @@ public sealed class TerminalLauncherTests
     // ── Parameterless constructor ─────────────────────────────────────────────
 
     [Fact]
-    public void ParameterlessConstructor_DoesNotThrow()
+    public void DefaultConstructor_DoesNotThrow()
     {
         // Verifies the default File.Exists / Process.Start wiring compiles and initialises.
-        var act = () => _ = new TerminalLauncher();
+        var act = () => _ = new TerminalLauncher(TimeProvider.System);
         act.Should().NotThrow();
     }
 

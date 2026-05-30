@@ -8,7 +8,7 @@ public sealed partial class ErrorNotificationViewModel : ObservableObject
     public Exception Exception { get; }
     public string Title => "Background error";
     public string Message => Exception.Message;
-    public DateTimeOffset Timestamp { get; } = DateTimeOffset.Now;
+    public DateTimeOffset Timestamp { get; }
 
     private readonly Action<Exception>? _showDetails;
     private readonly Action<ErrorNotificationViewModel> _dismiss;
@@ -16,11 +16,16 @@ public sealed partial class ErrorNotificationViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsOpen { get; set; } = true;
 
-    public ErrorNotificationViewModel(Exception ex, Action<Exception>? showDetails, Action<ErrorNotificationViewModel> dismiss)
+    public ErrorNotificationViewModel(
+        Exception ex,
+        Action<Exception>? showDetails,
+        Action<ErrorNotificationViewModel> dismiss,
+        TimeProvider timeProvider)
     {
         Exception = ex;
         _showDetails = showDetails;
         _dismiss = dismiss;
+        Timestamp = timeProvider.GetLocalNow();
     }
 
     partial void OnIsOpenChanged(bool value)

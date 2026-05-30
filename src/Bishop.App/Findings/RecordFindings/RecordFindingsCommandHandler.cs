@@ -15,8 +15,13 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
     };
 
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly TimeProvider _timeProvider;
 
-    public RecordFindingsCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
+    public RecordFindingsCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, TimeProvider timeProvider)
+    {
+        _dbFactory = dbFactory;
+        _timeProvider = timeProvider;
+    }
 
     public async Task<RecordFindingsResult> Handle(RecordFindingsCommand request, CancellationToken cancellationToken)
     {
@@ -37,7 +42,7 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
         var jsonPath = Path.Combine(findingsDir, $"{request.SkillName}.json");
         var htmlPath = Path.Combine(findingsDir, $"{request.SkillName}.html");
 
-        var recordedAt = DateTimeOffset.UtcNow;
+        var recordedAt = _timeProvider.GetUtcNow();
         var canonicalJson = JsonSerializer.Serialize(document, CanonicalJsonOptions);
         var html = FindingsHtmlRenderer.Render(request.SkillName, document, recordedAt, request.GitSha);
 

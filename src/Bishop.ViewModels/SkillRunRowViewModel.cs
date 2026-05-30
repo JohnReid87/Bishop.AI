@@ -34,12 +34,12 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         SelectedModelLabel = $"{label} ▾";
     }
 
-    public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable, string workspacePath = "", int? findingsCount = null)
+    public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable, string workspacePath = "", int? findingsCount = null, TimeProvider? timeProvider = null)
     {
         SkillName = skillName;
         ReportFilePath = ResolveReportFilePath(skillName, workspacePath);
         FindingsCount = findingsCount;
-        LastRunText = lastRun is null ? "Never" : FormatRelativeTime(lastRun.Value);
+        LastRunText = lastRun is null ? "Never" : FormatRelativeTime(lastRun.Value, timeProvider ?? TimeProvider.System);
 
         if (lastRun is null)
         {
@@ -77,9 +77,9 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         return File.Exists(findingsPath) ? findingsPath : null;
     }
 
-    private static string FormatRelativeTime(DateTimeOffset timestamp)
+    private static string FormatRelativeTime(DateTimeOffset timestamp, TimeProvider timeProvider)
     {
-        var elapsed = DateTimeOffset.UtcNow - timestamp.ToUniversalTime();
+        var elapsed = timeProvider.GetUtcNow() - timestamp.ToUniversalTime();
         if (elapsed.TotalSeconds < 60) return "just now";
         if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes}m ago";
         if (elapsed.TotalHours < 24) return $"{(int)elapsed.TotalHours}h ago";

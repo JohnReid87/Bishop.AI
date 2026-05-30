@@ -8,8 +8,13 @@ namespace Bishop.App.Workspaces.RecordSkillRun;
 public sealed class RecordSkillRunCommandHandler : IRequestHandler<RecordSkillRunCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly TimeProvider _timeProvider;
 
-    public RecordSkillRunCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
+    public RecordSkillRunCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, TimeProvider timeProvider)
+    {
+        _dbFactory = dbFactory;
+        _timeProvider = timeProvider;
+    }
 
     public async Task Handle(RecordSkillRunCommand request, CancellationToken cancellationToken)
     {
@@ -17,6 +22,7 @@ public sealed class RecordSkillRunCommandHandler : IRequestHandler<RecordSkillRu
         var run = await db.WorkspaceSkillRuns
             .FirstOrDefaultAsync(r => r.WorkspaceId == request.WorkspaceId && r.SkillName == request.SkillName, cancellationToken);
 
+        var now = _timeProvider.GetUtcNow();
         if (run is null)
         {
             db.WorkspaceSkillRuns.Add(new WorkspaceSkillRun
@@ -25,13 +31,13 @@ public sealed class RecordSkillRunCommandHandler : IRequestHandler<RecordSkillRu
                 WorkspaceId = request.WorkspaceId,
                 SkillName = request.SkillName,
                 GitSha = request.GitSha,
-                RecordedAt = DateTimeOffset.UtcNow,
+                RecordedAt = now,
             });
         }
         else
         {
             run.GitSha = request.GitSha;
-            run.RecordedAt = DateTimeOffset.UtcNow;
+            run.RecordedAt = now;
         }
 
         await db.SaveChangesAsync(cancellationToken);

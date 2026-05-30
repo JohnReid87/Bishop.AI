@@ -37,6 +37,6 @@ public class ErrorNotificationViewModelTests
         ex ??= new InvalidOperationException("test");
         showDetails ??= _ => { };
         dismiss ??= _ => { };
-        return new ErrorNotificationViewModel(ex, showDetails, dismiss);
+        return new ErrorNotificationViewModel(ex, showDetails, dismiss, TimeProvider.System);
     }
 }

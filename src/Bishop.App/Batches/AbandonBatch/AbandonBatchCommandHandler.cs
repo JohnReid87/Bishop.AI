@@ -12,15 +12,18 @@ public sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCom
     private readonly IGitCli _git;
     private readonly ISender _sender;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly TimeProvider _timeProvider;
 
     public AbandonBatchCommandHandler(
         IGitCli git,
         ISender sender,
-        IDbContextFactory<BishopDbContext> dbFactory)
+        IDbContextFactory<BishopDbContext> dbFactory,
+        TimeProvider timeProvider)
     {
         _git = git;
         _sender = sender;
         _dbFactory = dbFactory;
+        _timeProvider = timeProvider;
     }
 
     public async Task<AbandonBatchResult> Handle(AbandonBatchCommand request, CancellationToken cancellationToken)
@@ -55,7 +58,7 @@ public sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCom
 
         var batchToClose = await db.Batches.FirstOrDefaultAsync(b => b.Id == batch.Id, cancellationToken)
             ?? throw new InvalidOperationException($"Batch {batch.Id} not found.");
-        batchToClose.Close(BatchClosedReason.Abandoned, DateTimeOffset.UtcNow);
+        batchToClose.Close(BatchClosedReason.Abandoned, _timeProvider.GetUtcNow());
         await db.SaveChangesAsync(cancellationToken);
 
         await _git.RemoveWorktreeAsync(request.WorkspacePath, batch.WorktreePath, cancellationToken);

@@ -8,8 +8,13 @@ namespace Bishop.App.Batches.RequestStopBatch;
 public sealed class RequestStopBatchCommandHandler : IRequestHandler<RequestStopBatchCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly TimeProvider _timeProvider;
 
-    public RequestStopBatchCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
+    public RequestStopBatchCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, TimeProvider timeProvider)
+    {
+        _dbFactory = dbFactory;
+        _timeProvider = timeProvider;
+    }
 
     public async Task Handle(RequestStopBatchCommand request, CancellationToken cancellationToken)
     {
@@ -22,7 +27,7 @@ public sealed class RequestStopBatchCommandHandler : IRequestHandler<RequestStop
             throw new InvalidOperationException(
                 $"Cannot request stop on a batch that is not Working (current: {batch.Status}).");
 
-        batch.StoppedAt = DateTimeOffset.UtcNow;
+        batch.StoppedAt = _timeProvider.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
     }
 }

@@ -34,7 +34,7 @@ public sealed class CreateBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     private CreateBatchCommandHandler MakeHandler() =>
-        new(_git, _factory);
+        new(_git, _factory, TimeProvider.System);
 
     [Fact]
     public async Task Handle_NoCards_CreatesBatchWithWorktree()

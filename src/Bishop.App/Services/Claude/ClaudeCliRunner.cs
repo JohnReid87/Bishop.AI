@@ -13,14 +13,16 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
 
     private readonly IClaudeExecutableResolver _resolver;
     private readonly Func<ProcessStartInfo, Process?> _processStarter;
+    private readonly TimeProvider _timeProvider;
 
-    public ClaudeCliRunner(IClaudeExecutableResolver resolver)
-        : this(resolver, Process.Start) { }
+    public ClaudeCliRunner(IClaudeExecutableResolver resolver, TimeProvider timeProvider)
+        : this(resolver, Process.Start, timeProvider) { }
 
-    public ClaudeCliRunner(IClaudeExecutableResolver resolver, Func<ProcessStartInfo, Process?> processStarter)
+    public ClaudeCliRunner(IClaudeExecutableResolver resolver, Func<ProcessStartInfo, Process?> processStarter, TimeProvider timeProvider)
     {
         _resolver = resolver;
         _processStarter = processStarter;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ClaudeRunResult> RunPromptAsync(
@@ -120,12 +122,12 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
 
-    private static void AppendDenial(string workspacePath, int? cardNumber, PermissionDeniedEvent ev)
+    private void AppendDenial(string workspacePath, int? cardNumber, PermissionDeniedEvent ev)
     {
         var bishopDir = Path.Combine(workspacePath, ".bishop");
         Directory.CreateDirectory(bishopDir);
         var entry = new DenialLogEntry(
-            DateTimeOffset.UtcNow.ToString("o"),
+            _timeProvider.GetUtcNow().ToString("o"),
             cardNumber,
             ev.Tool,
             ev.Command,

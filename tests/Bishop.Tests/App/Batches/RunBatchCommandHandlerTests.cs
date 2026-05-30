@@ -107,8 +107,8 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             _contextPackException = contextPackException;
             _moveCard = new(factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance);
             _recordClaudeRun = new(factory);
-            _recordAutoRunFailure = new(factory);
-            _setCardCommit = new(factory);
+            _recordAutoRunFailure = new(factory, TimeProvider.System);
+            _setCardCommit = new(factory, TimeProvider.System);
             _getWorkspace = new(factory);
             _updateCard = new(factory, this);
         }
@@ -199,7 +199,8 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             claude ?? ClaudeAlwaysSucceeds(),
             sender ?? CreateSender(contextPackException),
             _factory,
-            NullLogger<RunBatchCommandHandler>.Instance);
+            NullLogger<RunBatchCommandHandler>.Instance,
+            TimeProvider.System);
 
     // ── status validation ──────────────────────────────────────────────────────
 

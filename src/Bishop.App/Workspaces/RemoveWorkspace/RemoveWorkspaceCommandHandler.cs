@@ -7,8 +7,13 @@ namespace Bishop.App.Workspaces.RemoveWorkspace;
 public sealed class RemoveWorkspaceCommandHandler : IRequestHandler<RemoveWorkspaceCommand, Unit>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly TimeProvider _timeProvider;
 
-    public RemoveWorkspaceCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
+    public RemoveWorkspaceCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, TimeProvider timeProvider)
+    {
+        _dbFactory = dbFactory;
+        _timeProvider = timeProvider;
+    }
 
     public async Task<Unit> Handle(RemoveWorkspaceCommand request, CancellationToken cancellationToken)
     {
@@ -17,7 +22,7 @@ public sealed class RemoveWorkspaceCommandHandler : IRequestHandler<RemoveWorksp
             ?? throw new InvalidOperationException($"Workspace {request.Id} not found.");
 
         workspace.IsRemoved = true;
-        workspace.RemovedAt = DateTimeOffset.UtcNow;
+        workspace.RemovedAt = _timeProvider.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
         return Unit.Value;
     }

@@ -95,10 +95,10 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
             .Returns(call => new RecordClaudeRunCommandHandler(_factory)
                 .Handle(call.ArgAt<RecordClaudeRunCommand>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<RecordAutoRunFailureCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new RecordAutoRunFailureCommandHandler(_factory)
+            .Returns(call => new RecordAutoRunFailureCommandHandler(_factory, TimeProvider.System)
                 .Handle(call.ArgAt<RecordAutoRunFailureCommand>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<SetCardCommitCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new SetCardCommitCommandHandler(_factory)
+            .Returns(call => new SetCardCommitCommandHandler(_factory, TimeProvider.System)
                 .Handle(call.ArgAt<SetCardCommitCommand>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<UpdateCardCommand>(), Arg.Any<CancellationToken>())
             .Returns(call => new UpdateCardCommandHandler(_factory, sender)
@@ -148,7 +148,8 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
             claude ?? ClaudeSucceedsNoHandoff(),
             sender ?? CreateSender(),
             _factory,
-            NullLogger<RunBatchCommandHandler>.Instance);
+            NullLogger<RunBatchCommandHandler>.Instance,
+            TimeProvider.System);
 
     // ── valid handoff ──────────────────────────────────────────────────────────
 

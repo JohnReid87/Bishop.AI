@@ -397,7 +397,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var path = $@"C:\projects\archived-{tag}";
         var handler = CreateInitHandler();
         var first = await handler.Handle(new InitWorkspaceCommand(path, "Archived"), default);
-        await new RemoveWorkspaceCommandHandler(_factory).Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System).Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
 
         var result = await handler.Handle(new InitWorkspaceCommand(path), default);
 
@@ -414,7 +414,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var path = $@"C:\projects\restore-{tag}";
         var handler = CreateInitHandler();
         var first = await handler.Handle(new InitWorkspaceCommand(path, "ToRestore"), default);
-        await new RemoveWorkspaceCommandHandler(_factory).Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System).Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
 
         var result = await handler.Handle(new InitWorkspaceCommand(path, ArchivedAction: InitWorkspaceArchivedAction.Restore), default);
 
@@ -435,7 +435,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var path = $@"C:\projects\fresh-{tag}";
         var handler = CreateInitHandler();
         var first = await handler.Handle(new InitWorkspaceCommand(path, "OldWs"), default);
-        await new RemoveWorkspaceCommandHandler(_factory).Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System).Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
 
         var result = await handler.Handle(new InitWorkspaceCommand(path, "NewWs", ArchivedAction: InitWorkspaceArchivedAction.Fresh), default);
 
@@ -654,7 +654,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var name = U("ToRemove");
         var created = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        var handler = new RemoveWorkspaceCommandHandler(_factory);
+        var handler = new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System);
 
         await handler.Handle(new RemoveWorkspaceCommand(created.Id), default);
 
@@ -666,7 +666,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task RemoveWorkspace_WorkspaceNotFound_Throws()
     {
-        var handler = new RemoveWorkspaceCommandHandler(_factory);
+        var handler = new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System);
 
         var act = () => handler.Handle(new RemoveWorkspaceCommand(Guid.NewGuid()), default);
 
@@ -680,7 +680,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var name = U("Removed2");
         var created = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        await new RemoveWorkspaceCommandHandler(_factory)
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
             .Handle(new RemoveWorkspaceCommand(created.Id), default);
 
         var result = await new ListWorkspacesQueryHandler(_factory)
@@ -744,7 +744,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var name = U("ToPurge");
         var created = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        await new RemoveWorkspaceCommandHandler(_factory)
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
             .Handle(new RemoveWorkspaceCommand(created.Id), default);
         var handler = new PurgeWorkspaceCommandHandler(_factory);
 
@@ -785,7 +785,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var name = U("PurgeList");
         var created = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
-        await new RemoveWorkspaceCommandHandler(_factory)
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
             .Handle(new RemoveWorkspaceCommand(created.Id), default);
         await new PurgeWorkspaceCommandHandler(_factory)
             .Handle(new PurgeWorkspaceCommand(created.Id), default);
@@ -818,7 +818,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var name = U("SharedName");
         var first = await CreateInitHandler()
             .Handle(new InitWorkspaceCommand($@"C:\first-{name}", name), default);
-        await new RemoveWorkspaceCommandHandler(_factory)
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
             .Handle(new RemoveWorkspaceCommand(first.Workspace.Id), default);
 
         var result = await CreateInitHandler()
@@ -837,7 +837,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Cascade test card"), default);
-        await new RemoveWorkspaceCommandHandler(_factory)
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
             .Handle(new RemoveWorkspaceCommand(workspace.Id), default);
 
         await new PurgeWorkspaceCommandHandler(_factory)

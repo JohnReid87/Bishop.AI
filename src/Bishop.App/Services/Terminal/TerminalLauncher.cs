@@ -16,13 +16,15 @@ public sealed class TerminalLauncher : ITerminalLauncher
 
     private readonly Func<string, bool> _fileExists;
     private readonly Action<ProcessStartInfo> _startProcess;
+    private readonly TimeProvider _timeProvider;
 
-    public TerminalLauncher() : this(File.Exists, psi => Process.Start(psi)) { }
+    public TerminalLauncher(TimeProvider timeProvider) : this(File.Exists, psi => Process.Start(psi), timeProvider) { }
 
-    internal TerminalLauncher(Func<string, bool> fileExists, Action<ProcessStartInfo> startProcess)
+    internal TerminalLauncher(Func<string, bool> fileExists, Action<ProcessStartInfo> startProcess, TimeProvider? timeProvider = null)
     {
         _fileExists = fileExists;
         _startProcess = startProcess;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public bool Launch(string workingDirectory, string? claudeArgs, TerminalSnap? snap, string? modelId = null)
@@ -153,13 +155,14 @@ public sealed class TerminalLauncher : ITerminalLauncher
         return false;
     }
 
-    private static void SnapLater(string windowClass, TerminalSnap snap, HashSet<nint> before)
+    private void SnapLater(string windowClass, TerminalSnap snap, HashSet<nint> before)
     {
+        var timeProvider = _timeProvider;
         _ = Task.Run(async () =>
         {
-            var deadline = DateTime.UtcNow.AddSeconds(3);
+            var deadline = timeProvider.GetUtcNow().AddSeconds(3);
             nint found = 0;
-            while (DateTime.UtcNow < deadline)
+            while (timeProvider.GetUtcNow() < deadline)
             {
                 foreach (var hWnd in GetWindowsOfClass(windowClass))
                 {

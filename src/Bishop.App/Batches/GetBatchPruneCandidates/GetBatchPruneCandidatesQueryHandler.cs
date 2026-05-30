@@ -11,11 +11,13 @@ public sealed class GetBatchPruneCandidatesQueryHandler
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGitCli _git;
+    private readonly TimeProvider _timeProvider;
 
-    public GetBatchPruneCandidatesQueryHandler(IDbContextFactory<BishopDbContext> dbFactory, IGitCli git)
+    public GetBatchPruneCandidatesQueryHandler(IDbContextFactory<BishopDbContext> dbFactory, IGitCli git, TimeProvider timeProvider)
     {
         _dbFactory = dbFactory;
         _git = git;
+        _timeProvider = timeProvider;
     }
 
     public async Task<IReadOnlyList<PruneBatchCandidate>> Handle(
@@ -35,7 +37,10 @@ public sealed class GetBatchPruneCandidatesQueryHandler
         if (request.MergedOnly)
             closed = closed.Where(b => b.ClosedReason == BatchClosedReason.Finished);
         if (request.OlderThan is { } olderThan)
-            closed = closed.Where(b => DateTimeOffset.UtcNow - b.ClosedAt!.Value >= olderThan);
+        {
+            var nowForOlder = _timeProvider.GetUtcNow();
+            closed = closed.Where(b => nowForOlder - b.ClosedAt!.Value >= olderThan);
+        }
 
         var checkedOutBranches = await _git.GetWorktreeBranchesAsync(request.WorkspacePath, cancellationToken);
         var checkedOutSet = new HashSet<string>(checkedOutBranches, StringComparer.OrdinalIgnoreCase);

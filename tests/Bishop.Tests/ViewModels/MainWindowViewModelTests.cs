@@ -739,7 +739,7 @@ public class MainWindowViewModelTests
     public void Notifications_ContainsErrorReportedToErrorBus()
     {
         var dispatcher = new SynchronousDispatcher();
-        var errorBus = new ErrorBus(dispatcher);
+        var errorBus = new ErrorBus(dispatcher, TimeProvider.System);
         var vm = NewVm(errorBus: errorBus, dispatcher: dispatcher);
         var exception = new InvalidOperationException("test error");
 

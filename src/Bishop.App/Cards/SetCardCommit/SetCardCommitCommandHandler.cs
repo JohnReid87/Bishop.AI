@@ -8,9 +8,13 @@ namespace Bishop.App.Cards.SetCardCommit;
 public sealed class SetCardCommitCommandHandler : IRequestHandler<SetCardCommitCommand, Card>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly TimeProvider _timeProvider;
 
-    public SetCardCommitCommandHandler(IDbContextFactory<BishopDbContext> dbFactory)
-        => _dbFactory = dbFactory;
+    public SetCardCommitCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, TimeProvider timeProvider)
+    {
+        _dbFactory = dbFactory;
+        _timeProvider = timeProvider;
+    }
 
     public async Task<Card> Handle(SetCardCommitCommand request, CancellationToken cancellationToken)
     {
@@ -21,7 +25,7 @@ public sealed class SetCardCommitCommandHandler : IRequestHandler<SetCardCommitC
 
         card.CommitHash = request.Hash;
         card.BranchName = request.Branch;
-        card.UpdatedAt = DateTimeOffset.UtcNow;
+        card.UpdatedAt = _timeProvider.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
         return card;

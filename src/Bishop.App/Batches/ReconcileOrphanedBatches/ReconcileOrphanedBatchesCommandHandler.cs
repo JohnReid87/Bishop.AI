@@ -9,11 +9,13 @@ namespace Bishop.App.Batches.ReconcileOrphanedBatches;
 public sealed class ReconcileOrphanedBatchesCommandHandler : IRequestHandler<ReconcileOrphanedBatchesCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly TimeProvider _timeProvider;
     private static readonly TimeSpan s_lockStaleness = TimeSpan.FromMinutes(5);
 
-    public ReconcileOrphanedBatchesCommandHandler(IDbContextFactory<BishopDbContext> dbFactory)
+    public ReconcileOrphanedBatchesCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, TimeProvider timeProvider)
     {
         _dbFactory = dbFactory;
+        _timeProvider = timeProvider;
     }
 
     public async Task Handle(ReconcileOrphanedBatchesCommand request, CancellationToken cancellationToken)
@@ -24,7 +26,7 @@ public sealed class ReconcileOrphanedBatchesCommandHandler : IRequestHandler<Rec
         if (workingBatches.Count == 0)
             return;
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _timeProvider.GetUtcNow();
         var orphanedIds = workingBatches
             .Where(b => IsOrphaned(b.WorktreePath, b.Id, now))
             .Select(b => b.Id)
@@ -44,7 +46,7 @@ public sealed class ReconcileOrphanedBatchesCommandHandler : IRequestHandler<Rec
         if (orphanedCards.Count == 0)
             return;
 
-        var failedAt = DateTimeOffset.UtcNow;
+        var failedAt = _timeProvider.GetUtcNow();
         foreach (var card in orphanedCards)
             card.LastAutoRunFailedAt = failedAt;
 

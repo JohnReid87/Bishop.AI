@@ -32,7 +32,7 @@ public sealed class RecordSkillRunCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_InsertsRow_OnFirstRecord()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordSkillRunCommandHandler(_factory);
+        var sut = new RecordSkillRunCommandHandler(_factory, TimeProvider.System);
 
         await sut.Handle(new RecordSkillRunCommand(ws.Id, "bish-arch", "abc1234"), default);
 
@@ -46,7 +46,7 @@ public sealed class RecordSkillRunCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_UpdatesExistingRow_OnSubsequentRecord()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordSkillRunCommandHandler(_factory);
+        var sut = new RecordSkillRunCommandHandler(_factory, TimeProvider.System);
 
         await sut.Handle(new RecordSkillRunCommand(ws.Id, "bish-arch", "aaa1111"), default);
         await sut.Handle(new RecordSkillRunCommand(ws.Id, "bish-arch", "bbb2222"), default);
@@ -62,7 +62,7 @@ public sealed class RecordSkillRunCommandHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_StoresOneRowPerSkill_ForSameWorkspace()
     {
         var ws = await CreateWorkspaceAsync();
-        var sut = new RecordSkillRunCommandHandler(_factory);
+        var sut = new RecordSkillRunCommandHandler(_factory, TimeProvider.System);
 
         await sut.Handle(new RecordSkillRunCommand(ws.Id, "bish-arch", "sha1"), default);
         await sut.Handle(new RecordSkillRunCommand(ws.Id, "bish-coverage", "sha2"), default);
@@ -77,7 +77,7 @@ public sealed class RecordSkillRunCommandHandlerTests : IClassFixture<DbFixture>
     public async Task GetWorkspaceSkillRunsQuery_ReturnsRunsForWorkspace_OrderedBySkillName()
     {
         var ws = await CreateWorkspaceAsync();
-        var recordSut = new RecordSkillRunCommandHandler(_factory);
+        var recordSut = new RecordSkillRunCommandHandler(_factory, TimeProvider.System);
         await recordSut.Handle(new RecordSkillRunCommand(ws.Id, "bish-security", "s1"), default);
         await recordSut.Handle(new RecordSkillRunCommand(ws.Id, "bish-arch", "s2"), default);
 

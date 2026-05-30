@@ -84,7 +84,7 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     private AbandonBatchCommandHandler CreateHandler(IGitCli? git = null, ISender? sender = null) =>
-        new(git ?? Substitute.For<IGitCli>(), sender ?? CreateSender(), _factory);
+        new(git ?? Substitute.For<IGitCli>(), sender ?? CreateSender(), _factory, TimeProvider.System);
 
     // ── status validation ──────────────────────────────────────────────────────
 

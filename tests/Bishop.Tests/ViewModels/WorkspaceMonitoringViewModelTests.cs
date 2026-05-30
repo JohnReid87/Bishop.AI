@@ -27,7 +27,7 @@ public class WorkspaceMonitoringViewModelTests
 
     public WorkspaceMonitoringViewModelTests()
     {
-        _vm = new WorkspaceMonitoringViewModel(_mediator, _gitCli);
+        _vm = new WorkspaceMonitoringViewModel(_mediator, _gitCli, TimeProvider.System);
         _mediator
             .Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>([]));

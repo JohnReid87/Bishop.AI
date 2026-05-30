@@ -184,7 +184,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
     public async Task PushCard_CardNotFound_Throws()
     {
         // Arrange
-        var handler = new PushCardCommandHandler(_factory, _ghCli);
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
 
         // Act
         var act = async () => await handler.Handle(new PushCardCommand(Guid.NewGuid()), default);
@@ -200,7 +200,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
-        var handler = new PushCardCommandHandler(_factory, _ghCli);
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
 
         // Act
         var act = async () => await handler.Handle(new PushCardCommand(card.Id), default);
@@ -219,7 +219,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
             .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         card.GitHubIssueNumber = 10;
         await PersistMutationAsync(card);
-        var handler = new PushCardCommandHandler(_factory, _ghCli);
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
 
         // Act
         var act = async () => await handler.Handle(new PushCardCommand(card.Id), default);
@@ -240,7 +240,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult("https://github.com/owner/repo/issues/42"));
         var before = DateTimeOffset.UtcNow;
-        var handler = new PushCardCommandHandler(_factory, _ghCli);
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
 
         // Act
         var result = await handler.Handle(new PushCardCommand(card.Id), default);
@@ -261,7 +261,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
             .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task"), default);
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult("https://github.com/owner/repo/issues/1"));
-        var handler = new PushCardCommandHandler(_factory, _ghCli);
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
 
         // Act
         await handler.Handle(new PushCardCommand(card.Id), default);
@@ -282,7 +282,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
             .Handle(new AddCardCommand(workspace.Id, lanes[0].Name,"Task", TagName: "feature"), default);
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult("https://github.com/owner/repo/issues/7"));
-        var handler = new PushCardCommandHandler(_factory, _ghCli);
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
 
         // Act
         await handler.Handle(new PushCardCommand(card.Id), default);
@@ -305,7 +305,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         await PersistMutationAsync(card);
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult("https://github.com/owner/repo/issues/99"));
-        var handler = new PushCardCommandHandler(_factory, _ghCli);
+        var handler = new PushCardCommandHandler(_factory, _ghCli, TimeProvider.System);
 
         // Act
         await handler.Handle(new PushCardCommand(card.Id), default);

@@ -10,11 +10,13 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGhCli _ghCli;
+    private readonly TimeProvider _timeProvider;
 
-    public PushCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, IGhCli ghCli)
+    public PushCardCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, IGhCli ghCli, TimeProvider timeProvider)
     {
         _dbFactory = dbFactory;
         _ghCli = ghCli;
+        _timeProvider = timeProvider;
     }
 
     public async Task<Card> Handle(PushCardCommand request, CancellationToken cancellationToken)
@@ -67,7 +69,7 @@ public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Ca
             await _ghCli.RunAsync(["issue", "close", issueNumber.ToString(), "--repo", repo], cancellationToken);
 
         card.GitHubIssueNumber = issueNumber;
-        card.GitHubPushedAt = DateTimeOffset.UtcNow;
+        card.GitHubPushedAt = _timeProvider.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
         return card;
     }

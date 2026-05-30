@@ -9,7 +9,7 @@ public class ErrorBusTests
     public async Task Report_FromBackgroundThread_AddsNotificationToCollection()
     {
         var dispatcher = new SynchronousDispatcher();
-        var bus = new ErrorBus(dispatcher);
+        var bus = new ErrorBus(dispatcher, TimeProvider.System);
         var ex = new InvalidOperationException("boom");
 
         await Task.Run(() => bus.Report(ex));
@@ -24,7 +24,7 @@ public class ErrorBusTests
     public void Report_MultipleExceptions_PreservesOrder()
     {
         var dispatcher = new SynchronousDispatcher();
-        var bus = new ErrorBus(dispatcher);
+        var bus = new ErrorBus(dispatcher, TimeProvider.System);
         var ex1 = new InvalidOperationException("first");
         var ex2 = new ArgumentException("second");
         var ex3 = new TimeoutException("third");
@@ -43,7 +43,7 @@ public class ErrorBusTests
     public void Dismiss_RemovesNotificationFromCollection()
     {
         var dispatcher = new SynchronousDispatcher();
-        var bus = new ErrorBus(dispatcher);
+        var bus = new ErrorBus(dispatcher, TimeProvider.System);
         bus.Report(new InvalidOperationException("one"));
         bus.Report(new InvalidOperationException("two"));
 
@@ -57,7 +57,7 @@ public class ErrorBusTests
     public void ShowDetails_CallsShowDetailsHandler()
     {
         var dispatcher = new SynchronousDispatcher();
-        var bus = new ErrorBus(dispatcher);
+        var bus = new ErrorBus(dispatcher, TimeProvider.System);
         Exception? received = null;
         bus.ShowDetailsHandler = ex => received = ex;
 
@@ -72,7 +72,7 @@ public class ErrorBusTests
     public void ShowDetails_WithNullHandler_DoesNotThrow()
     {
         var dispatcher = new SynchronousDispatcher();
-        var bus = new ErrorBus(dispatcher);
+        var bus = new ErrorBus(dispatcher, TimeProvider.System);
         bus.ShowDetailsHandler = null;
         bus.Report(new InvalidOperationException("x"));
 
