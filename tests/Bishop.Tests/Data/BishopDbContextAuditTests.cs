@@ -1,6 +1,8 @@
 using Bishop.Core;
+using Bishop.Data;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Bishop.Tests.Data;
 
@@ -55,6 +57,32 @@ public sealed class BishopDbContextAuditTests : IDisposable
 
         card.CreatedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
         card.UpdatedAt.Should().Be(card.CreatedAt);
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_StampsAuditFields_FromInjectedTimeProvider()
+    {
+        var fixedNow = new DateTimeOffset(2026, 1, 15, 12, 34, 56, TimeSpan.Zero);
+        var fakeTime = new FakeTimeProvider(fixedNow);
+
+        var options = new DbContextOptionsBuilder<BishopDbContext>()
+            .UseSqlite(_fixture.Connection)
+            .Options;
+        await using var db = new BishopDbContext(options, fakeTime);
+
+        var workspace = new Workspace { Id = Guid.NewGuid(), Name = "TP", Path = "/tp" };
+        db.Workspaces.Add(workspace);
+        await db.SaveChangesAsync();
+
+        workspace.CreatedAt.Should().Be(fixedNow);
+        workspace.UpdatedAt.Should().Be(fixedNow);
+
+        fakeTime.Advance(TimeSpan.FromMinutes(5));
+        workspace.Name = "TP2";
+        await db.SaveChangesAsync();
+
+        workspace.CreatedAt.Should().Be(fixedNow);
+        workspace.UpdatedAt.Should().Be(fixedNow.AddMinutes(5));
     }
 
     [Fact]

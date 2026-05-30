@@ -60,7 +60,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         var outsidePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "file.cs");
         Console.SetIn(new StringReader(EditPayload(outsidePath)));
 
-        var cmd = new CheckPathCliCommand(_workspaceDir);
+        var cmd = new CheckPathCliCommand(TimeProvider.System, _workspaceDir);
         var exitCode = await cmd.InvokeAsync([]);
 
         exitCode.Should().Be(0);
@@ -74,7 +74,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         var insidePath = Path.Combine(_workspaceDir, "src", "foo.cs");
         Console.SetIn(new StringReader(EditPayload(insidePath)));
 
-        var cmd = new CheckPathCliCommand(_workspaceDir);
+        var cmd = new CheckPathCliCommand(TimeProvider.System, _workspaceDir);
         var exitCode = await cmd.InvokeAsync([]);
 
         exitCode.Should().Be(0);
@@ -88,7 +88,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         var outsidePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "evil.cs");
         Console.SetIn(new StringReader(EditPayload(outsidePath)));
 
-        var cmd = new CheckPathCliCommand(_workspaceDir);
+        var cmd = new CheckPathCliCommand(TimeProvider.System, _workspaceDir);
         var exitCode = await cmd.InvokeAsync([]);
 
         exitCode.Should().Be(1);
@@ -107,7 +107,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         var outsidePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "evil.txt");
         Console.SetIn(new StringReader(WritePayload(outsidePath)));
 
-        var cmd = new CheckPathCliCommand(_workspaceDir);
+        var cmd = new CheckPathCliCommand(TimeProvider.System, _workspaceDir);
         var exitCode = await cmd.InvokeAsync([]);
 
         exitCode.Should().Be(1);
@@ -123,7 +123,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         var outsidePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "evil.ipynb");
         Console.SetIn(new StringReader(NotebookPayload(outsidePath)));
 
-        var cmd = new CheckPathCliCommand(_workspaceDir);
+        var cmd = new CheckPathCliCommand(TimeProvider.System, _workspaceDir);
         var exitCode = await cmd.InvokeAsync([]);
 
         exitCode.Should().Be(1);
@@ -144,7 +144,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         });
         Console.SetIn(new StringReader(payload));
 
-        var cmd = new CheckPathCliCommand(_workspaceDir);
+        var cmd = new CheckPathCliCommand(TimeProvider.System, _workspaceDir);
         var exitCode = await cmd.InvokeAsync([]);
 
         exitCode.Should().Be(0);
@@ -156,7 +156,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         Environment.SetEnvironmentVariable("BISHOP_AUTO_CARD", "1");
         Console.SetIn(new StringReader(string.Empty));
 
-        var cmd = new CheckPathCliCommand(_workspaceDir);
+        var cmd = new CheckPathCliCommand(TimeProvider.System, _workspaceDir);
         var exitCode = await cmd.InvokeAsync([]);
 
         exitCode.Should().Be(0);
@@ -168,7 +168,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         Environment.SetEnvironmentVariable("BISHOP_AUTO_CARD", "1");
         Console.SetIn(new StringReader("not-json{{{"));
 
-        var cmd = new CheckPathCliCommand(_workspaceDir);
+        var cmd = new CheckPathCliCommand(TimeProvider.System, _workspaceDir);
         var exitCode = await cmd.InvokeAsync([]);
 
         exitCode.Should().Be(0);
@@ -185,7 +185,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         Directory.SetCurrentDirectory(_workspaceDir);
         try
         {
-            var cmd = new CheckPathCliCommand();
+            var cmd = new CheckPathCliCommand(TimeProvider.System);
             var exitCode = await cmd.InvokeAsync([]);
 
             exitCode.Should().Be(1);
@@ -207,7 +207,7 @@ public sealed class CheckPathCliCommandTests : IDisposable
         var outsidePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "evil.cs");
         Console.SetIn(new StringReader(EditPayload(outsidePath)));
 
-        var cmd = new CheckPathCliCommand(_workspaceDir);
+        var cmd = new CheckPathCliCommand(TimeProvider.System, _workspaceDir);
         await cmd.InvokeAsync([]);
 
         var denialPath = Path.Combine(_workspaceDir, ".bishop", "denials.jsonl");

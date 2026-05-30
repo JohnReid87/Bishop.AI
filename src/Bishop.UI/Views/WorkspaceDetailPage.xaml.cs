@@ -23,6 +23,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private readonly DbChangeWatcher _dbWatcher;
     private readonly IDialogService _dialogService;
     private readonly ILogger<WorkspaceDetailPage> _logger;
+    private readonly TimeProvider _timeProvider;
     private WorkspaceItemViewModel? _item;
     private CardViewModel? _draggedCard;
     private LaneViewModel? _dragSourceLane;
@@ -49,6 +50,7 @@ public sealed partial class WorkspaceDetailPage : Page
         _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         _dialogService = App.Services.GetRequiredService<IDialogService>();
         _logger = App.Services.GetRequiredService<ILogger<WorkspaceDetailPage>>();
+        _timeProvider = App.Services.GetRequiredService<TimeProvider>();
         InitializeComponent();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
@@ -374,7 +376,7 @@ public sealed partial class WorkspaceDetailPage : Page
         UpdateNotificationPanel();
     }
 
-    private static FrameworkElement MakeCommitRow(CommitItem commit, string? upstreamRef, Func<Task> onClick)
+    private FrameworkElement MakeCommitRow(CommitItem commit, string? upstreamRef, Func<Task> onClick)
     {
         var secondaryBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppTextSecondaryBrush"];
 
@@ -460,9 +462,9 @@ public sealed partial class WorkspaceDetailPage : Page
         return btn;
     }
 
-    private static string GetRelativeTime(DateTimeOffset timestamp)
+    private string GetRelativeTime(DateTimeOffset timestamp)
     {
-        var elapsed = DateTimeOffset.UtcNow - timestamp.ToUniversalTime();
+        var elapsed = _timeProvider.GetUtcNow() - timestamp.ToUniversalTime();
         if (elapsed.TotalSeconds < 60) return "just now";
         if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes}m ago";
         if (elapsed.TotalHours < 24) return $"{(int)elapsed.TotalHours}h ago";

@@ -37,7 +37,7 @@ public sealed class PruneBatchCliCommandTests
     {
         var ws = MakeWorkspace();
         var mediator = MakeMediatorWithCandidates(ws, []);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -61,7 +61,7 @@ public sealed class PruneBatchCliCommandTests
     {
         var ws = MakeWorkspace();
         var mediator = MakeMediatorWithCandidates(ws, [MakeCandidate()]);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -88,7 +88,7 @@ public sealed class PruneBatchCliCommandTests
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
         mediator.Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new DeleteBatchBranchResult());
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -113,7 +113,7 @@ public sealed class PruneBatchCliCommandTests
         var ws = MakeWorkspace();
         var candidate = MakeCandidate(isCheckedOut: true);
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -139,7 +139,7 @@ public sealed class PruneBatchCliCommandTests
     {
         var ws = MakeWorkspace();
         var mediator = MakeMediatorWithCandidates(ws, []);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var saved = Environment.ExitCode;
         try
@@ -162,7 +162,7 @@ public sealed class PruneBatchCliCommandTests
     {
         var ws = MakeWorkspace();
         var mediator = MakeMediatorWithCandidates(ws, []);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var originalOut = Console.Out;
@@ -189,7 +189,7 @@ public sealed class PruneBatchCliCommandTests
     {
         var ws = MakeWorkspace();
         var mediator = MakeMediatorWithCandidates(ws, []);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var savedExitCode = Environment.ExitCode;
         var errorOutput = new StringWriter();
@@ -219,7 +219,7 @@ public sealed class PruneBatchCliCommandTests
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
         mediator.Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new DeleteBatchBranchResult());
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var originalIn = Console.In;
         var originalOut = Console.Out;
@@ -247,7 +247,7 @@ public sealed class PruneBatchCliCommandTests
         var ws = MakeWorkspace();
         var candidate = MakeCandidate("bishop/sprint-1");
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var originalIn = Console.In;
         var originalOut = Console.Out;
@@ -276,7 +276,7 @@ public sealed class PruneBatchCliCommandTests
             "Sprint 1", "bishop/sprint-1", BatchClosedReason.Finished,
             DateTimeOffset.UtcNow.AddDays(-3), 5, false);
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -301,7 +301,7 @@ public sealed class PruneBatchCliCommandTests
             "Sprint 1", "bishop/sprint-1", BatchClosedReason.Finished,
             DateTimeOffset.UtcNow.AddHours(-5), 5, false);
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -326,7 +326,7 @@ public sealed class PruneBatchCliCommandTests
             "Sprint 1", "bishop/sprint-1", BatchClosedReason.Finished,
             DateTimeOffset.UtcNow.AddMinutes(-45), 5, false);
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -366,7 +366,7 @@ public sealed class PruneBatchCliCommandTests
             Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<PruneBatchCandidate>)[abandonedCandidate]);
 
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var outputWithoutFlag = new StringWriter();
         var outputWithFlag = new StringWriter();
@@ -408,7 +408,7 @@ public sealed class PruneBatchCliCommandTests
             Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<PruneBatchCandidate>)[finishedCandidate]);
 
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var outputAbandoned = new StringWriter();
         var outputMerged = new StringWriter();
@@ -435,7 +435,7 @@ public sealed class PruneBatchCliCommandTests
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<Workspace>)[]);
 
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
         var exitCode = await cmd.InvokeAsync(["--workspace", "nonexistent-ws"]);
 
         exitCode.Should().NotBe(0);
@@ -454,7 +454,7 @@ public sealed class PruneBatchCliCommandTests
         mediator.Send(Arg.Any<GetBatchPruneCandidatesQuery>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("DB error"));
 
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
         var exitCode = await cmd.InvokeAsync(["--workspace", "test-ws"]);
 
         exitCode.Should().NotBe(0);
@@ -470,7 +470,7 @@ public sealed class PruneBatchCliCommandTests
         var mediator = MakeMediatorWithCandidates(ws, [prunable1, prunable2, checkedOut]);
         mediator.Send(Arg.Any<DeleteBatchBranchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new DeleteBatchBranchResult());
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var original = Console.Out;
@@ -508,7 +508,7 @@ public sealed class PruneBatchCliCommandTests
             .AddMinutes(minutesOffset);
         var candidate = new PruneBatchCandidate("Sprint 1", "bishop/sprint-1", BatchClosedReason.Finished, closedAt, 3, false);
         var mediator = MakeMediatorWithCandidates(ws, [candidate]);
-        var cmd = new PruneBatchCliCommand(mediator);
+        var cmd = new PruneBatchCliCommand(mediator, TimeProvider.System);
 
         var output = new StringWriter();
         var original = Console.Out;

@@ -8,7 +8,7 @@ namespace Bishop.Cli.Batches.Prune;
 
 internal sealed class PruneBatchCliCommand : Command
 {
-    public PruneBatchCliCommand(ISender mediator)
+    public PruneBatchCliCommand(ISender mediator, TimeProvider timeProvider)
         : base("prune", "Delete local branches for Closed batches")
     {
         var abandonedOnlyOpt = new Option<bool>("--abandoned-only", "Only prune branches from Abandoned batches");
@@ -55,7 +55,7 @@ internal sealed class PruneBatchCliCommand : Command
                 Console.WriteLine(new string('-', 74));
                 foreach (var c in candidates)
                 {
-                    var age = FormatAge(DateTimeOffset.UtcNow - c.ClosedAt);
+                    var age = FormatAge(timeProvider.GetUtcNow() - c.ClosedAt);
                     var suffix = c.IsCheckedOut ? "  (checked out — skipped)" : string.Empty;
                     Console.WriteLine($"{c.BranchName,-42} {c.ClosedReason,-10} {age,-10} {c.CommitCount,7}{suffix}");
                 }

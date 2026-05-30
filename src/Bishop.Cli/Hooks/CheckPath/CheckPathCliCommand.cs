@@ -11,7 +11,7 @@ internal sealed class CheckPathCliCommand : Command
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
 
-    public CheckPathCliCommand(string? workspacePathOverride = null)
+    public CheckPathCliCommand(TimeProvider timeProvider, string? workspacePathOverride = null)
         : base("check-path", "PreToolUse hook: block Edit/Write/NotebookEdit targeting paths outside the workspace")
     {
         this.SetHandler(async (context) =>
@@ -47,18 +47,18 @@ internal sealed class CheckPathCliCommand : Command
                 || normalizedTarget.Equals(normalizedWorkspace, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            AppendDenial(workspacePath, toolName, targetPath);
+            AppendDenial(workspacePath, toolName, targetPath, timeProvider);
             Console.Error.WriteLine($"bishop hook check-path: blocked {toolName} -> {targetPath}");
             context.ExitCode = 1;
         });
     }
 
-    private static void AppendDenial(string workspacePath, string tool, string path)
+    private static void AppendDenial(string workspacePath, string tool, string path, TimeProvider timeProvider)
     {
         var bishopDir = Path.Combine(workspacePath, ".bishop");
         Directory.CreateDirectory(bishopDir);
         var entry = new DenialLogEntry(
-            DateTimeOffset.UtcNow.ToString("o"),
+            timeProvider.GetUtcNow().ToString("o"),
             null,
             tool,
             path,

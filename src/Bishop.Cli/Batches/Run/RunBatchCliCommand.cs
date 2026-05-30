@@ -7,7 +7,7 @@ namespace Bishop.Cli.Batches.Run;
 
 internal sealed class RunBatchCliCommand : Command
 {
-    public RunBatchCliCommand(ISender mediator) : base("run", "Run a batch end-to-end in its worktree")
+    public RunBatchCliCommand(ISender mediator, TimeProvider timeProvider) : base("run", "Run a batch end-to-end in its worktree")
     {
         var nameArg = new Argument<string>("name", "Batch name");
         var resumeOpt = new Option<bool>("--resume", "Re-acquire the lock and continue from the next undone card");
@@ -24,7 +24,7 @@ internal sealed class RunBatchCliCommand : Command
             var result = await mediator.Send(new RunBatchCommand(name, resume, model, allowExternal));
 
             var failedNumbers = result.FailedCardNumbers ?? Array.Empty<int>();
-            var stamp = DateTimeOffset.Now.ToString("HH:mm:ss");
+            var stamp = timeProvider.GetLocalNow().ToString("HH:mm:ss");
             var summary = $"[{stamp}] Processed: {result.Succeeded + failedNumbers.Count} · Succeeded: {result.Succeeded} · Failed: {failedNumbers.Count}";
             if (failedNumbers.Count > 0)
                 summary += $" (#{string.Join(", #", failedNumbers)})";

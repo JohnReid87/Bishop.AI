@@ -61,6 +61,7 @@ using var host = builder.Build();
 await host.StartAsync();
 
 var mediator = host.Services.GetRequiredService<ISender>();
+var timeProvider = host.Services.GetRequiredService<TimeProvider>();
 var cardResolver = new CardResolver(mediator);
 
 var root = new RootCommand("Bishop AI — kanban CLI");
@@ -111,12 +112,12 @@ batchCmd.AddCommand(new ListBatchesCliCommand(mediator));
 batchCmd.AddCommand(new ViewBatchCliCommand(mediator));
 batchCmd.AddCommand(new AddCardToBatchCliCommand(mediator, cardResolver));
 batchCmd.AddCommand(new RemoveCardFromBatchCliCommand(mediator, cardResolver));
-batchCmd.AddCommand(new RunBatchCliCommand(mediator));
+batchCmd.AddCommand(new RunBatchCliCommand(mediator, timeProvider));
 batchCmd.AddCommand(new MergeBatchCliCommand(mediator));
 batchCmd.AddCommand(new CleanUpBatchCliCommand(mediator));
 batchCmd.AddCommand(new AbandonBatchCliCommand(mediator));
 batchCmd.AddCommand(new RemoveBatchCliCommand(mediator));
-batchCmd.AddCommand(new PruneBatchCliCommand(mediator));
+batchCmd.AddCommand(new PruneBatchCliCommand(mediator, timeProvider));
 root.AddCommand(batchCmd);
 
 // ── lane ──────────────────────────────────────────────────────────────────────
@@ -153,7 +154,7 @@ root.AddCommand(new PrintContextPackCliCommand(mediator, contextProviders));
 // ── hook ──────────────────────────────────────────────────────────────────────
 
 var hookCmd = new Command("hook", "Claude Code hook utilities");
-hookCmd.AddCommand(new CheckPathCliCommand());
+hookCmd.AddCommand(new CheckPathCliCommand(timeProvider));
 root.AddCommand(hookCmd);
 
 // ── run ───────────────────────────────────────────────────────────────────────

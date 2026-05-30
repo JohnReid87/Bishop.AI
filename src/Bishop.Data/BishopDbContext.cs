@@ -5,13 +5,22 @@ namespace Bishop.Data;
 
 public sealed class BishopDbContext : DbContext
 {
+    private readonly TimeProvider _timeProvider;
+
     public DbSet<Workspace> Workspaces => Set<Workspace>();
     public DbSet<Card> Cards => Set<Card>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<WorkspaceSkillRun> WorkspaceSkillRuns => Set<WorkspaceSkillRun>();
     public DbSet<Batch> Batches => Set<Batch>();
 
-    public BishopDbContext(DbContextOptions<BishopDbContext> options) : base(options) { }
+    public BishopDbContext(DbContextOptions<BishopDbContext> options)
+        : this(options, TimeProvider.System) { }
+
+    public BishopDbContext(DbContextOptions<BishopDbContext> options, TimeProvider timeProvider)
+        : base(options)
+    {
+        _timeProvider = timeProvider;
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,7 +41,7 @@ public sealed class BishopDbContext : DbContext
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = _timeProvider.GetUtcNow();
         foreach (var entry in ChangeTracker.Entries<IAuditable>())
         {
             if (entry.State == EntityState.Added)

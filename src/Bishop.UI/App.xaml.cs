@@ -32,6 +32,7 @@ public partial class App : Application
     private static int _lastLogCount;
     private const int MaxConsecutiveSameLog = 10;
     private const long MaxLogFileSizeBytes = 50 * 1024 * 1024; // 50 MB
+    private static TimeProvider _timeProvider = TimeProvider.System;
 
     public App()
     {
@@ -69,6 +70,7 @@ public partial class App : Application
 
         _host.Start();
         Services = _host.Services;
+        _timeProvider = Services.GetRequiredService<TimeProvider>();
         SafeAsync.Logger = Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(SafeAsync));
 
         var errorBus = Services.GetRequiredService<IErrorBus>();
@@ -171,7 +173,7 @@ public partial class App : Application
                     File.Move(logPath, logPath + ".bak", overwrite: true);
 
                 File.AppendAllText(logPath,
-                    $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}] {ex.GetType().FullName}: {ex.Message}{Environment.NewLine}");
+                    $"[{_timeProvider.GetLocalNow():yyyy-MM-dd HH:mm:ss zzz}] {ex.GetType().FullName}: {ex.Message}{Environment.NewLine}");
             }
         }
         catch (Exception logEx)

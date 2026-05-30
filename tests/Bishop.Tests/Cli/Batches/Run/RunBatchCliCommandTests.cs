@@ -18,7 +18,7 @@ public sealed class RunBatchCliCommandTests
         mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RunBatchResult(3, null, RunBatchStopReason.Finished));
 
-        var cmd = new RunBatchCliCommand(mediator);
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
         var exitCode = await cmd.InvokeAsync(["Sprint 1"]);
 
         exitCode.Should().Be(0);
@@ -34,7 +34,7 @@ public sealed class RunBatchCliCommandTests
         mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RunBatchResult(0, null, RunBatchStopReason.Finished));
 
-        var cmd = new RunBatchCliCommand(mediator);
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
         await cmd.InvokeAsync(["Sprint 1", "--resume", "--model", "claude-opus-4"]);
 
         await mediator.Received(1).Send(
@@ -49,7 +49,7 @@ public sealed class RunBatchCliCommandTests
         mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RunBatchResult(1, [42], RunBatchStopReason.CardFailure));
 
-        var cmd = new RunBatchCliCommand(mediator);
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
 
         var saved = Environment.ExitCode;
         try
@@ -71,7 +71,7 @@ public sealed class RunBatchCliCommandTests
         mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RunBatchResult(0, null, RunBatchStopReason.DirtyWorktree, [@"src/file.cs"]));
 
-        var cmd = new RunBatchCliCommand(mediator);
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
 
         var saved = Environment.ExitCode;
         try
@@ -93,7 +93,7 @@ public sealed class RunBatchCliCommandTests
         mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RunBatchResult(0, null, RunBatchStopReason.NotAGitRepo));
 
-        var cmd = new RunBatchCliCommand(mediator);
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
 
         var saved = Environment.ExitCode;
         try
@@ -115,7 +115,7 @@ public sealed class RunBatchCliCommandTests
         mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RunBatchResult(0, null, RunBatchStopReason.GitNotFound));
 
-        var cmd = new RunBatchCliCommand(mediator);
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
 
         var saved = Environment.ExitCode;
         try
@@ -137,7 +137,7 @@ public sealed class RunBatchCliCommandTests
         mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RunBatchResult(0, null, RunBatchStopReason.HandoffMissing));
 
-        var cmd = new RunBatchCliCommand(mediator);
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
 
         var errorOutput = new StringWriter();
         var originalErr = Console.Error;
@@ -165,7 +165,7 @@ public sealed class RunBatchCliCommandTests
         mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RunBatchResult(0, null, RunBatchStopReason.ExternalContentBlocked, null, [42, 99]));
 
-        var cmd = new RunBatchCliCommand(mediator);
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
 
         var errorOutput = new StringWriter();
         var originalErr = Console.Error;
@@ -196,7 +196,7 @@ public sealed class RunBatchCliCommandTests
         mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RunBatchResult(1, null, RunBatchStopReason.Finished));
 
-        var cmd = new RunBatchCliCommand(mediator);
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
         await cmd.InvokeAsync(["Sprint 1", "--allow-external-content"]);
 
         await mediator.Received(1).Send(
