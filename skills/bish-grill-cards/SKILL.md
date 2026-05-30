@@ -57,6 +57,7 @@ The context-pack below bundles workspace metadata, recent git history, card data
   `skill_specific.related_cards` carries summaries (`number`, `title`, `lane_name`, `is_closed`) of any cards referenced in the source card's `### Related` section (empty array when none).
   Remember `skill_specific.card.number` as the **source card** — reused in the closing prompt below.
   Use `skill_specific.card.title` + `skill_specific.card.description` (and tag / lane_name for context) as the seed for the grill.
+  Do NOT call `bishop card show` (or `view`) for this card — `skill_specific.card.description` already contains the full body; re-fetching wastes a turn.
   Echo back so the user can confirm before the interview begins:
 
   > **Grilling card #N:** \<title\> *(lane: \<lane_name\>, tag: \<tag\>)*

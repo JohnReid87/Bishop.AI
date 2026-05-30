@@ -72,6 +72,8 @@ The context-pack below bundles workspace metadata, card data, recent git history
 
   Remember `skill_specific.card` as the **source card** — you will use `number` (and the existing `tag`) in the wrap-up.
 
+  Do NOT call `bishop card show` (or `view`) for this card — `skill_specific.card.description` already contains the full body; re-fetching wastes a turn.
+
 > **Workspace:** \<workspace.name\>
 
 Echo the card back so the user can confirm the right card was loaded:

@@ -46,6 +46,7 @@ The context-pack below bundles workspace metadata, recent git history, card data
   Parse the JSON. `skill_specific.card` carries the loaded card.
   Remember `skill_specific.card.number` as the **source card** — reused in the closing prompt below.
   Use `skill_specific.card.description` as the spec body (and `skill_specific.card.title` for context).
+  Do NOT call `bishop card show` (or `view`) for this card — `skill_specific.card.description` already contains the full body; re-fetching wastes a turn.
   Echo back so the user can confirm before the interview begins:
 
   > **Spec from card #N:** \<title\> *(lane: \<lane_name\>, tag: \<tag\>)*

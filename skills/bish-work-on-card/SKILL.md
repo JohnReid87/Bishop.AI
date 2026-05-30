@@ -74,6 +74,8 @@ Parse the claim JSON and ask the user to confirm:
   when choosing the Bash vs PowerShell tool throughout this run.
 - `git.commits` — recent commit history.
 
+Do NOT call `bishop card show` (or `view`) after the context-pack. `skill_specific.card.description` already contains the full card body verbatim; re-fetching wastes a turn.
+
 **Closed-card guard:** If `is_closed` is `true`:
 - If you are on Path B (the card was just claimed), revert the claim first:
   ```
