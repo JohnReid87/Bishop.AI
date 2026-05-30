@@ -379,6 +379,7 @@
             <ScrollViewer Grid.Row="1"
                           HorizontalScrollMode="Auto"
                           HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollMode="Disabled"
                           VerticalScrollBarVisibility="Disabled"
                           Padding="8,4,0,12">
                 <ListView x:Name="LanesListView"
