@@ -404,11 +404,11 @@ public class WorkspaceBatchesViewModelTests
     {
         var (vm, _, launcher) = MakeVm();
 
-        vm.LaunchBatch(@"C:\repo", "my-batch", new Bishop.App.Services.Terminal.TerminalSnap());
+        vm.LaunchBatch(@"C:\repo", "my-batch", "claude-opus-4-7", new Bishop.App.Services.Terminal.TerminalSnap());
 
         launcher.Received(1).LaunchCommand(
             @"C:\repo", "bishop",
-            Arg.Is<string[]>(args => args.Contains("run") && args.Contains("my-batch")),
+            Arg.Is<string[]>(args => args.Contains("run") && args.Contains("my-batch") && args.Contains("--model") && args.Contains("claude-opus-4-7")),
             Arg.Any<Bishop.App.Services.Terminal.TerminalSnap?>());
     }
 
@@ -417,11 +417,11 @@ public class WorkspaceBatchesViewModelTests
     {
         var (vm, _, launcher) = MakeVm();
 
-        vm.ResumeBatch(@"C:\repo", "my-batch", new Bishop.App.Services.Terminal.TerminalSnap());
+        vm.ResumeBatch(@"C:\repo", "my-batch", "claude-opus-4-7", new Bishop.App.Services.Terminal.TerminalSnap());
 
         launcher.Received(1).LaunchCommand(
             @"C:\repo", "bishop",
-            Arg.Is<string[]>(args => args.Contains("--resume")),
+            Arg.Is<string[]>(args => args.Contains("--resume") && args.Contains("--model") && args.Contains("claude-opus-4-7")),
             Arg.Any<Bishop.App.Services.Terminal.TerminalSnap?>());
     }
 }

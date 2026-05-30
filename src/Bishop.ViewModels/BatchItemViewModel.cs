@@ -29,6 +29,7 @@ public sealed partial class BatchItemViewModel : ObservableObject
     private void ToggleStrip() => IsStripExpanded = !IsStripExpanded;
 
     public string BranchName { get; init; } = string.Empty;
+    public string Model { get; init; } = string.Empty;
     public BatchStatus Status { get; init; }
     public int CardCount { get; init; }
     public DateTimeOffset? FinishedAt { get; init; }

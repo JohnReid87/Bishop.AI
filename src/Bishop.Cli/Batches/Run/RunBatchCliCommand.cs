@@ -1,5 +1,4 @@
 using Bishop.App.Batches.RunBatch;
-using Bishop.App.Skills;
 using MediatR;
 using System.CommandLine;
 
@@ -11,7 +10,7 @@ internal sealed class RunBatchCliCommand : Command
     {
         var nameArg = new Argument<string>("name", "Batch name");
         var resumeOpt = new Option<bool>("--resume", "Re-acquire the lock and continue from the next undone card");
-        var modelOpt = new Option<string>("--model", () => SkillModelOptions.DefaultModelId, "Claude model ID to pass to claude");
+        var modelOpt = new Option<string?>("--model", "Override the model persisted on the batch (defaults to the batch's model)");
         var allowExternalOpt = new Option<bool>("--allow-external-content", "Allow cards imported from GitHub to run under bypassPermissions");
 
         AddArgument(nameArg);
@@ -19,7 +18,7 @@ internal sealed class RunBatchCliCommand : Command
         AddOption(modelOpt);
         AddOption(allowExternalOpt);
 
-        this.SetHandler(async (string name, bool resume, string model, bool allowExternal) =>
+        this.SetHandler(async (string name, bool resume, string? model, bool allowExternal) =>
         {
             var result = await mediator.Send(new RunBatchCommand(name, resume, model, allowExternal));
 

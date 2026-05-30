@@ -1,3 +1,4 @@
+using Bishop.App.Skills;
 using MediatR;
 
 namespace Bishop.App.Batches.CreateBatch;
@@ -11,4 +12,5 @@ public sealed record CreateBatchCommand(
     string WorktreePath,
     int[] CardNumbers,
     string? TagName,
-    string? LaneName) : IRequest<CreateBatchResult>;
+    string? LaneName,
+    string Model = SkillModelOptions.DefaultModelId) : IRequest<CreateBatchResult>;

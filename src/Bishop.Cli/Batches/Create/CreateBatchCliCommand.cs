@@ -1,4 +1,5 @@
 using Bishop.App.Batches.CreateBatch;
+using Bishop.App.Skills;
 using MediatR;
 using System.CommandLine;
 using System.Text.RegularExpressions;
@@ -16,6 +17,7 @@ internal sealed class CreateBatchCliCommand : Command
         var cardsOpt = new Option<string?>("--cards", "Comma-separated card numbers to assign");
         var tagOpt = new Option<string?>("--tag", "Assign matching cards by tag");
         var laneOpt = new Option<string?>("--lane", "Assign matching cards by lane");
+        var modelOpt = new Option<string>("--model", () => SkillModelOptions.DefaultModelId, "Claude model ID persisted on the batch");
 
         AddOption(CommonOptions.WorkspaceOption);
         AddOption(nameOpt);
@@ -24,9 +26,10 @@ internal sealed class CreateBatchCliCommand : Command
         AddOption(cardsOpt);
         AddOption(tagOpt);
         AddOption(laneOpt);
+        AddOption(modelOpt);
 
         this.SetHandler(
-            async (string? workspace, string name, string? branch, string? @base, string? cards, string? tag, string? lane) =>
+            async (string? workspace, string name, string? branch, string? @base, string? cards, string? tag, string? lane, string model) =>
             {
                 var ws = await resolver.ResolveAsync(workspace);
                 var slug = Slugify(name);
@@ -45,7 +48,7 @@ internal sealed class CreateBatchCliCommand : Command
                 }
 
                 var result = await mediator.Send(new CreateBatchCommand(
-                    ws.Id, ws.Path, name, branchName, @base, worktreePath, cardNumbers, tag, lane));
+                    ws.Id, ws.Path, name, branchName, @base, worktreePath, cardNumbers, tag, lane, model));
 
                 Console.WriteLine($"Created batch '{result.Batch.Name}'");
                 Console.WriteLine($"Branch:   {result.Batch.BranchName}");
@@ -54,7 +57,7 @@ internal sealed class CreateBatchCliCommand : Command
                 if (result.CardCount > 0)
                     Console.WriteLine($"Cards:    {result.CardCount} assigned");
             },
-            CommonOptions.WorkspaceOption, nameOpt, branchOpt, baseOpt, cardsOpt, tagOpt, laneOpt);
+            CommonOptions.WorkspaceOption, nameOpt, branchOpt, baseOpt, cardsOpt, tagOpt, laneOpt, modelOpt);
     }
 
     private static string Slugify(string name) =>

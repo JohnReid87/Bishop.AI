@@ -68,6 +68,7 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
             BranchName = $"bishop/{slug}",
             BaseBranch = "main",
             WorktreePath = _worktreePath,
+            Model = Bishop.App.Skills.SkillModelOptions.DefaultModelId,
             Status = BatchStatus.Open,
             CreatedAt = DateTimeOffset.UtcNow
         };

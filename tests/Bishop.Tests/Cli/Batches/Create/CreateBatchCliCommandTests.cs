@@ -151,6 +151,40 @@ public sealed class CreateBatchCliCommandTests
     }
 
     [Fact]
+    public async Task InvokeAsync_ModelOption_PassesThroughToCommand()
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithWorkspace(ws);
+        var batch = new Batch { Id = Guid.NewGuid(), Name = "Sprint 1", BranchName = "bishop/sprint-1", BaseBranch = "main", WorktreePath = @"C:\repos\MyProject-bishop-worktrees\sprint-1", Status = BatchStatus.Open };
+        mediator.Send(Arg.Any<CreateBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateBatchResult(batch, 0));
+
+        var cmd = new CreateBatchCliCommand(mediator);
+        await cmd.InvokeAsync(["--name", "Sprint 1", "--model", "claude-opus-4-7", "--workspace", "test-ws"]);
+
+        await mediator.Received(1).Send(
+            Arg.Is<CreateBatchCommand>(c => c.Model == "claude-opus-4-7"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_NoModelOption_DefaultsToDefaultModelId()
+    {
+        var ws = MakeWorkspace();
+        var mediator = MakeMediatorWithWorkspace(ws);
+        var batch = new Batch { Id = Guid.NewGuid(), Name = "Sprint 1", BranchName = "bishop/sprint-1", BaseBranch = "main", WorktreePath = @"C:\repos\MyProject-bishop-worktrees\sprint-1", Status = BatchStatus.Open };
+        mediator.Send(Arg.Any<CreateBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateBatchResult(batch, 0));
+
+        var cmd = new CreateBatchCliCommand(mediator);
+        await cmd.InvokeAsync(["--name", "Sprint 1", "--workspace", "test-ws"]);
+
+        await mediator.Received(1).Send(
+            Arg.Is<CreateBatchCommand>(c => c.Model == Bishop.App.Skills.SkillModelOptions.DefaultModelId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task InvokeAsync_HappyPath_WritesBranchBaseAndWorktreeLines()
     {
         var ws = MakeWorkspace();

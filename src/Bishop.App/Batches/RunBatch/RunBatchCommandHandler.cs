@@ -87,6 +87,8 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
             ? allCards.Where(c => c.LaneName != SystemLaneNames.Done).ToList()
             : allCards;
 
+        var model = request.Model ?? batch.Model;
+
         var succeeded = 0;
         var failedNumbers = new List<int>();
         var batchCostUsd = 0m;
@@ -139,14 +141,14 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     cancellationToken);
 
                 var stamp = _timeProvider.GetLocalNow().ToString("HH:mm:ss");
-                Console.Out.WriteLine($"== [{stamp}] Card #{card.Number}: {card.Title}  [{request.Model}] ==");
+                Console.Out.WriteLine($"== [{stamp}] Card #{card.Number}: {card.Title}  [{model}] ==");
 
                 var contextPack = await _sender.Send(
                     new BuildContextPackQuery("auto-card", worktreeWorkspace!, new ContextPackArgs(card.Number)),
                     cancellationToken);
                 var contextJson = JsonSerializer.Serialize(contextPack, s_contextPackOpts);
                 var prompt = $"<bishop-context>\n{contextJson}\n</bishop-context>\n\n/bish-auto-card #{card.Number}";
-                var runResult = await _claude.RunPromptAsync(batch.WorktreePath, prompt, request.Model, card.Number, cancellationToken);
+                var runResult = await _claude.RunPromptAsync(batch.WorktreePath, prompt, model, card.Number, cancellationToken);
 
                 var runCostUsd = runResult.Totals?.CostUsd ?? 0m;
                 batchCostUsd += runCostUsd;
@@ -195,7 +197,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     }
 
                     await _sender.Send(new SetCardCommitCommand(card.Id, commitHash, batch.BranchName), cancellationToken);
-                    var costFinding = ClaudeCostFormatter.FormatCardFinding(request.Model, runResult.Totals);
+                    var costFinding = ClaudeCostFormatter.FormatCardFinding(model, runResult.Totals);
                     await _sender.Send(
                         new UpdateCardCommand(card.Id, null, null, false, null,
                             AppendDescription: CombineNotes(handoff.Notes, costFinding),

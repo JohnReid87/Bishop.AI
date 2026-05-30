@@ -13,6 +13,7 @@ internal sealed class BatchConfiguration : IEntityTypeConfiguration<Batch>
         builder.Property(b => b.BranchName).HasMaxLength(300).IsRequired();
         builder.Property(b => b.BaseBranch).HasMaxLength(300).IsRequired();
         builder.Property(b => b.WorktreePath).IsRequired();
+        builder.Property(b => b.Model).HasMaxLength(100).IsRequired();
         builder.Property(b => b.Status).IsRequired();
         builder.HasOne<Workspace>().WithMany().HasForeignKey(b => b.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(b => new { b.WorkspaceId, b.BranchName }).IsUnique().HasFilter("Status != 2");

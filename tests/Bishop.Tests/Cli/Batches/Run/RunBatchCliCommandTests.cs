@@ -1,5 +1,4 @@
 using Bishop.App.Batches.RunBatch;
-using Bishop.App.Skills;
 using Bishop.Cli.Batches.Run;
 using FluentAssertions;
 using MediatR;
@@ -23,7 +22,7 @@ public sealed class RunBatchCliCommandTests
 
         exitCode.Should().Be(0);
         await mediator.Received(1).Send(
-            Arg.Is<RunBatchCommand>(c => c.Name == "Sprint 1" && !c.Resume && c.Model == SkillModelOptions.DefaultModelId),
+            Arg.Is<RunBatchCommand>(c => c.Name == "Sprint 1" && !c.Resume && c.Model == null),
             Arg.Any<CancellationToken>());
     }
 

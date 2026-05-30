@@ -38,6 +38,7 @@ public sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchComma
             BranchName = request.BranchName,
             BaseBranch = baseBranch,
             WorktreePath = request.WorktreePath,
+            Model = request.Model,
             Status = BatchStatus.Open,
             CreatedAt = _timeProvider.GetUtcNow()
         };

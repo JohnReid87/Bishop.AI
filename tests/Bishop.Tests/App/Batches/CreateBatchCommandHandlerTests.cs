@@ -113,6 +113,41 @@ public sealed class CreateBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task Handle_PersistsModelOnBatch()
+    {
+        // Arrange
+        var ws = await CreateWorkspaceAsync();
+        var cmd = new CreateBatchCommand(
+            ws.Id, ws.Path, "Modelled", "bishop/modelled", null,
+            @"C:\worktrees\modelled", [], null, null, Model: "claude-opus-4-7");
+
+        // Act
+        var result = await MakeHandler().Handle(cmd, default);
+
+        // Assert
+        result.Batch.Model.Should().Be("claude-opus-4-7");
+        await using var db = await _factory.CreateDbContextAsync();
+        var saved = await db.Batches.FindAsync(result.Batch.Id);
+        saved!.Model.Should().Be("claude-opus-4-7");
+    }
+
+    [Fact]
+    public async Task Handle_DefaultModel_PersistsDefaultModelId()
+    {
+        // Arrange
+        var ws = await CreateWorkspaceAsync();
+        var cmd = new CreateBatchCommand(
+            ws.Id, ws.Path, "Default", "bishop/default", null,
+            @"C:\worktrees\default", [], null, null);
+
+        // Act
+        var result = await MakeHandler().Handle(cmd, default);
+
+        // Assert
+        result.Batch.Model.Should().Be(Bishop.App.Skills.SkillModelOptions.DefaultModelId);
+    }
+
+    [Fact]
     public async Task Handle_TagFilter_AssignsMatchingCards()
     {
         // Arrange

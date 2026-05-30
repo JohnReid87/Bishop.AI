@@ -73,6 +73,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             BranchName = $"bishop/{slug}",
             BaseBranch = "main",
             WorktreePath = _worktreePath,
+            Model = Bishop.App.Skills.SkillModelOptions.DefaultModelId,
             Status = BatchStatus.Open,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -551,6 +552,30 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             Arg.Any<string>(),
             Arg.Any<string>(),
             "claude-sonnet-4-6",
+            Arg.Any<int?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ModelOmitted_FallsBackToBatchModel()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+        await using (var db = await _factory.CreateDbContextAsync())
+        {
+            var b = await db.Batches.SingleAsync(x => x.Id == batch.Id);
+            b.Model = "claude-opus-4-7";
+            await db.SaveChangesAsync();
+        }
+
+        var claude = ClaudeAlwaysSucceeds();
+        await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        await claude.Received(1).RunPromptAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            "claude-opus-4-7",
             Arg.Any<int?>(),
             Arg.Any<CancellationToken>());
     }

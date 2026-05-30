@@ -7,6 +7,7 @@ using Bishop.App.Batches.RemoveBatch;
 using Bishop.App.Batches.RenameBatch;
 using Bishop.App.Batches.RequestStopBatch;
 using Bishop.App.Services.Terminal;
+using Bishop.App.Skills;
 using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -74,6 +75,7 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
                 Id = s.Batch.Id,
                 Name = s.Batch.Name,
                 BranchName = s.Batch.BranchName,
+                Model = s.Batch.Model,
                 Status = s.Batch.Status,
                 CardCount = s.CardCount,
                 FinishedAt = s.FinishedAt,
@@ -165,13 +167,13 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
     }
 
     public async Task CreateAsync(Guid workspaceId, string workspacePath, string name,
-        string branchName, string worktreePath, int[] cardNumbers)
+        string branchName, string worktreePath, int[] cardNumbers, string model = SkillModelOptions.DefaultModelId)
         => await _mediator.Send(new CreateBatchCommand(
-            workspaceId, workspacePath, name, branchName, null, worktreePath, cardNumbers, null, null));
+            workspaceId, workspacePath, name, branchName, null, worktreePath, cardNumbers, null, null, model));
 
-    public void LaunchBatch(string workspacePath, string batchName, TerminalSnap snap)
-        => _terminalLauncher.LaunchCommand(workspacePath, "bishop", ["batch", "run", batchName], snap);
+    public void LaunchBatch(string workspacePath, string batchName, string model, TerminalSnap snap)
+        => _terminalLauncher.LaunchCommand(workspacePath, "bishop", ["batch", "run", batchName, "--model", model], snap);
 
-    public void ResumeBatch(string workspacePath, string batchName, TerminalSnap snap)
-        => _terminalLauncher.LaunchCommand(workspacePath, "bishop", ["batch", "run", batchName, "--resume"], snap);
+    public void ResumeBatch(string workspacePath, string batchName, string model, TerminalSnap snap)
+        => _terminalLauncher.LaunchCommand(workspacePath, "bishop", ["batch", "run", batchName, "--resume", "--model", model], snap);
 }
