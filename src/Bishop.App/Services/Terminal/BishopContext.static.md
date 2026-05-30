@@ -458,17 +458,12 @@ Numbers, so every entry carries one of the three final outcomes
 
 ### Record the run
 
-Capture HEAD, then emit the findings via the Bash tool using a single-quoted
-heredoc (the quotes around the marker prevent shell expansion, so `$` and
-backticks inside finding bodies pass through unchanged — see `Shell selection`):
+Write the findings JSON to `.bishop/findings/<skill-name>.json` using the Write
+tool (use the actual kebab-case skill name). Because the Write tool is not a
+shell command, `$` signs and backticks inside finding bodies pass through
+unchanged — no quoting gymnastics needed.
 
-```bash
-# First: capture the current SHA.
-git rev-parse HEAD
-
-# Then: emit findings, substituting the literal SHA value (no $VAR expansion)
-# and the kebab-case name of the calling skill for <skill-name>.
-bishop findings record --skill <skill-name> --sha <captured-sha> --file - <<'JSON'
+```json
 {
   "findings": [
     {
@@ -480,7 +475,16 @@ bishop findings record --skill <skill-name> --sha <captured-sha> --file - <<'JSO
     }
   ]
 }
-JSON
+```
+
+Then capture HEAD and record, passing the file written above:
+
+```bash
+# Capture the current SHA.
+git rev-parse HEAD
+
+# Record, substituting the literal SHA value and the kebab-case skill name.
+bishop findings record --skill <skill-name> --sha <captured-sha> --file .bishop/findings/<skill-name>.json
 ```
 
 A successful invocation prints `Recorded N finding(s) for '<skill-name>'` plus
@@ -491,23 +495,25 @@ record write succeeds.
 ### No-findings path
 
 When the skill surfaces no findings (all dimensions clean, nothing to triage),
-record the run with an empty array — the same call shape, just `"findings": []`:
+write an empty-array payload and record it:
+
+```json
+{
+  "findings": []
+}
+```
 
 ```bash
 git rev-parse HEAD
 
-bishop findings record --skill <skill-name> --sha <captured-sha> --file - <<'JSON'
-{
-  "findings": []
-}
-JSON
+bishop findings record --skill <skill-name> --sha <captured-sha> --file .bishop/findings/<skill-name>.json
 ```
 
 Then congratulate the user and STOP without pushing anything.
 
 ### Findings JSON schema
 
-The `bishop findings record --file -` command reads JSON of the shape above; the
+The `bishop findings record --file <path>` command reads JSON of the shape above; the
 validator (`Bishop.App.Findings.FindingsValidator`) rejects malformed input.
 
 Field rules:
