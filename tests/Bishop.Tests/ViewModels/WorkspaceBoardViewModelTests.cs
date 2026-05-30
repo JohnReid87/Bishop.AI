@@ -651,6 +651,54 @@ public class WorkspaceBoardViewModelTests
     }
 
     [Fact]
+    public void ToggleCardSelection_AddsCardToStagingTray()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>(), Substitute.For<IAppSettings>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card = new CardViewModel { Title = "Alpha" };
+        lane.Cards.Add(card);
+        vm.Lanes.Add(lane);
+
+        vm.ToggleCardSelection(card);
+
+        vm.StagingTray.Cards.Should().ContainSingle().Which.Should().BeSameAs(card);
+        vm.StagingTray.IsVisible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ToggleCardSelection_RemovesCardFromStagingTrayOnDeselect()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>(), Substitute.For<IAppSettings>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card = new CardViewModel { Title = "Alpha" };
+        lane.Cards.Add(card);
+        vm.Lanes.Add(lane);
+        vm.ToggleCardSelection(card);
+
+        vm.ToggleCardSelection(card);
+
+        vm.StagingTray.Cards.Should().BeEmpty();
+        vm.StagingTray.IsVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ClearSelection_ResetsStagingTray()
+    {
+        var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>(), Substitute.For<IAppSettings>());
+        var lane = new LaneViewModel(Substitute.For<IMediator>(), () => Task.CompletedTask) { Name = "To Do" };
+        var card = new CardViewModel { Title = "Alpha" };
+        lane.Cards.Add(card);
+        vm.Lanes.Add(lane);
+        vm.ToggleCardSelection(card);
+        vm.StagingTray.Name = "draft";
+
+        vm.ClearSelection();
+
+        vm.StagingTray.Cards.Should().BeEmpty();
+        vm.StagingTray.Name.Should().BeEmpty();
+    }
+
+    [Fact]
     public void SelectionLabel_ShowsCountWithSingularForOneCard()
     {
         var vm = new WorkspaceBoardViewModel(Substitute.For<IMediator>(), Substitute.For<Bishop.App.Services.Settings.IAppSettings>());

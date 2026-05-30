@@ -267,16 +267,6 @@
                         Spacing="4"
                         VerticalAlignment="Center"
                         Margin="16,0,0,0">
-                <Button x:Name="CreateBatchButton"
-                        Padding="8,4"
-                        Visibility="{x:Bind Board.HasSelection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                        Click="CreateBatch_Click"
-                        ToolTipService.ToolTip="Create a batch from the selected cards">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE8F1;" FontSize="12" VerticalAlignment="Center"/>
-                        <TextBlock Text="{x:Bind Board.SelectionLabel, Mode=OneWay}" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
                 <Button x:Name="WorkspaceSkillsButton"
                         Padding="8,4"
                         Visibility="Collapsed"
@@ -342,6 +332,7 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                         <!-- Notification bars — collapsed when no InfoBar is open -->
@@ -501,6 +492,128 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
+
+                <!-- Batch staging tray -->
+                <Border Grid.Row="2"
+                        BorderBrush="{StaticResource AppDividerBrush}"
+                        BorderThickness="0,1,0,0"
+                        Background="{StaticResource AppLaneBackgroundBrush}"
+                        Padding="16,10"
+                        Visibility="{x:Bind Board.StagingTray.IsVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel Spacing="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                                       VerticalAlignment="Center"
+                                       Text="New batch"/>
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        Spacing="8"
+                                        VerticalAlignment="Center">
+                                <Button x:Name="StagingTrayCancelButton"
+                                        Content="Cancel"
+                                        Padding="12,4"
+                                        Click="StagingTrayCancel_Click"/>
+                                <Button x:Name="StagingTrayCreateButton"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        Padding="12,4"
+                                        Content="{x:Bind Board.StagingTray.CreateLabel, Mode=OneWay}"
+                                        IsEnabled="{x:Bind Board.StagingTray.CanCreate, Mode=OneWay}"
+                                        Click="StagingTrayCreate_Click"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="180"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="Name"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBox x:Name="StagingTrayNameBox"
+                                         Text="{x:Bind Board.StagingTray.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         PlaceholderText="Batch name"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="Branch"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBox x:Name="StagingTrayBranchBox"
+                                         Text="{x:Bind Board.StagingTray.Branch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         PlaceholderText="bishop/&lt;slug&gt;"
+                                         FontFamily="Cascadia Mono"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="2">
+                                <TextBlock Text="Model"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <ComboBox x:Name="StagingTrayModelBox"
+                                          ItemsSource="{x:Bind Board.StagingTray.Models}"
+                                          SelectedValue="{x:Bind Board.StagingTray.Model, Mode=TwoWay}"
+                                          SelectedValuePath="Id"
+                                          DisplayMemberPath="Display"
+                                          HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" Spacing="2" VerticalAlignment="Bottom">
+                                <TextBlock Text="Base"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <TextBlock Text="{x:Bind Board.StagingTray.BaseBranch, Mode=OneWay}"
+                                           FontFamily="Cascadia Mono"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"
+                                           Margin="0,6,0,6"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <ItemsRepeater ItemsSource="{x:Bind Board.StagingTray.Cards}">
+                            <ItemsRepeater.Layout>
+                                <UniformGridLayout MinItemWidth="220"
+                                                   MinItemHeight="28"
+                                                   MinColumnSpacing="6"
+                                                   MinRowSpacing="6"/>
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CardViewModel">
+                                    <Border Background="{StaticResource AppCardBackgroundBrush}"
+                                            CornerRadius="3"
+                                            Padding="6,2"
+                                            Tag="{x:Bind}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind NumberDisplay}"
+                                                       FontFamily="Cascadia Mono"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource AppTextTertiaryBrush}"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="{x:Bind Title}"
+                                                       FontSize="12"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxWidth="180"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Content="&#x2715;"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Padding="2,0"
+                                                    MinWidth="0"
+                                                    MinHeight="0"
+                                                    FontSize="11"
+                                                    Click="StagingTrayRemoveChip_Click"
+                                                    ToolTipService.ToolTip="Remove from batch"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+                    </StackPanel>
+                </Border>
 
                         </Grid>
                     </TabViewItem.Content>

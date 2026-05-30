@@ -54,6 +54,7 @@ public sealed partial class WorkspaceDetailPage : Page
         InitializeComponent();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
+        Board.StagingTray.Cards.CollectionChanged += OnStagingTrayCardsChanged;
         Monitoring.PropertyChanged += OnMonitoringPropertyChanged;
     }
 
@@ -489,59 +490,34 @@ public sealed partial class WorkspaceDetailPage : Page
                 await Board.RefreshCommand.ExecuteAsync(null);
         });
 
-    private async void CreateBatch_Click(object sender, RoutedEventArgs e)
+    private void OnStagingTrayCardsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (Board.StagingTray.Cards.Count > 0 && string.IsNullOrEmpty(Board.StagingTray.BaseBranch) && _item is not null)
+            _ = SafeAsync.RunAsync(async () =>
+            {
+                var branch = await Board.GetCurrentBranchAsync(_item.Path);
+                Board.StagingTray.BaseBranch = branch;
+            });
+    }
+
+    private void StagingTrayCancel_Click(object sender, RoutedEventArgs e)
+        => Board.ClearSelection();
+
+    private async void StagingTrayCreate_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
-            var selectedCards = Board.SelectedCards.ToList();
+            var tray = Board.StagingTray;
+            var selectedCards = tray.Cards.ToList();
             if (selectedCards.Count == 0) return;
 
-            var nameBox = new TextBox
-            {
-                PlaceholderText = "Batch name",
-                Width = 300,
-            };
-            var branchBox = new TextBox
-            {
-                Width = 300,
-                PlaceholderText = $"bishop/{Slugify("batch")} (auto-derived from name)",
-            };
-            nameBox.TextChanged += (_, _) =>
-            {
-                var slug = Slugify(nameBox.Text.Trim());
-                branchBox.PlaceholderText = slug.Length > 0 ? $"bishop/{slug}" : "bishop/<slug>";
-            };
-
-            var cardCount = selectedCards.Count;
-            var dialog = new ContentDialog
-            {
-                Title = $"Create batch from {cardCount} card{(cardCount == 1 ? "" : "s")}",
-                Content = new StackPanel
-                {
-                    Spacing = 8,
-                    Children =
-                    {
-                        new TextBlock { Text = "Batch name" },
-                        nameBox,
-                        new TextBlock { Text = "Branch (optional — leave blank to auto-derive)", Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(153, 255, 255, 255)) },
-                        branchBox,
-                    }
-                },
-                PrimaryButtonText = "Create",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = XamlRoot,
-            };
-
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-
-            var name = nameBox.Text.Trim();
+            var name = tray.Name.Trim();
             if (string.IsNullOrEmpty(name)) return;
 
-            var slug = Slugify(name);
-            var branchName = string.IsNullOrEmpty(branchBox.Text.Trim())
+            var slug = BatchStagingTrayViewModel.Slugify(name);
+            var branchName = string.IsNullOrWhiteSpace(tray.Branch)
                 ? $"bishop/{slug}"
-                : branchBox.Text.Trim();
+                : tray.Branch.Trim();
 
             var workspacePath = _item.Path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             var repoName = Path.GetFileName(workspacePath);
@@ -550,16 +526,19 @@ public sealed partial class WorkspaceDetailPage : Page
 
             await Batches.CreateAsync(
                 _item.Id, _item.Path, name, branchName, worktreePath,
-                selectedCards.Select(c => c.Number).ToArray());
+                selectedCards.Select(c => c.Number).ToArray(),
+                tray.Model);
 
             Board.ClearSelection();
             await Board.RefreshCommand.ExecuteAsync(null);
             await Batches.RefreshCommand.ExecuteAsync(null);
         });
 
-    private static string Slugify(string name) =>
-        System.Text.RegularExpressions.Regex.Replace(
-            name.ToLowerInvariant().Replace(' ', '-'), "[^a-z0-9-]", "");
+    private void StagingTrayRemoveChip_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetCardFromSender(sender) is CardViewModel card)
+            Board.ToggleCardSelection(card);
+    }
 
     private async void CardSkillsButton_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>

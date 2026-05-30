@@ -3,6 +3,7 @@ using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
+using Bishop.App.Git.GetCurrentBranch;
 using Bishop.App.Git.GetRecentCommits;
 using Bishop.App.Git.Push;
 using Bishop.App.Lanes.ListLanesByWorkspace;
@@ -38,6 +39,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     public SkillMenuItem[] WorkspaceSkills { get; private set; } = [];
 
     public ObservableCollection<LaneViewModel> Lanes { get; } = [];
+
+    public BatchStagingTrayViewModel StagingTray { get; } = new();
 
     [ObservableProperty]
     public partial string SearchText { get; set; } = string.Empty;
@@ -99,6 +102,15 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     public void ToggleCardSelection(CardViewModel card)
     {
         card.IsSelected = !card.IsSelected;
+        if (card.IsSelected)
+        {
+            if (!StagingTray.Cards.Contains(card))
+                StagingTray.Cards.Add(card);
+        }
+        else
+        {
+            StagingTray.Cards.Remove(card);
+        }
         OnPropertyChanged(nameof(SelectedCards));
         OnPropertyChanged(nameof(SelectionCount));
         OnPropertyChanged(nameof(HasSelection));
@@ -110,6 +122,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         foreach (var lane in Lanes)
             foreach (var c in lane.Cards)
                 c.IsSelected = false;
+        StagingTray.Reset();
         OnPropertyChanged(nameof(SelectedCards));
         OnPropertyChanged(nameof(SelectionCount));
         OnPropertyChanged(nameof(HasSelection));
@@ -321,6 +334,9 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             _ => throw new InvalidOperationException($"Unknown GetRecentCommitsResult: {result.GetType().Name}"),
         };
     }
+
+    public async Task<string> GetCurrentBranchAsync(string workspacePath)
+        => await _mediator.Send(new GetCurrentBranchQuery(workspacePath));
 
     public async Task<PushOutcome> PushAsync(string workspacePath, bool setUpstream = false)
     {
