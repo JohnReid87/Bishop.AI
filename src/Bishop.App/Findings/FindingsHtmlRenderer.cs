@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Bishop.App.Findings;
@@ -18,6 +19,11 @@ public static partial class FindingsHtmlRenderer
         sb.Append(WebUtility.HtmlEncode(skillName));
         sb.Append(" — findings</title>");
         sb.Append(Css);
+        sb.Append("<script>const SKILL_NAME=");
+        sb.Append(JsonSerializer.Serialize(skillName));
+        sb.Append(';');
+        sb.Append(ConvertToCardScript);
+        sb.Append("</script>");
         sb.Append("</head><body>");
 
         sb.Append("<header><h1>");
@@ -41,6 +47,7 @@ public static partial class FindingsHtmlRenderer
         AppendHeader(sb, "Title", 1);
         AppendHeader(sb, "Location", 2);
         AppendHeader(sb, "Outcome", 3);
+        AppendHeader(sb, "Action", 4);
         sb.Append("</tr></thead><tbody>");
 
         foreach (var f in document.Findings)
@@ -97,6 +104,20 @@ public static partial class FindingsHtmlRenderer
         sb.Append(OutcomeChip(f.Outcome));
         sb.Append("</td>");
 
+        // Convert-to-card button
+        sb.Append("<td>");
+        var payload = JsonSerializer.Serialize(new
+        {
+            title = f.Title,
+            body = f.Body,
+            severity = f.Severity,
+            location = f.Location,
+        });
+        sb.Append("<button class=\"convert-to-card\" data-payload=\"");
+        sb.Append(WebUtility.HtmlEncode(payload));
+        sb.Append("\">Convert to card</button>");
+        sb.Append("</td>");
+
         sb.Append("</tr>");
     }
 
@@ -146,7 +167,19 @@ public static partial class FindingsHtmlRenderer
         ".oc-carded{background:#7fa87a}" +
         ".oc-dismissed{background:#6b8caf}" +
         ".oc-parked{background:#9a7ab8}" +
+        "button.convert-to-card{background:#2a2a2a;color:#fff;border:1px solid #3a3a3a;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit}" +
+        "button.convert-to-card:hover{background:#3a3a3a}" +
         "</style>";
+
+    private const string ConvertToCardScript =
+        "document.addEventListener('DOMContentLoaded',function(){" +
+        "document.querySelectorAll('button.convert-to-card').forEach(function(b){" +
+        "b.addEventListener('click',function(){" +
+        "var p=JSON.parse(b.dataset.payload);" +
+        "window.chrome.webview.postMessage({type:'convertToCard',skill:SKILL_NAME,title:p.title,body:p.body,severity:p.severity,location:p.location});" +
+        "});" +
+        "});" +
+        "});";
 
     private const string SortScript =
         "<script>" +
