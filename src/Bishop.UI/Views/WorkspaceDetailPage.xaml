@@ -559,7 +559,7 @@
                                           ItemsSource="{x:Bind Board.StagingTray.Models}"
                                           SelectedValue="{x:Bind Board.StagingTray.Model, Mode=TwoWay}"
                                           SelectedValuePath="Id"
-                                          DisplayMemberPath="Display"
+                                          DisplayMemberPath="Label"
                                           HorizontalAlignment="Stretch"/>
                             </StackPanel>
                             <StackPanel Grid.Column="3" Spacing="2" VerticalAlignment="Bottom">
