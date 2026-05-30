@@ -549,6 +549,39 @@ public sealed class DatabaseInitializerTests : IDisposable
     }
 
     [Fact]
+    public async Task StartAsync_WhenStaleMigrationLockRowExists_ClearsItAndCompletes()
+    {
+        // Arrange — simulate a previous migration that was cancelled/killed after acquiring
+        // EF Core's __EFMigrationsLock but before releasing it, leaving an orphaned row.
+        // Without ClearStaleMigrationLock, AcquireDatabaseLockAsync would spin until the
+        // MigrationTimeout cancels and StartAsync would throw a TaskCanceledException.
+        await using (var connection = new SqliteConnection($"Data Source={_tempDbPath}"))
+        {
+            await connection.OpenAsync();
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText =
+                """
+                CREATE TABLE "__EFMigrationsLock" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK___EFMigrationsLock" PRIMARY KEY,
+                    "Timestamp" TEXT NOT NULL);
+                INSERT INTO "__EFMigrationsLock" ("Id", "Timestamp") VALUES (1, '2020-01-01T00:00:00.0000000');
+                """;
+            await cmd.ExecuteNonQueryAsync();
+        }
+        SqliteConnection.ClearAllPools();
+        var sut = CreateSut();
+
+        // Act
+        var act = () => sut.StartAsync(default);
+
+        // Assert — must complete (not cancel) and leave a fully migrated schema with the lock cleared
+        await act.Should().NotThrowAsync("a stale __EFMigrationsLock row must be cleared, not block migration");
+        File.Exists(_stampPath).Should().BeTrue("migrations should have run once the stale lock was cleared");
+        var tables = await ReadTableNamesAsync();
+        tables.Should().Contain("Workspaces", "schema must be created after the stale lock is cleared");
+    }
+
+    [Fact]
     public async Task StartAsync_WhenMutexWasAbandonedByPriorHolder_CompletesSuccessfully()
     {
         // Arrange — a dedicated thread acquires the named mutex then exits without

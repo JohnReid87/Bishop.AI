@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 using Bishop.Data;
@@ -65,7 +66,10 @@ internal sealed class DatabaseInitializer : IHostedService
 
             var pending = db.Database.GetPendingMigrations();
             if (pending.Any())
+            {
+                ClearStaleMigrationLock(db);
                 db.Database.MigrateAsync(token).GetAwaiter().GetResult();
+            }
             db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", token).GetAwaiter().GetResult();
             WriteStamp(db);
         }
@@ -77,6 +81,31 @@ internal sealed class DatabaseInitializer : IHostedService
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    // EF Core's SqliteHistoryRepository inserts a row into __EFMigrationsLock before
+    // applying migrations and deletes it afterwards. If a previous run was cancelled
+    // (MigrationTimeout above) or the process was killed after the lock row was inserted
+    // but before it was released, the row is orphaned — and every later startup then
+    // spins in AcquireDatabaseLockAsync until the token cancels, bricking the app with a
+    // "task was canceled" exception. The named Mutex already serialises migrations across
+    // all Bishop processes, so any surviving lock row is necessarily stale: clear it before
+    // migrating so the orphaned-lock state is self-healing rather than fatal.
+    private static void ClearStaleMigrationLock(BishopDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+            connection.Open();
+
+        using var exists = connection.CreateCommand();
+        exists.CommandText =
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='__EFMigrationsLock';";
+        if (exists.ExecuteScalar() is null)
+            return;
+
+        using var delete = connection.CreateCommand();
+        delete.CommandText = "DELETE FROM \"__EFMigrationsLock\";";
+        delete.ExecuteNonQuery();
+    }
 
     private bool IsStampCurrent(BishopDbContext db)
     {
