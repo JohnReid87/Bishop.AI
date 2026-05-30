@@ -47,12 +47,12 @@ public sealed class ListBatchesQueryHandler : IRequestHandler<ListBatchesQuery, 
             var isMergedTask = _git.IsBranchMergedIntoAsync(request.WorkspacePath, b.BranchName, b.BaseBranch, cancellationToken);
             var worktreeExists = !string.IsNullOrEmpty(b.WorktreePath) && Directory.Exists(b.WorktreePath);
             await Task.WhenAll(branchExistsTask, isMergedTask);
-            return (b.Id, IsMerged: isMergedTask.Result, BranchExists: branchExistsTask.Result, WorktreeExists: worktreeExists);
+            return (b.Id, IsMerged: await isMergedTask, BranchExists: await branchExistsTask, WorktreeExists: worktreeExists);
         }).ToList();
 
-        await Task.WhenAll(gitStateTasks);
+        var gitStateResults = await Task.WhenAll(gitStateTasks);
 
-        var gitStates = gitStateTasks.Select(t => t.Result).ToDictionary(x => x.Id);
+        var gitStates = gitStateResults.ToDictionary(x => x.Id);
 
         return all.Select(b =>
         {
