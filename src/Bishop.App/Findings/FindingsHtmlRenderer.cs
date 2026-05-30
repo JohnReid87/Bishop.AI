@@ -126,12 +126,12 @@ public static partial class FindingsHtmlRenderer
 
     private const string Css =
         "<style>" +
-        "body{background:#0a0a0a;color:#fff;font-family:Segoe UI,system-ui,sans-serif;margin:0;padding:24px}" +
+        "body{background:#0a0a0a;color:#fff;font-family:Segoe UI,system-ui,sans-serif;margin:0;padding:24px;overflow-x:hidden}" +
         "header{margin-bottom:16px}" +
         "h1{margin:0 0 4px;font-size:20px;font-weight:600}" +
         ".meta{color:#99FFFFFF;font-size:12px}" +
-        "table{width:100%;border-collapse:collapse;background:#141414;border:1px solid #2a2a2a}" +
-        "th,td{padding:8px 12px;text-align:left;border-bottom:1px solid #2a2a2a;vertical-align:top;font-size:13px}" +
+        "table{width:100%;border-collapse:collapse;background:#141414;border:1px solid #2a2a2a;table-layout:fixed}" +
+        "th,td{padding:8px 12px;text-align:left;border-bottom:1px solid #2a2a2a;vertical-align:top;font-size:13px;overflow-wrap:anywhere}" +
         "th{background:#141414;color:#99FFFFFF;font-weight:600;cursor:pointer;user-select:none}" +
         "th:hover{color:#fff}" +
         "td.loc{font-family:Consolas,monospace;color:#99FFFFFF;font-size:12px}" +
