@@ -13,14 +13,12 @@ internal sealed class DatabaseInitializer : IHostedService
     private static readonly TimeSpan MigrationTimeout = TimeSpan.FromSeconds(30);
 
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
-    private readonly string _stampPath;
     private readonly string _mutexName;
 
-    public DatabaseInitializer(IDbContextFactory<BishopDbContext> dbFactory, string stampPath)
+    public DatabaseInitializer(IDbContextFactory<BishopDbContext> dbFactory, string dbConnectionString)
     {
         _dbFactory = dbFactory;
-        _stampPath = stampPath;
-        _mutexName = BuildMutexName(stampPath);
+        _mutexName = BuildMutexName(dbConnectionString);
     }
 
     // Task.Run keeps the UI/host thread free while the blocking WaitOne runs on the thread pool.
@@ -41,8 +39,8 @@ internal sealed class DatabaseInitializer : IHostedService
             }
             catch (AbandonedMutexException)
             {
-                // A peer process died holding the mutex. The stamp is re-checked
-                // inside the critical section, so it is safe to continue.
+                // A peer process died holding the mutex. __EFMigrationsHistory is still
+                // authoritative inside the critical section, so it is safe to continue.
                 acquired = true;
             }
 
@@ -61,9 +59,6 @@ internal sealed class DatabaseInitializer : IHostedService
             using var db = _dbFactory.CreateDbContext();
             db.Database.SetCommandTimeout((int)MigrationTimeout.TotalSeconds);
 
-            if (IsStampCurrent(db))
-                return;
-
             var pending = db.Database.GetPendingMigrations();
             if (pending.Any())
             {
@@ -71,7 +66,6 @@ internal sealed class DatabaseInitializer : IHostedService
                 db.Database.MigrateAsync(token).GetAwaiter().GetResult();
             }
             db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", token).GetAwaiter().GetResult();
-            WriteStamp(db);
         }
         finally
         {
@@ -107,24 +101,9 @@ internal sealed class DatabaseInitializer : IHostedService
         delete.ExecuteNonQuery();
     }
 
-    private bool IsStampCurrent(BishopDbContext db)
+    internal static string BuildMutexName(string dbConnectionString)
     {
-        if (!File.Exists(_stampPath)) return false;
-        var latest = db.Database.GetMigrations().LastOrDefault();
-        return latest is not null && File.ReadAllText(_stampPath).Trim() == latest;
-    }
-
-    private void WriteStamp(BishopDbContext db)
-    {
-        var applied = db.Database.GetAppliedMigrations();
-        var latest = applied.LastOrDefault();
-        if (latest is null) return;
-        File.WriteAllText(_stampPath, latest);
-    }
-
-    internal static string BuildMutexName(string stampPath)
-    {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(stampPath));
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(dbConnectionString));
         var hex = Convert.ToHexString(hash);
         return $"Local\\Bishop.AI.Migrations.{hex}";
     }

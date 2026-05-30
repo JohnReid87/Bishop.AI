@@ -11,22 +11,16 @@ namespace Bishop.Tests.App;
 public sealed class DatabaseInitializerTests : IDisposable
 {
     private readonly string _tempDbPath;
-    private readonly string _stampPath;
+    private readonly string _connectionString;
 
     public DatabaseInitializerTests()
     {
         _tempDbPath = Path.Combine(Path.GetTempPath(), $"bishop_test_{Guid.NewGuid():N}.db");
-        _stampPath = Path.Combine(Path.GetTempPath(), $"bishop_stamp_{Guid.NewGuid():N}");
+        _connectionString = $"Data Source={_tempDbPath}";
     }
 
     public void Dispose()
     {
-        if (File.Exists(_stampPath))
-        {
-            File.SetAttributes(_stampPath, FileAttributes.Normal);
-            File.Delete(_stampPath);
-        }
-
         SqliteConnection.ClearAllPools();
         foreach (var path in new[] { _tempDbPath, _tempDbPath + "-shm", _tempDbPath + "-wal" })
             if (File.Exists(path))
@@ -35,18 +29,18 @@ public sealed class DatabaseInitializerTests : IDisposable
 
     private DbContextOptions<BishopDbContext> StandardOptions() =>
         new DbContextOptionsBuilder<BishopDbContext>()
-            .UseSqlite($"Data Source={_tempDbPath}")
+            .UseSqlite(_connectionString)
             .Options;
 
     private DbContextOptions<BishopDbContext> NoMigrationsOptions() =>
         new DbContextOptionsBuilder<BishopDbContext>()
-            .UseSqlite($"Data Source={_tempDbPath}",
+            .UseSqlite(_connectionString,
                 opts => opts.MigrationsAssembly(typeof(DatabaseInitializerTests).Assembly.GetName().Name!))
             .Options;
 
     private DbContextOptions<BishopDbContext> WalThrowingOptions() =>
         new DbContextOptionsBuilder<BishopDbContext>()
-            .UseSqlite($"Data Source={_tempDbPath}")
+            .UseSqlite(_connectionString)
             .AddInterceptors(new WalPragmaThrowingInterceptor())
             .Options;
 
@@ -61,12 +55,12 @@ public sealed class DatabaseInitializerTests : IDisposable
     private IDbContextFactory<BishopDbContext> CreateFactoryWithMigrationDdlThrowingInterceptor() =>
         new TestDbContextFactory(
             new DbContextOptionsBuilder<BishopDbContext>()
-                .UseSqlite($"Data Source={_tempDbPath}")
+                .UseSqlite(_connectionString)
                 .AddInterceptors(new MigrationDdlThrowingInterceptor())
                 .Options);
 
     private DatabaseInitializer CreateSut(IDbContextFactory<BishopDbContext>? factory = null) =>
-        new(factory ?? CreateFactory(), _stampPath);
+        new(factory ?? CreateFactory(), _connectionString);
 
     private sealed class TestDbContextFactory : IDbContextFactory<BishopDbContext>
     {
@@ -153,7 +147,7 @@ public sealed class DatabaseInitializerTests : IDisposable
 
     private async Task<string> ReadJournalModeAsync()
     {
-        await using var connection = new SqliteConnection($"Data Source={_tempDbPath}");
+        await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
         await using var cmd = connection.CreateCommand();
         cmd.CommandText = "PRAGMA journal_mode;";
@@ -163,7 +157,7 @@ public sealed class DatabaseInitializerTests : IDisposable
 
     private async Task<IReadOnlyList<string>> ReadTableNamesAsync()
     {
-        await using var connection = new SqliteConnection($"Data Source={_tempDbPath}");
+        await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
         await using var cmd = connection.CreateCommand();
         cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table';";
@@ -189,57 +183,37 @@ public sealed class DatabaseInitializerTests : IDisposable
     }
 
     [Fact]
-    public async Task StartAsync_WhenStampIsCurrent_DoesNotThrow()
+    public async Task StartAsync_OnFreshDatabase_AppliesAllMigrationsAndEnablesWal()
     {
         // Arrange
         using var db = CreateDbContext();
-        var latestMigration = db.Database.GetMigrations().Last();
-        File.WriteAllText(_stampPath, latestMigration);
+        var declared = db.Database.GetMigrations().ToList();
         var sut = CreateSut();
 
         // Act
         await sut.StartAsync(default);
 
         // Assert
-        File.Exists(_tempDbPath).Should().BeFalse("migrations should not be invoked when stamp is current");
+        var applied = await db.Database.GetAppliedMigrationsAsync();
+        applied.Should().BeEquivalentTo(declared, "every declared migration must be applied on first init");
+        (await ReadJournalModeAsync()).Should().Be("wal");
     }
 
     [Fact]
-    public async Task StartAsync_WhenStampIsMissing_RunsMigrationsAndWritesStamp()
+    public async Task StartAsync_WhenSchemaAlreadyCurrent_IsIdempotent()
     {
-        // Arrange
-        using var db = CreateDbContext();
-        var latestMigration = db.Database.GetMigrations().Last();
+        // Arrange — first init fully migrates; the second must be a no-op without throwing.
         var sut = CreateSut();
+        await sut.StartAsync(default);
 
         // Act
         await sut.StartAsync(default);
 
-        // Assert
-        File.Exists(_stampPath).Should().BeTrue();
-        File.ReadAllText(_stampPath).Trim().Should().Be(latestMigration);
-        var applied = await db.Database.GetAppliedMigrationsAsync();
-        applied.Should().NotBeEmpty("schema should have been created by migrations");
-        var journalMode = await ReadJournalModeAsync();
-        journalMode.Should().Be("wal");
-    }
-
-    [Fact]
-    public async Task StartAsync_WhenStampIsStale_RunsMigrationsAndUpdatesStamp()
-    {
-        // Arrange
-        File.WriteAllText(_stampPath, "20000101000000_OldMigration");
+        // Assert — applied set still matches the declared set
         using var db = CreateDbContext();
-        var latestMigration = db.Database.GetMigrations().Last();
-        var sut = CreateSut();
-
-        // Act
-        await sut.StartAsync(default);
-
-        // Assert
-        File.ReadAllText(_stampPath).Trim().Should().Be(latestMigration);
+        var declared = db.Database.GetMigrations().ToList();
         var applied = await db.Database.GetAppliedMigrationsAsync();
-        applied.Should().NotBeEmpty("migrations should have re-run due to stale stamp");
+        applied.Should().BeEquivalentTo(declared);
     }
 
     [Fact]
@@ -257,54 +231,18 @@ public sealed class DatabaseInitializerTests : IDisposable
     }
 
     [Fact]
-    public async Task StartAsync_WhenNoAppliedMigrations_DoesNotWriteStamp()
+    public async Task StartAsync_WhenNoMigrationsDefined_CompletesWithoutCreatingSchema()
     {
-        // Arrange — context with no migrations so GetAppliedMigrations returns empty,
-        // exercising the early-return guard in WriteStamp
+        // Arrange — context with no migrations so GetPendingMigrations is empty,
+        // skipping the MigrateAsync branch entirely.
         var sut = CreateSut(CreateFactoryWithNoMigrations());
 
         // Act
         await sut.StartAsync(default);
 
-        // Assert
-        File.Exists(_stampPath).Should().BeFalse("WriteStamp should return early when no migrations have been applied");
-    }
-
-    [Fact]
-    public async Task StartAsync_WhenStampFileIsUnreadable_Throws()
-    {
-        // Arrange — create stamp then lock it exclusively so File.ReadAllText throws IOException
-        File.WriteAllText(_stampPath, "any_migration");
-        await using var lockStream = new FileStream(_stampPath, FileMode.Open, FileAccess.Read, FileShare.None);
-        var sut = CreateSut();
-
-        // Act
-        var act = () => sut.StartAsync(default);
-
-        // Assert
-        await act.Should().ThrowAsync<IOException>();
-    }
-
-    [Fact]
-    public async Task StartAsync_WhenStampFileIsReadOnly_ThrowsOnWrite()
-    {
-        // Arrange — stale stamp so IsStampCurrent returns false; read-only so WriteStamp fails
-        File.WriteAllText(_stampPath, "20000101000000_StaleStamp");
-        File.SetAttributes(_stampPath, FileAttributes.ReadOnly);
-        var sut = CreateSut();
-
-        // Act
-        var act = () => sut.StartAsync(default);
-
-        try
-        {
-            // Assert
-            await act.Should().ThrowAsync<UnauthorizedAccessException>();
-        }
-        finally
-        {
-            File.SetAttributes(_stampPath, FileAttributes.Normal);
-        }
+        // Assert — no schema tables created (the WAL PRAGMA still opens the DB file)
+        var tables = await ReadTableNamesAsync();
+        tables.Should().NotContain("Workspaces");
     }
 
     [Fact]
@@ -321,26 +259,6 @@ public sealed class DatabaseInitializerTests : IDisposable
     }
 
     [Fact]
-    public async Task StartAsync_WhenNoMigrationsDefinedAndStampExists_ProceedsPastEarlyReturn()
-    {
-        // Arrange — IsStampCurrent returns false when GetMigrations().LastOrDefault() is null,
-        // even if a stamp file exists, because the guard requires a non-null latest migration
-        const string existingStamp = "20240101000000_OldMigration";
-        File.WriteAllText(_stampPath, existingStamp);
-        var sut = CreateSut(CreateFactoryWithNoMigrations());
-
-        // Act
-        await sut.StartAsync(default);
-
-        // Assert — DB file was created (proving StartAsync passed IsStampCurrent's early-return),
-        // and stamp is unchanged (WriteStamp returned early with no applied migrations)
-        File.Exists(_tempDbPath).Should().BeTrue(
-            "the DB connection must have been opened, proving IsStampCurrent returned false");
-        File.ReadAllText(_stampPath).Should().Be(existingStamp,
-            "WriteStamp should not overwrite the stamp when no migrations have been applied");
-    }
-
-    [Fact]
     public async Task StartAsync_CalledConcurrently_BothSucceedAndSchemaIsValid()
     {
         // Arrange
@@ -351,8 +269,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         var task2 = sut.StartAsync(default);
         await Task.WhenAll(task1, task2);
 
-        // Assert — schema must be present and stamp must be written regardless of interleaving
-        File.Exists(_stampPath).Should().BeTrue("both concurrent calls must leave the stamp in place");
+        // Assert — schema must be present regardless of interleaving
         var tables = await ReadTableNamesAsync();
         tables.Should().Contain("Workspaces", "schema must be fully initialised after concurrent StartAsync calls");
     }
@@ -369,20 +286,6 @@ public sealed class DatabaseInitializerTests : IDisposable
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>("a migration DDL failure must propagate from StartAsync");
-    }
-
-    [Fact]
-    public async Task StartAsync_WhenStampIsMissing_WorkspacesTableIsPresent()
-    {
-        // Arrange
-        var sut = CreateSut();
-
-        // Act
-        await sut.StartAsync(default);
-
-        // Assert
-        var tables = await ReadTableNamesAsync();
-        tables.Should().Contain("Workspaces", "the Workspaces table must be created by migrations on first init");
     }
 
     [Fact]
@@ -420,7 +323,7 @@ public sealed class DatabaseInitializerTests : IDisposable
     {
         // Arrange
         var sut = CreateSut();
-        var mutexName = DatabaseInitializer.BuildMutexName(_stampPath);
+        var mutexName = DatabaseInitializer.BuildMutexName(_connectionString);
         var mutexAcquired = new ManualResetEventSlim(false);
         var releaseMutex = new ManualResetEventSlim(false);
         var holderFailure = (Exception?)null;
@@ -468,15 +371,16 @@ public sealed class DatabaseInitializerTests : IDisposable
         var completed = await Task.WhenAny(startTask, Task.Delay(TimeSpan.FromSeconds(30))) == startTask;
         completed.Should().BeTrue("StartAsync should complete shortly after the mutex is released");
         await startTask;
-        File.Exists(_stampPath).Should().BeTrue("the stamp must have been written once StartAsync completed");
+        var tables = await ReadTableNamesAsync();
+        tables.Should().Contain("Workspaces", "schema must be migrated once StartAsync completes");
     }
 
     [Fact]
     public async Task StartAsync_WhenCancellationTokenIsAlreadyCancelled_ThrowsOperationCanceledException()
     {
-        // Arrange — token is cancelled before StartAsync is called; the check at
-        // DatabaseInitializer.cs:57 fires after the mutex is acquired, so the
-        // exception is thrown inside EnsureSchema with the mutex still held.
+        // Arrange — token is cancelled before StartAsync is called; the check fires
+        // after the mutex is acquired, so the exception is thrown inside EnsureSchema
+        // with the mutex still held.
         using var cts = new CancellationTokenSource();
         cts.Cancel();
         var sut = CreateSut();
@@ -490,12 +394,11 @@ public sealed class DatabaseInitializerTests : IDisposable
 
     // MutexAcquireTimeout is a 60-second private constant with no injection point.
     // Holding a real named Mutex for that duration would make the suite unusable.
-    // The TimeoutException path at DatabaseInitializer.cs:53–55 is verified by
-    // code inspection: mutex.WaitOne(MutexAcquireTimeout) returns false when the
-    // timeout expires, which maps directly to the throw new TimeoutException(...) branch.
+    // The TimeoutException path is verified by code inspection: mutex.WaitOne(MutexAcquireTimeout)
+    // returns false when the timeout expires, which maps directly to the throw new TimeoutException(...) branch.
     [Fact(Skip =
         "Cannot reproduce without waiting 60 s — MutexAcquireTimeout has no injection point. " +
-        "Timeout path verified by code inspection (DatabaseInitializer.cs:53).")]
+        "Timeout path verified by code inspection in DatabaseInitializer.EnsureSchema.")]
     public Task StartAsync_WhenMutexHoldExceedsAcquireTimeout_ThrowsTimeoutException()
     {
         return Task.CompletedTask;
@@ -511,10 +414,10 @@ public sealed class DatabaseInitializerTests : IDisposable
         var sut1 = new DatabaseInitializer(
             new TestDbContextFactory(
                 new DbContextOptionsBuilder<BishopDbContext>()
-                    .UseSqlite($"Data Source={_tempDbPath}")
+                    .UseSqlite(_connectionString)
                     .AddInterceptors(new BlockingMigrationInterceptor(blocking))
                     .Options),
-            _stampPath);
+            _connectionString);
         var sut2 = CreateSut();
 
         // Act — start migration, wait until it is actually blocking, then cancel
@@ -527,7 +430,8 @@ public sealed class DatabaseInitializerTests : IDisposable
 
         // Assert — mutex must be released so a second initializer succeeds without deadlocking
         await sut2.StartAsync(default);
-        File.Exists(_stampPath).Should().BeTrue("second init must complete after the cancelled first released the mutex");
+        var tables = await ReadTableNamesAsync();
+        tables.Should().Contain("Workspaces", "second init must complete after the cancelled first released the mutex");
     }
 
     [Fact]
@@ -545,7 +449,8 @@ public sealed class DatabaseInitializerTests : IDisposable
         await sut2.StartAsync(default);
 
         // Assert
-        File.Exists(_stampPath).Should().BeTrue("second init must complete once the failed first released the mutex");
+        var tables = await ReadTableNamesAsync();
+        tables.Should().Contain("Workspaces", "second init must complete once the failed first released the mutex");
     }
 
     [Fact]
@@ -555,7 +460,7 @@ public sealed class DatabaseInitializerTests : IDisposable
         // EF Core's __EFMigrationsLock but before releasing it, leaving an orphaned row.
         // Without ClearStaleMigrationLock, AcquireDatabaseLockAsync would spin until the
         // MigrationTimeout cancels and StartAsync would throw a TaskCanceledException.
-        await using (var connection = new SqliteConnection($"Data Source={_tempDbPath}"))
+        await using (var connection = new SqliteConnection(_connectionString))
         {
             await connection.OpenAsync();
             await using var cmd = connection.CreateCommand();
@@ -576,7 +481,6 @@ public sealed class DatabaseInitializerTests : IDisposable
 
         // Assert — must complete (not cancel) and leave a fully migrated schema with the lock cleared
         await act.Should().NotThrowAsync("a stale __EFMigrationsLock row must be cleared, not block migration");
-        File.Exists(_stampPath).Should().BeTrue("migrations should have run once the stale lock was cleared");
         var tables = await ReadTableNamesAsync();
         tables.Should().Contain("Workspaces", "schema must be created after the stale lock is cleared");
     }
@@ -587,8 +491,8 @@ public sealed class DatabaseInitializerTests : IDisposable
         // Arrange — a dedicated thread acquires the named mutex then exits without
         // releasing it, causing the OS to mark the mutex as abandoned.
         // EnsureSchema catches AbandonedMutexException and treats the acquisition
-        // as successful (DatabaseInitializer.cs:46–50), so StartAsync must complete.
-        var mutexName = DatabaseInitializer.BuildMutexName(_stampPath);
+        // as successful, so StartAsync must complete.
+        var mutexName = DatabaseInitializer.BuildMutexName(_connectionString);
         var mutexAcquired = new ManualResetEventSlim(false);
 
         var abandoner = new Thread(() =>
@@ -611,6 +515,7 @@ public sealed class DatabaseInitializerTests : IDisposable
 
         // Assert
         await act.Should().NotThrowAsync("AbandonedMutexException is caught and treated as a successful acquire");
-        File.Exists(_stampPath).Should().BeTrue("schema init must complete even when the mutex was previously abandoned");
+        var tables = await ReadTableNamesAsync();
+        tables.Should().Contain("Workspaces", "schema init must complete even when the mutex was previously abandoned");
     }
 }

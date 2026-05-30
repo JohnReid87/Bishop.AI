@@ -49,7 +49,7 @@ public partial class App : Application
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
-                services.AddBishopApp(connStr, BishopStampPath.Resolve());
+                services.AddBishopApp(connStr);
                 services.AddSingleton(sp => new DbChangeWatcher(dbPath, sp.GetRequiredService<ILogger<DbChangeWatcher>>()));
                 services.AddSingleton<IUiDispatcher>(_ => new WinUiDispatcher(dispatcherQueue));
                 services.AddSingleton<IErrorBus, ErrorBus>();
