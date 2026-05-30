@@ -260,10 +260,10 @@ and `conventions` sections for STABLE/TUNABLE references.
 
 1. **`$ARGUMENTS` is a card Number** (matches `^#?\d+$`) — run
    `bishop card view <number> --json`, capture `number`, `title`,
-   `description`, `tags`, `laneName`. Remember `number` as the
+   `description`, `tag`, `laneName`. Remember `number` as the
    **source card** for the closing prompt. Echo back:
 
-   > **<verb>-ing card #N:** \<title\> *(lane: \<laneName\>, tags: \<comma-joined\>)*
+   > **<verb>-ing card #N:** \<title\> *(lane: \<laneName\>, tag: \<tag\>)*
 
 2. **`$ARGUMENTS` is non-empty free text** — use verbatim as the seed.
    No source card; skip the closing prompt later.
