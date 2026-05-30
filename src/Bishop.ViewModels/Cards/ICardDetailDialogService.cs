@@ -16,4 +16,6 @@ public interface ICardDetailDialogService
         Guid workspaceId,
         string? gitHubRepo,
         object xamlRoot);
+
+    Task ShowNotFoundAsync(int cardNumber, object xamlRoot);
 }

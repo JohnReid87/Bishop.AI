@@ -135,7 +135,8 @@ public static partial class FindingsHtmlRenderer
         if (match.Success)
         {
             var n = match.Groups["n"].Value;
-            return $"<span class=\"chip oc-carded\">#{WebUtility.HtmlEncode(n)}</span>";
+            var enc = WebUtility.HtmlEncode(n);
+            return $"<a href=\"bishop://card/{enc}\" class=\"chip-link\"><span class=\"chip oc-carded\">#{enc}</span></a>";
         }
         return outcome switch
         {
@@ -169,6 +170,7 @@ public static partial class FindingsHtmlRenderer
         ".oc-parked{background:#9a7ab8}" +
         "button.convert-to-card{background:#2a2a2a;color:#fff;border:1px solid #3a3a3a;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit}" +
         "button.convert-to-card:hover{background:#3a3a3a}" +
+        "a.chip-link{text-decoration:none}" +
         "</style>";
 
     private const string ConvertToCardScript =

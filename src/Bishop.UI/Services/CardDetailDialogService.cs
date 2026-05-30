@@ -37,4 +37,19 @@ public sealed class CardDetailDialogService : ICardDetailDialogService
         var result = await dialog.ShowAsync();
         return result == ContentDialogResult.Primary;
     }
+
+    public async Task ShowNotFoundAsync(int cardNumber, object xamlRoot)
+    {
+        if (xamlRoot is not XamlRoot root)
+            throw new ArgumentException("xamlRoot must be a WinUI XamlRoot.", nameof(xamlRoot));
+
+        var dialog = new ContentDialog
+        {
+            Title = "Card not found",
+            Content = $"Card #{cardNumber} was not found.",
+            CloseButtonText = "OK",
+            XamlRoot = root,
+        };
+        await dialog.ShowAsync();
+    }
 }

@@ -1,4 +1,5 @@
 using Bishop.App.Cards.AddCard;
+using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.Core;
@@ -177,6 +178,98 @@ public class ReportViewerWindowViewModelTests
             await mediator.DidNotReceive().Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>());
             await dialog.DidNotReceive().ShowAsync(
                 Arg.Any<CardViewModel>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<object>());
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task HandleOpenCardAsync_FindsCard_ShowsDetailDialog()
+    {
+        var (tempRoot, workspace, htmlPath) = CreateTempWorkspace();
+        try
+        {
+            var ws = new Workspace { Id = Guid.NewGuid(), Path = workspace, Name = "ws" };
+            var card = new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 42, Title = "MyTitle", LaneName = SystemLaneNames.ToDo };
+
+            CardViewModel? capturedVm = null;
+            var mediator = Substitute.For<ISender>();
+            mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+                .Returns((IReadOnlyList<Workspace>)[ws]);
+            mediator.Send(Arg.Any<GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
+                .Returns(card);
+
+            var dialog = Substitute.For<ICardDetailDialogService>();
+            dialog.ShowAsync(Arg.Do<CardViewModel>(c => capturedVm = c), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<object>())
+                .Returns(true);
+
+            var vm = new ReportViewerWindowViewModel(mediator, dialog, new SkillTagMap());
+
+            await vm.HandleOpenCardAsync(42, new Uri(htmlPath), new object());
+
+            await dialog.Received(1).ShowAsync(Arg.Any<CardViewModel>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<object>());
+            capturedVm.Should().NotBeNull();
+            capturedVm!.Number.Should().Be(42);
+            capturedVm.Title.Should().Be("MyTitle");
+            dialog.DidNotReceive().ShowNotFoundAsync(Arg.Any<int>(), Arg.Any<object>());
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task HandleOpenCardAsync_CardNotFound_ShowsNotFoundMessage()
+    {
+        var (tempRoot, workspace, htmlPath) = CreateTempWorkspace();
+        try
+        {
+            var ws = new Workspace { Id = Guid.NewGuid(), Path = workspace, Name = "ws" };
+
+            var mediator = Substitute.For<ISender>();
+            mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+                .Returns((IReadOnlyList<Workspace>)[ws]);
+            mediator.Send(Arg.Any<GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
+                .Returns((Card?)null);
+
+            var dialog = Substitute.For<ICardDetailDialogService>();
+
+            var vm = new ReportViewerWindowViewModel(mediator, dialog, new SkillTagMap());
+
+            await vm.HandleOpenCardAsync(99, new Uri(htmlPath), new object());
+
+            dialog.Received(1).ShowNotFoundAsync(99, Arg.Any<object>());
+            await dialog.DidNotReceive().ShowAsync(
+                Arg.Any<CardViewModel>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<object>());
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task HandleOpenCardAsync_NoWorkspaceMatch_DoesNothing()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "bishop-rvm-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+        try
+        {
+            var htmlPath = Path.Combine(tempRoot, "x.html");
+            File.WriteAllText(htmlPath, "<html></html>");
+
+            var mediator = Substitute.For<ISender>();
+            var dialog = Substitute.For<ICardDetailDialogService>();
+            var vm = new ReportViewerWindowViewModel(mediator, dialog, new SkillTagMap());
+
+            await vm.HandleOpenCardAsync(42, new Uri(htmlPath), new object());
+
+            await dialog.DidNotReceive().ShowAsync(
+                Arg.Any<CardViewModel>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<object>());
+            dialog.DidNotReceive().ShowNotFoundAsync(Arg.Any<int>(), Arg.Any<object>());
         }
         finally
         {

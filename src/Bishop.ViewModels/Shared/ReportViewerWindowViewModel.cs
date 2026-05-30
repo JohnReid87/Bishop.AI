@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Bishop.App.Cards.AddCard;
+using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.Core;
@@ -82,6 +83,46 @@ public sealed class ReportViewerWindowViewModel
 
         if (!saved)
             await _mediator.Send(new RemoveCardCommand(card.Id), cancellationToken);
+    }
+
+    public async Task HandleOpenCardAsync(
+        int number,
+        Uri? sourceUri,
+        object xamlRoot,
+        CancellationToken cancellationToken = default)
+    {
+        var workspacePath = ResolveWorkspacePathFromSource(sourceUri);
+        if (workspacePath is null) return;
+
+        var workspaces = await _mediator.Send(new ListWorkspacesQuery(), cancellationToken);
+        var workspace = workspaces.FirstOrDefault(w =>
+            !string.IsNullOrEmpty(w.Path) &&
+            string.Equals(
+                Path.GetFullPath(w.Path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                workspacePath,
+                StringComparison.OrdinalIgnoreCase));
+        if (workspace is null) return;
+
+        var card = await _mediator.Send(new GetCardByNumberQuery(number, workspace.Id), cancellationToken);
+        if (card is null)
+        {
+            await _dialogService.ShowNotFoundAsync(number, xamlRoot);
+            return;
+        }
+
+        var cardVm = new CardViewModel
+        {
+            Id = card.Id,
+            Number = card.Number,
+            Title = card.Title,
+            Description = card.Description,
+            LaneName = card.LaneName,
+            TagName = card.TagName,
+            IsClosed = card.IsClosed,
+            GitHubIssueNumber = card.GitHubIssueNumber,
+        };
+
+        await _dialogService.ShowAsync(cardVm, workspace.Path, workspace.Id, workspace.GitHubRepo, xamlRoot);
     }
 
     internal static ConvertToCardPayload? ParsePayload(string json)

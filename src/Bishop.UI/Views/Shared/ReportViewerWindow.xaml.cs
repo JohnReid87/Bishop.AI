@@ -64,6 +64,7 @@ public sealed partial class ReportViewerWindow : Window
             if (!_webMessageWired && ReportWebView.CoreWebView2 is { } core)
             {
                 core.WebMessageReceived += OnWebMessageReceived;
+                core.NavigationStarting += OnNavigationStarting;
                 _webMessageWired = true;
             }
             _currentSourceUri = uri;
@@ -81,6 +82,19 @@ public sealed partial class ReportViewerWindow : Window
     private async void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
         => await SafeAsync.RunAsync(() =>
             _viewModel.HandleConvertToCardAsync(args.WebMessageAsJson, _currentSourceUri, ReportWebView.XamlRoot));
+
+    private async void OnNavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    {
+        if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri)) return;
+        if (uri.Scheme != "bishop" || uri.Host != "card") return;
+
+        args.Cancel = true;
+
+        if (!int.TryParse(uri.AbsolutePath.TrimStart('/'), out var number)) return;
+
+        await SafeAsync.RunAsync(() =>
+            _viewModel.HandleOpenCardAsync(number, _currentSourceUri, ReportWebView.XamlRoot));
+    }
 
     private void OnMainWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {

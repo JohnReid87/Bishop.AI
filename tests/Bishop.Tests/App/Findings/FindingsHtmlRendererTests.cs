@@ -401,6 +401,36 @@ public sealed class FindingsHtmlRendererTests
     }
 
     [Fact]
+    public void Render_CardedOutcome_WrapsChipInBishopCardLink()
+    {
+        var html = FindingsHtmlRenderer.Render(
+            "bish-arch",
+            MakeDocument(new Finding("T", "B", "carded:#42")),
+            RecordedAt,
+            "sha1");
+
+        html.Should().Contain("<a href=\"bishop://card/42\" class=\"chip-link\">");
+        html.Should().Contain("<a href=\"bishop://card/42\" class=\"chip-link\"><span class=\"chip oc-carded\">#42</span></a>");
+    }
+
+    [Fact]
+    public void Render_NonCardedOutcome_DoesNotRenderAsLink()
+    {
+        var html = FindingsHtmlRenderer.Render(
+            "bish-arch",
+            MakeDocument(new Finding("T", "B", "dismissed")),
+            RecordedAt,
+            "sha1");
+
+        var bodyStart = html.IndexOf("<tbody>", StringComparison.Ordinal);
+        var bodyEnd = html.IndexOf("</tbody>", bodyStart, StringComparison.Ordinal);
+        var body = html[bodyStart..bodyEnd];
+
+        body.Should().NotContain("bishop://card/");
+        body.Should().NotContain("chip-link");
+    }
+
+    [Fact]
     public void Render_UnknownOutcome_RendersGenericChipWithEncodedText()
     {
         var html = FindingsHtmlRenderer.Render(
