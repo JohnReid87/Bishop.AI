@@ -148,7 +148,7 @@ Rules:
 - Do NOT flag `override`, `virtual`, or interface-implementation members as unreferenced — runtime/polymorphic dispatch makes them live.
 - Do NOT flag members attributed `[RelayCommand]` or `[ObservableProperty]` as unreferenced — the source generator emits the real public surface.
 - All `chore` cards land in `To Do`. Do not prompt for an alternative lane during triage — re-prioritisation happens on the board after the push.
-- Always pass `--bottom` to `bishop card add`. Dead-code reviews are bulk pushes by nature — they must not jump ahead of manually prioritised work.
+- Always pass `--bottom` to `bishop card create`. Dead-code reviews are bulk pushes by nature — they must not jump ahead of manually prioritised work.
 - Do NOT produce a Markdown report or companion file. Cards are the durable output.
 - If a finding spans multiple types/files reflecting the same underlying issue, present it as ONE finding with multiple `file:line` locations, not one finding per file.
 

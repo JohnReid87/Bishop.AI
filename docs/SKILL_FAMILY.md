@@ -47,7 +47,7 @@ Counts taken from `skills/*/SKILL.md` at the time the grill closed. Refresh befo
 | Repeated block | Skills carrying it | Approximate size per copy |
 |---|---|---|
 | Workspace detection preamble (`bishop workspace current --json` + STOP-message) | 11 | ~13 lines + a 4-line STOP message |
-| Card push procedure (`bishop card add` temp-file flow + `--bottom` + `--description-file <path>`) | 7 | ~10 lines |
+| Card push procedure (`bishop card create` temp-file flow + `--bottom` + `--description-file <path>`) | 7 | ~10 lines |
 | Task-list preview format (H3 cards, Tag/Lane line, body sections, `---` separators) | ~7 | ~12 lines |
 | Source-card closing prompt (close / done / leave + CLI mapping) | 3 | ~15 lines |
 

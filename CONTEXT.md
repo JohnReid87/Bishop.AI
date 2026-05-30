@@ -79,9 +79,9 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop workspace init [--path <dir>] [--name <name>]` — register a directory (defaults to cwd) as a workspace and seed the default lanes; idempotent (no-op when fully seeded, fills gaps when partial)
 - `bishop workspace set-github <owner/repo> [-w]` — link this workspace to a GitHub repo (used by `bishop card push`)
 - `bishop workspace unset-github [-w]` — remove the GitHub repo link
-- `bishop card add --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>] [--bottom] [-w <workspace>]` — inserts at the top of the lane by default; `--bottom` appends to the end
+- `bishop card create --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>] [--bottom] [-w <workspace>]` — inserts at the top of the lane by default; `--bottom` appends to the end
 - `bishop card list [-w] [--json]`
-- `bishop card view <card-id> [-w] [--json]`
+- `bishop card show <card-id> [-w] [--json]`
 - `bishop card move <card-id> --to-lane <name> --to-position <int> [-w]` — moving a card into the system `Done` lane auto-closes it (and its linked GitHub issue, if any); moving out of `Done` auto-reopens
 - `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path> | --append-description-file <path>] [--tag <name>] [--to-lane <name>] [--no-close] [-w]` — updates only the supplied fields; pass `--tag ""` to clear the tag; `--to-lane` moves the card after editing (auto-closes on move into `Done` unless `--no-close` is set)
 - `bishop card claim [--lane <name>] [--tag <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; `--tag` restricts the pick to the first card carrying that tag; exits non-zero if no matching card exists
@@ -95,7 +95,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop batch create --name <text> [--branch <name>] [--base <branch>] [--cards <n,...>] [--tag <name>] [--lane <name>] [-w]` — create a batch, provision a git worktree, and optionally assign cards by number, tag, or lane
 - `bishop batch edit <name> --new-name <text> [-w]` — rename a batch
 - `bishop batch list [--json]`
-- `bishop batch view <name> [--json]`
+- `bishop batch show <name> [--json]`
 - `bishop batch add-card <name> <card-id> [-w]`
 - `bishop batch remove-card <name> <card-id> [-w]`
 - `bishop batch run <name> [--resume] [--model <model-id>]` — run a batch end-to-end in its worktree via `bish-auto-card`; stops on card failure; `--resume` continues from the next undone card

@@ -13,9 +13,9 @@ namespace Bishop.Tests.Docs;
 
 /// <summary>
 /// Sibling of <see cref="SkillContextPackSchemaTests"/> covering the camelCase
-/// JSON surface emitted by <c>bishop card view --json</c>. The context-pack
+/// JSON surface emitted by <c>bishop card show --json</c>. The context-pack
 /// test only walks snake_case paths rooted at <c>workspace|git|skill_specific|conventions</c>,
-/// so camelCase tokens documented for <c>card view --json</c> (e.g. <c>laneName</c>,
+/// so camelCase tokens documented for <c>card show --json</c> (e.g. <c>laneName</c>,
 /// <c>gitHubIssueNumber</c>) are not validated by it. See card #774.
 /// </summary>
 public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
@@ -52,7 +52,7 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
         var skillBody = File.ReadAllText(skillMdPath);
         var documentedTokens = ExtractTokens(skillBody);
         documentedTokens.Should().NotBeEmpty(
-            $"{skillDirName}/SKILL.md mentions `bishop card view --json` and should " +
+            $"{skillDirName}/SKILL.md mentions `bishop card show --json` and should " +
             "reference at least one camelCase field from its output");
 
         var payloadJson = SerializeSampleCardViewPayload(await BuildSampleCardAsync());
@@ -74,7 +74,7 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
         }
 
         failures.Should().BeEmpty(
-            $"every backticked camelCase token documented near `bishop card view --json` in " +
+            $"every backticked camelCase token documented near `bishop card show --json` in " +
             $"skills/{skillDirName}/SKILL.md must resolve in the serialized payload — " +
             $"ViewCardCliCommand emits an anonymous type with no PropertyNamingPolicy, so the " +
             $"property names land verbatim. Drift means agents capture the wrong field. " +
@@ -83,7 +83,7 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
 
     /// <summary>
     /// Extracts backticked camelCase tokens that appear in any blank-line-delimited
-    /// paragraph mentioning <c>bishop card view ... --json</c>. Scoping to that
+    /// paragraph mentioning <c>bishop card show ... --json</c>. Scoping to that
     /// paragraph keeps unrelated camelCase mentions (other CLI commands, code
     /// references) out of the assertion set.
     /// </summary>
@@ -96,7 +96,7 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
         var tokens = new HashSet<string>(StringComparer.Ordinal);
         foreach (var paragraph in paragraphs)
         {
-            if (!paragraph.Contains("bishop card view", StringComparison.Ordinal)) continue;
+            if (!paragraph.Contains("bishop card show", StringComparison.Ordinal)) continue;
             if (!paragraph.Contains("--json", StringComparison.Ordinal)) continue;
             foreach (Match m in s_tokenRegex.Matches(paragraph))
             {

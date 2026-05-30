@@ -15,7 +15,7 @@ internal sealed class ViewBatchCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ViewBatchCliCommand(ISender mediator) : base("view", "Show batch details and card list")
+    public ViewBatchCliCommand(ISender mediator) : base("show", "Show batch details and card list")
     {
         var nameArg = new Argument<string>("name", "Batch name");
 

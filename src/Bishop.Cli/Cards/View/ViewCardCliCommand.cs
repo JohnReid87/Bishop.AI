@@ -19,7 +19,7 @@ internal sealed class ViewCardCliCommand : Command
     };
 
     public ViewCardCliCommand(ISender mediator, CardResolver cardResolver)
-        : base("view", "Show details of a card")
+        : base("show", "Show details of a card")
     {
         var cardViewIdArg = new Argument<string>("card-id", "Card short ID or prefix");
 

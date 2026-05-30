@@ -43,7 +43,7 @@ file directly; the interview surfaces the design and the file write is its
 materialisation. No preview-and-confirm step on the rendered markdown — the
 user edits in-tree afterwards if anything needs polishing.
 
-This skill never calls `bishop card add`. If the interview surfaces follow-up
+This skill never calls `bishop card create`. If the interview surfaces follow-up
 code work, invoke `bish-grill-cards` separately.
 
 The context-pack below bundles workspace metadata, recent git history, and the

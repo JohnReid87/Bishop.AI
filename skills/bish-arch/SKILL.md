@@ -240,7 +240,7 @@ that aren't in this list — the headings above are the floor, not the ceiling.
 
    > "Please review the tasks above. Say **push** to create the Bishop cards."
 
-8. **Push confirmed cards** in order using `bishop card add` per
+8. **Push confirmed cards** in order using `bishop card create` per
    `Card Push Procedure` (in `conventions`). Use `--tag arch`.
 
 9. **Print summary table:**
@@ -303,7 +303,7 @@ Rules:
   lane during triage — re-prioritisation happens on the board after the push.
 - Do NOT produce a Markdown report or any companion file. The cards on the
   board are the durable output.
-- Always pass `--bottom` to `bishop card add`. Arch reviews are bulk pushes
+- Always pass `--bottom` to `bishop card create`. Arch reviews are bulk pushes
   by nature — they must not jump ahead of manually prioritised work.
 - Do NOT assume specific namespace prefixes (`Bishop.*`, `MyApp.*`). Work from
   project layout, not naming conventions.

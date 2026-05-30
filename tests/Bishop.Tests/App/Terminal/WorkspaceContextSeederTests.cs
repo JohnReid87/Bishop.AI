@@ -105,7 +105,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         output.Should().Contain("## Card model");
         output.Should().Contain("`#N`");
         output.Should().Contain("## CLI quick reference");
-        output.Should().Contain("`bishop card add");
+        output.Should().Contain("`bishop card create");
         output.Should().Contain("`bishop card claim");
     }
 

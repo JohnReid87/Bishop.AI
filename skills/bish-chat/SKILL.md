@@ -215,7 +215,7 @@ When the user confirms with `push`:
    bishop card edit <number> --title "<new>" --tag "<tagA>" --tag "<tagB>" --description-file ".bishop/tmp-card-<slug>.md"
    ```
 
-2. **Add each follow-up card** in order using `bishop card add` per
+2. **Add each follow-up card** in order using `bishop card create` per
    `Card Push Procedure` (in `conventions`). Push with
    `--bottom`.
 

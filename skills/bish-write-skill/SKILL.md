@@ -61,7 +61,7 @@ drifts.
 
 | Section | Label | Use when your skill… |
 |---|---|---|
-| `## Card Push Procedure` | STABLE | Pushes one or more cards via `bishop card add`. |
+| `## Card Push Procedure` | STABLE | Pushes one or more cards via `bishop card create`. |
 | `## Task List Preview Format` | STABLE | Emits a multi-card preview the user must confirm before push. |
 | `## Source Card Closing Prompt` | STABLE | Was launched against a source card and spawned children from it. |
 | `## Card Granularity Rules` | TUNABLE | Decides whether to merge / split proposed cards before push. |
@@ -259,7 +259,7 @@ and `conventions` sections for STABLE/TUNABLE references.
 **Resolve the seed from `$ARGUMENTS`.** Three paths:
 
 1. **`$ARGUMENTS` is a card Number** (matches `^#?\d+$`) — run
-   `bishop card view <number> --json`, capture `number`, `title`,
+   `bishop card show <number> --json`, capture `number`, `title`,
    `description`, `tag`, `laneName`. Remember `number` as the
    **source card** for the closing prompt. Echo back:
 

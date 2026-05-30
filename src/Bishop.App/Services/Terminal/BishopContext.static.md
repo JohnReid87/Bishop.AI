@@ -221,8 +221,8 @@ they resolve from the current working directory.
 ### Card
 
 - `bishop card list [--json]`
-- `bishop card view <id> [--json]`
-- `bishop card add --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>...]`
+- `bishop card show <id> [--json]`
+- `bishop card create --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>...]`
 - `bishop card move <id> --to-lane <name> --to-position <int> [--no-close]` — `--no-close` keeps the card open when moving into `Done`
 - `bishop card edit <id> [--title <t>] [--description <d> | --description-file <path>] [--tag <name>...] [--clear-tags]`
 - `bishop card claim [--lane <name>] [--tag <name>] [--json]` — pop the top card of a lane into "Doing"; with `--tag`, picks the first card carrying that tag
@@ -235,7 +235,7 @@ they resolve from the current working directory.
 - `bishop batch create --name <text> [--branch <name>] [--base <branch>] [--cards <n,...>] [--tag <name>] [--lane <name>]` — create a batch and provision a git worktree
 - `bishop batch edit <name> --new-name <text>` — rename a batch
 - `bishop batch list [--json]`
-- `bishop batch view <name> [--json]`
+- `bishop batch show <name> [--json]`
 - `bishop batch add-card <name> <card-id>` — assign a card to a batch
 - `bishop batch remove-card <name> <card-id>` — unassign a card from a batch
 - `bishop batch run <name> [--resume] [--model <model-id>]` — run a batch end-to-end via `bish-auto-card`; stops on card failure; `--resume` continues from the next undone card
@@ -330,7 +330,7 @@ temp files anyway) so the temp-file path is the house style.
    at the top of the lane:
 
    ```
-   bishop card add --lane "<lane>" --title "<title>" --tag <tag> --description-file ".bishop/tmp-card-<slug>.md" --bottom
+   bishop card create --lane "<lane>" --title "<title>" --tag <tag> --description-file ".bishop/tmp-card-<slug>.md" --bottom
    ```
 
 3. **Remove** the temp file with the **`PowerShell` tool**, not Bash:
@@ -362,7 +362,7 @@ temp files anyway) so the temp-file path is the house style.
 
 When a skill has gathered multiple cards and is about to push them,
 print a preview that the user confirms or edits *before* any
-`bishop card add` runs. Use H3 headings for each card, a single
+`bishop card create` runs. Use H3 headings for each card, a single
 `Tag` / `Lane` metadata line, H4 subsections for the body, and a
 `---` separator between cards.
 

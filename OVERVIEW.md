@@ -43,7 +43,7 @@ The skill interviews you relentlessly — one question at a time, with a recomme
 
 A card in `To Do` is ready. From the same workspace terminal you type `/bish-work-on-card 42`. The skill:
 
-1. Fetches the card body via `bishop card view 42`.
+1. Fetches the card body via `bishop card show 42`.
 2. Moves it to `Doing` via `bishop card move`.
 3. Explores the relevant code (often via the Explore subagent) and asks any clarifying questions.
 4. Implements the change.
@@ -91,7 +91,7 @@ No metrics, no KPIs — qualitative measures of "did this stay in the loop":
 
 - A solo dev can grill a design, plan, work, and merge a card end-to-end without leaving the Bishop + Claude + terminal loop.
 - The board reflects current state. If it's not on a card, it's not happening; and the dev trusts the board enough to use it for "what's next?" decisions.
-- Context loss between Claude sessions is absorbed by the cards. A fresh agent picks up `bishop card view 42` and produces something close to what the original conversation would have, without re-asking the same clarifying questions.
+- Context loss between Claude sessions is absorbed by the cards. A fresh agent picks up `bishop card show 42` and produces something close to what the original conversation would have, without re-asking the same clarifying questions.
 - Registering a new workspace and getting it productive (path, GitHub link, skills installed) takes minutes, not hours.
 - The morning loop is: open Bishop, see what's in `Doing`, pick the next card from `To Do`, get to work — no context-loading from a tool other than Bishop.
 

@@ -195,7 +195,7 @@ makes no assumption about specific namespace prefixes — it works for any
    as-is** / **Edit** / **Merge** → `pending-card:<session-index>` (resolved to
    `carded:#<N>` after step 9 pushes); **Skip** → `parked`.
 
-9. **Push confirmed cards** using `bishop card add` per `Card Push Procedure`
+9. **Push confirmed cards** using `bishop card create` per `Card Push Procedure`
    (in `conventions`). Use `--tag test`.
 
 10. **Print a summary table** after all cards are pushed:

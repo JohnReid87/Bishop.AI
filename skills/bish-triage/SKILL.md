@@ -255,7 +255,7 @@ When the user chose "split into spike + fix-stub" in Phase 3, produce
 
 ## Push
 
-Add the card(s) using `bishop card add` per `Card Push Procedure` (in `conventions`). Always `--tag bug` (or `--tag spike`
+Add the card(s) using `bishop card create` per `Card Push Procedure` (in `conventions`). Always `--tag bug` (or `--tag spike`
 for the spike half of a split) and `--lane "To Do"`.
 
 For the spike-split, push the **spike first** (`--tag spike`), capture

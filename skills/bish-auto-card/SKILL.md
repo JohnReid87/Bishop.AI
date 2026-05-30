@@ -40,7 +40,7 @@ block pre-assembled by the calling automation. Read it now:
 - `conventions["Shell selection"]`, `conventions["Commit-reference convention"]`, `conventions["Auto-card permission contract"]`, `conventions["Card model"]` — the four procedure sections pre-sliced for this skill
 - `skill_specific.related_cards` — summaries of cards referenced in the card's `### Related` section
 
-Do **not** run `bishop skill bootstrap`, `bishop card view`, `git log`, or
+Do **not** run `bishop skill bootstrap`, `bishop card show`, `git log`, or
 related-card lookups — this data is already here.
 
 Echo the workspace name and card title from the context block so the parent

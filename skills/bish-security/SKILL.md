@@ -289,7 +289,7 @@ surface, because the same code often gets copy-pasted into production.
    - One card ≈ one PR. If a card is a one-line change, fold it into
      the nearest related card.
 
-10. **Push confirmed cards** in order using `bishop card add` per
+10. **Push confirmed cards** in order using `bishop card create` per
     `Card Push Procedure` (in `conventions`). Use `--tag security`.
 
 11. **Print summary table:**
@@ -351,7 +351,7 @@ Rules:
 - Do NOT STOP when the CVE scan fails — print a one-line warning and
   continue. Partial value beats no value when offline.
 - Do NOT STOP when the `security` tag is missing — auto-create it.
-- Always pass `--bottom` to `bishop card add`. Security reviews are
+- Always pass `--bottom` to `bishop card create`. Security reviews are
   bulk pushes by nature — they must not jump ahead of manually
   prioritised work.
 - Do NOT assume specific namespace prefixes (`Bishop.*`, `MyApp.*`).

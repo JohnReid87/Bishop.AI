@@ -292,7 +292,7 @@ you flag as equivalent during the interview.
    `carded:#<N>` after push); **Skip** → `parked`; **All dismissed** →
    `dismissed`. Classes with no findings (recorded `clean`) need no entry.
 
-   Push confirmed cards using `bishop card add` per `Card Push Procedure` (in `conventions`). Use `--tag test`.
+   Push confirmed cards using `bishop card create` per `Card Push Procedure` (in `conventions`). Use `--tag test`.
 
 9. **Print a summary table.** Include audited-but-clean classes and
    no-test-file skips so the user can tell audited-good from

@@ -157,7 +157,7 @@ Do NOT push automatically. Wait for the user to say "push".
 
 ## Push
 
-When the user confirms, add each card in order using `bishop card add` per `Card Push Procedure` (in `conventions`). Push with `--bottom` so cards land in agreed order.
+When the user confirms, add each card in order using `bishop card create` per `Card Push Procedure` (in `conventions`). Push with `--bottom` so cards land in agreed order.
 
 After all cards are created, print a brief summary:
 
