@@ -66,15 +66,15 @@ Parse the claim JSON and ask the user to confirm:
 **Parse the context-pack JSON** (applies to both paths):
 - `workspace.name` — echo back so the user can confirm the destination:
   > **Workspace:** <name>
-- `skillSpecific.card` — card metadata (`number`, `title`, `description`,
-  `laneName`, `tag`, `isClosed`). If this is `null`, the card was not found — STOP.
-- `skillSpecific.relatedCards` — summaries of cards referenced in the source card's `### Related` section (empty array when none); each entry has `number`, `title`, `laneName`, `isClosed`.
-- `workspace.contextMd` — project orientation text (used in step 2 below).
+- `skill_specific.card` — card metadata (`number`, `title`, `description`,
+  `lane_name`, `tag`, `is_closed`). If this is `null`, the card was not found — STOP.
+- `skill_specific.related_cards` — summaries of cards referenced in the source card's `### Related` section (empty array when none); each entry has `number`, `title`, `lane_name`, `is_closed`.
+- `workspace.context_md` — project orientation text (used in step 2 below).
 - `conventions` — STABLE procedure sections. Use `conventions["Shell selection"]`
   when choosing the Bash vs PowerShell tool throughout this run.
 - `git.commits` — recent commit history.
 
-**Closed-card guard:** If `isClosed` is `true`:
+**Closed-card guard:** If `is_closed` is `true`:
 - If you are on Path B (the card was just claimed), revert the claim first:
   ```
   bishop card move <claimed-number> --to-lane "To Do" --to-position 1
@@ -99,13 +99,13 @@ card was loaded before any move or implementation:
    If the move fails (e.g. the workspace has no "Doing" lane), STOP and surface
    the error. Do not invent a substitute lane name.
 
-   Skip this step if `laneName` from the context-pack is already "Doing" (this
+   Skip this step if `lane_name` from the context-pack is already "Doing" (this
    includes the Path B happy-path, where `card claim` already moved the card).
 
 2. Explore the codebase areas relevant to the card **via the Explore subagent**
    before writing any code.
    - Use the `Agent` tool with `subagent_type: "Explore"` and `model: "haiku"`.
-   - Brief it with: the card title + description, relevant `workspace.contextMd`
+   - Brief it with: the card title + description, relevant `workspace.context_md`
      sections from the context-pack, and the specific questions you need answered
      ("where is X defined", "which files would need to change to add Y", "what
      existing patterns handle Z").
@@ -113,7 +113,7 @@ card was loaded before any move or implementation:
      whole files. Keep large file contents out of the main context.
    - Only fall back to direct Read/Grep when the Explore agent's findings need
      a targeted follow-up on a specific file/line range you already know about.
-   - Follow any dependency order or architectural conventions in `workspace.contextMd`.
+   - Follow any dependency order or architectural conventions in `workspace.context_md`.
      Do not modify layers or modules the card does not require.
 
 3. Implement the changes described in the card's description.

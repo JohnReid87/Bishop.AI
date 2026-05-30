@@ -48,7 +48,7 @@ The context-pack below bundles workspace metadata, recent git history, card data
   Use `skill_specific.card.description` as the spec body (and `skill_specific.card.title` for context).
   Echo back so the user can confirm before the interview begins:
 
-  > **Spec from card #N:** \<title\> *(lane: \<laneName\>, tag: \<tag\>)*
+  > **Spec from card #N:** \<title\> *(lane: \<lane_name\>, tag: \<tag\>)*
 
 **Path B — `$ARGUMENTS` is non-empty free text** (file path from staging dialog):
 ```

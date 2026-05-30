@@ -35,10 +35,10 @@ block pre-assembled by the calling automation. Read it now:
 - `workspace.path` — set this as `$WORKSPACE_PATH` (the workspace boundary
   enforced throughout this run)
 - `workspace.name`, `workspace.lanes`, `workspace.tags` — workspace bootstrap data
-- `card` — the claimed card's metadata (number, title, description, laneName, tag, isClosed)
+- `card` — the claimed card's metadata (number, title, description, lane_name, tag, is_closed)
 - `git.commits` — the 20 most recent commits (equivalent to `git log --oneline -20`)
 - `conventions["Shell selection"]`, `conventions["Commit-reference convention"]`, `conventions["Auto-card permission contract"]`, `conventions["Card model"]` — the four procedure sections pre-sliced for this skill
-- `relatedCards` — summaries of cards referenced in the card's `### Related` section
+- `related_cards` — summaries of cards referenced in the card's `### Related` section
 
 Do **not** run `bishop skill bootstrap`, `bishop card view`, `git log`, or
 related-card lookups — this data is already here.

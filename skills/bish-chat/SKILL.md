@@ -67,8 +67,8 @@ The context-pack below bundles workspace metadata, card data, recent git history
   - `workspace.name` — echoed back as confirmation
   - `workspace.tags`, `workspace.lanes` — for the wrap-up step
   - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure)
-  - `skill_specific.card` — the loaded card: `number`, `title`, `description`, `laneName`, `tag`
-  - `skill_specific.relatedCards` — summaries of cards referenced in the source card's `### Related` section (empty array when none); each entry has `number`, `title`, `laneName`, `isClosed`
+  - `skill_specific.card` — the loaded card: `number`, `title`, `description`, `lane_name`, `tag`
+  - `skill_specific.related_cards` — summaries of cards referenced in the source card's `### Related` section (empty array when none); each entry has `number`, `title`, `lane_name`, `is_closed`
 
   Remember `skill_specific.card` as the **source card** — you will use `number` (and the existing `tag`) in the wrap-up.
 
@@ -76,7 +76,7 @@ The context-pack below bundles workspace metadata, card data, recent git history
 
 Echo the card back so the user can confirm the right card was loaded:
 
-> **Card #N:** \<title\> *(lane: \<laneName\>, tag: \<tag or "none"\>)*
+> **Card #N:** \<title\> *(lane: \<lane_name\>, tag: \<tag or "none"\>)*
 
 Then open the chat with:
 

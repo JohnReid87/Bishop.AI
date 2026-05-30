@@ -54,12 +54,12 @@ The context-pack below bundles workspace metadata, recent git history, card data
   If the command exits non-zero, surface the stderr message as-is and STOP.
   
   Parse the JSON. `skill_specific.card` carries the loaded card.
-  `skill_specific.relatedCards` carries summaries (`number`, `title`, `laneName`, `isClosed`) of any cards referenced in the source card's `### Related` section (empty array when none).
+  `skill_specific.related_cards` carries summaries (`number`, `title`, `lane_name`, `is_closed`) of any cards referenced in the source card's `### Related` section (empty array when none).
   Remember `skill_specific.card.number` as the **source card** — reused in the closing prompt below.
-  Use `skill_specific.card.title` + `skill_specific.card.description` (and tag / laneName for context) as the seed for the grill.
+  Use `skill_specific.card.title` + `skill_specific.card.description` (and tag / lane_name for context) as the seed for the grill.
   Echo back so the user can confirm before the interview begins:
 
-  > **Grilling card #N:** \<title\> *(lane: \<laneName\>, tag: \<tag\>)*
+  > **Grilling card #N:** \<title\> *(lane: \<lane_name\>, tag: \<tag\>)*
 
 **Path B — `$ARGUMENTS` is non-empty free text** (workspace-launch / staging-dialog path):
 ```
