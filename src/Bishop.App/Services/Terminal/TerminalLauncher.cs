@@ -24,6 +24,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
     {
         _fileExists = fileExists;
         _startProcess = startProcess;
+        // Stryker disable once Statement : production callers never pass null; the default-binding path is exercised by the composition root, not unit tests.
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -45,8 +46,10 @@ public sealed class TerminalLauncher : ITerminalLauncher
             if (modelId is not null) { psi.ArgumentList.Add("--model"); psi.ArgumentList.Add(modelId); }
             if (claudeArgs is not null) psi.ArgumentList.Add(claudeArgs);
             psi.Environment["PATH"] = fullPath;
+            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
             var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
             _startProcess(psi);
+            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
             if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
             return true;
         }
@@ -63,8 +66,10 @@ public sealed class TerminalLauncher : ITerminalLauncher
         if (modelId is not null) { psFallback.ArgumentList.Add("--model"); psFallback.ArgumentList.Add(modelId); }
         if (claudeArgs is not null) psFallback.ArgumentList.Add(claudeArgs);
         psFallback.Environment["PATH"] = fullPath;
+        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
         var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
         _startProcess(psFallback);
+        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
         if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
         return false;
     }
@@ -85,8 +90,10 @@ public sealed class TerminalLauncher : ITerminalLauncher
             psi.ArgumentList.Add(command);
             foreach (var a in args) psi.ArgumentList.Add(a);
             psi.Environment["PATH"] = fullPath;
+            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
             var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
             _startProcess(psi);
+            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
             if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
             return true;
         }
@@ -102,8 +109,10 @@ public sealed class TerminalLauncher : ITerminalLauncher
         psFallback.ArgumentList.Add(command);
         foreach (var a in args) psFallback.ArgumentList.Add(a);
         psFallback.Environment["PATH"] = fullPath;
+        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
         var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
         _startProcess(psFallback);
+        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
         if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
         return false;
     }
@@ -121,8 +130,10 @@ public sealed class TerminalLauncher : ITerminalLauncher
             psi.ArgumentList.Add(workingDirectory);
             psi.ArgumentList.Add(shell);
             psi.Environment["PATH"] = fullPath;
+            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
             var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
             _startProcess(psi);
+            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
             if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
             return true;
         }
@@ -135,8 +146,10 @@ public sealed class TerminalLauncher : ITerminalLauncher
         };
         psFallback.ArgumentList.Add("-NoExit");
         psFallback.Environment["PATH"] = fullPath;
+        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
         var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
         _startProcess(psFallback);
+        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
         if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
         return false;
     }
@@ -218,6 +231,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
         SetWindowPos(hWnd, IntPtr.Zero, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
+    // Stryker disable all : snap-path infrastructure depending on real Win32 EnumWindows/GetClassName; deliberately untested (see TerminalLauncherTests.cs:633-638).
     private static HashSet<nint> GetWindowsOfClass(string className)
     {
         var result = new HashSet<nint>();
@@ -230,6 +244,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
         }, IntPtr.Zero);
         return result;
     }
+    // Stryker restore all
 
     private string? FindWindowsTerminal()
     {
@@ -251,6 +266,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
         return null;
     }
 
+    // Stryker disable all : registry-coupled I/O; killing literal mutants here requires a registry seam — tracked as a follow-up refactor. The pure overload below is fully tested.
     private static string BuildFullPath()
     {
         using var machineEnv = Registry.LocalMachine.OpenSubKey(
@@ -261,6 +277,7 @@ public sealed class TerminalLauncher : ITerminalLauncher
             machineEnv?.GetValue("Path", "") as string,
             userEnv?.GetValue("Path", "") as string);
     }
+    // Stryker restore all
 
     internal static string BuildFullPath(string? machinePath, string? userPath)
     {
