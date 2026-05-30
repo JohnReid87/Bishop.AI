@@ -665,6 +665,18 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task LaunchWorkspace_CallsSeederBeforeLaunch()
+    {
+        var launcher = Substitute.For<ITerminalLauncher>();
+        var seeder = Substitute.For<IWorkspaceContextSeeder>();
+        var handler = new LaunchWorkspaceCommandHandler(launcher, seeder);
+
+        await handler.Handle(new LaunchWorkspaceCommand(@"C:\workspace"), default);
+
+        await seeder.Received(1).SeedAsync(@"C:\workspace", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RemoveWorkspace_SetsIsRemovedAndRemovedAt()
     {
         var name = U("ToRemove");
