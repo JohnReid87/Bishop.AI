@@ -974,33 +974,15 @@ public sealed partial class WorkspaceDetailPage : Page
         var scrollViewer = FindVisualChild<ScrollViewer>(sender as DependencyObject);
         if (scrollViewer is not null)
         {
-            const double EdgeZone = 48.0;
-            const double MinSpeed = 400.0;
-            const double MaxSpeed = 3000.0;
-            const double TickMs = 16.0;
-
             var pos = e.GetPosition(scrollViewer);
-            var viewportHeight = scrollViewer.ViewportHeight;
-            double velocity = 0;
-
-            if (pos.Y < EdgeZone)
-            {
-                var depth = (EdgeZone - pos.Y) / EdgeZone;
-                velocity = -(MinSpeed + (MaxSpeed - MinSpeed) * depth) * TickMs / 1000.0;
-            }
-            else if (pos.Y > viewportHeight - EdgeZone)
-            {
-                var depth = (pos.Y - (viewportHeight - EdgeZone)) / EdgeZone;
-                velocity = (MinSpeed + (MaxSpeed - MinSpeed) * depth) * TickMs / 1000.0;
-            }
-
+            var velocity = DragDropComputer.ComputeScrollVelocity(pos.Y, scrollViewer.ViewportHeight);
             if (velocity != 0)
             {
                 _autoScrollTarget = scrollViewer;
                 _autoScrollVelocity = velocity;
                 if (_autoScrollTimer is null)
                 {
-                    _autoScrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TickMs) };
+                    _autoScrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
                     _autoScrollTimer.Tick += AutoScrollTimer_Tick;
                 }
                 if (!_autoScrollTimer.IsEnabled)

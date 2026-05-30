@@ -135,8 +135,7 @@ public sealed partial class MainWindow : Window
             var oldIndex = ViewModel.Workspaces.IndexOf(item);
             if (oldIndex >= 0)
             {
-                insertIndex = Math.Clamp(insertIndex, 0, ViewModel.Workspaces.Count);
-                var moveTarget = insertIndex > oldIndex ? insertIndex - 1 : insertIndex;
+                var moveTarget = DragDropComputer.ComputeMoveTarget(oldIndex, insertIndex, ViewModel.Workspaces.Count);
                 if (moveTarget != oldIndex)
                 {
                     ViewModel.Workspaces.Move(oldIndex, moveTarget);
