@@ -160,17 +160,10 @@ public sealed class TerminalLauncher : ITerminalLauncher
         var timeProvider = _timeProvider;
         _ = Task.Run(async () =>
         {
-            var deadline = timeProvider.GetUtcNow().AddSeconds(3);
-            nint found = 0;
-            while (timeProvider.GetUtcNow() < deadline)
-            {
-                foreach (var hWnd in GetWindowsOfClass(windowClass))
-                {
-                    if (!before.Contains(hWnd)) { found = hWnd; break; }
-                }
-                if (found != 0) break;
-                await Task.Delay(100);
-            }
+            var found = await PollForNewWindowAsync(
+                () => GetWindowsOfClass(windowClass),
+                before,
+                timeProvider);
 
             if (found == 0) return;
 
@@ -178,6 +171,27 @@ public sealed class TerminalLauncher : ITerminalLauncher
             await Task.Delay(500);
             ApplySnap(found, snap);
         });
+    }
+
+    internal static async Task<nint> PollForNewWindowAsync(
+        Func<HashSet<nint>> getWindows,
+        HashSet<nint> before,
+        TimeProvider timeProvider,
+        TimeSpan? pollInterval = null)
+    {
+        var deadline = timeProvider.GetUtcNow().AddSeconds(3);
+        var interval = pollInterval ?? TimeSpan.FromMilliseconds(100);
+        nint found = 0;
+        while (timeProvider.GetUtcNow() < deadline)
+        {
+            foreach (var hWnd in getWindows())
+            {
+                if (!before.Contains(hWnd)) { found = hWnd; break; }
+            }
+            if (found != 0) break;
+            await Task.Delay(interval);
+        }
+        return found;
     }
 
     private static void ApplySnap(nint hWnd, TerminalSnap snap)

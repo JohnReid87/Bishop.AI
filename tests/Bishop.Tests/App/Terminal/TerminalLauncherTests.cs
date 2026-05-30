@@ -1,6 +1,7 @@
 #pragma warning disable CA1416 // Windows-only; tests run on Windows
 using Bishop.App.Services.Terminal;
 using FluentAssertions;
+using Microsoft.Extensions.Time.Testing;
 using System.Diagnostics;
 
 namespace Bishop.Tests.App.Terminal;
@@ -648,4 +649,51 @@ public sealed class TerminalLauncherTests
         _started.Single().FileName.Should().Be("powershell.exe");
     }
 
+    // ── PollForNewWindowAsync ─────────────────────────────────────────────────
+    // Exercises the snap polling loop directly via the internal extraction —
+    // FakeTimeProvider lets us assert the 3-second deadline is honoured without
+    // burning wall-clock time in the test process.
+
+    [Fact]
+    public async Task PollForNewWindowAsync_NewWindowAppearsImmediately_ReturnsItWithoutWaiting()
+    {
+        var before = new HashSet<nint> { 1, 2 };
+        var current = new HashSet<nint> { 1, 2, 99 };
+        var time = new FakeTimeProvider();
+
+        var found = await TerminalLauncher.PollForNewWindowAsync(
+            () => current,
+            before,
+            time,
+            pollInterval: TimeSpan.Zero);
+
+        found.Should().Be(99);
+    }
+
+    [Fact]
+    public async Task PollForNewWindowAsync_DeadlineExpires_ReturnsZero()
+    {
+        var before = new HashSet<nint> { 1, 2 };
+        var time = new FakeTimeProvider();
+
+        // Window source returns no new hWnd, and advances fake time past the
+        // 3-second deadline on its first call. Next iteration's while-check
+        // fails, so the loop exits and returns 0 — without burning wall-clock
+        // time on a real 3-second wait.
+        var callCount = 0;
+        HashSet<nint> WindowSource()
+        {
+            if (++callCount == 1) time.Advance(TimeSpan.FromSeconds(4));
+            return before;
+        }
+
+        var found = await TerminalLauncher.PollForNewWindowAsync(
+            WindowSource,
+            before,
+            time,
+            pollInterval: TimeSpan.Zero);
+
+        found.Should().Be(0);
+        callCount.Should().Be(1);
+    }
 }
