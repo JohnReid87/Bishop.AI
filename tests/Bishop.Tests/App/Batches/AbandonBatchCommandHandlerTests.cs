@@ -97,7 +97,7 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task BatchOpen_Throws()
+    public async Task BatchOpen_ClosesWithAbandoned_ReturnsZeroCards()
     {
         await using var db = await _factory.CreateDbContextAsync();
         var batch = new Batch
@@ -108,9 +108,57 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
         db.Batches.Add(batch);
         await db.SaveChangesAsync();
 
-        Func<Task> act = () => CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
+        var result = await CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Working*");
+        result.CardsRestored.Should().Be(0);
+        var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
+        _db.Entry(saved).Reload();
+        saved.Status.Should().Be(BatchStatus.Closed);
+        saved.ClosedReason.Should().Be(BatchClosedReason.Abandoned);
+    }
+
+    [Fact]
+    public async Task BatchOpen_CardsBatchIdCleared()
+    {
+        var workspace = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id);
+
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = U("batch"), BranchName = U("br"),
+            BaseBranch = "main", WorktreePath = WorktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+        var tracked = await db.Cards.SingleAsync(c => c.Id == card.Id);
+        tracked.BatchId = batch.Id;
+        await db.SaveChangesAsync();
+
+        await CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
+
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        _db.Entry(saved).Reload();
+        saved.BatchId.Should().BeNull();
+        saved.LaneName.Should().Be(SystemLaneNames.ToDo);
+    }
+
+    [Fact]
+    public async Task BatchOpen_WorktreeRemoved()
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(), WorkspaceId = _wsId, Name = U("batch"), BranchName = U("br"),
+            BaseBranch = "main", WorktreePath = WorktreePath, Status = BatchStatus.Open, CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Batches.Add(batch);
+        await db.SaveChangesAsync();
+
+        var git = Substitute.For<IGitCli>();
+        await CreateHandler(git: git).Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
+
+        await git.Received(1).RemoveWorktreeAsync(WorkspacePath, WorktreePath, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -130,7 +178,7 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         Func<Task> act = () => CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Working*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already Closed*");
     }
 
     // ── happy path ─────────────────────────────────────────────────────────────

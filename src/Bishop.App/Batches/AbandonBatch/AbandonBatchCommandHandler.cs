@@ -36,9 +36,9 @@ public sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCom
                 + string.Join(", ", matches.Select(b => b.BranchName)));
 
         var batch = matches[0];
-        if (batch.Status != BatchStatus.Working)
+        if (batch.Status == BatchStatus.Closed)
             throw new InvalidOperationException(
-                $"Batch '{request.Name}' must be Working to abandon; current status is {batch.Status}.");
+                $"Batch '{request.Name}' is already Closed and cannot be abandoned.");
 
         var cards = await readDb.Cards.AsNoTracking()
             .Where(c => c.BatchId == batch.Id)

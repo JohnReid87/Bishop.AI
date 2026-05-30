@@ -7,7 +7,7 @@ namespace Bishop.Tests.ViewModels;
 public class BatchItemViewModelTests
 {
     [Fact]
-    public void OpenBatch_ShowsRunOnly()
+    public void OpenBatch_ShowsRunAndAbandon()
     {
         var vm = new BatchItemViewModel { Status = BatchStatus.Open };
 
@@ -15,7 +15,7 @@ public class BatchItemViewModelTests
         vm.CanResume.Should().BeFalse();
         vm.CanPause.Should().BeFalse();
         vm.CanCleanUp.Should().BeFalse();
-        vm.CanAbandon.Should().BeFalse();
+        vm.CanAbandon.Should().BeTrue();
     }
 
     [Fact]

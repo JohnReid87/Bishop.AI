@@ -58,6 +58,6 @@ public sealed partial class BatchItemViewModel : ObservableObject
     public bool CanResume => Status == BatchStatus.Working && FinishedAt is null && StoppedAt is not null;
     public bool CanMerge => Status == BatchStatus.Working && FinishedAt is not null && !IsMerged;
     public bool CanCleanUp => IsMerged && (BranchExists || WorktreeExists);
-    public bool CanAbandon => Status == BatchStatus.Working && !IsMerged;
+    public bool CanAbandon => Status != BatchStatus.Closed && !IsMerged;
     public bool CanRemove => Status == BatchStatus.Closed;
 }
