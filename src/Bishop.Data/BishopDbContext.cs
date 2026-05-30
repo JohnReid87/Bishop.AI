@@ -1,5 +1,6 @@
 using Bishop.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Bishop.Data;
 
@@ -16,6 +17,7 @@ public sealed class BishopDbContext : DbContext
     public BishopDbContext(DbContextOptions<BishopDbContext> options)
         : this(options, TimeProvider.System) { }
 
+    [ActivatorUtilitiesConstructor]
     public BishopDbContext(DbContextOptions<BishopDbContext> options, TimeProvider timeProvider)
         : base(options)
     {
