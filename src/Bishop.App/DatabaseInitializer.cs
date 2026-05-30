@@ -63,8 +63,13 @@ internal sealed class DatabaseInitializer : IHostedService
             if (pending.Any())
             {
                 ClearStaleMigrationLock(db);
+                // Sync-over-async: the surrounding Mutex has thread affinity, so this
+                // thread must remain the owner until ReleaseMutex. await would resume
+                // on a different thread and break that invariant.
                 db.Database.MigrateAsync(token).GetAwaiter().GetResult();
             }
+            // Sync-over-async: see MigrateAsync above — Mutex thread affinity forces
+            // a blocking wait here too.
             db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", token).GetAwaiter().GetResult();
         }
         finally
