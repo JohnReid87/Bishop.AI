@@ -3,11 +3,14 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Bishop.UI.Views"
-    xmlns:vm="using:Bishop.ViewModels"
+    xmlns:vmCards="using:Bishop.ViewModels.Cards"
+    xmlns:vmBatches="using:Bishop.ViewModels.Batches"
+    xmlns:vmWorkspaces="using:Bishop.ViewModels.Workspaces"
+    xmlns:vmSkills="using:Bishop.ViewModels.Skills"
     xmlns:skills="using:Bishop.App.Skills"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
     <Page.Resources>
-        <DataTemplate x:Key="CardItemTemplate" x:DataType="vm:CardViewModel">
+        <DataTemplate x:Key="CardItemTemplate" x:DataType="vmCards:CardViewModel">
             <Grid Margin="8,0,8,4"
                   Opacity="{x:Bind CardOpacity}"
                   Tag="{x:Bind}">
@@ -110,7 +113,7 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate x:Key="CompactCardItemTemplate" x:DataType="vm:CardViewModel">
+        <DataTemplate x:Key="CompactCardItemTemplate" x:DataType="vmCards:CardViewModel">
             <Grid Margin="4,0,4,4" Opacity="{x:Bind CardOpacity}">
                 <Border Background="{StaticResource AppCardBackgroundBrush}"
                         CornerRadius="4">
@@ -142,7 +145,7 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate x:Key="BatchGroupItemTemplate" x:DataType="vm:BatchGroupViewModel">
+        <DataTemplate x:Key="BatchGroupItemTemplate" x:DataType="vmBatches:BatchGroupViewModel">
             <Grid Margin="8,0,8,4">
                 <Border Background="{StaticResource AppCardBackgroundBrush}"
                         BorderBrush="{StaticResource AppBorderBrush}"
@@ -389,7 +392,7 @@
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:LaneViewModel">
+                        <DataTemplate x:DataType="vmWorkspaces:LaneViewModel">
                             <Grid Width="220"
                                   VerticalAlignment="Stretch"
                                   Background="{StaticResource AppLaneBackgroundBrush}"
@@ -582,7 +585,7 @@
                                                    MinRowSpacing="6"/>
                             </ItemsRepeater.Layout>
                             <ItemsRepeater.ItemTemplate>
-                                <DataTemplate x:DataType="vm:CardViewModel">
+                                <DataTemplate x:DataType="vmCards:CardViewModel">
                                     <Border Background="{StaticResource AppCardBackgroundBrush}"
                                             CornerRadius="3"
                                             Padding="6,2"
@@ -688,7 +691,7 @@
                                     </Style>
                                 </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:SkillRunRowViewModel">
+                                    <DataTemplate x:DataType="vmSkills:SkillRunRowViewModel">
                                         <Grid Padding="16,8"
                                               BorderBrush="{StaticResource AppDividerBrush}"
                                               BorderThickness="0,0,0,1">
@@ -859,7 +862,7 @@
                                         </Style>
                                     </ListView.ItemContainerStyle>
                                     <ListView.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:BatchItemViewModel">
+                                        <DataTemplate x:DataType="vmBatches:BatchItemViewModel">
                                             <Grid BorderBrush="{StaticResource AppDividerBrush}"
                                                   BorderThickness="0,0,0,1">
                                                 <Grid.RowDefinitions>
@@ -1029,7 +1032,7 @@
                                                                                MinRowSpacing="0"/>
                                                         </ItemsRepeater.Layout>
                                                         <ItemsRepeater.ItemTemplate>
-                                                            <DataTemplate x:DataType="vm:CardViewModel">
+                                                            <DataTemplate x:DataType="vmCards:CardViewModel">
                                                                 <ContentPresenter Content="{x:Bind}"
                                                                                   ContentTemplate="{StaticResource CompactCardItemTemplate}"/>
                                                             </DataTemplate>

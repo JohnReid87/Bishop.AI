@@ -1,4 +1,6 @@
-using Bishop.ViewModels;
+using Bishop.ViewModels.Settings;
+using Bishop.ViewModels.Shared;
+using Bishop.ViewModels.Skills;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;

@@ -1,4 +1,4 @@
-using Bishop.ViewModels;
+using Bishop.ViewModels.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace Bishop.UI.Services;

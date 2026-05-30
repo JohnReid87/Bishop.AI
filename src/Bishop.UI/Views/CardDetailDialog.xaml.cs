@@ -1,4 +1,5 @@
-using Bishop.ViewModels;
+using Bishop.ViewModels.Cards;
+using Bishop.ViewModels.Shared;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

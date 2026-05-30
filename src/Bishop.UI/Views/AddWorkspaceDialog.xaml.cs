@@ -1,4 +1,4 @@
-using Bishop.ViewModels;
+using Bishop.ViewModels.Shared;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
 using WinRT.Interop;

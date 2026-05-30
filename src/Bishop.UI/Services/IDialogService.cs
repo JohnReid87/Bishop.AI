@@ -1,5 +1,7 @@
 using Bishop.App.Skills;
-using Bishop.ViewModels;
+using Bishop.ViewModels.Cards;
+using Bishop.ViewModels.GitHub;
+using Bishop.ViewModels.Settings;
 using Microsoft.UI.Xaml;
 
 namespace Bishop.UI.Services;

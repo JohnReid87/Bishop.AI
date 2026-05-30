@@ -2,7 +2,7 @@
     x:Class="Bishop.UI.Views.ManageWorkspacesControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:vm="using:Bishop.ViewModels"
+    xmlns:vm="using:Bishop.ViewModels.Workspaces"
     xmlns:converters="using:Bishop.UI.Converters">
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>

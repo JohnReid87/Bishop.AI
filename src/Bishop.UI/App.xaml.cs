@@ -1,7 +1,13 @@
 using Bishop.App;
 using Bishop.UI.Services;
 using Bishop.UI.Views;
-using Bishop.ViewModels;
+using Bishop.ViewModels.Cards;
+using Bishop.ViewModels.Errors;
+using Bishop.ViewModels.Scripts;
+using Bishop.ViewModels.Settings;
+using Bishop.ViewModels.Shared;
+using Bishop.ViewModels.Skills;
+using Bishop.ViewModels.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

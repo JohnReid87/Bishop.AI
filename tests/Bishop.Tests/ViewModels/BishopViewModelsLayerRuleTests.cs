@@ -1,5 +1,5 @@
 using System.Reflection;
-using Bishop.ViewModels;
+using Bishop.ViewModels.Shared;
 using FluentAssertions;
 
 namespace Bishop.Tests.ViewModels;

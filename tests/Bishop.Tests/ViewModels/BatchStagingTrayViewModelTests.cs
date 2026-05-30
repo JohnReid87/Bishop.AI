@@ -1,5 +1,13 @@
 using Bishop.App.Skills;
-using Bishop.ViewModels;
+using Bishop.ViewModels.Batches;
+using Bishop.ViewModels.Cards;
+using Bishop.ViewModels.Errors;
+using Bishop.ViewModels.GitHub;
+using Bishop.ViewModels.Scripts;
+using Bishop.ViewModels.Settings;
+using Bishop.ViewModels.Shared;
+using Bishop.ViewModels.Skills;
+using Bishop.ViewModels.Workspaces;
 using FluentAssertions;
 
 namespace Bishop.Tests.ViewModels;

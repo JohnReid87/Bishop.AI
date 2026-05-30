@@ -1,6 +1,7 @@
 using Bishop.UI.Services;
 using Bishop.UI.Views;
-using Bishop.ViewModels;
+using Bishop.ViewModels.Shared;
+using Bishop.ViewModels.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;

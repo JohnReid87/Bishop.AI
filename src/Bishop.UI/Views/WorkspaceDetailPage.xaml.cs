@@ -1,6 +1,11 @@
 using CommunityToolkit.WinUI.Controls;
 using Bishop.UI.Services;
-using Bishop.ViewModels;
+using Bishop.ViewModels.Batches;
+using Bishop.ViewModels.Cards;
+using Bishop.ViewModels.GitHub;
+using Bishop.ViewModels.Shared;
+using Bishop.ViewModels.Skills;
+using Bishop.ViewModels.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.IO;
@@ -1044,7 +1049,7 @@ public sealed partial class WorkspaceDetailPage : Page
         var cardOffset = 0;
         for (var i = 0; i < targetLane.LaneItems.Count; i++)
         {
-            var cardsInItem = targetLane.LaneItems[i] is Bishop.ViewModels.BatchGroupViewModel bg ? bg.Cards.Count : 1;
+            var cardsInItem = targetLane.LaneItems[i] is BatchGroupViewModel bg ? bg.Cards.Count : 1;
             if (repeater.TryGetElement(i) is not FrameworkElement item)
             {
                 cardOffset += cardsInItem;

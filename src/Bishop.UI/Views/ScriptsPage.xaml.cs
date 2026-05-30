@@ -1,4 +1,5 @@
-using Bishop.ViewModels;
+using Bishop.ViewModels.Scripts;
+using Bishop.ViewModels.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

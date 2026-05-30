@@ -1,5 +1,6 @@
 using Bishop.App.Services.Settings;
-using Bishop.ViewModels;
+using Bishop.ViewModels.Cards;
+using Bishop.ViewModels.Errors;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

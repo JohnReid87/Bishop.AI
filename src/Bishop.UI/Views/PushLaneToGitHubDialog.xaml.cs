@@ -1,4 +1,5 @@
-using Bishop.ViewModels;
+using Bishop.ViewModels.GitHub;
+using Bishop.ViewModels.Shared;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Bishop.UI.Views;

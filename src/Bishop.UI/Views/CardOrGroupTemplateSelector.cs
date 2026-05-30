@@ -1,4 +1,4 @@
-using Bishop.ViewModels;
+using Bishop.ViewModels.Batches;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
