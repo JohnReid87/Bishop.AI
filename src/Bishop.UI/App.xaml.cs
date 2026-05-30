@@ -95,8 +95,21 @@ public partial class App : Application
         ReportViewer = new ReportViewerWindow();
     }
 
+    // async void event handler — required by the UnhandledException signature.
+    // Exception flow: any throw inside HandleUnhandledExceptionAsync is caught by
+    // SafeAsync.RunAsync, logged via SafeAsync.Logger, and routed through
+    // SafeAsync.OnException (wired in OnLaunched). Anything that escapes RunAsync
+    // would terminate the process, so the helper must never throw synchronously
+    // before the inner try.
     private static async void OnAppUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+    {
+        Debug.Assert(SafeAsync.OnException is not null,
+            "SafeAsync.OnException must be wired before UnhandledException can fire.");
+        await HandleUnhandledExceptionAsync(e);
+    }
+
+    private static Task HandleUnhandledExceptionAsync(Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+        => SafeAsync.RunAsync(async () =>
         {
             e.Handled = true;
             var ex = e.Exception;
