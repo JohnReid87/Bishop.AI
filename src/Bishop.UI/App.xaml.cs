@@ -57,6 +57,7 @@ public partial class App : Application
                 services.AddTransient<SettingsDialogViewModel>();
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<WorkspaceBoardViewModel>();
+                // Transient + IDisposable: WorkspaceDetailPage.OnNavigatedFrom owns disposal.
                 services.AddTransient<WorkspaceNotesViewModel>();
                 services.AddTransient<WorkspaceMonitoringViewModel>();
                 services.AddTransient<WorkspaceManagerViewModel>();

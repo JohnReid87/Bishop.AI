@@ -81,6 +81,7 @@ public sealed partial class WorkspaceDetailPage : Page
             App.MainWindow.Activated -= OnWindowActivated;
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
+        // Notes is Transient + IDisposable; flush pending edits then release the FileSystemWatcher.
         _ = SafeAsync.RunAsync(Notes.FlushAsync);
         Notes.Dispose();
     }

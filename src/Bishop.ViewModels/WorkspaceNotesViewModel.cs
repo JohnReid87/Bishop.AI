@@ -5,6 +5,9 @@ using System.Text.Json;
 
 namespace Bishop.ViewModels;
 
+// Lifetime: DI-registered Transient. Holds a FileSystemWatcher + CancellationTokenSource,
+// so the host view must call Dispose() when the VM is no longer needed — WinUI 3 does not
+// dispose ViewModels automatically. Current owner: WorkspaceDetailPage.OnNavigatedFrom.
 public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposable
 {
     private readonly IUiDispatcher _uiDispatcher;
