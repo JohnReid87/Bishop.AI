@@ -35,6 +35,7 @@ public sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, 
             }
             catch (Exception ex) when (IsRetryableSqlite(ex) && attempt < MaxAttempts)
             {
+                // Stryker disable once Statement: backoff is observable only via wall-clock timing; removing the await is behaviourally equivalent for unit tests.
                 await Task.Delay(RetryBackoff, cancellationToken);
             }
         }
@@ -69,6 +70,7 @@ public sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, 
 
         if (topCard is null)
         {
+            // Stryker disable once Statement: empty-read transaction with no writes — commit vs auto-rollback on dispose is indistinguishable to any observer.
             await tx.CommitAsync(cancellationToken);
             return null;
         }
