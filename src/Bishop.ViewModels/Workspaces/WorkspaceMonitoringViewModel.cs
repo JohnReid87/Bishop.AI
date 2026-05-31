@@ -19,6 +19,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         "bish-tests",
         "bish-coverage",
         "bish-security",
+        "bish-dead-code",
     ];
 
     private readonly ISender _mediator;
