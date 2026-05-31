@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.ReorderWorkspaces;
 
-public sealed class ReorderWorkspacesCommandHandler : IRequestHandler<ReorderWorkspacesCommand, Unit>
+public sealed class ReorderWorkspacesCommandHandler : IRequestHandler<ReorderWorkspacesCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
     public ReorderWorkspacesCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
-    public async Task<Unit> Handle(ReorderWorkspacesCommand request, CancellationToken cancellationToken)
+    public async Task Handle(ReorderWorkspacesCommand request, CancellationToken cancellationToken)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var workspaces = await db.Workspaces.ToListAsync(cancellationToken);
@@ -25,6 +25,5 @@ public sealed class ReorderWorkspacesCommandHandler : IRequestHandler<ReorderWor
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return Unit.Value;
     }
 }

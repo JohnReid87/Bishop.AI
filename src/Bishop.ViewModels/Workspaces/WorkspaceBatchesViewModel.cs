@@ -1,6 +1,7 @@
 using Bishop.App.Batches.AbandonBatch;
 using Bishop.App.Batches.CleanUpBatch;
 using Bishop.App.Batches.CreateBatch;
+using Bishop.App.Batches.LaunchBatchTerminal;
 using Bishop.App.Batches.ListBatches;
 using Bishop.App.Batches.MergeBatch;
 using Bishop.App.Batches.RemoveBatch;
@@ -22,7 +23,6 @@ namespace Bishop.ViewModels.Workspaces;
 public sealed partial class WorkspaceBatchesViewModel : ObservableObject
 {
     private readonly ISender _mediator;
-    private readonly ITerminalLauncher _terminalLauncher;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
 
@@ -49,10 +49,9 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
     [ObservableProperty]
     private string _badgeTooltip = string.Empty;
 
-    public WorkspaceBatchesViewModel(ISender mediator, ITerminalLauncher terminalLauncher)
+    public WorkspaceBatchesViewModel(ISender mediator)
     {
         _mediator = mediator;
-        _terminalLauncher = terminalLauncher;
     }
 
     public async Task LoadAsync(Guid workspaceId, string workspacePath)
@@ -174,9 +173,9 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
         => await _mediator.Send(new CreateBatchCommand(
             workspaceId, workspacePath, name, branchName, null, worktreePath, cardNumbers, null, null, model));
 
-    public void LaunchBatch(string workspacePath, string batchName, string model, TerminalSnap snap)
-        => _terminalLauncher.LaunchCommand(workspacePath, "bishop", ["batch", "run", batchName, "--model", model], snap);
+    public async Task LaunchBatch(string workspacePath, string batchName, string model, TerminalSnap snap)
+        => await _mediator.Send(new LaunchBatchTerminalCommand(workspacePath, batchName, model, Resume: false, snap));
 
-    public void ResumeBatch(string workspacePath, string batchName, string model, TerminalSnap snap)
-        => _terminalLauncher.LaunchCommand(workspacePath, "bishop", ["batch", "run", batchName, "--resume", "--model", model], snap);
+    public async Task ResumeBatch(string workspacePath, string batchName, string model, TerminalSnap snap)
+        => await _mediator.Send(new LaunchBatchTerminalCommand(workspacePath, batchName, model, Resume: true, snap));
 }

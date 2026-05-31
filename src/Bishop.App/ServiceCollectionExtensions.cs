@@ -31,7 +31,6 @@ public static class ServiceCollectionExtensions
             dbConnectionString));
         services.AddSingleton<IGitCli, GitCli>();
         services.AddSingleton<IGhCli, GhCli>();
-        services.AddSingleton<IClaudeExecutableResolver, ClaudeExecutableResolver>();
         services.AddSingleton<IClaudeCliRunner, ClaudeCliRunner>();
         services.AddSingleton<IAppSettings, AppSettingsService>();
 #pragma warning disable CA1416 // Bishop.AI is Windows-only; TerminalLauncher requires Windows APIs

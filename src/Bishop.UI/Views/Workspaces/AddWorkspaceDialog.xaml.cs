@@ -1,4 +1,5 @@
 using Bishop.ViewModels.Shared;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -7,10 +8,13 @@ namespace Bishop.UI.Views.Workspaces;
 
 public sealed partial class AddWorkspaceDialog : ContentDialog
 {
+    private readonly ISafeAsyncRunner _safeAsync;
+
     public AddWorkspaceDialogViewModel ViewModel { get; } = new();
 
     public AddWorkspaceDialog()
     {
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         InitializeComponent();
         IsPrimaryButtonEnabled = false;
         ViewModel.PropertyChanged += (_, _) =>
@@ -18,7 +22,7 @@ public sealed partial class AddWorkspaceDialog : ContentDialog
     }
 
     private async void BrowseButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             var picker = new FolderPicker();
             picker.FileTypeFilter.Add("*");

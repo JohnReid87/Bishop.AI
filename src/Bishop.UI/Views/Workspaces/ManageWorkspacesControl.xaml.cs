@@ -8,17 +8,20 @@ namespace Bishop.UI.Views.Workspaces;
 
 public sealed partial class ManageWorkspacesControl : UserControl
 {
+    private readonly ISafeAsyncRunner _safeAsync;
+
     public WorkspaceManagerViewModel ViewModel { get; }
 
     public ManageWorkspacesControl()
     {
         ViewModel = App.Services.GetRequiredService<WorkspaceManagerViewModel>();
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         InitializeComponent();
-        Loaded += (_, _) => SafeAsync.RunAsync(ViewModel.LoadAsync);
+        Loaded += (_, _) => _safeAsync.RunAsync(ViewModel.LoadAsync);
     }
 
     private async void RemoveButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if ((sender as FrameworkElement)?.Tag is not WorkspaceManagerItemViewModel item) return;
             if (!await ConfirmFlyoutAsync((FrameworkElement)sender, "Remove")) return;
@@ -26,7 +29,7 @@ public sealed partial class ManageWorkspacesControl : UserControl
         });
 
     private async void PurgeButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if ((sender as FrameworkElement)?.Tag is not WorkspaceManagerItemViewModel item) return;
             if (!await ConfirmFlyoutAsync((FrameworkElement)sender, "Purge")) return;

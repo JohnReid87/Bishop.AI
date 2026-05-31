@@ -2,58 +2,15 @@ using System.ComponentModel;
 using System.Diagnostics;
 using Bishop.App.Services.Claude;
 using FluentAssertions;
-using NSubstitute;
 
 namespace Bishop.Tests.App.Services.Claude;
 
 public sealed class ClaudeCliRunnerTests
 {
     [Fact]
-    public async Task RunPromptAsync_Throws_WithDiagnosticMessage_WhenResolverReportsMissing()
-    {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver
-            .When(r => r.Resolve())
-            .Do(_ => throw new ClaudeNotFoundException(
-                candidates: new[] { "claude.EXE", "claude.CMD" },
-                directories: new[] { "C:\\a", "C:\\b" }));
-        var sut = new ClaudeCliRunner(resolver, TimeProvider.System);
-
-        var act = async () => await sut.RunPromptAsync("C:\\ws", "hello");
-
-        var ex = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
-        ex.InnerException.Should().BeOfType<ClaudeNotFoundException>();
-        ex.Message.Should().Contain("Could not find 'claude' on PATH.");
-        ex.Message.Should().Contain("claude.EXE");
-        ex.Message.Should().Contain("claude.CMD");
-        ex.Message.Should().Contain("C:\\a");
-        ex.Message.Should().Contain("C:\\b");
-        ex.Message.Should().Contain("https://docs.claude.com");
-    }
-
-    [Fact]
-    public async Task RunPromptAsync_Throws_WithEmptyPathMessage_WhenResolverReportsMissingAndDirectoriesEmpty()
-    {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver
-            .When(r => r.Resolve())
-            .Do(_ => throw new ClaudeNotFoundException(
-                candidates: new[] { "claude.EXE" },
-                directories: Array.Empty<string>()));
-        var sut = new ClaudeCliRunner(resolver, TimeProvider.System);
-
-        var act = async () => await sut.RunPromptAsync("C:\\ws", "hello");
-
-        var ex = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
-        ex.Message.Should().Contain("(PATH was empty)");
-    }
-
-    [Fact]
     public async Task RunPromptAsync_ReturnsExitCode_WhenProcessExitsNormally()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => CmdProcess("/c exit 42"), TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => CmdProcess("/c exit 42"), TimeProvider.System, "claude");
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -63,9 +20,7 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_DoesNotThrow_WhenProcessExitsNonZero()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => CmdProcess("/c exit 1"), TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => CmdProcess("/c exit 1"), TimeProvider.System, "claude");
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -75,9 +30,7 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_Throws_WhenProcessStartThrowsWin32Exception()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => throw new Win32Exception(), TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => throw new Win32Exception(), TimeProvider.System, "claude");
 
         var act = () => sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -90,9 +43,7 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_Throws_WhenProcessStartThrowsFileNotFoundException()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => throw new FileNotFoundException(), TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => throw new FileNotFoundException(), TimeProvider.System, "claude");
 
         var act = () => sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -105,9 +56,7 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_Throws_WhenProcessIsNull()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => null, TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => null, TimeProvider.System, "claude");
 
         var act = () => sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -118,9 +67,7 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_ThrowsOperationCanceledException_WhenCancelled()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => CmdProcess("/c exit 0"), TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => CmdProcess("/c exit 0"), TimeProvider.System, "claude");
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -132,8 +79,6 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_ParsesStdoutStreamJson_AndSurfacesTotals()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
         Func<ProcessStartInfo, Process?> starter = _ =>
         {
             var psi = new ProcessStartInfo("cmd.exe")
@@ -150,7 +95,7 @@ public sealed class ClaudeCliRunnerTests
             proc.StandardInput.WriteLine("{\"type\":\"result\",\"total_cost_usd\":0.05}");
             return proc;
         };
-        var sut = new ClaudeCliRunner(resolver, starter, TimeProvider.System);
+        var sut = new ClaudeCliRunner(starter, TimeProvider.System, "claude");
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -162,8 +107,6 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_DoesNotCrash_AndCompletes_WhenStdoutContainsMalformedJson()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
         Func<ProcessStartInfo, Process?> starter = _ =>
         {
             var psi = new ProcessStartInfo("cmd.exe")
@@ -181,7 +124,7 @@ public sealed class ClaudeCliRunnerTests
             proc.StandardInput.WriteLine("{\"type\":\"result\",\"total_cost_usd\":0.01}");
             return proc;
         };
-        var sut = new ClaudeCliRunner(resolver, starter, TimeProvider.System);
+        var sut = new ClaudeCliRunner(starter, TimeProvider.System, "claude");
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -191,8 +134,6 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_ConsumesStderr_WithoutFailing()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
         Func<ProcessStartInfo, Process?> starter = _ =>
         {
             var psi = new ProcessStartInfo("cmd.exe")
@@ -207,7 +148,7 @@ public sealed class ClaudeCliRunnerTests
             psi.ArgumentList.Add("echo stderr_text 1>&2");
             return Process.Start(psi);
         };
-        var sut = new ClaudeCliRunner(resolver, starter, TimeProvider.System);
+        var sut = new ClaudeCliRunner(starter, TimeProvider.System, "claude");
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -217,9 +158,7 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_WithModel_AppendsModelArgToArgv()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => CmdProcess("/c exit 0"), TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => CmdProcess("/c exit 0"), TimeProvider.System, "claude");
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello", "claude-sonnet-4-6");
 
@@ -229,9 +168,7 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_WithDefaultModel_AppendsDefaultModelArg()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => CmdProcess("/c exit 0"), TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => CmdProcess("/c exit 0"), TimeProvider.System, "claude");
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -241,9 +178,7 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_AlwaysAppendsPermissionModeBypassPermissions()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => CmdProcess("/c exit 0"), TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => CmdProcess("/c exit 0"), TimeProvider.System, "claude");
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -253,9 +188,7 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_AlwaysSetsAutoCardEnvVar()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
-        var sut = new ClaudeCliRunner(resolver, _ => CmdProcess("/c exit 0"), TimeProvider.System);
+        var sut = new ClaudeCliRunner(_ => CmdProcess("/c exit 0"), TimeProvider.System, "claude");
 
         var result = await sut.RunPromptAsync("C:\\ws", "hello");
 
@@ -265,8 +198,6 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_WithPermissionDeniedEvent_AppendsLineToDenialsJsonl()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
         try
@@ -287,7 +218,7 @@ public sealed class ClaudeCliRunnerTests
                 proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":100}");
                 return proc;
             };
-            var sut = new ClaudeCliRunner(resolver, starter, TimeProvider.System);
+            var sut = new ClaudeCliRunner(starter, TimeProvider.System, "claude");
 
             await sut.RunPromptAsync(tempDir, "hello", cardNumber: 99);
 
@@ -312,8 +243,6 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_WithPermissionDeniedEvent_AndNullCardNumber_WritesNullCardNumber()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
         try
@@ -334,7 +263,7 @@ public sealed class ClaudeCliRunnerTests
                 proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":100}");
                 return proc;
             };
-            var sut = new ClaudeCliRunner(resolver, starter, TimeProvider.System);
+            var sut = new ClaudeCliRunner(starter, TimeProvider.System, "claude");
 
             await sut.RunPromptAsync(tempDir, "hello");
 
@@ -354,8 +283,6 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_WithMultipleDeniedEvents_AppendsOneLineEach()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
         try
@@ -377,7 +304,7 @@ public sealed class ClaudeCliRunnerTests
                 proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":100}");
                 return proc;
             };
-            var sut = new ClaudeCliRunner(resolver, starter, TimeProvider.System);
+            var sut = new ClaudeCliRunner(starter, TimeProvider.System, "claude");
 
             await sut.RunPromptAsync(tempDir, "hello", cardNumber: 7);
 
@@ -396,8 +323,6 @@ public sealed class ClaudeCliRunnerTests
     [Fact]
     public async Task RunPromptAsync_RedirectsStdinAndWritesPromptToProcess()
     {
-        var resolver = Substitute.For<IClaudeExecutableResolver>();
-        resolver.Resolve().Returns("claude");
         ProcessStartInfo? capturedPsi = null;
         var capturedOutput = new List<string>();
 
@@ -421,7 +346,7 @@ public sealed class ClaudeCliRunnerTests
             };
             return proc;
         };
-        var sut = new ClaudeCliRunner(resolver, starter, TimeProvider.System);
+        var sut = new ClaudeCliRunner(starter, TimeProvider.System, "claude");
 
         await sut.RunPromptAsync("C:\\ws", "my-test-prompt");
 

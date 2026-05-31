@@ -20,12 +20,14 @@ public sealed partial class CardDetailDialog : ContentDialog
 {
     private readonly Stack<CardViewModel> _backStack = new();
     private readonly ILogger<CardDetailDialog> _logger;
+    private readonly ISafeAsyncRunner _safeAsync;
 
     public CardDetailDialogViewModel ViewModel { get; }
 
     public CardDetailDialog(CardDetailDialogViewModel vm)
     {
         _logger = App.Services.GetRequiredService<ILogger<CardDetailDialog>>();
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         ViewModel = vm;
         InitializeComponent();
         PreviewKeyDown += CardDetailDialog_PreviewKeyDown;
@@ -39,12 +41,12 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private async void CardDetailDialog_Loaded(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(() => Task.WhenAll(
+        => await _safeAsync.RunAsync(() => Task.WhenAll(
             ViewModel.LoadCardNumbersAsync(),
             ViewModel.LoadExtrasAsync()));
 
     private async void DescriptionMarkdown_LinkClicked(object? sender, LinkClickedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             const string scheme = "bishop://card/";
             var url = e.Uri.OriginalString;
@@ -76,7 +78,7 @@ public sealed partial class CardDetailDialog : ContentDialog
         });
 
     private async void BackButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (!_backStack.TryPop(out var previous)) return;
             ViewModel.NavigateTo(previous, canGoBack: _backStack.Count > 0);
@@ -108,14 +110,14 @@ public sealed partial class CardDetailDialog : ContentDialog
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
 
     private async void GitHubIssueButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (ViewModel.GitHubIssueUrl is { } url)
                 await Launcher.LaunchUriAsync(new Uri(url));
         });
 
     private async void CommitButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (ViewModel.CommitUrl is { } url)
                 await Launcher.LaunchUriAsync(new Uri(url));
@@ -132,10 +134,10 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private async void TitleTextBox_LostFocus(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(() => ViewModel.CommitTitleAsync(TitleTextBox.Text));
+        => await _safeAsync.RunAsync(() => ViewModel.CommitTitleAsync(TitleTextBox.Text));
 
     private async void TitleTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (e.Key == VirtualKey.Enter)
             {
@@ -159,10 +161,10 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private async void DescriptionTextBox_LostFocus(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(() => ViewModel.CommitDescriptionAsync(DescriptionTextBox.Text));
+        => await _safeAsync.RunAsync(() => ViewModel.CommitDescriptionAsync(DescriptionTextBox.Text));
 
     private async void DescriptionTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (e.Key == VirtualKey.Escape)
             {
@@ -183,7 +185,7 @@ public sealed partial class CardDetailDialog : ContentDialog
     // ── Tag editing ───────────────────────────────────────────────────────────
 
     private async void TagChip_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             IReadOnlyList<Bishop.Core.TagInfo> allTags;
             try
@@ -202,7 +204,7 @@ public sealed partial class CardDetailDialog : ContentDialog
         });
 
     private async void AddTag_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             IReadOnlyList<Bishop.Core.TagInfo> allTags;
             try
@@ -223,7 +225,7 @@ public sealed partial class CardDetailDialog : ContentDialog
     // ── Skills ────────────────────────────────────────────────────────────────
 
     private async void SkillButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (ViewModel.CardSkills.Length == 0) return;
 

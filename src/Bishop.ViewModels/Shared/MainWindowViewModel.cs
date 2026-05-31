@@ -23,6 +23,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IWorkspaceChangeNotifier _notifier;
     private readonly IUiDispatcher _dispatcher;
     private readonly IErrorBus _errorBus;
+    private readonly ISafeAsyncRunner _safeAsync;
 
     public ICatModeService CatMode { get; }
 
@@ -50,18 +51,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private readonly string _navPrefsFilePath;
 
-    public MainWindowViewModel(ISender mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, IErrorBus errorBus)
-        : this(mediator, catMode, notifier, dispatcher, errorBus, Path.Combine(
+    public MainWindowViewModel(ISender mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, IErrorBus errorBus, ISafeAsyncRunner safeAsync)
+        : this(mediator, catMode, notifier, dispatcher, errorBus, safeAsync, Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Bishop.AI", "nav-prefs.json"))
     { }
 
-    internal MainWindowViewModel(ISender mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, IErrorBus errorBus, string navPrefsFilePath)
+    internal MainWindowViewModel(ISender mediator, ICatModeService catMode, IWorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, IErrorBus errorBus, ISafeAsyncRunner safeAsync, string navPrefsFilePath)
     {
         _mediator = mediator;
         _notifier = notifier;
         _dispatcher = dispatcher;
         _errorBus = errorBus;
+        _safeAsync = safeAsync;
         CatMode = catMode;
         _navPrefsFilePath = navPrefsFilePath;
         Workspaces.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsWorkspaceListEmpty));
@@ -114,7 +116,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             IsWorkspacelessPageActive = false;
             value.IsPathMissing = !Directory.Exists(value.Path);
         }
-        _ = SafeAsync.RunAsync(SaveNavPrefsAsync);
+        _ = _safeAsync.RunAsync(SaveNavPrefsAsync);
     }
 
     private void SyncSelectedWorkspaceSelection(WorkspaceItemViewModel? selected)

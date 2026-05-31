@@ -15,9 +15,8 @@ public sealed class ClaudeExecutableResolverTests
     {
         var exe = Path.Combine("C:\\bin", "claude.exe");
         var env = MakeEnv(path: Join("C:\\bin"), pathExt: ".COM;.EXE;.BAT;.CMD");
-        var sut = new ClaudeExecutableResolver(env, p => PathEquals(p, exe), isWindows: true);
 
-        var result = sut.Resolve();
+        var result = ClaudeCliRunner.ResolveClaudePath(env, p => PathEquals(p, exe), isWindows: true);
 
         result.Should().BeEquivalentTo(exe);
     }
@@ -27,9 +26,8 @@ public sealed class ClaudeExecutableResolverTests
     {
         var cmd = Path.Combine("C:\\npm", "claude.cmd");
         var env = MakeEnv(path: Join("C:\\npm"), pathExt: ".COM;.EXE;.BAT;.CMD");
-        var sut = new ClaudeExecutableResolver(env, p => PathEquals(p, cmd), isWindows: true);
 
-        var result = sut.Resolve();
+        var result = ClaudeCliRunner.ResolveClaudePath(env, p => PathEquals(p, cmd), isWindows: true);
 
         result.Should().BeEquivalentTo(cmd);
     }
@@ -47,9 +45,7 @@ public sealed class ClaudeExecutableResolverTests
             return PathEquals(p, bat) || PathEquals(p, exe);
         }
 
-        var sut = new ClaudeExecutableResolver(env, FileExists, isWindows: true);
-
-        var result = sut.Resolve();
+        var result = ClaudeCliRunner.ResolveClaudePath(env, FileExists, isWindows: true);
 
         PathEquals(result, bat).Should().BeTrue();
         PathEquals(probed[0], bat).Should().BeTrue();
@@ -60,9 +56,8 @@ public sealed class ClaudeExecutableResolverTests
     {
         var cmd = Path.Combine("C:\\bin", "claude.CMD");
         var env = MakeEnv(path: Join("C:\\bin"), pathExt: null);
-        var sut = new ClaudeExecutableResolver(env, p => PathEquals(p, cmd), isWindows: true);
 
-        var result = sut.Resolve();
+        var result = ClaudeCliRunner.ResolveClaudePath(env, p => PathEquals(p, cmd), isWindows: true);
 
         result.Should().BeEquivalentTo(cmd);
     }
@@ -80,9 +75,7 @@ public sealed class ClaudeExecutableResolverTests
             return PathEquals(p, exe);
         }
 
-        var sut = new ClaudeExecutableResolver(env, FileExists, isWindows: true);
-
-        var result = sut.Resolve();
+        var result = ClaudeCliRunner.ResolveClaudePath(env, FileExists, isWindows: true);
 
         PathEquals(result, exe).Should().BeTrue();
         probed.Should().OnlyContain(p => p.StartsWith("C:\\real"));
@@ -92,9 +85,8 @@ public sealed class ClaudeExecutableResolverTests
     public void Resolve_Throws_WithPopulatedCandidatesAndDirectories_OnMiss_OnWindows()
     {
         var env = MakeEnv(path: Join("C:\\a", "C:\\b"), pathExt: ".EXE;.CMD");
-        var sut = new ClaudeExecutableResolver(env, _ => false, isWindows: true);
 
-        var act = () => sut.Resolve();
+        var act = () => ClaudeCliRunner.ResolveClaudePath(env, _ => false, isWindows: true);
 
         var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
         ex.Candidates.Should().Equal("claude.EXE", "claude.CMD");
@@ -113,9 +105,7 @@ public sealed class ClaudeExecutableResolverTests
             return p == unixPath;
         }
 
-        var sut = new ClaudeExecutableResolver(env, FileExists, isWindows: false);
-
-        var result = sut.Resolve();
+        var result = ClaudeCliRunner.ResolveClaudePath(env, FileExists, isWindows: false);
 
         result.Should().Be(unixPath);
         probed.Should().ContainSingle().Which.Should().Be(unixPath);
@@ -125,9 +115,8 @@ public sealed class ClaudeExecutableResolverTests
     public void Resolve_Throws_WithPopulatedCandidatesAndDirectories_OnMiss_OnUnix()
     {
         var env = MakeEnv(path: Join("/usr/local/bin", "/usr/bin"), pathExt: null);
-        var sut = new ClaudeExecutableResolver(env, _ => false, isWindows: false);
 
-        var act = () => sut.Resolve();
+        var act = () => ClaudeCliRunner.ResolveClaudePath(env, _ => false, isWindows: false);
 
         var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
         ex.Candidates.Should().Equal("claude");
@@ -135,13 +124,11 @@ public sealed class ClaudeExecutableResolverTests
     }
 
     [Fact]
-    public void DefaultCtor_Resolve_UsesRealEnvironmentDependencies()
+    public void DefaultOverload_UsesRealEnvironmentDependencies()
     {
-        var sut = new ClaudeExecutableResolver();
-
         string? result = null;
         ClaudeNotFoundException? miss = null;
-        try { result = sut.Resolve(); }
+        try { result = ClaudeCliRunner.ResolveClaudePath(); }
         catch (ClaudeNotFoundException ex) { miss = ex; }
 
         if (result is not null)
@@ -182,59 +169,18 @@ public sealed class ClaudeExecutableResolverTests
             };
         }
 
-        var sut = new ClaudeExecutableResolver(InjectGetEnv, p => PathEquals(p, exe), isWindows: true);
-
-        var result = sut.Resolve();
+        var result = ClaudeCliRunner.ResolveClaudePath(InjectGetEnv, p => PathEquals(p, exe), isWindows: true);
 
         result.Should().BeEquivalentTo(exe, "resolution must use the path returned by the injected delegate");
         queriedKeys.Should().Contain("PATH", "the injected getEnv delegate must be invoked for PATH");
     }
 
     [Fact]
-    public void Resolve_CachesResolvedPath_AcrossCalls()
-    {
-        var exe = Path.Combine("C:\\bin", "claude.exe");
-        var env = MakeEnv(path: Join("C:\\bin"), pathExt: ".EXE");
-        var probeCount = 0;
-        bool FileExists(string p)
-        {
-            probeCount++;
-            return PathEquals(p, exe);
-        }
-
-        var sut = new ClaudeExecutableResolver(env, FileExists, isWindows: true);
-
-        var first = sut.Resolve();
-        var second = sut.Resolve();
-
-        PathEquals(first, exe).Should().BeTrue();
-        second.Should().Be(first);
-        probeCount.Should().Be(1);
-    }
-
-    [Fact]
-    public void Resolve_ReturnsCachedPath_WithoutReprobing()
-    {
-        var exe = Path.Combine("C:\\bin", "claude.exe");
-        var env = MakeEnv(path: Join("C:\\bin"), pathExt: ".EXE");
-        var fileExists = true;
-        var sut = new ClaudeExecutableResolver(env, p => fileExists && PathEquals(p, exe), isWindows: true);
-
-        var first = sut.Resolve();
-        fileExists = false; // subsequent probes would throw if re-probing occurred
-        var second = sut.Resolve();
-
-        second.Should().Be(first);
-        PathEquals(second, exe).Should().BeTrue();
-    }
-
-    [Fact]
     public void Resolve_Throws_WhenPathIsNull()
     {
         var env = MakeEnv(path: null, pathExt: ".EXE");
-        var sut = new ClaudeExecutableResolver(env, _ => false, isWindows: true);
 
-        var act = () => sut.Resolve();
+        var act = () => ClaudeCliRunner.ResolveClaudePath(env, _ => false, isWindows: true);
 
         var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
         ex.Directories.Should().BeEmpty();
@@ -245,9 +191,8 @@ public sealed class ClaudeExecutableResolverTests
     public void Resolve_Throws_WhenPathIsEmpty()
     {
         var env = MakeEnv(path: "", pathExt: ".EXE");
-        var sut = new ClaudeExecutableResolver(env, _ => false, isWindows: true);
 
-        var act = () => sut.Resolve();
+        var act = () => ClaudeCliRunner.ResolveClaudePath(env, _ => false, isWindows: true);
 
         var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
         ex.Directories.Should().BeEmpty();
@@ -259,9 +204,8 @@ public sealed class ClaudeExecutableResolverTests
     {
         var allWhitespace = string.Join(Path.PathSeparator, new[] { "", "  ", "" });
         var env = MakeEnv(path: allWhitespace, pathExt: ".EXE");
-        var sut = new ClaudeExecutableResolver(env, _ => false, isWindows: true);
 
-        var act = () => sut.Resolve();
+        var act = () => ClaudeCliRunner.ResolveClaudePath(env, _ => false, isWindows: true);
 
         var ex = act.Should().Throw<ClaudeNotFoundException>().Which;
         ex.Directories.Should().BeEmpty();
@@ -272,9 +216,8 @@ public sealed class ClaudeExecutableResolverTests
     {
         var exe = Path.Combine("C:\\bin", "claude.EXE");
         var env = MakeEnv(path: Join("C:\\bin"), pathExt: " .EXE ; .CMD ");
-        var sut = new ClaudeExecutableResolver(env, p => PathEquals(p, exe), isWindows: true);
 
-        var result = sut.Resolve();
+        var result = ClaudeCliRunner.ResolveClaudePath(env, p => PathEquals(p, exe), isWindows: true);
 
         result.Should().BeEquivalentTo(exe);
     }

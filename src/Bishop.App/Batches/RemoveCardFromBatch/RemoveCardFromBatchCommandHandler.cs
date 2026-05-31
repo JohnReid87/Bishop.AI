@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.RemoveCardFromBatch;
 
-public sealed class RemoveCardFromBatchCommandHandler : IRequestHandler<RemoveCardFromBatchCommand, Unit>
+public sealed class RemoveCardFromBatchCommandHandler : IRequestHandler<RemoveCardFromBatchCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
     public RemoveCardFromBatchCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
-    public async Task<Unit> Handle(RemoveCardFromBatchCommand request, CancellationToken cancellationToken)
+    public async Task Handle(RemoveCardFromBatchCommand request, CancellationToken cancellationToken)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
@@ -37,7 +37,5 @@ public sealed class RemoveCardFromBatchCommandHandler : IRequestHandler<RemoveCa
 
         card.BatchId = null;
         await db.SaveChangesAsync(cancellationToken);
-
-        return Unit.Value;
     }
 }

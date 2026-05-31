@@ -23,8 +23,6 @@ public sealed class RemoveCardCliCommandTests
             .Returns((IReadOnlyList<Workspace>)[ws]);
         mediator.Send(Arg.Any<GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
             .Returns(card);
-        mediator.Send(Arg.Any<RemoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Unit.Value);
 
         var cardResolver = new CardResolver(mediator);
         var cmd = new RemoveCardCliCommand(mediator, cardResolver);

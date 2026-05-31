@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.RemoveWorkspace;
 
-public sealed class RemoveWorkspaceCommandHandler : IRequestHandler<RemoveWorkspaceCommand, Unit>
+public sealed class RemoveWorkspaceCommandHandler : IRequestHandler<RemoveWorkspaceCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;
@@ -15,7 +15,7 @@ public sealed class RemoveWorkspaceCommandHandler : IRequestHandler<RemoveWorksp
         _timeProvider = timeProvider;
     }
 
-    public async Task<Unit> Handle(RemoveWorkspaceCommand request, CancellationToken cancellationToken)
+    public async Task Handle(RemoveWorkspaceCommand request, CancellationToken cancellationToken)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var workspace = await db.Workspaces.FindAsync([request.Id], cancellationToken)
@@ -24,6 +24,5 @@ public sealed class RemoveWorkspaceCommandHandler : IRequestHandler<RemoveWorksp
         workspace.IsRemoved = true;
         workspace.RemovedAt = _timeProvider.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
-        return Unit.Value;
     }
 }

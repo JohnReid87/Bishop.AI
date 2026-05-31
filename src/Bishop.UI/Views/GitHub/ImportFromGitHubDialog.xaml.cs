@@ -1,24 +1,28 @@
 using Bishop.ViewModels.GitHub;
 using Bishop.ViewModels.Shared;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Bishop.UI.Views.GitHub;
 
 public sealed partial class ImportFromGitHubDialog : ContentDialog
 {
+    private readonly ISafeAsyncRunner _safeAsync;
+
     public ImportFromGitHubDialogViewModel ViewModel { get; }
 
     public ImportFromGitHubDialog(ImportFromGitHubDialogViewModel vm)
     {
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         ViewModel = vm;
         InitializeComponent();
         IsPrimaryButtonEnabled = false;
-        Loaded += (_, _) => SafeAsync.RunAsync(ViewModel.LoadLabelsAsync);
+        Loaded += (_, _) => _safeAsync.RunAsync(ViewModel.LoadLabelsAsync);
         PrimaryButtonClick += OnImportClick;
     }
 
     private async void Preview_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             IsPrimaryButtonEnabled = false;
             var canImport = await ViewModel.PreviewAsync();
@@ -26,7 +30,7 @@ public sealed partial class ImportFromGitHubDialog : ContentDialog
         });
 
     private async void OnImportClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             var deferral = args.GetDeferral();
             args.Cancel = true;

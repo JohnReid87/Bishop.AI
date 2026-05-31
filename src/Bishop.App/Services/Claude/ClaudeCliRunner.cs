@@ -11,18 +11,25 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
 {
     private const string InstallUrl = "https://docs.claude.com/en/docs/claude-code/setup";
 
-    private readonly IClaudeExecutableResolver _resolver;
+    private static readonly string[] DefaultPathExt = [".COM", ".EXE", ".BAT", ".CMD"];
+
     private readonly Func<ProcessStartInfo, Process?> _processStarter;
     private readonly TimeProvider _timeProvider;
+    private readonly string? _explicitPath;
+    private readonly object _resolvedPathGate = new();
+    private string? _resolvedPath;
 
-    public ClaudeCliRunner(IClaudeExecutableResolver resolver, TimeProvider timeProvider)
-        : this(resolver, Process.Start, timeProvider) { }
+    public ClaudeCliRunner(TimeProvider timeProvider)
+        : this(Process.Start, timeProvider, claudePath: null) { }
 
-    public ClaudeCliRunner(IClaudeExecutableResolver resolver, Func<ProcessStartInfo, Process?> processStarter, TimeProvider timeProvider)
+    public ClaudeCliRunner(
+        Func<ProcessStartInfo, Process?> processStarter,
+        TimeProvider timeProvider,
+        string? claudePath = null)
     {
-        _resolver = resolver;
         _processStarter = processStarter;
         _timeProvider = timeProvider;
+        _explicitPath = claudePath;
     }
 
     public async Task<ClaudeRunResult> RunPromptAsync(
@@ -35,7 +42,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         string claudePath;
         try
         {
-            claudePath = _resolver.Resolve();
+            claudePath = _explicitPath ?? ResolveAndCache();
         }
         catch (ClaudeNotFoundException ex)
         {
@@ -115,6 +122,66 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
 
             return new ClaudeRunResult(proc.ExitCode, totals, toolUseCount);
         }
+    }
+
+    private string ResolveAndCache()
+    {
+        if (_resolvedPath is not null) return _resolvedPath;
+        lock (_resolvedPathGate)
+        {
+            _resolvedPath ??= ResolveClaudePath();
+            return _resolvedPath;
+        }
+    }
+
+    internal static string ResolveClaudePath() =>
+        ResolveClaudePath(Environment.GetEnvironmentVariable, File.Exists, OperatingSystem.IsWindows());
+
+    internal static string ResolveClaudePath(
+        Func<string, string?> getEnv,
+        Func<string, bool> fileExists,
+        bool isWindows)
+    {
+        var directories = ReadPathDirectories(getEnv);
+        var candidates = BuildCandidateNames(getEnv, isWindows);
+
+        foreach (var dir in directories)
+        {
+            foreach (var name in candidates)
+            {
+                var full = Path.Combine(dir, name);
+                if (fileExists(full))
+                    return full;
+            }
+        }
+
+        throw new ClaudeNotFoundException(candidates, directories);
+    }
+
+    private static IReadOnlyList<string> ReadPathDirectories(Func<string, string?> getEnv)
+    {
+        var pathEnv = getEnv("PATH") ?? string.Empty;
+        return pathEnv
+            .Split(Path.PathSeparator)
+            .Select(p => p.Trim())
+            .Where(p => p.Length > 0)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<string> BuildCandidateNames(Func<string, string?> getEnv, bool isWindows)
+    {
+        if (!isWindows) return ["claude"];
+
+        var pathExt = getEnv("PATHEXT");
+        var extensions = string.IsNullOrWhiteSpace(pathExt)
+            ? DefaultPathExt
+            : pathExt
+                .Split(';')
+                .Select(e => e.Trim())
+                .Where(e => e.Length > 0)
+                .ToArray();
+
+        return extensions.Select(e => "claude" + e).ToArray();
     }
 
     private static readonly JsonSerializerOptions DenialSerializerOptions = new()

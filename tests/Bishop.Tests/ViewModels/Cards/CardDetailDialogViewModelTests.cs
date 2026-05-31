@@ -545,8 +545,6 @@ public class CardDetailDialogViewModelTests
     public async Task ConfirmDeleteAsync_SetsDeletedAndSendsRemoveCommand()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<RemoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Unit.Value);
         var vm = NewVm(mediator: mediator);
 
         await vm.ConfirmDeleteCommand.ExecuteAsync(null);
