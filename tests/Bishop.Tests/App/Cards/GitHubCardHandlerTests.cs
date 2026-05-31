@@ -10,6 +10,7 @@ using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -488,7 +489,10 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         await _ghCli.Received(1).RunAsync(
-            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "close" && a[2] == "11"),
+            Arg.Is<string[]>(a =>
+                a[0] == "issue" && a[1] == "close" && a[2] == "11"
+                && Array.IndexOf(a, "--repo") >= 0
+                && a[Array.IndexOf(a, "--repo") + 1] == repo),
             Arg.Any<CancellationToken>());
     }
 
@@ -548,7 +552,10 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         await _ghCli.Received(1).RunAsync(
-            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "reopen" && a[2] == "22"),
+            Arg.Is<string[]>(a =>
+                a[0] == "issue" && a[1] == "reopen" && a[2] == "22"
+                && Array.IndexOf(a, "--repo") >= 0
+                && a[Array.IndexOf(a, "--repo") + 1] == repo),
             Arg.Any<CancellationToken>());
     }
 
@@ -610,5 +617,104 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         // Assert
         (await _db.Cards.FindAsync(card.Id))!.IsClosed.Should().BeFalse();
         await _ghCli.DidNotReceive().RunAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MoveCard_WithinSameLane_WithGitHubIssueAndRepo_DoesNotCallGitHub()
+    {
+        // Arrange — within-lane reorder must not trigger close/reopen regardless of linked issue
+        const string repo = "owner/repo";
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var add = new AddCardCommandHandler(_factory);
+        await add.Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "A"), default);
+        var b = await add.Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "B"), default);
+        b.GitHubIssueNumber = 77;
+        await PersistMutationAsync(b);
+
+        // Act — reorder within the same lane
+        await MoveHandler().Handle(new MoveCardCommand(b.Id, lanes[0].Name, 2), default);
+
+        // Assert — no GitHub call; card not closed
+        await _ghCli.DidNotReceive().RunAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
+        (await _db.Cards.FindAsync(b.Id))!.IsClosed.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MoveCard_WithinDoneLane_WithGitHubIssueAndRepo_DoesNotReopenIssue()
+    {
+        // Arrange — reorder within Done must not set leavingDone, even with linked issue + repo
+        const string repo = "owner/repo";
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var add = new AddCardCommandHandler(_factory);
+        await add.Handle(new AddCardCommand(workspace.Id, lanes[3].Name, "A"), default);
+        var b = await add.Handle(new AddCardCommand(workspace.Id, lanes[3].Name, "B"), default);
+        b.GitHubIssueNumber = 88;
+        b.IsClosed = true;
+        await PersistMutationAsync(b);
+
+        // Act — within-Done reorder
+        await MoveHandler().Handle(new MoveCardCommand(b.Id, lanes[3].Name, 2), default);
+
+        // Assert — no reopen call; IsClosed unchanged
+        await _ghCli.DidNotReceive().RunAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>());
+        (await _db.Cards.FindAsync(b.Id))!.IsClosed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MoveCard_ToDoneLane_GitHubCloseFailure_LogsWarning()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "Task"), default);
+        card.GitHubIssueNumber = 55;
+        await PersistMutationAsync(card);
+        _ghCli.RunAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("GitHub unavailable")));
+        var logger = new CapturingLogger();
+        var handler = new MoveCardCommandHandler(_factory, _ghCli, logger);
+
+        // Act — GitHub close failure must be caught and logged, not rethrown
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[3].Name, 1), default);
+
+        // Assert
+        logger.WarningCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MoveCard_FromDoneLane_GitHubReopenFailure_LogsWarning()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync(gitHubRepo: repo);
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, lanes[3].Name, "Task"), default);
+        card.GitHubIssueNumber = 66;
+        card.IsClosed = true;
+        await PersistMutationAsync(card);
+        _ghCli.RunAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("GitHub unavailable")));
+        var logger = new CapturingLogger();
+        var handler = new MoveCardCommandHandler(_factory, _ghCli, logger);
+
+        // Act — GitHub reopen failure must be caught and logged, not rethrown
+        await handler.Handle(new MoveCardCommand(card.Id, lanes[2].Name, 1), default);
+
+        // Assert
+        logger.WarningCount.Should().Be(1);
+    }
+
+    private sealed class CapturingLogger : ILogger<MoveCardCommandHandler>
+    {
+        public int WarningCount { get; private set; }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Warning) WarningCount++;
+        }
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
     }
 }
