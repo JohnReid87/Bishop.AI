@@ -99,7 +99,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         var act = async () => await handler.Handle(new CloseCardCommand(Guid.NewGuid()), default);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         await _ghCli.Received(1).RunAsync(
-            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "close" && a[2] == "77"),
+            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "close" && a[2] == "77" && a[3] == "--repo" && a[4] == repo),
             Arg.Any<CancellationToken>());
     }
 
@@ -154,7 +154,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
         var act = async () => await handler.Handle(new ReopenCardCommand(Guid.NewGuid()), default);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public sealed class GitHubCardHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         await _ghCli.Received(1).RunAsync(
-            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "reopen" && a[2] == "55"),
+            Arg.Is<string[]>(a => a[0] == "issue" && a[1] == "reopen" && a[2] == "55" && a[3] == "--repo" && a[4] == repo),
             Arg.Any<CancellationToken>());
     }
 
