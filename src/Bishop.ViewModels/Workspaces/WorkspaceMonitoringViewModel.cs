@@ -1,4 +1,4 @@
-using Bishop.App.Git;
+using Bishop.App.Git.GetCommitCountSince;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 using Bishop.ViewModels.Findings;
 using Bishop.ViewModels.Skills;
@@ -21,7 +21,6 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     ];
 
     private readonly ISender _mediator;
-    private readonly IGitCli _gitCli;
     private readonly TimeProvider _timeProvider;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
@@ -47,10 +46,9 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     [ObservableProperty]
     private SkillRunRowViewModel? _selectedRow;
 
-    public WorkspaceMonitoringViewModel(ISender mediator, IGitCli gitCli, TimeProvider timeProvider)
+    public WorkspaceMonitoringViewModel(ISender mediator, TimeProvider timeProvider)
     {
         _mediator = mediator;
-        _gitCli = gitCli;
         _timeProvider = timeProvider;
     }
 
@@ -98,7 +96,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
 
         if (run is not null && !string.IsNullOrEmpty(run.GitSha))
         {
-            commitsSince = await _gitCli.GetCommitCountSinceAsync(run.GitSha, _workspacePath);
+            commitsSince = await _mediator.Send(new GetCommitCountSinceQuery(run.GitSha, _workspacePath));
             shaUnreachable = commitsSince is null;
         }
 

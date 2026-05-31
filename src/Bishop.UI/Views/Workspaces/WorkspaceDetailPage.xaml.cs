@@ -701,18 +701,18 @@ public sealed partial class WorkspaceDetailPage : Page
     private static BatchItemViewModel? GetBatchFromSender(object sender) =>
         (sender as FrameworkElement)?.DataContext as BatchItemViewModel;
 
-    private void BatchRun_Click(object sender, RoutedEventArgs e)
+    private async void BatchRun_Click(object sender, RoutedEventArgs e)
     {
         if (_item is null) return;
         if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
-        Batches.LaunchBatch(_item.Path, batch.Name, batch.Model, SnapHelper.ComputeSnap());
+        await Batches.LaunchBatch(_item.Path, batch.Name, batch.Model, SnapHelper.ComputeSnap());
     }
 
-    private void BatchResume_Click(object sender, RoutedEventArgs e)
+    private async void BatchResume_Click(object sender, RoutedEventArgs e)
     {
         if (_item is null) return;
         if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
-        Batches.ResumeBatch(_item.Path, batch.Name, batch.Model, SnapHelper.ComputeSnap());
+        await Batches.ResumeBatch(_item.Path, batch.Name, batch.Model, SnapHelper.ComputeSnap());
     }
 
     private async void BatchPause_Click(object sender, RoutedEventArgs e)

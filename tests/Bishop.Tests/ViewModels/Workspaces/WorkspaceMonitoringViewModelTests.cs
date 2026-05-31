@@ -1,4 +1,4 @@
-using Bishop.App.Git;
+using Bishop.App.Git.GetCommitCountSince;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 using Bishop.Core;
 using Bishop.ViewModels.Batches;
@@ -27,18 +27,17 @@ public class WorkspaceMonitoringViewModelTests
         "bish-dead-code",
     ];
 
-    private readonly IMediator _mediator = Substitute.For<IMediator>();
-    private readonly IGitCli _gitCli = Substitute.For<IGitCli>();
+    private readonly ISender _mediator = Substitute.For<ISender>();
     private readonly WorkspaceMonitoringViewModel _vm;
 
     public WorkspaceMonitoringViewModelTests()
     {
-        _vm = new WorkspaceMonitoringViewModel(_mediator, _gitCli, TimeProvider.System);
+        _vm = new WorkspaceMonitoringViewModel(_mediator, TimeProvider.System);
         _mediator
             .Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>([]));
-        _gitCli
-            .GetCommitCountSinceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _mediator
+            .Send(Arg.Any<GetCommitCountSinceQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(0));
     }
 
@@ -79,7 +78,9 @@ public class WorkspaceMonitoringViewModelTests
                     GitSha = sha,
                 }
             ]));
-        _gitCli.GetCommitCountSinceAsync(sha, @"C:\fake", Arg.Any<CancellationToken>())
+        _mediator.Send(
+                Arg.Is<GetCommitCountSinceQuery>(q => q.GitSha == sha && q.WorkspacePath == @"C:\fake"),
+                Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(3));
 
         await _vm.LoadAsync(workspaceId, @"C:\fake");
@@ -107,7 +108,9 @@ public class WorkspaceMonitoringViewModelTests
                     GitSha = sha,
                 }
             ]));
-        _gitCli.GetCommitCountSinceAsync(sha, @"C:\fake", Arg.Any<CancellationToken>())
+        _mediator.Send(
+                Arg.Is<GetCommitCountSinceQuery>(q => q.GitSha == sha),
+                Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(null));
 
         await _vm.LoadAsync(workspaceId, @"C:\fake");
@@ -132,7 +135,7 @@ public class WorkspaceMonitoringViewModelTests
     [Fact]
     public async Task LoadAsync_AllClear_BadgeHidden()
     {
-        _gitCli.GetCommitCountSinceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _mediator.Send(Arg.Any<GetCommitCountSinceQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(0));
         var workspaceId = Guid.NewGuid();
         _mediator.Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
@@ -172,7 +175,7 @@ public class WorkspaceMonitoringViewModelTests
                     Id = Guid.NewGuid(), WorkspaceId = workspaceId,
                     SkillName = s, RecordedAt = DateTimeOffset.UtcNow, GitSha = "abc"
                 }).ToList()));
-        _gitCli.GetCommitCountSinceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _mediator.Send(Arg.Any<GetCommitCountSinceQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(15));
 
         await _vm.LoadAsync(workspaceId, @"C:\fake");
@@ -193,9 +196,9 @@ public class WorkspaceMonitoringViewModelTests
                 new WorkspaceSkillRun { Id = Guid.NewGuid(), WorkspaceId = workspaceId, SkillName = "bish-arch", RecordedAt = DateTimeOffset.UtcNow, GitSha = archSha },
                 new WorkspaceSkillRun { Id = Guid.NewGuid(), WorkspaceId = workspaceId, SkillName = "bish-tests", RecordedAt = DateTimeOffset.UtcNow, GitSha = "tests-sha" },
             ]));
-        _gitCli.GetCommitCountSinceAsync(archSha, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _mediator.Send(Arg.Is<GetCommitCountSinceQuery>(q => q.GitSha == archSha), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(60));
-        _gitCli.GetCommitCountSinceAsync(Arg.Is<string>(s => s != archSha), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _mediator.Send(Arg.Is<GetCommitCountSinceQuery>(q => q.GitSha != archSha), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(15));
 
         await _vm.LoadAsync(workspaceId, @"C:\fake");
