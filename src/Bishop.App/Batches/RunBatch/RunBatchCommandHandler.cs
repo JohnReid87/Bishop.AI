@@ -168,14 +168,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     var handoff = await ReadAndDeleteHandoffAsync(batch.WorktreePath, cancellationToken);
 
                     if (handoff is null)
-                    {
-                        await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
-                        await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
-                        await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
-                        failedNumbers.Add(card.Number);
-                        await SetBatchStoppedAtNowAsync(batch.Id, cancellationToken);
-                        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.HandoffMissing);
-                    }
+                        return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.HandoffMissing, cancellationToken);
 
                     var prefix = TagToPrefix(card.TagName);
                     var message = ComposeCommitMessage(prefix, card.Title, card.Number, handoff.CommitBodyBullets);
@@ -189,12 +182,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "Git stage/commit failed for card #{CardNumber} in batch {BatchName}", card.Number, batch.Name);
-                        await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
-                        await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
-                        await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
-                        failedNumbers.Add(card.Number);
-                        await SetBatchStoppedAtNowAsync(batch.Id, cancellationToken);
-                        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
+                        return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.CardFailure, cancellationToken);
                     }
 
                     await _sender.Send(new SetCardCommitCommand(card.Id, commitHash, batch.BranchName), cancellationToken);
@@ -211,12 +199,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                 }
                 else
                 {
-                    await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
-                    await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
-                    await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
-                    failedNumbers.Add(card.Number);
-                    await SetBatchStoppedAtNowAsync(batch.Id, cancellationToken);
-                    return new RunBatchResult(succeeded, ToNullableList(failedNumbers), RunBatchStopReason.CardFailure);
+                    return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.CardFailure, cancellationToken);
                 }
             }
 
@@ -227,6 +210,22 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
         {
             DeleteLockFile(lockPath);
         }
+    }
+
+    private async Task<RunBatchResult> HandleCardFailureAsync(
+        Card card,
+        Batch batch,
+        int succeeded,
+        List<int> failedNumbers,
+        RunBatchStopReason stopReason,
+        CancellationToken cancellationToken)
+    {
+        await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
+        await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
+        await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
+        failedNumbers.Add(card.Number);
+        await SetBatchStoppedAtNowAsync(batch.Id, cancellationToken);
+        return new RunBatchResult(succeeded, ToNullableList(failedNumbers), stopReason);
     }
 
     private async Task SetBatchStoppedAtNowAsync(Guid batchId, CancellationToken cancellationToken)
