@@ -1,3 +1,4 @@
+using System.Globalization;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -72,6 +73,8 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
                 request.SkillName, document.ProjectName, f.File, f.Rule, f.Symbol, f.Title);
             incomingHashes.Add(hash);
 
+            var (outcomeStatus, outcomeCardNumber) = ParseOutcome(f.Outcome);
+
             if (existingByHash.TryGetValue(hash, out var existing))
             {
                 existing.LastSeenAt = recordedAt;
@@ -83,6 +86,16 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
                 existing.Rule = f.Rule;
                 if (existing.Status == "resolved")
                     existing.Status = "pending";
+
+                // Apply skill-emitted carded:#N link only if the user hasn't already
+                // dismissed or carded this finding manually.
+                if (outcomeStatus == "carded"
+                    && existing.LinkedCardId is null
+                    && existing.Status is "pending" or "parked")
+                {
+                    existing.Status = "carded";
+                    existing.LinkedCardId = outcomeCardNumber;
+                }
             }
             else
             {
@@ -91,7 +104,7 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
                     Id = Guid.NewGuid(),
                     WorkspaceSkillRunId = run.Id,
                     IdentityHash = hash,
-                    Status = "pending",
+                    Status = outcomeStatus,
                     ProjectName = document.ProjectName,
                     File = f.File,
                     Symbol = f.Symbol,
@@ -101,6 +114,7 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
                     Body = f.Body,
                     FirstSeenAt = recordedAt,
                     LastSeenAt = recordedAt,
+                    LinkedCardId = outcomeCardNumber,
                 });
             }
         }
@@ -114,6 +128,17 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
         await db.SaveChangesAsync(cancellationToken);
 
         return new RecordFindingsResult(document.Findings.Count);
+    }
+
+    private static (string Status, int? CardNumber) ParseOutcome(string outcome)
+    {
+        if (outcome == "dismissed") return ("dismissed", null);
+        if (outcome.StartsWith("carded:#", StringComparison.Ordinal)
+            && int.TryParse(outcome.AsSpan(8), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)
+            && n > 0)
+            return ("carded", n);
+        // "parked" and any other validator-accepted value land on pending.
+        return ("pending", null);
     }
 
     private static async Task ImportLegacyJsonIfPresentAsync(
@@ -158,13 +183,14 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
 
         foreach (var f in legacyDoc.Findings)
         {
+            var (status, cardNumber) = ParseOutcome(f.Outcome);
             db.Findings.Add(new CoreEntities.Finding
             {
                 Id = Guid.NewGuid(),
                 WorkspaceSkillRunId = legacyRun.Id,
                 IdentityHash = FindingIdentity.Compute(
                     request.SkillName, legacyDoc.ProjectName, f.File, f.Rule, f.Symbol, f.Title),
-                Status = "pending",
+                Status = status,
                 ProjectName = legacyDoc.ProjectName,
                 File = f.File,
                 Symbol = f.Symbol,
@@ -174,6 +200,7 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
                 Body = f.Body,
                 FirstSeenAt = recordedAt,
                 LastSeenAt = recordedAt,
+                LinkedCardId = cardNumber,
             });
         }
 

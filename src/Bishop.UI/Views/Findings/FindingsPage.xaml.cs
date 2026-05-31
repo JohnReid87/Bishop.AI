@@ -99,6 +99,13 @@ public sealed partial class FindingsPage : Page
             await item.ConvertToCardCommand.ExecuteAsync(XamlRoot);
         });
 
+    private async void OpenLinkedCard_Click(object sender, RoutedEventArgs e)
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (sender is not FrameworkElement fe || fe.DataContext is not FindingItemViewModel item) return;
+            await item.OpenLinkedCardCommand.ExecuteAsync(XamlRoot);
+        });
+
     private async void Dismiss_Click(object sender, RoutedEventArgs e)
         => await SafeAsync.RunAsync(async () =>
         {

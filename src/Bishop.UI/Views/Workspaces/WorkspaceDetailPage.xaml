@@ -724,21 +724,28 @@
                                                        Text="{x:Bind CommitsSinceText}"
                                                        FontSize="12"
                                                        VerticalAlignment="Center"/>
-                                            <Grid Grid.Column="3"
-                                                  MinWidth="24" MinHeight="16"
-                                                  HorizontalAlignment="Left"
-                                                  VerticalAlignment="Center"
-                                                  Visibility="{x:Bind FindingsBadgeIsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                  ToolTipService.ToolTip="Findings from last run">
-                                                <Rectangle RadiusX="8" RadiusY="8"
-                                                           Fill="#5d8fa8"/>
-                                                <TextBlock Text="{x:Bind FindingsCount}"
-                                                           Foreground="Black"
-                                                           FontSize="11"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           Margin="6,1"/>
-                                            </Grid>
+                                            <Button Grid.Column="3"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Padding="0"
+                                                    MinWidth="0" MinHeight="0"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center"
+                                                    Command="{x:Bind ViewFindingsCommand}"
+                                                    IsEnabled="{x:Bind CanViewFindings}"
+                                                    Visibility="{x:Bind FindingsBadgeIsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    ToolTipService.ToolTip="View findings from last run">
+                                                <Grid MinWidth="24" MinHeight="16">
+                                                    <Rectangle RadiusX="8" RadiusY="8"
+                                                               Fill="#5d8fa8"/>
+                                                    <TextBlock Text="{x:Bind FindingsCount}"
+                                                               Foreground="Black"
+                                                               FontSize="11"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Margin="6,1"/>
+                                                </Grid>
+                                            </Button>
                                             <Ellipse Grid.Column="4"
                                                      Width="10"
                                                      Height="10"
@@ -775,12 +782,6 @@
                                                            FontSize="11"
                                                            VerticalAlignment="Center"
                                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
-                                                <Button Content="View findings"
-                                                        Padding="8,4"
-                                                        FontSize="12"
-                                                        Command="{x:Bind ViewFindingsCommand}"
-                                                        Visibility="{x:Bind CanViewFindings, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                        VerticalAlignment="Center"/>
                                                 <Button Content="Run now"
                                                         Padding="8,4"
                                                         FontSize="12"

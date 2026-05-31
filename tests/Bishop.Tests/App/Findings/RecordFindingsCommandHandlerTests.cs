@@ -80,8 +80,118 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             .OrderBy(f => f.Title)
             .ToListAsync();
         findings.Should().HaveCount(2);
-        findings.All(f => f.Status == "pending").Should().BeTrue();
         findings.All(f => !string.IsNullOrEmpty(f.IdentityHash)).Should().BeTrue();
+
+        // ValidJson declares the first finding as carded:#123 and the second as dismissed,
+        // so the recorder must persist those outcomes at insert time.
+        var carded = findings.Single(f => f.Title == "Public type with no references");
+        carded.Status.Should().Be("carded");
+        carded.LinkedCardId.Should().Be(123);
+
+        var dismissed = findings.Single(f => f.Title == "DTO defined twice");
+        dismissed.Status.Should().Be("dismissed");
+        dismissed.LinkedCardId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_NewParkedFinding_StoredAsPending()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+        const string json = """
+            { "findings": [ { "title": "T", "body": "b", "outcome": "parked",
+                              "file": "src/F.cs", "rule": "R", "symbol": "S" } ] }
+            """;
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", json, "sha"), default);
+
+        var stored = await _db.Findings.AsNoTracking()
+            .Include(f => f.Run)
+            .SingleAsync(f => f.Run.WorkspaceId == ws.Id);
+        stored.Status.Should().Be("pending");
+        stored.LinkedCardId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_SkillUpgradesPendingToCarded_OnRerun()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string parkedJson = """
+            { "findings": [ { "title": "T", "body": "b", "outcome": "parked",
+                              "file": "src/F.cs", "rule": "R", "symbol": "S" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", parkedJson, "sha1"), default);
+
+        const string cardedJson = """
+            { "findings": [ { "title": "T", "body": "b", "outcome": "carded:#77",
+                              "file": "src/F.cs", "rule": "R", "symbol": "S" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", cardedJson, "sha2"), default);
+
+        var stored = await _db.Findings.AsNoTracking()
+            .Include(f => f.Run)
+            .SingleAsync(f => f.Run.WorkspaceId == ws.Id);
+        stored.Status.Should().Be("carded");
+        stored.LinkedCardId.Should().Be(77);
+    }
+
+    [Fact]
+    public async Task Handle_SkillCardedOutcome_DoesNotOverwriteUserDismissal()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string parkedJson = """
+            { "findings": [ { "title": "T", "body": "b", "outcome": "parked",
+                              "file": "src/F.cs", "rule": "R", "symbol": "S" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", parkedJson, "sha1"), default);
+
+        var f = await _db.Findings
+            .Include(x => x.Run)
+            .SingleAsync(x => x.Run.WorkspaceId == ws.Id);
+        f.Status = "dismissed";
+        f.RebuttalText = "not real";
+        await _db.SaveChangesAsync();
+
+        const string cardedJson = """
+            { "findings": [ { "title": "T", "body": "b", "outcome": "carded:#9",
+                              "file": "src/F.cs", "rule": "R", "symbol": "S" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", cardedJson, "sha2"), default);
+
+        var stored = await _db.Findings.AsNoTracking()
+            .Include(f => f.Run)
+            .SingleAsync(f => f.Run.WorkspaceId == ws.Id);
+        stored.Status.Should().Be("dismissed", "a user dismissal outranks a later skill-emitted card link");
+        stored.LinkedCardId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_SkillCardedOutcome_DoesNotChangeExistingLink()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string firstJson = """
+            { "findings": [ { "title": "T", "body": "b", "outcome": "carded:#10",
+                              "file": "src/F.cs", "rule": "R", "symbol": "S" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", firstJson, "sha1"), default);
+
+        const string secondJson = """
+            { "findings": [ { "title": "T", "body": "b", "outcome": "carded:#99",
+                              "file": "src/F.cs", "rule": "R", "symbol": "S" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", secondJson, "sha2"), default);
+
+        var stored = await _db.Findings.AsNoTracking()
+            .Include(f => f.Run)
+            .SingleAsync(f => f.Run.WorkspaceId == ws.Id);
+        stored.Status.Should().Be("carded");
+        stored.LinkedCardId.Should().Be(10, "the first card link wins; later skill runs do not relink");
     }
 
     [Fact]
@@ -424,7 +534,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
         var findings = await _db.Findings.AsNoTracking()
             .Where(f => f.WorkspaceSkillRunId == run.Id)
             .ToListAsync();
-        findings.Single(f => f.Title == "New").Status.Should().Be("pending");
+        findings.Single(f => f.Title == "New").Status.Should().Be("dismissed");
         findings.Where(f => f.Title != "New")
             .All(f => f.Status == "resolved")
             .Should().BeTrue("legacy-imported findings missing from the new payload flip to resolved");

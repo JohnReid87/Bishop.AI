@@ -1,7 +1,9 @@
 using Bishop.App.Cards.AddCard;
+using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Findings.DismissFinding;
 using Bishop.App.Findings.GetFindingsBySkillAndProject;
+using Bishop.App.Findings.LinkFindingToCard;
 using Bishop.Core;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Skills;
@@ -94,9 +96,13 @@ public sealed partial class FindingItemViewModel : ObservableObject
     public bool IsResolved => Status == "resolved";
     public bool IsDismissed => Status == "dismissed";
     public bool HasRebuttal => !string.IsNullOrWhiteSpace(RebuttalText);
+    public bool HasLinkedCard => LinkedCardId is not null;
+    public string LinkedCardLabel => LinkedCardId is { } n ? $"Open card #{n}" : string.Empty;
 
-    public bool IsConvertToCardEnabled =>
+    public bool IsConvertToCardVisible =>
         LinkedCardId is null && Status != "dismissed" && Status != "resolved";
+
+    public bool IsConvertToCardEnabled => IsConvertToCardVisible;
 
     public bool IsDismissEnabled =>
         Status != "dismissed" && Status != "resolved" && LinkedCardId is null;
@@ -137,9 +143,39 @@ public sealed partial class FindingItemViewModel : ObservableObject
             return;
         }
 
+        await _mediator.Send(new LinkFindingToCardCommand(Id, card.Number));
+
         LinkedCardId = card.Number;
-        Status = $"carded:#{card.Number}";
+        Status = "carded";
         NotifyDerived();
+    }
+
+    [RelayCommand]
+    private async Task OpenLinkedCardAsync(object? xamlRoot)
+    {
+        if (xamlRoot is null) return;
+        if (LinkedCardId is not { } number) return;
+
+        var card = await _mediator.Send(new GetCardByNumberQuery(number, _workspaceId));
+        if (card is null)
+        {
+            await _dialogService.ShowNotFoundAsync(number, xamlRoot);
+            return;
+        }
+
+        var cardVm = new CardViewModel
+        {
+            Id = card.Id,
+            Number = card.Number,
+            Title = card.Title,
+            Description = card.Description,
+            LaneName = card.LaneName,
+            TagName = card.TagName,
+            IsClosed = card.IsClosed,
+            GitHubIssueNumber = card.GitHubIssueNumber,
+        };
+
+        await _dialogService.ShowAsync(cardVm, _workspacePath, _workspaceId, _gitHubRepo, xamlRoot);
     }
 
     [RelayCommand]
@@ -158,11 +194,14 @@ public sealed partial class FindingItemViewModel : ObservableObject
     private void NotifyDerived()
     {
         OnPropertyChanged(nameof(StatusLabel));
+        OnPropertyChanged(nameof(IsConvertToCardVisible));
         OnPropertyChanged(nameof(IsConvertToCardEnabled));
         OnPropertyChanged(nameof(IsDismissEnabled));
         OnPropertyChanged(nameof(IsResolved));
         OnPropertyChanged(nameof(IsDismissed));
         OnPropertyChanged(nameof(HasRebuttal));
+        OnPropertyChanged(nameof(HasLinkedCard));
+        OnPropertyChanged(nameof(LinkedCardLabel));
     }
 
     private string BuildDescription()
