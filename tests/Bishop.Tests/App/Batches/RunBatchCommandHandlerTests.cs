@@ -1190,4 +1190,167 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         result.ExternalContentCardNumbers.Should().BeNull();
     }
 
+    // ── fresh run processes all cards including Done ────────────────────────────
+
+    [Fact]
+    public async Task FreshRun_WithDoneCardInBatch_ProcessesAllCards()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var c1 = await AddCardAsync(workspace.Id, SystemLaneNames.Done);
+        var c2 = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id);
+
+        var result = await CreateHandler().Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        result.StopReason.Should().Be(RunBatchStopReason.Finished);
+        result.Succeeded.Should().Be(2);
+    }
+
+    // ── model override beats batch model ──────────────────────────────────────
+
+    [Fact]
+    public async Task ModelOverride_WinsOverBatchModel()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+        await using (var db = await _factory.CreateDbContextAsync())
+        {
+            var b = await db.Batches.SingleAsync(x => x.Id == batch.Id);
+            b.Model = "claude-opus-4-7";
+            await db.SaveChangesAsync();
+        }
+
+        var claude = ClaudeAlwaysSucceeds();
+        await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false, "claude-sonnet-4-6"), default);
+
+        await claude.Received(1).RunPromptAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            "claude-sonnet-4-6",
+            Arg.Any<int?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    // ── lock file content ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task LockFileContent_HasPidAndTimestamp()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var lockPath = Path.Combine(_worktreePath, ".bishop", $"batch-{batch.Id}.lock");
+        string? capturedContent = null;
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                capturedContent = await File.ReadAllTextAsync(lockPath);
+                var handoffPath = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(handoffPath, ValidHandoffJson);
+                return new ClaudeRunResult(0, null, 0);
+            });
+
+        await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        capturedContent.Should().NotBeNull();
+        var parts = capturedContent!.Split('\t');
+        parts.Should().HaveCount(2);
+        int.Parse(parts[0]).Should().BeGreaterThan(0);
+        DateTimeOffset.Parse(parts[1]).Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromMinutes(1));
+    }
+
+    // ── git cleanup called on failure ──────────────────────────────────────────
+
+    [Fact]
+    public async Task CardFailure_GitResetHardAndCleanCalled()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.Clean());
+
+        await CreateHandler(git: git, claude: ClaudeReturnsExitCode(1))
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        await git.Received(1).ResetHardAsync(_worktreePath, Arg.Any<CancellationToken>());
+        await git.Received(1).CleanWorkingTreeAsync(_worktreePath, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandoffMissing_GitResetHardAndCleanCalled()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.Clean());
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new ClaudeRunResult(0, null, 0));
+
+        await CreateHandler(git: git, claude: claude)
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        await git.Received(1).ResetHardAsync(_worktreePath, Arg.Any<CancellationToken>());
+        await git.Received(1).CleanWorkingTreeAsync(_worktreePath, Arg.Any<CancellationToken>());
+    }
+
+    // ── per-card cost accumulation ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task TwoCardRun_PerCardCostUsd_RecordedIndependently()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
+        var c1 = await AddCardAsync(workspace.Id, todo.Name);
+        var c2 = await AddCardAsync(workspace.Id, todo.Name);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id);
+
+        var callCount = 0;
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                var cost = ++callCount == 1 ? 0.10m : 0.20m;
+                var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(path, ValidHandoffJson);
+                return new ClaudeRunResult(0, new ClaudeRunTotals(100, 50, 0, 0, cost), 0);
+            });
+
+        await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        var savedC1 = await _db.Cards.SingleAsync(c => c.Id == c1.Id);
+        var savedC2 = await _db.Cards.SingleAsync(c => c.Id == c2.Id);
+        savedC1.TotalCostUsd.Should().Be(0.10m);
+        savedC2.TotalCostUsd.Should().Be(0.20m);
+    }
+
+    // ── StoppedAt written on failure ───────────────────────────────────────────
+
+    [Fact]
+    public async Task CardFailure_SetsBatchStoppedAt()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var before = DateTimeOffset.UtcNow;
+        await CreateHandler(claude: ClaudeReturnsExitCode(1))
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
+        saved.StoppedAt.Should().NotBeNull();
+        saved.StoppedAt!.Value.Should().BeOnOrAfter(before);
+    }
+
 }
