@@ -177,6 +177,16 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task DeleteWorkspace_NonexistentWorkspace_Throws()
+    {
+        var handler = new DeleteWorkspaceCommandHandler(_factory);
+
+        var act = () => handler.Handle(new DeleteWorkspaceCommand(Guid.NewGuid()), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+    }
+
+    [Fact]
     public async Task InitWorkspace_FirstRun_CreatesWorkspace()
     {
         var tag = Guid.NewGuid().ToString("N")[..8];

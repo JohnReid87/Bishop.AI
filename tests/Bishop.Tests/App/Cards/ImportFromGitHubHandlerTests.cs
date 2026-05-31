@@ -324,6 +324,139 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         result.SkippedAlreadyPresent.Should().BeEmpty();
     }
 
+    // ── Missing workspace ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ImportFromGitHub_MissingWorkspace_Throws()
+    {
+        // Arrange
+        var handler = CreateHandler();
+
+        // Act
+        var act = async () =>
+            await handler.Handle(new ImportFromGitHubCommand(Guid.NewGuid(), null, 100, false), default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    // ── Label filter forwarded to gh CLI ──────────────────────────────────────
+
+    [Fact]
+    public async Task ImportFromGitHub_LabelFilter_ForwardedToGhCli()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (workspace, _) = await CreateWorkspaceAsync(gitHubRepo: repo);
+
+        string[]? capturedArgs = null;
+        _ghCli.RunCaptureAsync(
+                Arg.Do<string[]>(args => capturedArgs = args),
+                Arg.Any<CancellationToken>())
+            .Returns(IssueListJson());
+
+        var handler = CreateHandler();
+
+        // Act
+        await handler.Handle(new ImportFromGitHubCommand(workspace.Id, "bug", 100, false), default);
+
+        // Assert
+        capturedArgs.Should().NotBeNull();
+        capturedArgs.Should().Contain("--label");
+        capturedArgs.Should().Contain("bug");
+    }
+
+    // ── Dry-run: skip check isolated to workspace ─────────────────────────────
+
+    [Fact]
+    public async Task ImportFromGitHub_DryRun_SkipCheckIsolatedToWorkspace()
+    {
+        // Arrange — import issue 30 into workspace A and issue 99 into workspace B.
+        // A dry-run on workspace A must only report 30 as skipped, not 99 (which
+        // lives in a different workspace). An AND→OR mutation on the WHERE clause
+        // at line 56 would include workspace B's cards and wrongly skip issue 99.
+        const string repo = "owner/repo";
+        var (workspaceA, _) = await CreateWorkspaceAsync(gitHubRepo: repo);
+        var (workspaceB, _) = await CreateWorkspaceAsync(gitHubRepo: repo);
+
+        var handler = CreateHandler();
+
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(IssueListJson((30, "Issue", "body", [])));
+        await handler.Handle(new ImportFromGitHubCommand(workspaceA.Id, null, 100, false), default);
+
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(IssueListJson((99, "Other issue", "body", [])));
+        await handler.Handle(new ImportFromGitHubCommand(workspaceB.Id, null, 100, false), default);
+
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(IssueListJson((30, "Issue", "body", []), (99, "Other issue", "body", [])));
+
+        // Act
+        var result = await handler.Handle(new ImportFromGitHubCommand(workspaceA.Id, null, 100, true), default);
+
+        // Assert — issue 30 already in workspace A; issue 99 is only in workspace B and must not be skipped
+        result.SkippedAlreadyPresent.Should().Equal([30]);
+        result.Imported.Should().HaveCount(1);
+        result.Imported[0].GitHubIssueNumber.Should().Be(99);
+    }
+
+    // ── Position calculation with pre-populated backlog ───────────────────────
+
+    [Fact]
+    public async Task ImportFromGitHub_PositionCalculation_AppendsAfterExistingBacklogCards()
+    {
+        // Arrange — import two cards first so the backlog is not empty
+        const string repo = "owner/repo";
+        var (workspace, _) = await CreateWorkspaceAsync(gitHubRepo: repo);
+
+        var handler = CreateHandler();
+
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(IssueListJson((50, "First", "body", []), (51, "Second", "body", [])));
+        await handler.Handle(new ImportFromGitHubCommand(workspace.Id, null, 100, false), default);
+
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(IssueListJson((52, "Third", "body", [])));
+
+        // Act
+        var result = await handler.Handle(new ImportFromGitHubCommand(workspace.Id, null, 100, false), default);
+
+        // Assert — new card appends at position 3 (max existing position 2, plus 1)
+        result.Imported.Should().HaveCount(1);
+        var importedCard = await _db.Cards.FindAsync(result.Imported[0].Id);
+        importedCard!.Position.Should().Be(3);
+    }
+
+    // ── Card number sequence ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ImportFromGitHub_CardNumbersAssignedSequentially()
+    {
+        // Arrange
+        const string repo = "owner/repo";
+        var (workspace, _) = await CreateWorkspaceAsync(gitHubRepo: repo);
+        var initialNextCardNumber = workspace.NextCardNumber;
+
+        _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+            .Returns(IssueListJson((60, "Issue A", "body", []), (61, "Issue B", "body", [])));
+
+        var handler = CreateHandler();
+
+        // Act
+        var result = await handler.Handle(new ImportFromGitHubCommand(workspace.Id, null, 100, false), default);
+
+        // Assert — cards receive consecutive numbers from the initial value; workspace counter advances
+        result.Imported.Should().HaveCount(2);
+        result.Imported[0].Number.Should().Be(initialNextCardNumber);
+        result.Imported[1].Number.Should().Be(initialNextCardNumber + 1);
+
+        _db.ChangeTracker.Clear();
+        var wsAfter = await _db.Workspaces.FindAsync(workspace.Id);
+        wsAfter!.NextCardNumber.Should().Be(initialNextCardNumber + 2);
+    }
+
     private sealed class ThrowOnCallNFactory(IDbContextFactory<BishopDbContext> inner, int failAtCall)
         : IDbContextFactory<BishopDbContext>
     {
