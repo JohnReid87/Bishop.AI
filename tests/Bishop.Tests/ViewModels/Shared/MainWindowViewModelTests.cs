@@ -474,8 +474,6 @@ public class MainWindowViewModelTests
     public async Task DeleteWorkspaceAsync_RemovesOnlyTheTargetItem()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<DeleteWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Unit.Value);
         var vm = NewVm(mediator: mediator);
         var item1 = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "first" };
         var item2 = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "second" };
@@ -491,8 +489,6 @@ public class MainWindowViewModelTests
     public async Task DeleteWorkspaceAsync_RemovesItemFromCollection()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<DeleteWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Unit.Value);
         var vm = NewVm(mediator: mediator);
         var item = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "ws" };
         vm.Workspaces.Add(item);
@@ -506,8 +502,6 @@ public class MainWindowViewModelTests
     public async Task DeleteWorkspaceAsync_ClearsSelection_WhenDeletedItemWasSelected()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<DeleteWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Unit.Value);
         var vm = NewVm(mediator: mediator);
         var item = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "ws" };
         vm.Workspaces.Add(item);
@@ -522,8 +516,6 @@ public class MainWindowViewModelTests
     public async Task DeleteWorkspaceAsync_PreservesSelection_WhenDeletedItemWasNotSelected()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<DeleteWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Unit.Value);
         var vm = NewVm(mediator: mediator);
         var selected = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "selected" };
         var other = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "other" };
@@ -574,8 +566,6 @@ public class MainWindowViewModelTests
     public async Task PersistReorderAsync_AssignsPositionsMatchingPassedOrder()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<ReorderWorkspacesCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Unit.Value);
         var vm = NewVm(mediator: mediator);
         var first = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "alpha" };
         var second = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "beta" };
@@ -590,8 +580,6 @@ public class MainWindowViewModelTests
     public async Task PersistReorderAsync_AssignsSequentialPositionsStartingAtOne()
     {
         var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<ReorderWorkspacesCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Unit.Value);
         var vm = NewVm(mediator: mediator);
         var items = new[]
         {

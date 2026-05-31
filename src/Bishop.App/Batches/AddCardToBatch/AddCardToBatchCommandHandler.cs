@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.AddCardToBatch;
 
-public sealed class AddCardToBatchCommandHandler : IRequestHandler<AddCardToBatchCommand, Unit>
+public sealed class AddCardToBatchCommandHandler : IRequestHandler<AddCardToBatchCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
     public AddCardToBatchCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
-    public async Task<Unit> Handle(AddCardToBatchCommand request, CancellationToken cancellationToken)
+    public async Task Handle(AddCardToBatchCommand request, CancellationToken cancellationToken)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
@@ -36,7 +36,5 @@ public sealed class AddCardToBatchCommandHandler : IRequestHandler<AddCardToBatc
         await BatchAssignment.AssignAsync(db, batch, request.CardId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         await tx.CommitAsync(cancellationToken);
-
-        return Unit.Value;
     }
 }

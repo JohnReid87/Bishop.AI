@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.PurgeWorkspace;
 
-public sealed class PurgeWorkspaceCommandHandler : IRequestHandler<PurgeWorkspaceCommand, Unit>
+public sealed class PurgeWorkspaceCommandHandler : IRequestHandler<PurgeWorkspaceCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 
     public PurgeWorkspaceCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
 
-    public async Task<Unit> Handle(PurgeWorkspaceCommand request, CancellationToken cancellationToken)
+    public async Task Handle(PurgeWorkspaceCommand request, CancellationToken cancellationToken)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var workspace = await db.Workspaces.FindAsync([request.Id], cancellationToken)
@@ -22,6 +22,5 @@ public sealed class PurgeWorkspaceCommandHandler : IRequestHandler<PurgeWorkspac
 
         db.Workspaces.Remove(workspace);
         await db.SaveChangesAsync(cancellationToken);
-        return Unit.Value;
     }
 }
