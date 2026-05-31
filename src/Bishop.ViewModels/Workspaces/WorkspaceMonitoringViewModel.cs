@@ -75,7 +75,9 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     private async Task RefreshAsync()
     {
         var runs = await _mediator.Send(new GetWorkspaceSkillRunsQuery(_workspaceId));
-        var runsBySkill = runs.ToDictionary(r => r.SkillName, StringComparer.OrdinalIgnoreCase);
+        var runsBySkill = runs
+            .GroupBy(r => r.SkillName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.OrderBy(r => r.ProjectName, StringComparer.OrdinalIgnoreCase).ToList(), StringComparer.OrdinalIgnoreCase);
 
         var skills = await _mediator.Send(new DiscoverSkillsQuery());
         var skillsByName = skills.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
@@ -83,26 +85,17 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         var rows = new List<SkillRunRowViewModel>();
         foreach (var skillName in TrackedSkills)
         {
-            runsBySkill.TryGetValue(skillName, out var run);
-            int? commitsSince = null;
-            var shaUnreachable = false;
-
-            if (run is not null && !string.IsNullOrEmpty(run.GitSha))
-            {
-                commitsSince = await _gitCli.GetCommitCountSinceAsync(run.GitSha, _workspacePath);
-                shaUnreachable = commitsSince is null;
-            }
-
             skillsByName.TryGetValue(skillName, out var skill);
-            var isFirstRun = run is null;
-            var defaultModelId = isFirstRun
-                ? SkillModelOptions.ResolveModelId(skill?.FirstRunModel)
-                : SkillModelOptions.ResolveModelId(skill?.ReRunModel);
 
-            var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable, _workspacePath, run?.FindingsCount, _timeProvider);
-            row.SelectModelCommand.Execute(defaultModelId);
-            row.ModelSelectionReason = isFirstRun ? "(first run)" : "(re-run default)";
-            rows.Add(row);
+            if (runsBySkill.TryGetValue(skillName, out var skillRuns) && skillRuns.Count > 0)
+            {
+                foreach (var run in skillRuns)
+                    rows.Add(await BuildRowAsync(skillName, skill, run));
+            }
+            else
+            {
+                rows.Add(await BuildRowAsync(skillName, skill, run: null));
+            }
         }
 
         Rows.Clear();
@@ -110,6 +103,28 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             Rows.Add(row);
 
         UpdateBadge();
+    }
+
+    private async Task<SkillRunRowViewModel> BuildRowAsync(string skillName, Bishop.Core.Skills.InstalledSkill? skill, Bishop.Core.WorkspaceSkillRun? run)
+    {
+        int? commitsSince = null;
+        var shaUnreachable = false;
+
+        if (run is not null && !string.IsNullOrEmpty(run.GitSha))
+        {
+            commitsSince = await _gitCli.GetCommitCountSinceAsync(run.GitSha, _workspacePath);
+            shaUnreachable = commitsSince is null;
+        }
+
+        var isFirstRun = run is null;
+        var defaultModelId = isFirstRun
+            ? SkillModelOptions.ResolveModelId(skill?.FirstRunModel)
+            : SkillModelOptions.ResolveModelId(skill?.ReRunModel);
+
+        var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable, _workspacePath, run?.FindingsCount, _timeProvider, run?.ProjectName);
+        row.SelectModelCommand.Execute(defaultModelId);
+        row.ModelSelectionReason = isFirstRun ? "(first run)" : "(re-run default)";
+        return row;
     }
 
     private void UpdateBadge()
@@ -121,7 +136,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         BadgeColor = hasRed ? "#c97a8a" : attentionCount > 0 ? "#c4a85f" : string.Empty;
         BadgeIsVisible = attentionCount > 0;
         BadgeTooltip = attentionCount > 0
-            ? $"{attentionCount} of {TrackedSkills.Length} reviews need attention"
+            ? $"{attentionCount} of {Rows.Count} reviews need attention"
             : string.Empty;
     }
 

@@ -207,6 +207,45 @@ public class SkillRunRowViewModelTests
     }
 
     [Fact]
+    public void DisplayLabel_WithoutProjectName_IsSkillNameOnly()
+    {
+        var row = new SkillRunRowViewModel("bish-tests", null, null, false);
+
+        row.ProjectName.Should().BeNull();
+        row.DisplayLabel.Should().Be("bish-tests");
+    }
+
+    [Fact]
+    public void DisplayLabel_WithProjectName_IncludesProject()
+    {
+        var row = new SkillRunRowViewModel("bish-tests", null, null, false, projectName: "Bishop.App.Tests");
+
+        row.ProjectName.Should().Be("Bishop.App.Tests");
+        row.DisplayLabel.Should().Be("bish-tests · Bishop.App.Tests");
+    }
+
+    [Fact]
+    public void NonCoverageSkill_WithProjectName_ReportFilePath_UsesDoubleUnderscoreFilename()
+    {
+        var workspace = Path.Combine(Path.GetTempPath(), "bishop-tests-" + Guid.NewGuid().ToString("N"));
+        var findingsDir = Path.Combine(workspace, ".bishop", "findings");
+        Directory.CreateDirectory(findingsDir);
+        var findingsFile = Path.Combine(findingsDir, "bish-tests__Bishop.App.Tests.html");
+        File.WriteAllText(findingsFile, "<html></html>");
+
+        try
+        {
+            var row = new SkillRunRowViewModel("bish-tests", null, null, false, workspace, projectName: "Bishop.App.Tests");
+
+            row.ReportFilePath.Should().Be(findingsFile);
+        }
+        finally
+        {
+            Directory.Delete(workspace, recursive: true);
+        }
+    }
+
+    [Fact]
     public void FindingsBadgeIsVisible_WhenFindingsCountNull_IsFalse()
     {
         var row = new SkillRunRowViewModel("bish-arch", null, null, false, findingsCount: null);

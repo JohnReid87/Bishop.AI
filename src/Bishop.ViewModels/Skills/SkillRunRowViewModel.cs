@@ -8,6 +8,8 @@ namespace Bishop.ViewModels.Skills;
 public sealed partial class SkillRunRowViewModel : ObservableObject
 {
     public string SkillName { get; }
+    public string? ProjectName { get; }
+    public string DisplayLabel => string.IsNullOrEmpty(ProjectName) ? SkillName : $"{SkillName} · {ProjectName}";
     public string LastRunText { get; }
     public string CommitsSinceText { get; }
     public string StatusDotColor { get; }
@@ -34,10 +36,11 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         SelectedModelLabel = $"{label} ▾";
     }
 
-    public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable, string workspacePath = "", int? findingsCount = null, TimeProvider? timeProvider = null)
+    public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable, string workspacePath = "", int? findingsCount = null, TimeProvider? timeProvider = null, string? projectName = null)
     {
         SkillName = skillName;
-        ReportFilePath = ResolveReportFilePath(skillName, workspacePath);
+        ProjectName = projectName;
+        ReportFilePath = ResolveReportFilePath(skillName, projectName, workspacePath);
         FindingsCount = findingsCount;
         LastRunText = lastRun is null ? "Never" : FormatRelativeTime(lastRun.Value, timeProvider ?? TimeProvider.System);
 
@@ -65,7 +68,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         }
     }
 
-    private static string? ResolveReportFilePath(string skillName, string workspacePath)
+    private static string? ResolveReportFilePath(string skillName, string? projectName, string workspacePath)
     {
         if (string.IsNullOrEmpty(workspacePath))
             return null;
@@ -73,7 +76,10 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         if (skillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase))
             return Path.Combine(workspacePath, "TestResults", "coverage-report", "index.html");
 
-        var findingsPath = Path.Combine(workspacePath, ".bishop", "findings", $"{skillName}.html");
+        var fileName = string.IsNullOrEmpty(projectName)
+            ? $"{skillName}.html"
+            : $"{skillName}__{projectName}.html";
+        var findingsPath = Path.Combine(workspacePath, ".bishop", "findings", fileName);
         return File.Exists(findingsPath) ? findingsPath : null;
     }
 

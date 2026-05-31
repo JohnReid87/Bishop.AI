@@ -321,6 +321,27 @@ public class WorkspaceMonitoringViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_BishTestsWithTwoProjects_EmitsTwoRows()
+    {
+        var workspaceId = Guid.NewGuid();
+        _mediator.Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>(
+            [
+                new WorkspaceSkillRun { Id = Guid.NewGuid(), WorkspaceId = workspaceId, SkillName = "bish-tests", ProjectName = "Bishop.App.Tests", RecordedAt = DateTimeOffset.UtcNow, GitSha = "abc" },
+                new WorkspaceSkillRun { Id = Guid.NewGuid(), WorkspaceId = workspaceId, SkillName = "bish-tests", ProjectName = "Bishop.Core.Tests", RecordedAt = DateTimeOffset.UtcNow, GitSha = "def" },
+            ]));
+
+        await _vm.LoadAsync(workspaceId, @"C:\fake");
+
+        var testsRows = _vm.Rows.Where(r => r.SkillName == "bish-tests").ToList();
+        testsRows.Should().HaveCount(2);
+        testsRows.Select(r => r.ProjectName).Should().BeEquivalentTo(new[] { "Bishop.App.Tests", "Bishop.Core.Tests" });
+        testsRows.Select(r => r.DisplayLabel).Should().BeEquivalentTo(new[] { "bish-tests · Bishop.App.Tests", "bish-tests · Bishop.Core.Tests" });
+
+        _vm.Rows.Where(r => r.SkillName != "bish-tests").Should().HaveCount(TrackedSkills.Length - 1);
+    }
+
+    [Fact]
     public async Task LoadAsync_ModelChangeDoesNotPersistAcrossRefresh()
     {
         _mediator

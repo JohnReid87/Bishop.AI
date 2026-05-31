@@ -711,7 +711,7 @@
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0"
-                                                       Text="{x:Bind SkillName}"
+                                                       Text="{x:Bind DisplayLabel}"
                                                        FontFamily="Cascadia Mono"
                                                        FontSize="12"
                                                        VerticalAlignment="Center"/>
