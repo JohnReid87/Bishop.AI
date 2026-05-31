@@ -30,128 +30,112 @@ public sealed class TerminalLauncher : ITerminalLauncher
 
     public bool Launch(string workingDirectory, string? claudeArgs, TerminalSnap? snap, string? modelId = null)
     {
-        var fullPath = BuildFullPath();
-        var wt = FindWindowsTerminal();
-
-        if (wt is not null)
-        {
-            var psi = new ProcessStartInfo { FileName = wt, UseShellExecute = false };
-            // cmd.exe /k resolves claude.cmd; wt -- claude fails because wt uses
-            // CreateProcess directly, which cannot execute .cmd wrapper scripts.
-            psi.ArgumentList.Add("-d");
-            psi.ArgumentList.Add(workingDirectory);
-            psi.ArgumentList.Add("cmd.exe");
-            psi.ArgumentList.Add("/k");
-            psi.ArgumentList.Add("claude");
-            if (modelId is not null) { psi.ArgumentList.Add("--model"); psi.ArgumentList.Add(modelId); }
-            if (claudeArgs is not null) psi.ArgumentList.Add(claudeArgs);
-            psi.Environment["PATH"] = fullPath;
-            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-            var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
-            _startProcess(psi);
-            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-            if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
-            return true;
-        }
-
-        var psFallback = new ProcessStartInfo
-        {
-            FileName = "powershell.exe",
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-        };
-        psFallback.ArgumentList.Add("-NoExit");
-        psFallback.ArgumentList.Add("-Command");
-        psFallback.ArgumentList.Add("claude");
-        if (modelId is not null) { psFallback.ArgumentList.Add("--model"); psFallback.ArgumentList.Add(modelId); }
-        if (claudeArgs is not null) psFallback.ArgumentList.Add(claudeArgs);
-        psFallback.Environment["PATH"] = fullPath;
-        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-        var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
-        _startProcess(psFallback);
-        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-        if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
-        return false;
+        // cmd.exe /k resolves claude.cmd; wt -- claude fails because wt uses
+        // CreateProcess directly, which cannot execute .cmd wrapper scripts.
+        return LaunchCore(
+            workingDirectory,
+            snap,
+            wtArgs: psi =>
+            {
+                psi.ArgumentList.Add("cmd.exe");
+                psi.ArgumentList.Add("/k");
+                psi.ArgumentList.Add("claude");
+                AppendModelAndArgs(psi, modelId, claudeArgs);
+            },
+            fallbackShell: "powershell.exe",
+            fallbackArgs: psi =>
+            {
+                psi.ArgumentList.Add("-NoExit");
+                psi.ArgumentList.Add("-Command");
+                psi.ArgumentList.Add("claude");
+                AppendModelAndArgs(psi, modelId, claudeArgs);
+            });
     }
 
     public bool LaunchCommand(string workingDirectory, string command, string[] args, TerminalSnap? snap)
     {
-        var fullPath = BuildFullPath();
-        var wt = FindWindowsTerminal();
-
-        if (wt is not null)
-        {
-            var psi = new ProcessStartInfo { FileName = wt, UseShellExecute = false };
-            // cmd.exe /k mirrors the Launch path so .cmd / .bat wrappers resolve too.
-            psi.ArgumentList.Add("-d");
-            psi.ArgumentList.Add(workingDirectory);
-            psi.ArgumentList.Add("cmd.exe");
-            psi.ArgumentList.Add("/k");
-            psi.ArgumentList.Add(command);
-            foreach (var a in args) psi.ArgumentList.Add(a);
-            psi.Environment["PATH"] = fullPath;
-            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-            var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
-            _startProcess(psi);
-            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-            if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
-            return true;
-        }
-
-        var psFallback = new ProcessStartInfo
-        {
-            FileName = "powershell.exe",
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-        };
-        psFallback.ArgumentList.Add("-NoExit");
-        psFallback.ArgumentList.Add("-Command");
-        psFallback.ArgumentList.Add(command);
-        foreach (var a in args) psFallback.ArgumentList.Add(a);
-        psFallback.Environment["PATH"] = fullPath;
-        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-        var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
-        _startProcess(psFallback);
-        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-        if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
-        return false;
+        // cmd.exe /k mirrors the Launch path so .cmd / .bat wrappers resolve too.
+        return LaunchCore(
+            workingDirectory,
+            snap,
+            wtArgs: psi =>
+            {
+                psi.ArgumentList.Add("cmd.exe");
+                psi.ArgumentList.Add("/k");
+                psi.ArgumentList.Add(command);
+                foreach (var a in args) psi.ArgumentList.Add(a);
+            },
+            fallbackShell: "powershell.exe",
+            fallbackArgs: psi =>
+            {
+                psi.ArgumentList.Add("-NoExit");
+                psi.ArgumentList.Add("-Command");
+                psi.ArgumentList.Add(command);
+                foreach (var a in args) psi.ArgumentList.Add(a);
+            });
     }
 
     public bool LaunchPlain(string workingDirectory, TerminalSnap? snap)
     {
         var fullPath = BuildFullPath();
-        var wt = FindWindowsTerminal();
         var shell = HasPwsh(fullPath) ? "pwsh.exe" : "powershell.exe";
+
+        return LaunchCore(
+            workingDirectory,
+            snap,
+            wtArgs: psi => psi.ArgumentList.Add(shell),
+            fallbackShell: shell,
+            fallbackArgs: psi => psi.ArgumentList.Add("-NoExit"),
+            precomputedPath: fullPath);
+    }
+
+    private bool LaunchCore(
+        string workingDirectory,
+        TerminalSnap? snap,
+        Action<ProcessStartInfo> wtArgs,
+        string fallbackShell,
+        Action<ProcessStartInfo> fallbackArgs,
+        string? precomputedPath = null)
+    {
+        var fullPath = precomputedPath ?? BuildFullPath();
+        var wt = FindWindowsTerminal();
 
         if (wt is not null)
         {
             var psi = new ProcessStartInfo { FileName = wt, UseShellExecute = false };
             psi.ArgumentList.Add("-d");
             psi.ArgumentList.Add(workingDirectory);
-            psi.ArgumentList.Add(shell);
+            wtArgs(psi);
             psi.Environment["PATH"] = fullPath;
-            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-            var before = snap.HasValue ? GetWindowsOfClass(WtWindowClass) : null;
-            _startProcess(psi);
-            // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-            if (snap.HasValue) SnapLater(WtWindowClass, snap.Value, before!);
+            StartWithSnap(psi, WtWindowClass, snap);
             return true;
         }
 
         var psFallback = new ProcessStartInfo
         {
-            FileName = shell,
+            FileName = fallbackShell,
             WorkingDirectory = workingDirectory,
             UseShellExecute = false,
         };
-        psFallback.ArgumentList.Add("-NoExit");
+        fallbackArgs(psFallback);
         psFallback.Environment["PATH"] = fullPath;
-        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-        var psBefore = snap.HasValue ? GetWindowsOfClass(PsWindowClass) : null;
-        _startProcess(psFallback);
-        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
-        if (snap.HasValue) SnapLater(PsWindowClass, snap.Value, psBefore!);
+        StartWithSnap(psFallback, PsWindowClass, snap);
         return false;
+    }
+
+    private void StartWithSnap(ProcessStartInfo psi, string windowClass, TerminalSnap? snap)
+    {
+        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
+        var before = snap.HasValue ? GetWindowsOfClass(windowClass) : null;
+        _startProcess(psi);
+        // Stryker disable once Statement : snap-path is deliberately untested (see TerminalLauncherTests.cs:633-638).
+        if (snap.HasValue) SnapLater(windowClass, snap.Value, before!);
+    }
+
+    private static void AppendModelAndArgs(ProcessStartInfo psi, string? modelId, string? claudeArgs)
+    {
+        if (modelId is not null) { psi.ArgumentList.Add("--model"); psi.ArgumentList.Add(modelId); }
+        if (claudeArgs is not null) psi.ArgumentList.Add(claudeArgs);
     }
 
     private bool HasPwsh(string fullPath)
