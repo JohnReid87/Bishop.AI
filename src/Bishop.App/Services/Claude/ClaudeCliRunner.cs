@@ -210,7 +210,7 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         string? Command,
         string? Message);
 
-    private static string BuildNotFoundMessage(ClaudeNotFoundException ex)
+    internal static string BuildNotFoundMessage(ClaudeNotFoundException ex)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Could not find 'claude' on PATH.");
