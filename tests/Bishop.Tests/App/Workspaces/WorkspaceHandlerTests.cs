@@ -158,7 +158,8 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var act = () => handler.Handle(
             new UpdateWorkspaceCommand(Guid.NewGuid(), U("Missing"), @"C:\missing"), default);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
     }
 
     [Fact]
