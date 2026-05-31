@@ -109,6 +109,33 @@ public sealed class IsBranchMergedIntoTests : IDisposable
     }
 
     [Fact]
+    public async Task ReturnsFalse_WhenOnlySomeCommitsFromBranchEquivalentInBase()
+    {
+        // Arrange — branch has two commits; only one is cherry-picked into base so
+        // git cherry produces a mix of "- sha" and "+ sha" lines. The real code uses
+        // lines.All (requires every line to start with '-'); the mutant uses lines.Any
+        // (true if at least one line starts with '-') and would return true incorrectly.
+        InitRepoWithCommit();
+        Git(_repoDir, "checkout", "-b", "feature/partial");
+        File.WriteAllText(Path.Combine(_repoDir, "a.txt"), "a");
+        Git(_repoDir, "add", ".");
+        Git(_repoDir, "commit", "-m", "Commit A");
+        File.WriteAllText(Path.Combine(_repoDir, "b.txt"), "b");
+        Git(_repoDir, "add", ".");
+        Git(_repoDir, "commit", "-m", "Commit B");
+        Git(_repoDir, "checkout", "-");
+        // Cherry-pick only "Commit A" (the parent of the branch tip), leaving "Commit B" out.
+        Git(_repoDir, "cherry-pick", "feature/partial^");
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.IsBranchMergedIntoAsync(_repoDir, "feature/partial", "HEAD");
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task ReturnsTrue_WhenBranchSquashMergedIntoBase()
     {
         // Arrange

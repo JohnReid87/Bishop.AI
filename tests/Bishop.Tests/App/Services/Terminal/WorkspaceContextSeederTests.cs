@@ -324,6 +324,22 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public void BuildBishopContext_OrdersThisWorkspaceBeforeLanesBeforeTags()
+    {
+        var workspace = MakeWorkspace();
+
+        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
+
+        var lines = output.Split('\n');
+        var thisWorkspaceLine = Array.FindIndex(lines, l => l.TrimEnd('\r') == "## This workspace");
+        var lanesLine = Array.FindIndex(lines, l => l.TrimEnd('\r') == "### Lanes");
+        var tagsLine = Array.FindIndex(lines, l => l.TrimEnd('\r') == "### Tags");
+
+        thisWorkspaceLine.Should().BeLessThan(lanesLine);
+        lanesLine.Should().BeLessThan(tagsLine);
+    }
+
+    [Fact]
     public void LoadStaticBody_ReturnsNonEmptyString()
     {
         var body = WorkspaceContextSeeder.LoadStaticBody();
@@ -650,6 +666,30 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         File.Exists(Path.Combine(path, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeFalse();
         File.Exists(Path.Combine(path, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
         File.Exists(Path.Combine(path, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SeedAsync_DoesNothing_WhenRegisteredWorkspacePathDoesNotExist()
+    {
+        // path is not whitespace but directory does not exist — kills the ||→&& logical mutant on line 25:
+        // with &&, the guard evaluates false (IsNullOrWhiteSpace=false && !Exists=true → false), the method
+        // proceeds to the DB, finds the workspace, and writes files — making the assertions below fail.
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), "bishop-ctx-missing-" + Guid.NewGuid().ToString("N"));
+        await SeedRegisteredWorkspaceAsync(nonExistentPath, name: U("missing"));
+        var sut = new WorkspaceContextSeeder(_factory);
+
+        try
+        {
+            await sut.SeedAsync(nonExistentPath);
+
+            Directory.Exists(Path.Combine(nonExistentPath, WorkspaceContextSeeder.BishopFolder)).Should().BeFalse();
+            File.Exists(Path.Combine(nonExistentPath, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
+            File.Exists(Path.Combine(nonExistentPath, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
+        }
+        finally
+        {
+            CleanupTempDir(nonExistentPath);
+        }
     }
 
     [Fact]

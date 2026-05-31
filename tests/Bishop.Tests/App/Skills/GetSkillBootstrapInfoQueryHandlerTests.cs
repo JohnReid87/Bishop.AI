@@ -89,6 +89,6 @@ public sealed class GetSkillBootstrapInfoQueryHandlerTests : IClassFixture<DbFix
         var act = () => handler.Handle(new GetSkillBootstrapInfoQuery(Guid.NewGuid()), default);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
     }
 }

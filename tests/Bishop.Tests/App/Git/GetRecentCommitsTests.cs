@@ -239,6 +239,82 @@ public sealed class GetRecentCommitsTests : IDisposable
         success.UpstreamRef.Should().BeNull();
         success.UpstreamIsTracked.Should().BeFalse();
         success.Commits.Should().AllSatisfy(c => c.IsPushed.Should().BeFalse());
+        // Mutant kill: unpushedCount = finalCommits.Count(c => !c.IsPushed) when upstream is null.
+        // A mutation of !c.IsPushed → c.IsPushed would produce 0 instead of 1.
+        success.UnpushedCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_ThrowsInvalidOperationException_WhenGitExits128WithUnrecognizedError()
+    {
+        // Arrange — init then corrupt HEAD to point at a non-existent object so git
+        // exits 128 with a message containing neither "not a git repository" nor
+        // "does not have any commits yet". The real code throws; a mutation that
+        // changes the detection string to "" returns NoCommits instead of throwing.
+        Git("init");
+        File.WriteAllText(Path.Combine(_tempDir, ".git", "HEAD"), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
+        var sut = new GitCli();
+
+        // Act
+        var act = () => sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_ParsesEmptySubject_WhenCommitMessageStartsWithNewline()
+    {
+        // Arrange — commit whose stored message begins with \n so that IndexOf('\n')
+        // returns 0. The real code (newlineIdx < 0) goes to the else branch and
+        // produces an empty subject; the mutant (newlineIdx <= 0) wrongly takes the
+        // if branch and returns the full trimmed message as the subject.
+        Git("init");
+        Git("config", "user.email", "test@example.com");
+        Git("config", "user.name", "Test");
+        File.WriteAllText(Path.Combine(_tempDir, "file.txt"), "content");
+        Git("add", ".");
+        var msgFile = Path.Combine(_tempDir, "msg.txt");
+        File.WriteAllText(msgFile, "\nBody only, no subject");
+        Git("commit", "--cleanup=verbatim", "-F", msgFile);
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
+        success.Commits.Should().HaveCount(1);
+        success.Commits[0].Subject.Should().Be("");
+        success.Commits[0].Body.Should().Be("Body only, no subject");
+    }
+
+    [Fact]
+    public async Task GetRecentCommitsAsync_ReturnsNullUpstreamRef_WhenHeadIsDetached()
+    {
+        // Arrange — detached HEAD; git rev-parse --abbrev-ref HEAD returns the literal
+        // string "HEAD". The real guard (|| check) returns null upstream immediately.
+        // The mutant (&& check) skips the guard and proceeds to the fallback lookup for
+        // refs/remotes/origin/HEAD, which exists here as a regular tracking ref, so
+        // the mutant would return a non-null upstream ref.
+        InitRepoWithCommit("Initial commit");
+        var barePath = Path.Combine(_tempDir, "remote.git");
+        Directory.CreateDirectory(barePath);
+        GitInDir(barePath, "init", "--bare");
+        Git("remote", "add", "origin", barePath);
+        Git("push", "origin", "HEAD");
+        // Establish refs/remotes/origin/HEAD as a regular tracking ref so the mutant
+        // would discover it via for-each-ref during the fallback path.
+        Git("update-ref", "refs/remotes/origin/HEAD", "HEAD");
+        Git("checkout", "--detach", "HEAD");
+        var sut = new GitCli();
+
+        // Act
+        var result = await sut.GetRecentCommitsAsync(_tempDir);
+
+        // Assert
+        var success = result.Should().BeOfType<GetRecentCommitsResult.Success>().Subject;
+        success.UpstreamRef.Should().BeNull();
     }
 
     [Fact]

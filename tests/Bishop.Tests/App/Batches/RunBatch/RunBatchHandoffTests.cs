@@ -143,14 +143,21 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
         return claude;
     }
 
-    private RunBatchCommandHandler CreateHandler(IGitCli? git = null, IClaudeCliRunner? claude = null, ISender? sender = null)
+    private RunBatchCommandHandler CreateHandler(IGitCli? git = null, IClaudeCliRunner? claude = null, ISender? sender = null, TimeProvider? timeProvider = null)
         => new(
             git ?? GitAlwaysClean(),
             claude ?? ClaudeSucceedsNoHandoff(),
             sender ?? CreateSender(),
             _factory,
             NullLogger<RunBatchCommandHandler>.Instance,
-            TimeProvider.System);
+            timeProvider ?? TimeProvider.System);
+
+    private sealed class StepTimeProvider : TimeProvider
+    {
+        private long _ticks = DateTimeOffset.UtcNow.Ticks;
+        public void Step() => _ticks += TimeSpan.FromSeconds(1).Ticks;
+        public override DateTimeOffset GetUtcNow() => new DateTimeOffset(_ticks, TimeSpan.Zero);
+    }
 
     // ── valid handoff ──────────────────────────────────────────────────────────
 
@@ -363,5 +370,241 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
 
         var handoffPath = Path.Combine(_worktreePath, ".bishop", "handoff.json");
         File.Exists(handoffPath).Should().BeFalse("handoff.json should be deleted after the last card");
+    }
+
+    // ── closed batch guard ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ClosedBatch_ThrowsInvalidOperationException_WithClosedInMessage()
+    {
+        var batch = await CreateBatchAsync();
+
+        await using var db = await _factory.CreateDbContextAsync();
+        var entity = await db.Batches.SingleAsync(b => b.Id == batch.Id);
+        entity.Status = BatchStatus.Closed;
+        await db.SaveChangesAsync();
+
+        var act = async () => await CreateHandler()
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*closed*");
+    }
+
+    // ── lock file lifecycle ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task LockFile_WrittenBeforeFirstCardRuns()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var lockPath = Path.Combine(_worktreePath, ".bishop", $"batch-{batch.Id}.lock");
+        bool lockFileExisted = false;
+
+        const string handoffJson = """{"commit_body_bullets":[],"touched_files":[],"notes":null}""";
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                lockFileExisted = File.Exists(lockPath);
+                var handoffPath = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(handoffPath, handoffJson);
+                return new ClaudeRunResult(0, null, 0);
+            });
+
+        await CreateHandler(claude: claude)
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        lockFileExisted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LockFile_RefreshedForEachCard()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
+        var c1 = await AddCardAsync(workspace.Id, todo.Name);
+        var c2 = await AddCardAsync(workspace.Id, todo.Name);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id);
+
+        var lockPath = Path.Combine(_worktreePath, ".bishop", $"batch-{batch.Id}.lock");
+        var capturedLockContents = new List<string>();
+        var tp = new StepTimeProvider();
+
+        const string handoffJson = """{"commit_body_bullets":[],"touched_files":[],"notes":null}""";
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                if (File.Exists(lockPath))
+                    capturedLockContents.Add(File.ReadAllText(lockPath));
+                tp.Step();
+                var handoffPath = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(handoffPath, handoffJson);
+                return new ClaudeRunResult(0, null, 0);
+            });
+
+        await CreateHandler(claude: claude, timeProvider: tp)
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        capturedLockContents.Should().HaveCount(2);
+        capturedLockContents[0].Should().NotBe(capturedLockContents[1]);
+    }
+
+    // ── cost accumulation ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task NullTotalsOnFirstCard_BatchTotalReflectsOnlySecondCardCost()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
+        var c1 = await AddCardAsync(workspace.Id, todo.Name);
+        var c2 = await AddCardAsync(workspace.Id, todo.Name);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id);
+
+        const string handoffJson = """{"commit_body_bullets":[],"touched_files":[],"notes":null}""";
+        var callCount = 0;
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                var handoffPath = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(handoffPath, handoffJson);
+                callCount++;
+                var totals = callCount == 1 ? null : new ClaudeRunTotals(0, 0, 0, 0, 0.30m);
+                return new ClaudeRunResult(0, totals, 0);
+            });
+
+        var originalOut = Console.Out;
+        var captured = new StringWriter();
+        Console.SetOut(captured);
+        try
+        {
+            await CreateHandler(claude: claude)
+                .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        captured.ToString().Should().Contain("batch total $0.30");
+    }
+
+    [Fact]
+    public async Task MultiCard_CostAccumulatesAcrossCards()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
+        var c1 = await AddCardAsync(workspace.Id, todo.Name);
+        var c2 = await AddCardAsync(workspace.Id, todo.Name);
+        var batch = await CreateBatchAsync(c1.Id, c2.Id);
+
+        const string handoffJson = """{"commit_body_bullets":[],"touched_files":[],"notes":null}""";
+        var callCount = 0;
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                var handoffPath = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(handoffPath, handoffJson);
+                callCount++;
+                var costUsd = callCount == 1 ? 0.10m : 0.20m;
+                return new ClaudeRunResult(0, new ClaudeRunTotals(0, 0, 0, 0, costUsd), 0);
+            });
+
+        var originalOut = Console.Out;
+        var captured = new StringWriter();
+        Console.SetOut(captured);
+        try
+        {
+            await CreateHandler(claude: claude)
+                .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        captured.ToString().Should().Contain("batch total $0.30");
+    }
+
+    // ── StoppedAt on failure paths ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task HandoffMissing_SetsBatchStoppedAt()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        await CreateHandler(claude: ClaudeSucceedsNoHandoff())
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        await using var db = await _factory.CreateDbContextAsync();
+        var saved = await db.Batches.SingleAsync(b => b.Id == batch.Id);
+        saved.StoppedAt.Should().NotBeNull();
+    }
+
+    // ── git recovery on commit failure ─────────────────────────────────────────
+
+    [Fact]
+    public async Task CommitFailure_CallsResetHardAndCleanWorkingTree()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        const string handoffJson = """{"commit_body_bullets":["something"],"touched_files":[],"notes":null}""";
+
+        var git = Substitute.For<IGitCli>();
+        git.GetWorkingTreeStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GetWorkingTreeStatusResult.Clean());
+        git.StageAllAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        git.CommitAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(new InvalidOperationException("nothing to commit")));
+
+        var claude = ClaudeSucceedsWithHandoff(handoffJson);
+
+        await CreateHandler(git: git, claude: claude)
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        await git.Received(1).ResetHardAsync(batch.WorktreePath, Arg.Any<CancellationToken>());
+        await git.Received(1).CleanWorkingTreeAsync(batch.WorktreePath, Arg.Any<CancellationToken>());
+    }
+
+    // ── whitespace-only notes ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task WhitespaceOnlyNotes_TreatedAsEmpty_NotPrependedToDescription()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        const string handoffJson = """
+            {
+                "commit_body_bullets": [],
+                "touched_files": [],
+                "notes": "   \n   "
+            }
+            """;
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                var handoffPath = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(handoffPath, handoffJson);
+                return new ClaudeRunResult(0, new ClaudeRunTotals(100, 200, 0, 0, 0.30m), 0);
+            });
+
+        await CreateHandler(claude: claude)
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.Description.Should().NotContain("   \n   ");
     }
 }

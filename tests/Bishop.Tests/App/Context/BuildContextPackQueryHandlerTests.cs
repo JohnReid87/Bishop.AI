@@ -99,6 +99,23 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task WorkspaceBlock_LanesAreInSystemDefinedOrder()
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
+
+        // Act
+        var pack = await handler.Handle(
+            new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(null)),
+            default);
+
+        // Assert
+        pack.Workspace.Lanes.Should().Equal(
+            SystemLaneNames.Backlog, SystemLaneNames.ToDo, SystemLaneNames.Doing, SystemLaneNames.Done);
+    }
+
+    [Fact]
     public async Task ReturnsAllFourBlocks_ForAutoCardProvider()
     {
         // Arrange
@@ -136,6 +153,28 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*does-not-exist*work-on-card*");
+    }
+
+    [Fact]
+    public async Task UnknownSkillName_ErrorMessageListsProvidersAlphabeticallyWithCommaSpace()
+    {
+        // Arrange
+        var workspace = await CreateWorkspaceAsync();
+        var handler = CreateHandler(
+            CreateSender(),
+            StubGitCli(),
+            new ArchContextProvider(),
+            new CoverageContextProvider(),
+            new WorkOnCardContextProvider());
+
+        // Act
+        var act = () => handler.Handle(
+            new BuildContextPackQuery("does-not-exist", workspace, new ContextPackArgs(null)),
+            default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*arch, coverage, work-on-card*");
     }
 
     [Fact]
@@ -443,6 +482,64 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
 
             // Assert
             pack.Workspace.ContextMd.Should().BeNull();
+            pack.Workspace.ContextMdTruncated.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ContextMd_WhenFileAbsent_ReturnsNullAndNotTruncated()
+    {
+        // Arrange
+        var name = U("ctx");
+        var dir = Path.Combine(Path.GetTempPath(), name);
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var workspace = await new CreateWorkspaceCommandHandler(_factory)
+                .Handle(new CreateWorkspaceCommand(name, dir), default);
+            var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
+
+            // Act
+            var pack = await handler.Handle(
+                new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(null)),
+                default);
+
+            // Assert
+            pack.Workspace.ContextMd.Should().BeNull();
+            pack.Workspace.ContextMdTruncated.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ContextMd_WhenFileSizeEqualsMaxBytes_ReadsContentAndNotTruncated()
+    {
+        // Arrange
+        var name = U("ctx");
+        var dir = Path.Combine(Path.GetTempPath(), name);
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var exactContent = new string('x', BuildContextPackQueryHandler.ContextMdMaxBytes);
+            File.WriteAllText(Path.Combine(dir, "CONTEXT.md"), exactContent);
+            var workspace = await new CreateWorkspaceCommandHandler(_factory)
+                .Handle(new CreateWorkspaceCommand(name, dir), default);
+            var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
+
+            // Act
+            var pack = await handler.Handle(
+                new BuildContextPackQuery("work-on-card", workspace, new ContextPackArgs(null)),
+                default);
+
+            // Assert
+            pack.Workspace.ContextMd.Should().NotBeNull();
             pack.Workspace.ContextMdTruncated.Should().BeFalse();
         }
         finally

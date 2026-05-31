@@ -346,6 +346,66 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task MoveCard_NonexistentCard_Throws()
+    {
+        var handler = MoveHandler();
+
+        var act = () => handler.Handle(new MoveCardCommand(Guid.NewGuid(), SystemLaneNames.ToDo, 1), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+    }
+
+    [Fact]
+    public async Task MoveCard_AcrossLanes_SourceLaneRenumbersAscendingWithMultipleRemainingCards()
+    {
+        // Arrange — top-inserts produce D(1) C(2) B(3) A(4) in To Do
+        var (workspace, _) = await CreateWorkspaceWithLanesAsync();
+        var add = new AddCardCommandHandler(_factory);
+        await add.Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "A"), default);
+        await add.Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "B"), default);
+        await add.Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "C"), default);
+        var d = await add.Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "D"), default);
+
+        // Act — move D (position 1) to Doing; remaining C(2) B(3) A(4) must renumber to 1 2 3
+        await MoveHandler().Handle(new MoveCardCommand(d.Id, SystemLaneNames.Doing, 1), default);
+
+        // Assert — remaining source-lane cards are renumbered 1-based ascending by prior position
+        var sourceCards = await _db.Cards
+            .Where(x => x.WorkspaceId == workspace.Id && x.LaneName == SystemLaneNames.ToDo)
+            .OrderBy(x => x.Position)
+            .ToListAsync();
+        sourceCards.Select(x => x.Title).Should().Equal("C", "B", "A");
+        sourceCards.Select(x => x.Position).Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public async Task MoveCard_AcrossLanes_SourceLaneRenumberingIsIsolatedByWorkspace()
+    {
+        // Arrange — two workspaces with cards in the same lane name;
+        // renumbering after a move in workspace A must not touch workspace B's cards.
+        var (wsA, _) = await CreateWorkspaceWithLanesAsync();
+        var (wsB, _) = await CreateWorkspaceWithLanesAsync();
+        var add = new AddCardCommandHandler(_factory);
+
+        await add.Handle(new AddCardCommand(wsA.Id, SystemLaneNames.ToDo, "A1"), default);
+        var a2 = await add.Handle(new AddCardCommand(wsA.Id, SystemLaneNames.ToDo, "A2"), default);
+
+        var b1 = await add.Handle(new AddCardCommand(wsB.Id, SystemLaneNames.ToDo, "B1"), default);
+        var b2 = await add.Handle(new AddCardCommand(wsB.Id, SystemLaneNames.ToDo, "B2"), default);
+
+        var b1PosBefore = (await _db.Cards.FindAsync(b1.Id))!.Position;
+        var b2PosBefore = (await _db.Cards.FindAsync(b2.Id))!.Position;
+
+        // Act — move a2 (position 1 in wsA's To Do) to wsA's Doing
+        await MoveHandler().Handle(new MoveCardCommand(a2.Id, SystemLaneNames.Doing, 1), default);
+
+        // Assert — workspace B's card positions are unchanged
+        _db.ChangeTracker.Clear();
+        (await _db.Cards.FindAsync(b1.Id))!.Position.Should().Be(b1PosBefore);
+        (await _db.Cards.FindAsync(b2.Id))!.Position.Should().Be(b2PosBefore);
+    }
+
+    [Fact]
     public async Task EditCard_UpdatesTitle()
     {
         // Arrange
@@ -697,5 +757,72 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
 
         // Assert
         card.Position.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AddCard_InvalidWorkspaceId_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var handler = new AddCardCommandHandler(_factory);
+
+        // Act
+        var act = () => handler.Handle(new AddCardCommand(Guid.NewGuid(), SystemLaneNames.ToDo, "X"), default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+    }
+
+    [Fact]
+    public async Task AddCard_Top_PositionsAreIsolatedByWorkspace()
+    {
+        // Arrange — two workspaces share the same lane name; a top-insert into workspace B
+        // must not shift the positions of workspace A's cards in that lane.
+        var (wsA, _) = await CreateWorkspaceWithLanesAsync();
+        var (wsB, _) = await CreateWorkspaceWithLanesAsync();
+        var add = new AddCardCommandHandler(_factory);
+        const string lane = SystemLaneNames.ToDo;
+
+        // After three top-inserts into workspace A, positions are A3=1, A2=2, A1=3
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A1"), default);
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A2"), default);
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A3"), default);
+
+        // Act
+        var bCard = await add.Handle(new AddCardCommand(wsB.Id, lane, "B1"), default);
+
+        // Assert — workspace A's positions are unchanged (1, 2, 3)
+        await using var verify = _factory.CreateDbContext();
+        var wsAPositions = await verify.Cards
+            .Where(c => c.WorkspaceId == wsA.Id && c.LaneName == lane)
+            .OrderBy(c => c.Position)
+            .Select(c => c.Position)
+            .ToListAsync();
+
+        bCard.Position.Should().Be(1, "workspace B's lane is empty so the new card lands at position 1");
+        wsAPositions.Should().Equal(new[] { 1, 2, 3 },
+            "adding a card to workspace B must not displace workspace A's card positions");
+    }
+
+    [Fact]
+    public async Task AddCard_Bottom_PositionIsIsolatedByWorkspace()
+    {
+        // Arrange — workspace A has cards (MaxPosition = 3 in its ToDo lane); workspace B is empty.
+        // A bottom-insert into workspace B must use only workspace B's cards when computing MaxPosition.
+        var (wsA, _) = await CreateWorkspaceWithLanesAsync();
+        var (wsB, _) = await CreateWorkspaceWithLanesAsync();
+        var add = new AddCardCommandHandler(_factory);
+        const string lane = SystemLaneNames.ToDo;
+
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A1"), default);
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A2"), default);
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A3"), default);
+
+        // Act
+        var bCard = await add.Handle(
+            new AddCardCommand(wsB.Id, lane, "B1", Position: CardInsertPosition.Bottom), default);
+
+        // Assert — (null ?? 0) + 1 = 1 because workspace B has no cards
+        bCard.Position.Should().Be(1,
+            "workspace B's ToDo lane is empty; bottom of an empty lane is position 1");
     }
 }

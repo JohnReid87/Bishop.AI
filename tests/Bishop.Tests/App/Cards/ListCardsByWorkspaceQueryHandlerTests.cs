@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.Tests.App.Cards;
 
+
 public sealed class ListCardsByWorkspaceQueryHandlerTests : IClassFixture<DbFixture>
 {
     private readonly IDbContextFactory<BishopDbContext> _factory;
@@ -216,5 +217,40 @@ public sealed class ListCardsByWorkspaceQueryHandlerTests : IClassFixture<DbFixt
 
         // Assert
         result.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Handle_NoLaneFilter_NonSystemLaneSortsAfterDone()
+    {
+        // Arrange — add a Done card via handler, then insert a card with a non-system lane name
+        // directly via DbContext (AddCardCommandHandler rejects non-system lane names).
+        // Position=0 on the custom card means it would sort BEFORE Done if both cards receive the
+        // same rank, which is exactly what happens when the Done-branch ternary is mutated to
+        // always return 3 or always return int.MaxValue instead of the correct rank.
+        var (wsId, _) = await CreateWorkspaceAsync();
+        await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(wsId, SystemLaneNames.Done, "done-card"), default);
+
+        await using var db = _factory.CreateDbContext();
+        db.Cards.Add(new Card
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = wsId,
+            LaneName = "CustomLane",
+            Title = "custom-lane-card",
+            Number = 9999,
+            Position = 0,
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new ListCardsByWorkspaceQueryHandler(_factory);
+
+        // Act
+        var result = await handler.Handle(new ListCardsByWorkspaceQuery(wsId), default);
+
+        // Assert — Done (rank 3) must appear before CustomLane (rank int.MaxValue).
+        result.Should().HaveCount(2);
+        result[0].LaneName.Should().Be(SystemLaneNames.Done);
+        result[1].LaneName.Should().Be("CustomLane");
     }
 }
