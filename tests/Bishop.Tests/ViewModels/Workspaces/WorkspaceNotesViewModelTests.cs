@@ -461,11 +461,16 @@ public class WorkspaceNotesViewModelTests
     }
 
     private static WorkspaceNotesViewModel NewVm(TimeProvider? timeProvider = null) =>
-        new(new FakeUiDispatcher(), timeProvider ?? new FakeTimeProvider());
+        new(new FakeUiDispatcher(), timeProvider ?? new FakeTimeProvider(), new PassThroughSafeAsyncRunner());
 
     private sealed class FakeUiDispatcher : IUiDispatcher
     {
         public void TryEnqueue(Action work) => work();
         public void TryEnqueue(Func<Task> work) => _ = work();
+    }
+
+    private sealed class PassThroughSafeAsyncRunner : ISafeAsyncRunner
+    {
+        public Task RunAsync(Func<Task> action) => action();
     }
 }

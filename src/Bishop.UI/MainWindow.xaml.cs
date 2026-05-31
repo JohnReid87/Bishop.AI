@@ -24,10 +24,13 @@ namespace Bishop.UI;
 
 public sealed partial class MainWindow : Window
 {
+    private readonly ISafeAsyncRunner _safeAsync;
+
     public MainWindowViewModel ViewModel { get; }
 
     public MainWindow(MainWindowViewModel viewModel)
     {
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         InitializeComponent();
         ViewModel = viewModel;
 
@@ -42,7 +45,7 @@ public sealed partial class MainWindow : Window
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
 
-        _ = SafeAsync.RunAsync(ViewModel.LoadAsync);
+        _ = _safeAsync.RunAsync(ViewModel.LoadAsync);
     }
 
     private void SetupTitleBar()
@@ -128,7 +131,7 @@ public sealed partial class MainWindow : Window
     }
 
     private async void WorkspacesDrop(object sender, DragEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_draggedWorkspace is null || sender is not ListView listView) return;
             var item = _draggedWorkspace;
@@ -167,13 +170,13 @@ public sealed partial class MainWindow : Window
     }
 
     private async void AddWorkspaceButton_Click(object sender, RoutedEventArgs e) =>
-        await SafeAsync.RunAsync(() => ShowAddWorkspaceDialogAsync());
+        await _safeAsync.RunAsync(() => ShowAddWorkspaceDialogAsync());
 
     private async void CreateWorkspaceCta_Click(object sender, RoutedEventArgs e) =>
-        await SafeAsync.RunAsync(() => ShowAddWorkspaceDialogAsync(pickExisting: false));
+        await _safeAsync.RunAsync(() => ShowAddWorkspaceDialogAsync(pickExisting: false));
 
     private async void OpenWorkspaceCta_Click(object sender, RoutedEventArgs e) =>
-        await SafeAsync.RunAsync(() => ShowAddWorkspaceDialogAsync(pickExisting: true));
+        await _safeAsync.RunAsync(() => ShowAddWorkspaceDialogAsync(pickExisting: true));
 
     private async Task ShowAddWorkspaceDialogAsync(bool? pickExisting = null)
     {
@@ -186,7 +189,7 @@ public sealed partial class MainWindow : Window
     }
 
     private async void RenameWorkspace_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
                 return;
@@ -218,7 +221,7 @@ public sealed partial class MainWindow : Window
 
 
     private async void RepathWorkspace_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
                 return;
@@ -233,7 +236,7 @@ public sealed partial class MainWindow : Window
         });
 
     private async void DeleteWorkspace_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if ((sender as FrameworkElement)?.DataContext is not WorkspaceItemViewModel item)
                 return;
@@ -268,7 +271,7 @@ public sealed partial class MainWindow : Window
     }
 
     private async void SettingsButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             var dialogService = App.Services.GetRequiredService<IDialogService>();
             await dialogService.ShowSettingsDialogAsync(Content.XamlRoot);

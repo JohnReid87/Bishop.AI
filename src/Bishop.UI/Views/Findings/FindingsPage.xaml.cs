@@ -11,6 +11,8 @@ namespace Bishop.UI.Views.Findings;
 
 public sealed partial class FindingsPage : Page
 {
+    private readonly ISafeAsyncRunner _safeAsync;
+
     public FindingsViewModel ViewModel { get; }
 
     private string _sortKey = "title";
@@ -19,6 +21,7 @@ public sealed partial class FindingsPage : Page
     public FindingsPage()
     {
         ViewModel = App.Services.GetRequiredService<FindingsViewModel>();
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         InitializeComponent();
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
     }
@@ -28,7 +31,7 @@ public sealed partial class FindingsPage : Page
         base.OnNavigatedTo(e);
         if (e.Parameter is Bishop.ViewModels.Findings.FindingsPageNavArgs args)
         {
-            _ = SafeAsync.RunAsync(async () =>
+            _ = _safeAsync.RunAsync(async () =>
             {
                 await ViewModel.LoadAsync(
                     args.WorkspaceId,
@@ -93,21 +96,21 @@ public sealed partial class FindingsPage : Page
     }
 
     private async void ConvertToCard_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (sender is not FrameworkElement fe || fe.DataContext is not FindingItemViewModel item) return;
             await item.ConvertToCardCommand.ExecuteAsync(XamlRoot);
         });
 
     private async void OpenLinkedCard_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (sender is not FrameworkElement fe || fe.DataContext is not FindingItemViewModel item) return;
             await item.OpenLinkedCardCommand.ExecuteAsync(XamlRoot);
         });
 
     private async void Dismiss_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (sender is not Button button || button.Tag is not FindingItemViewModel item) return;
 

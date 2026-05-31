@@ -7,13 +7,15 @@ internal sealed class DbChangeWatcher : IDisposable
 {
     private readonly FileSystemWatcher _watcher;
     private readonly ILogger<DbChangeWatcher> _logger;
+    private readonly ISafeAsyncRunner _safeAsync;
     private CancellationTokenSource? _debounceCts;
 
     public event EventHandler? DatabaseChanged;
 
-    public DbChangeWatcher(string dbPath, ILogger<DbChangeWatcher> logger)
+    public DbChangeWatcher(string dbPath, ILogger<DbChangeWatcher> logger, ISafeAsyncRunner safeAsync)
     {
         _logger = logger;
+        _safeAsync = safeAsync;
         var dir = Path.GetDirectoryName(dbPath)!;
         var fileName = Path.GetFileName(dbPath);
 
@@ -32,7 +34,7 @@ internal sealed class DbChangeWatcher : IDisposable
         _debounceCts?.Cancel();
         _debounceCts = new CancellationTokenSource();
         var token = _debounceCts.Token;
-        _ = SafeAsync.RunAsync(() => FireAfterDebounceAsync(token));
+        _ = _safeAsync.RunAsync(() => FireAfterDebounceAsync(token));
     }
 
     private async Task FireAfterDebounceAsync(CancellationToken ct)

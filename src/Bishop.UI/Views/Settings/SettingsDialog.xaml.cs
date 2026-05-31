@@ -3,6 +3,7 @@ using Bishop.UI.Views.Skills;
 using Bishop.ViewModels.Settings;
 using Bishop.ViewModels.Shared;
 using Bishop.ViewModels.Skills;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
@@ -11,13 +12,16 @@ namespace Bishop.UI.Views.Settings;
 
 public sealed partial class SettingsDialog : ContentDialog
 {
+    private readonly ISafeAsyncRunner _safeAsync;
+
     public SettingsDialogViewModel ViewModel { get; }
 
     public SettingsDialog(SettingsDialogViewModel vm)
     {
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         ViewModel = vm;
         InitializeComponent();
-        Loaded += (_, _) => SafeAsync.RunAsync(LoadSkillsAsync);
+        Loaded += (_, _) => _safeAsync.RunAsync(LoadSkillsAsync);
     }
 
     private async Task LoadSkillsAsync()

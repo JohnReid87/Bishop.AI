@@ -1,15 +1,19 @@
 using Bishop.ViewModels.GitHub;
 using Bishop.ViewModels.Shared;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Bishop.UI.Views.GitHub;
 
 public sealed partial class PushLaneToGitHubDialog : ContentDialog
 {
+    private readonly ISafeAsyncRunner _safeAsync;
+
     public PushLaneToGitHubDialogViewModel ViewModel { get; }
 
     public PushLaneToGitHubDialog(PushLaneToGitHubDialogViewModel vm)
     {
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         ViewModel = vm;
         InitializeComponent();
         IsPrimaryButtonEnabled = ViewModel.HasWillPush;
@@ -17,7 +21,7 @@ public sealed partial class PushLaneToGitHubDialog : ContentDialog
     }
 
     private async void OnPushClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             var deferral = args.GetDeferral();
             args.Cancel = true;

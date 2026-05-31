@@ -31,6 +31,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private readonly IDialogService _dialogService;
     private readonly ILogger<WorkspaceDetailPage> _logger;
     private readonly TimeProvider _timeProvider;
+    private readonly ISafeAsyncRunner _safeAsync;
     private WorkspaceItemViewModel? _item;
     private CardViewModel? _draggedCard;
     private LaneViewModel? _dragSourceLane;
@@ -58,6 +59,7 @@ public sealed partial class WorkspaceDetailPage : Page
         _dialogService = App.Services.GetRequiredService<IDialogService>();
         _logger = App.Services.GetRequiredService<ILogger<WorkspaceDetailPage>>();
         _timeProvider = App.Services.GetRequiredService<TimeProvider>();
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         InitializeComponent();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
@@ -99,7 +101,7 @@ public sealed partial class WorkspaceDetailPage : Page
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
         // Notes is Transient + IDisposable; flush pending edits then release the FileSystemWatcher.
-        _ = SafeAsync.RunAsync(Notes.FlushAsync);
+        _ = _safeAsync.RunAsync(Notes.FlushAsync);
         Notes.Dispose();
     }
 
@@ -119,7 +121,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private void OnDatabaseChanged(object? sender, EventArgs e)
     {
-        DispatcherQueue.TryEnqueue(async () => await SafeAsync.RunAsync(async () =>
+        DispatcherQueue.TryEnqueue(async () => await _safeAsync.RunAsync(async () =>
         {
             await Task.WhenAll(
                 Board.RefreshCommand.ExecuteAsync(null),
@@ -131,7 +133,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private void OnWindowActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == Microsoft.UI.Xaml.WindowActivationState.Deactivated) return;
-        DispatcherQueue.TryEnqueue(async () => await SafeAsync.RunAsync(async () =>
+        DispatcherQueue.TryEnqueue(async () => await _safeAsync.RunAsync(async () =>
         {
             await Task.WhenAll(
                 Board.RefreshCommand.ExecuteAsync(null),
@@ -152,7 +154,7 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void UpdateView(WorkspaceItemViewModel vm)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             WorkspaceNameText.Text = vm.Name;
             WorkspacePathText.Text = vm.Path;
@@ -162,10 +164,10 @@ public sealed partial class WorkspaceDetailPage : Page
             ApplyGitHubRepoToBacklogLane();
             ApplyGitHubRepoToDoneLane();
             await LoadSkillsAsync();
-            _ = SafeAsync.RunAsync(() => Board.LoadAsync(vm.Id));
-            _ = SafeAsync.RunAsync(() => Notes.LoadAsync(vm.Id, vm.Path));
-            _ = SafeAsync.RunAsync(() => Monitoring.LoadAsync(vm.Id, vm.Path, vm.GitHubRepo));
-            _ = SafeAsync.RunAsync(() => Batches.LoadAsync(vm.Id, vm.Path));
+            _ = _safeAsync.RunAsync(() => Board.LoadAsync(vm.Id));
+            _ = _safeAsync.RunAsync(() => Notes.LoadAsync(vm.Id, vm.Path));
+            _ = _safeAsync.RunAsync(() => Monitoring.LoadAsync(vm.Id, vm.Path, vm.GitHubRepo));
+            _ = _safeAsync.RunAsync(() => Batches.LoadAsync(vm.Id, vm.Path));
         });
 
     private async Task LoadSkillsAsync()
@@ -194,7 +196,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private void InfoBar_Closed(InfoBar sender, InfoBarClosedEventArgs args) => UpdateNotificationPanel();
 
     private async void ClaudeButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
             var launchedWithTerminal = await Board.LaunchClaudeAsync(_item.Path, SnapHelper.ComputeSnap());
@@ -203,14 +205,14 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void TerminalButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
             await Board.LaunchTerminalAsync(_item.Path, SnapHelper.ComputeSnap());
         });
 
     private async void WorkspaceSkillsButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null || Board.WorkspaceSkills.Length == 0) return;
 
@@ -244,7 +246,7 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void CommitsButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
         if (_item is null) return;
         var workspacePath = _item.Path;
@@ -279,7 +281,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 RenderCommitsInto(commitsContainer, flyout, commits, upstreamRef, gitHubRepo);
                 var needsSetUpstream = UpdatePushButton(pushButton, upstreamRef, upstreamIsTracked, unpushedCount);
 
-                pushButton.Click += (_, _) => SafeAsync.RunAsync(async () =>
+                pushButton.Click += (_, _) => _safeAsync.RunAsync(async () =>
                 {
                     errorBlock.Visibility = Visibility.Collapsed;
                     var previousContent = pushButton.Content;
@@ -467,7 +469,7 @@ public sealed partial class WorkspaceDetailPage : Page
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(4, 4, 4, 4),
         };
-        btn.Click += (_, _) => SafeAsync.RunAsync(onClick);
+        btn.Click += (_, _) => _safeAsync.RunAsync(onClick);
 
         var tooltipText = string.IsNullOrEmpty(commit.Body) ? commit.Subject : $"{commit.Subject}\n\n{commit.Body}";
         if (commit.IsPushed && upstreamRef is not null)
@@ -488,7 +490,7 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void CardTitle_Tapped(object sender, TappedRoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (GetCardFromSender(sender) is not CardViewModel card) return;
 
@@ -507,7 +509,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private void OnStagingTrayCardsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
         if (Board.StagingTray.Cards.Count > 0 && string.IsNullOrEmpty(Board.StagingTray.BaseBranch) && _item is not null)
-            _ = SafeAsync.RunAsync(async () =>
+            _ = _safeAsync.RunAsync(async () =>
             {
                 var branch = await Board.GetCurrentBranchAsync(_item.Path);
                 Board.StagingTray.BaseBranch = branch;
@@ -518,7 +520,7 @@ public sealed partial class WorkspaceDetailPage : Page
         => Board.ClearSelection();
 
     private async void StagingTrayCreate_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
             var tray = Board.StagingTray;
@@ -555,7 +557,7 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void CardSkillsButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null || Board.CardSkills.Length == 0) return;
             if (GetCardFromSender(sender) is not CardViewModel card) return;
@@ -590,7 +592,7 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void CardCloseButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (GetCardFromSender(sender) is not CardViewModel card) return;
 
@@ -623,14 +625,14 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void CardTagChip_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (GetCardFromSender(sender) is not CardViewModel card) return;
             await OpenCardTagPickerAsync((FrameworkElement)sender, card, card.TagName);
         });
 
     private async void CardAddTagButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (GetCardFromSender(sender) is not CardViewModel card) return;
             await OpenCardTagPickerAsync((FrameworkElement)sender, card, null);
@@ -678,7 +680,7 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void RunNowSkillButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
             if ((sender as FrameworkElement)?.DataContext is not SkillRunRowViewModel row) return;
@@ -716,14 +718,14 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void BatchPause_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
             await Batches.RequestStopAsync(batch.Id);
         });
 
     private async void BatchMerge_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
             if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
@@ -766,7 +768,7 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void BatchCleanUp_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
             if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
@@ -782,7 +784,7 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void BatchAbandon_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
             if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
@@ -798,7 +800,7 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void BatchRemove_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
             if (GetBatchFromSender(sender) is not BatchItemViewModel batch) return;
@@ -813,7 +815,7 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void ClearClosedBatches_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
             var closed = Batches.Batches.Where(b => b.CanRemove).ToList();
@@ -865,7 +867,7 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void BatchNameTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (sender is not TextBox textBox) return;
             if (textBox.DataContext is not BatchItemViewModel batch) return;
@@ -882,7 +884,7 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void BatchNameTextBox_LostFocus(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (sender is not TextBox textBox) return;
             if (textBox.DataContext is not BatchItemViewModel batch) return;
@@ -903,7 +905,7 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
 
@@ -1031,7 +1033,7 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void Cards_Drop(object sender, DragEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_draggedCard is null || _dragSourceLane is null) return;
             var targetLane = (sender as FrameworkElement)?.DataContext as LaneViewModel;
@@ -1100,7 +1102,7 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void ImportFromGitHub_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item?.GitHubRepo is not { } repo) return;
             var vm = await _dialogService.ShowImportFromGitHubDialogAsync(_item.Id, repo, XamlRoot);
@@ -1109,7 +1111,7 @@ public sealed partial class WorkspaceDetailPage : Page
         });
 
     private async void PushToGitHub_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (_item?.GitHubRepo is null) return;
             var doneLane = Board.Lanes.FirstOrDefault(l => l.IsDoneLane);
@@ -1176,7 +1178,7 @@ public sealed partial class WorkspaceDetailPage : Page
         if (e.Key == VirtualKey.Enter)
         {
             e.Handled = true;
-            _ = SafeAsync.RunAsync(() => lane.ConfirmAddCardCommand.ExecuteAsync(null));
+            _ = _safeAsync.RunAsync(() => lane.ConfirmAddCardCommand.ExecuteAsync(null));
         }
         else if (e.Key == VirtualKey.Escape)
         {
@@ -1186,7 +1188,7 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private async void NotesTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (e.Key != VirtualKey.S) return;
             var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);

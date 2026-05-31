@@ -810,6 +810,7 @@ public class MainWindowViewModelTests
         IWorkspaceChangeNotifier? notifier = null,
         IUiDispatcher? dispatcher = null,
         IErrorBus? errorBus = null,
+        ISafeAsyncRunner? safeAsync = null,
         string? navPrefsFilePath = null) =>
         new(
             mediator ?? Substitute.For<IMediator>(),
@@ -817,5 +818,6 @@ public class MainWindowViewModelTests
             notifier ?? Substitute.For<IWorkspaceChangeNotifier>(),
             dispatcher ?? Substitute.For<IUiDispatcher>(),
             errorBus ?? Substitute.For<IErrorBus>(),
+            safeAsync ?? Substitute.For<ISafeAsyncRunner>(),
             navPrefsFilePath ?? Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json"));
 }

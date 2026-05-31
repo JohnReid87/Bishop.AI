@@ -9,22 +9,25 @@ namespace Bishop.UI.Views.Scripts;
 
 public sealed partial class ScriptsPage : Page
 {
+    private readonly ISafeAsyncRunner _safeAsync;
+
     public ScriptsPageViewModel ViewModel { get; }
 
     public ScriptsPage()
     {
         ViewModel = App.Services.GetRequiredService<ScriptsPageViewModel>();
+        _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         InitializeComponent();
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        _ = SafeAsync.RunAsync(ViewModel.LoadScriptsAsync);
+        _ = _safeAsync.RunAsync(ViewModel.LoadScriptsAsync);
     }
 
     private async void RunButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if ((sender as FrameworkElement)?.DataContext is not ScriptItemViewModel item)
                 return;
@@ -32,7 +35,7 @@ public sealed partial class ScriptsPage : Page
         });
 
     private async void DeleteButton_Click(object sender, RoutedEventArgs e)
-        => await SafeAsync.RunAsync(async () =>
+        => await _safeAsync.RunAsync(async () =>
         {
             if (sender is not FrameworkElement element || element.DataContext is not ScriptItemViewModel item)
                 return;

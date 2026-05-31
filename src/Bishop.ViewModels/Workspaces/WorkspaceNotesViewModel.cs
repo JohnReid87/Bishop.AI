@@ -13,6 +13,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
 {
     private readonly IUiDispatcher _uiDispatcher;
     private readonly TimeProvider _timeProvider;
+    private readonly ISafeAsyncRunner _safeAsync;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
     private string _lastSavedContent = string.Empty;
@@ -47,17 +48,18 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
 
     public string ChevronGlyph => IsExpanded ? "" : "";
 
-    public WorkspaceNotesViewModel(IUiDispatcher uiDispatcher, TimeProvider timeProvider)
+    public WorkspaceNotesViewModel(IUiDispatcher uiDispatcher, TimeProvider timeProvider, ISafeAsyncRunner safeAsync)
     {
         _uiDispatcher = uiDispatcher;
         _timeProvider = timeProvider;
+        _safeAsync = safeAsync;
     }
 
     partial void OnIsExpandedChanged(bool value)
     {
         OnPropertyChanged(nameof(ChevronGlyph));
         if (!_isLoadingPrefs && _workspaceId != Guid.Empty)
-            _ = SafeAsync.RunAsync(SavePrefsAsync);
+            _ = _safeAsync.RunAsync(SavePrefsAsync);
     }
 
     partial void OnNotesContentChanged(string value)
@@ -69,7 +71,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         _debounceCts?.Cancel();
         _debounceCts = new CancellationTokenSource();
         var token = _debounceCts.Token;
-        _ = SafeAsync.RunAsync(() => DebounceAndSaveAsync(token));
+        _ = _safeAsync.RunAsync(() => DebounceAndSaveAsync(token));
     }
 
     private async Task DebounceAndSaveAsync(CancellationToken ct)

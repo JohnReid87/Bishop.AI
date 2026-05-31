@@ -48,8 +48,6 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        SafeAsync.OnException = LogExceptionToFile;
-
         var connStr = GetConnectionString();
         var dbPath = connStr["Data Source=".Length..];
         var dispatcherQueue = DispatcherQueue.GetForCurrentThread();
@@ -58,9 +56,19 @@ public partial class App : Application
             .ConfigureServices(services =>
             {
                 services.AddBishopApp(connStr);
-                services.AddSingleton(sp => new DbChangeWatcher(dbPath, sp.GetRequiredService<ILogger<DbChangeWatcher>>()));
+                services.AddSingleton(sp => new DbChangeWatcher(
+                    dbPath,
+                    sp.GetRequiredService<ILogger<DbChangeWatcher>>(),
+                    sp.GetRequiredService<ISafeAsyncRunner>()));
                 services.AddSingleton<IUiDispatcher>(_ => new WinUiDispatcher(dispatcherQueue));
                 services.AddSingleton<IErrorBus, ErrorBus>();
+                services.AddSingleton<ISafeAsyncRunner>(sp => new SafeAsyncRunner(
+                    sp.GetRequiredService<ILogger<SafeAsyncRunner>>(),
+                    onException: ex =>
+                    {
+                        LogExceptionToFile(ex);
+                        sp.GetRequiredService<IErrorBus>().Report(ex);
+                    }));
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<ICardDetailDialogService, CardDetailDialogService>();
                 services.AddSingleton<ISkillTagMap, SkillTagMap>();
@@ -81,7 +89,6 @@ public partial class App : Application
         _host.Start();
         Services = _host.Services;
         _timeProvider = Services.GetRequiredService<TimeProvider>();
-        SafeAsync.Logger = Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(SafeAsync));
 
         var errorBus = Services.GetRequiredService<IErrorBus>();
         errorBus.ShowDetailsHandler = ex =>
@@ -89,11 +96,6 @@ public partial class App : Application
             var root = MainWindow?.Content?.XamlRoot;
             if (root is not null)
                 _ = ErrorDialog.ShowAsync(root, ex);
-        };
-        SafeAsync.OnException = ex =>
-        {
-            LogExceptionToFile(ex);
-            errorBus.Report(ex);
         };
 
         UnhandledException += OnAppUnhandledException;
@@ -109,19 +111,17 @@ public partial class App : Application
 
     // async void event handler — required by the UnhandledException signature.
     // Exception flow: any throw inside HandleUnhandledExceptionAsync is caught by
-    // SafeAsync.RunAsync, logged via SafeAsync.Logger, and routed through
-    // SafeAsync.OnException (wired in OnLaunched). Anything that escapes RunAsync
-    // would terminate the process, so the helper must never throw synchronously
-    // before the inner try.
+    // ISafeAsyncRunner.RunAsync, logged via its injected ILogger, and routed
+    // through the onException callback wired in OnLaunched. Anything that
+    // escapes RunAsync would terminate the process, so the helper must never
+    // throw synchronously before the inner try.
     private static async void OnAppUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
-        Debug.Assert(SafeAsync.OnException is not null,
-            "SafeAsync.OnException must be wired before UnhandledException can fire.");
         await HandleUnhandledExceptionAsync(e);
     }
 
     private static Task HandleUnhandledExceptionAsync(Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
-        => SafeAsync.RunAsync(async () =>
+        => Services.GetRequiredService<ISafeAsyncRunner>().RunAsync(async () =>
         {
             e.Handled = true;
             var ex = e.Exception;
