@@ -3,6 +3,7 @@ using Bishop.UI.Services;
 using Bishop.UI.Views.Shared;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
+using Bishop.ViewModels.Findings;
 using Bishop.ViewModels.Scripts;
 using Bishop.ViewModels.Settings;
 using Bishop.ViewModels.Shared;
@@ -63,8 +64,8 @@ public partial class App : Application
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<ICardDetailDialogService, CardDetailDialogService>();
                 services.AddSingleton<ISkillTagMap, SkillTagMap>();
-                services.AddTransient<ReportViewerWindowViewModel>();
                 services.AddTransient<SettingsDialogViewModel>();
+                services.AddTransient<FindingsViewModel>();
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<WorkspaceBoardViewModel>();
                 // Transient + IDisposable: WorkspaceDetailPage.OnNavigatedFrom owns disposal.
@@ -103,7 +104,7 @@ public partial class App : Application
         MainWindow.Activate();
 
         MarkdownViewer = new MarkdownViewerWindow();
-        ReportViewer = new ReportViewerWindow(_host.Services.GetRequiredService<ReportViewerWindowViewModel>());
+        ReportViewer = new ReportViewerWindow();
     }
 
     // async void event handler — required by the UnhandledException signature.

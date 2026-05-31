@@ -1,4 +1,5 @@
 using Bishop.App.Skills;
+using Bishop.ViewModels.Findings;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.IO;
@@ -19,6 +20,16 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     public int? FindingsCount { get; }
     public bool FindingsBadgeIsVisible => FindingsCount.HasValue;
 
+    public Guid WorkspaceId { get; }
+    public string WorkspacePath { get; }
+    public string? GitHubRepo { get; }
+
+    public bool CanViewFindings =>
+        FindingsCount is > 0
+        && !SkillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase);
+
+    public event Action<FindingsPageNavArgs>? ViewFindingsRequested;
+
     [ObservableProperty]
     private string _selectedModelId = ClaudeModels.Sonnet46;
 
@@ -36,11 +47,32 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         SelectedModelLabel = $"{label} ▾";
     }
 
-    public SkillRunRowViewModel(string skillName, DateTimeOffset? lastRun, int? commitsSince, bool shaUnreachable, string workspacePath = "", int? findingsCount = null, TimeProvider? timeProvider = null, string? projectName = null)
+    [RelayCommand]
+    private void ViewFindings()
+    {
+        if (!CanViewFindings) return;
+        ViewFindingsRequested?.Invoke(new FindingsPageNavArgs(
+            WorkspaceId, WorkspacePath, GitHubRepo, SkillName, ProjectName));
+    }
+
+    public SkillRunRowViewModel(
+        string skillName,
+        DateTimeOffset? lastRun,
+        int? commitsSince,
+        bool shaUnreachable,
+        string workspacePath = "",
+        int? findingsCount = null,
+        TimeProvider? timeProvider = null,
+        string? projectName = null,
+        Guid workspaceId = default,
+        string? gitHubRepo = null)
     {
         SkillName = skillName;
         ProjectName = projectName;
-        ReportFilePath = ResolveReportFilePath(skillName, projectName, workspacePath);
+        WorkspaceId = workspaceId;
+        WorkspacePath = workspacePath;
+        GitHubRepo = gitHubRepo;
+        ReportFilePath = ResolveReportFilePath(skillName, workspacePath);
         FindingsCount = findingsCount;
         LastRunText = lastRun is null ? "Never" : FormatRelativeTime(lastRun.Value, timeProvider ?? TimeProvider.System);
 
@@ -68,19 +100,13 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         }
     }
 
-    private static string? ResolveReportFilePath(string skillName, string? projectName, string workspacePath)
+    private static string? ResolveReportFilePath(string skillName, string workspacePath)
     {
         if (string.IsNullOrEmpty(workspacePath))
             return null;
-
         if (skillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase))
             return Path.Combine(workspacePath, "TestResults", "coverage-report", "index.html");
-
-        var fileName = string.IsNullOrEmpty(projectName)
-            ? $"{skillName}.html"
-            : $"{skillName}__{projectName}.html";
-        var findingsPath = Path.Combine(workspacePath, ".bishop", "findings", fileName);
-        return File.Exists(findingsPath) ? findingsPath : null;
+        return null;
     }
 
     private static string FormatRelativeTime(DateTimeOffset timestamp, TimeProvider timeProvider)

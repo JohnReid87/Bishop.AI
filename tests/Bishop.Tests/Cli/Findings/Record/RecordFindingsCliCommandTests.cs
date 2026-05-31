@@ -30,7 +30,7 @@ public sealed class RecordFindingsCliCommandTests
     public async Task InvokeAsync_WithFileOption_ExitsZeroAndSendsRecordFindingsCommand()
     {
         var ws = DefaultWorkspace();
-        var result = new RecordFindingsResult(@".bishop\findings\f.html", 2);
+        var result = new RecordFindingsResult(2);
         var (mediator, cmd) = Build(ws, result);
         var json = """[{"x":1}]""";
         var tempFile = Path.GetTempFileName();
@@ -56,7 +56,6 @@ public sealed class RecordFindingsCliCommandTests
                     c.GitSha == "abc1234"),
                 Arg.Any<CancellationToken>());
             output.ToString().Should().Contain("Recorded 2 findings for 'bish-arch'");
-            output.ToString().Should().Contain("html:");
         }
         finally
         {
@@ -68,7 +67,7 @@ public sealed class RecordFindingsCliCommandTests
     public async Task InvokeAsync_WithProjectOption_InjectsProjectNameIntoPayload()
     {
         var ws = DefaultWorkspace();
-        var result = new RecordFindingsResult(@".bishop\findings\f.html", 0);
+        var result = new RecordFindingsResult(0);
         var (mediator, cmd) = Build(ws, result);
         var json = """{"findings":[]}""";
         var tempFile = Path.GetTempFileName();
@@ -105,7 +104,7 @@ public sealed class RecordFindingsCliCommandTests
     public async Task InvokeAsync_WithProjectOption_OverridesPayloadProjectName()
     {
         var ws = DefaultWorkspace();
-        var result = new RecordFindingsResult(@".bishop\findings\f.html", 0);
+        var result = new RecordFindingsResult(0);
         var (mediator, cmd) = Build(ws, result);
         var json = """{"projectName":"Bishop.UI","findings":[]}""";
         var tempFile = Path.GetTempFileName();
@@ -140,7 +139,7 @@ public sealed class RecordFindingsCliCommandTests
     public async Task InvokeAsync_WithStdinOption_ExitsZeroAndSendsRecordFindingsCommand()
     {
         var ws = DefaultWorkspace();
-        var result = new RecordFindingsResult(@".bishop\findings\f.html", 1);
+        var result = new RecordFindingsResult(1);
         var (mediator, cmd) = Build(ws, result);
         var json = """[{"x":1}]""";
 

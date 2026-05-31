@@ -2,6 +2,7 @@ using Bishop.App.Git;
 using Bishop.App.Skills;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
+using Bishop.ViewModels.Findings;
 using Bishop.ViewModels.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -26,6 +27,9 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     private readonly TimeProvider _timeProvider;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
+    private string? _gitHubRepo;
+
+    public event Action<FindingsPageNavArgs>? ViewFindingsRequested;
 
     public ObservableCollection<SkillRunRowViewModel> Rows { get; } = [];
 
@@ -64,10 +68,11 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         _timeProvider = timeProvider;
     }
 
-    public async Task LoadAsync(Guid workspaceId, string workspacePath)
+    public async Task LoadAsync(Guid workspaceId, string workspacePath, string? gitHubRepo = null)
     {
         _workspaceId = workspaceId;
         _workspacePath = workspacePath;
+        _gitHubRepo = gitHubRepo;
         await RefreshAsync();
     }
 
@@ -121,7 +126,18 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             ? SkillModelOptions.ResolveModelId(skill?.FirstRunModel)
             : SkillModelOptions.ResolveModelId(skill?.ReRunModel);
 
-        var row = new SkillRunRowViewModel(skillName, run?.RecordedAt, commitsSince, shaUnreachable, _workspacePath, run?.FindingsCount, _timeProvider, run?.ProjectName);
+        var row = new SkillRunRowViewModel(
+            skillName,
+            run?.RecordedAt,
+            commitsSince,
+            shaUnreachable,
+            _workspacePath,
+            run?.FindingsCount,
+            _timeProvider,
+            run?.ProjectName,
+            _workspaceId,
+            _gitHubRepo);
+        row.ViewFindingsRequested += args => ViewFindingsRequested?.Invoke(args);
         row.SelectModelCommand.Execute(defaultModelId);
         row.ModelSelectionReason = isFirstRun ? "(first run)" : "(re-run default)";
         return row;

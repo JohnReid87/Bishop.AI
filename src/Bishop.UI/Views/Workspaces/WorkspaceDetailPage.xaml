@@ -775,6 +775,12 @@
                                                            FontSize="11"
                                                            VerticalAlignment="Center"
                                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                                <Button Content="View findings"
+                                                        Padding="8,4"
+                                                        FontSize="12"
+                                                        Command="{x:Bind ViewFindingsCommand}"
+                                                        Visibility="{x:Bind CanViewFindings, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                        VerticalAlignment="Center"/>
                                                 <Button Content="Run now"
                                                         Padding="8,4"
                                                         FontSize="12"

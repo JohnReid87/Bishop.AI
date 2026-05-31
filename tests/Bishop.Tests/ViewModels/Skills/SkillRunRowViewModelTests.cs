@@ -166,36 +166,11 @@ public class SkillRunRowViewModelTests
     [InlineData("bish-tests")]
     [InlineData("bish-security")]
     [InlineData("bish-audit-docs")]
-    public void NonCoverageSkill_NoFindingsFile_ReportFilePath_IsNull(string skillName)
+    public void NonCoverageSkill_ReportFilePath_IsAlwaysNull(string skillName)
     {
         var row = new SkillRunRowViewModel(skillName, null, null, false, @"C:\myrepo");
 
         row.ReportFilePath.Should().BeNull();
-    }
-
-    [Theory]
-    [InlineData("bish-arch")]
-    [InlineData("bish-tests")]
-    [InlineData("bish-security")]
-    [InlineData("bish-audit-docs")]
-    public void NonCoverageSkill_WithFindingsFile_ReportFilePath_PointsAtIt(string skillName)
-    {
-        var workspace = Path.Combine(Path.GetTempPath(), "bishop-tests-" + Guid.NewGuid().ToString("N"));
-        var findingsDir = Path.Combine(workspace, ".bishop", "findings");
-        Directory.CreateDirectory(findingsDir);
-        var findingsFile = Path.Combine(findingsDir, $"{skillName}.html");
-        File.WriteAllText(findingsFile, "<html></html>");
-
-        try
-        {
-            var row = new SkillRunRowViewModel(skillName, null, null, false, workspace);
-
-            row.ReportFilePath.Should().Be(findingsFile);
-        }
-        finally
-        {
-            Directory.Delete(workspace, recursive: true);
-        }
     }
 
     [Fact]
@@ -225,24 +200,52 @@ public class SkillRunRowViewModelTests
     }
 
     [Fact]
-    public void NonCoverageSkill_WithProjectName_ReportFilePath_UsesDoubleUnderscoreFilename()
+    public void CanViewFindings_NonCoverageWithPositiveCount_IsTrue()
     {
-        var workspace = Path.Combine(Path.GetTempPath(), "bishop-tests-" + Guid.NewGuid().ToString("N"));
-        var findingsDir = Path.Combine(workspace, ".bishop", "findings");
-        Directory.CreateDirectory(findingsDir);
-        var findingsFile = Path.Combine(findingsDir, "bish-tests__Bishop.App.Tests.html");
-        File.WriteAllText(findingsFile, "<html></html>");
+        var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow, 0, false, findingsCount: 3);
 
-        try
-        {
-            var row = new SkillRunRowViewModel("bish-tests", null, null, false, workspace, projectName: "Bishop.App.Tests");
+        row.CanViewFindings.Should().BeTrue();
+    }
 
-            row.ReportFilePath.Should().Be(findingsFile);
-        }
-        finally
-        {
-            Directory.Delete(workspace, recursive: true);
-        }
+    [Fact]
+    public void CanViewFindings_BishCoverage_IsFalse()
+    {
+        var row = new SkillRunRowViewModel("bish-coverage", DateTimeOffset.UtcNow, 0, false, findingsCount: 3);
+
+        row.CanViewFindings.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CanViewFindings_ZeroFindings_IsFalse()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow, 0, false, findingsCount: 0);
+
+        row.CanViewFindings.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ViewFindings_RaisesEventWithNavArgs()
+    {
+        var wsId = Guid.NewGuid();
+        var row = new SkillRunRowViewModel(
+            "bish-tests", DateTimeOffset.UtcNow, 0, false,
+            workspacePath: @"C:\repo",
+            findingsCount: 2,
+            projectName: "Bishop.App",
+            workspaceId: wsId,
+            gitHubRepo: "owner/repo");
+
+        Bishop.ViewModels.Findings.FindingsPageNavArgs? captured = null;
+        row.ViewFindingsRequested += a => captured = a;
+
+        row.ViewFindingsCommand.Execute(null);
+
+        captured.Should().NotBeNull();
+        captured!.WorkspaceId.Should().Be(wsId);
+        captured.WorkspacePath.Should().Be(@"C:\repo");
+        captured.GitHubRepo.Should().Be("owner/repo");
+        captured.SkillName.Should().Be("bish-tests");
+        captured.ProjectName.Should().Be("Bishop.App");
     }
 
     [Fact]

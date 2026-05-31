@@ -63,7 +63,11 @@ public sealed partial class WorkspaceDetailPage : Page
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
         Board.StagingTray.Cards.CollectionChanged += OnStagingTrayCardsChanged;
         Monitoring.PropertyChanged += OnMonitoringPropertyChanged;
+        Monitoring.ViewFindingsRequested += OnViewFindingsRequested;
     }
+
+    private void OnViewFindingsRequested(Bishop.ViewModels.Findings.FindingsPageNavArgs args)
+        => Frame?.Navigate(typeof(Bishop.UI.Views.Findings.FindingsPage), args);
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
@@ -157,7 +161,7 @@ public sealed partial class WorkspaceDetailPage : Page
             await LoadSkillsAsync();
             _ = SafeAsync.RunAsync(() => Board.LoadAsync(vm.Id));
             _ = SafeAsync.RunAsync(() => Notes.LoadAsync(vm.Id, vm.Path));
-            _ = SafeAsync.RunAsync(() => Monitoring.LoadAsync(vm.Id, vm.Path));
+            _ = SafeAsync.RunAsync(() => Monitoring.LoadAsync(vm.Id, vm.Path, vm.GitHubRepo));
             _ = SafeAsync.RunAsync(() => Batches.LoadAsync(vm.Id, vm.Path));
         });
 

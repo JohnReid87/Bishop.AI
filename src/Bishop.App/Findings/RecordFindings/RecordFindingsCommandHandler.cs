@@ -87,8 +87,7 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
 
         await db.SaveChangesAsync(cancellationToken);
 
-        var htmlPath = await WriteCompatHtmlAsync(request, document, recordedAt, cancellationToken);
-        return new RecordFindingsResult(htmlPath, document.Findings.Count);
+        return new RecordFindingsResult(document.Findings.Count);
     }
 
     private static async Task ImportLegacyJsonIfPresentAsync(
@@ -156,22 +155,4 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
         File.Delete(legacyJsonPath);
     }
 
-    private static async Task<string> WriteCompatHtmlAsync(
-        RecordFindingsCommand request,
-        FindingsDocument document,
-        DateTimeOffset recordedAt,
-        CancellationToken cancellationToken)
-    {
-        var findingsDir = Path.Combine(request.WorkspacePath, ".bishop", "findings");
-        Directory.CreateDirectory(findingsDir);
-
-        var htmlFileName = string.IsNullOrEmpty(document.ProjectName)
-            ? $"{request.SkillName}.html"
-            : $"{request.SkillName}__{document.ProjectName}.html";
-        var htmlPath = Path.Combine(findingsDir, htmlFileName);
-
-        var html = FindingsHtmlRenderer.Render(request.SkillName, document, recordedAt, request.GitSha);
-        await File.WriteAllTextAsync(htmlPath, html, cancellationToken);
-        return htmlPath;
-    }
 }

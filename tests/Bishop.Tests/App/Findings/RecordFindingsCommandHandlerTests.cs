@@ -57,7 +57,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
         """;
 
     [Fact]
-    public async Task Handle_HappyPath_WritesHtmlAndPersistsFindings()
+    public async Task Handle_HappyPath_PersistsFindings()
     {
         var ws = await CreateWorkspaceAsync();
         var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
@@ -67,8 +67,6 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             default);
 
         result.FindingCount.Should().Be(2);
-        File.Exists(result.HtmlPath).Should().BeTrue();
-        result.HtmlPath.Should().Be(Path.Combine(ws.Path, ".bishop", "findings", "bish-dead-code.html"));
 
         var run = await _db.WorkspaceSkillRuns.AsNoTracking()
             .SingleAsync(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-dead-code");
@@ -87,25 +85,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task Handle_HtmlContainsFindingTitles()
-    {
-        var ws = await CreateWorkspaceAsync();
-        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
-
-        var result = await sut.Handle(
-            new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", ValidJson, "sha1"),
-            default);
-
-        var html = await File.ReadAllTextAsync(result.HtmlPath);
-        html.Should().Contain("Public type with no references");
-        html.Should().Contain("DTO defined twice");
-        html.Should().Contain("src/Foo.cs:42");
-        html.Should().Contain("#123");
-        html.Should().Contain("dismissed");
-    }
-
-    [Fact]
-    public async Task Handle_OverwritesExistingFiles_OnSecondRun()
+    public async Task Handle_OverwritesExistingRun_OnSecondRun()
     {
         var ws = await CreateWorkspaceAsync();
         var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
@@ -120,9 +100,6 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             default);
 
         result.FindingCount.Should().Be(1);
-        var html = await File.ReadAllTextAsync(result.HtmlPath);
-        html.Should().Contain("Only one");
-        html.Should().NotContain("Public type with no references");
 
         var runs = await _db.WorkspaceSkillRuns.AsNoTracking()
             .Where(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-arch")
@@ -220,9 +197,6 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*path separators*");
-
-        var findingsDir = Path.Combine(ws.Path, ".bishop", "findings");
-        Directory.Exists(findingsDir).Should().BeFalse("no file write should occur before the guard throws");
     }
 
     [Fact]
@@ -237,7 +211,6 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             default);
 
         result.FindingCount.Should().Be(0);
-        File.Exists(result.HtmlPath).Should().BeTrue();
     }
 
     [Fact]
@@ -291,9 +264,6 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
         runs.Should().HaveCount(2);
         runs[0].ProjectName.Should().Be("Bishop.App");
         runs[1].ProjectName.Should().Be("Bishop.UI");
-
-        File.Exists(Path.Combine(ws.Path, ".bishop", "findings", "bish-tests__Bishop.App.html")).Should().BeTrue();
-        File.Exists(Path.Combine(ws.Path, ".bishop", "findings", "bish-tests__Bishop.UI.html")).Should().BeTrue();
     }
 
     [Fact]
