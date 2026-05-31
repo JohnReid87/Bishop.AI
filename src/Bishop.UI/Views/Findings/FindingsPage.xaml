@@ -130,8 +130,9 @@
                                         Background="{x:Bind SeverityColor, Converter={StaticResource HexColorToBrushConverter}}"
                                         CornerRadius="10"
                                         Padding="6,1"
+                                        Margin="0,4,0,0"
                                         HorizontalAlignment="Left"
-                                        VerticalAlignment="Center"
+                                        VerticalAlignment="Top"
                                         Visibility="{x:Bind HasSeverity, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <TextBlock Text="{x:Bind Severity}"
                                                FontSize="11"
@@ -181,36 +182,38 @@
                                            FontSize="12"
                                            Foreground="{ThemeResource AppTextSecondaryBrush}"
                                            TextWrapping="Wrap"
-                                           VerticalAlignment="Center"/>
+                                           VerticalAlignment="Top"
+                                           Margin="0,4,0,0"/>
 
                                 <!-- Status -->
-                                <TextBlock Grid.Column="3"
-                                           Text="{x:Bind StatusLabel, Mode=OneWay}"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"/>
+                                <Grid Grid.Column="3" VerticalAlignment="Top" Margin="0,2,0,0">
+                                    <HyperlinkButton Content="{x:Bind StatusLabel, Mode=OneWay}"
+                                                     FontSize="12"
+                                                     Padding="0"
+                                                     Click="OpenLinkedCard_Click"
+                                                     Visibility="{x:Bind HasLinkedCard, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="{x:Bind StatusLabel, Mode=OneWay}"
+                                               FontSize="12"
+                                               Margin="0,2,0,0"
+                                               Visibility="{x:Bind HasLinkedCard, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                </Grid>
 
                                 <!-- Actions -->
                                 <StackPanel Grid.Column="4"
                                             Orientation="Horizontal"
                                             Spacing="6"
-                                            VerticalAlignment="Center">
+                                            VerticalAlignment="Top"
+                                            Margin="0,2,0,0">
                                     <Button Content="Convert to card"
                                             FontSize="12"
                                             Padding="8,4"
                                             Click="ConvertToCard_Click"
                                             Visibility="{x:Bind IsConvertToCardVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                             IsEnabled="{x:Bind IsConvertToCardEnabled, Mode=OneWay}"/>
-                                    <HyperlinkButton Content="{x:Bind LinkedCardLabel, Mode=OneWay}"
-                                                     FontSize="12"
-                                                     Padding="8,4"
-                                                     Click="OpenLinkedCard_Click"
-                                                     Visibility="{x:Bind HasLinkedCard, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                    <Button FontSize="12"
+                                    <Button Content="Dismiss"
+                                            FontSize="12"
                                             Padding="8,4"
                                             IsEnabled="{x:Bind IsDismissEnabled, Mode=OneWay}">
-                                        <Button.Content>
-                                            <FontIcon Glyph="&#xE711;" FontSize="12"/>
-                                        </Button.Content>
                                         <Button.Flyout>
                                             <Flyout>
                                                 <StackPanel Width="280" Spacing="8">
