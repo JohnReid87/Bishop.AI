@@ -1,4 +1,5 @@
 using Bishop.App.Cards.RecordAutoRunFailure;
+using Bishop.App.Cards.RecordAutoRunSuccess;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Cards.SetCardCommit;
 using Bishop.App.Cards.UpdateCard;
@@ -197,6 +198,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                     }
 
                     await _sender.Send(new SetCardCommitCommand(card.Id, commitHash, batch.BranchName), cancellationToken);
+                    await _sender.Send(new RecordAutoRunSuccessCommand(card.Id), cancellationToken);
                     var costFinding = ClaudeCostFormatter.FormatCardFinding(model, runResult.Totals);
                     await _sender.Send(
                         new UpdateCardCommand(card.Id, null, null, false, null,

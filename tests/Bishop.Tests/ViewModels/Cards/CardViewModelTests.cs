@@ -286,4 +286,77 @@ public class CardViewModelTests
 
         vm.IsInProgress.Should().Be(inProgress);
     }
+
+    [Fact]
+    public void IsAutoRunFailedIndicatorVisible_FalseWhenSucceededAfterFailed()
+    {
+        var failed = new DateTimeOffset(2026, 5, 1, 10, 0, 0, TimeSpan.Zero);
+        var succeeded = new DateTimeOffset(2026, 5, 2, 10, 0, 0, TimeSpan.Zero);
+        var vm = new CardViewModel { LastAutoRunFailedAt = failed, LastAutoRunSucceededAt = succeeded };
+
+        vm.IsAutoRunFailedIndicatorVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsAutoRunFailedIndicatorVisible_TrueWhenFailedAfterSucceeded()
+    {
+        var succeeded = new DateTimeOffset(2026, 5, 1, 10, 0, 0, TimeSpan.Zero);
+        var failed = new DateTimeOffset(2026, 5, 2, 10, 0, 0, TimeSpan.Zero);
+        var vm = new CardViewModel { LastAutoRunFailedAt = failed, LastAutoRunSucceededAt = succeeded };
+
+        vm.IsAutoRunFailedIndicatorVisible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsAutoRunSucceededIndicatorVisible_TrueWhenOnlySucceeded()
+    {
+        var vm = new CardViewModel { LastAutoRunSucceededAt = DateTimeOffset.UtcNow };
+
+        vm.IsAutoRunSucceededIndicatorVisible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsAutoRunSucceededIndicatorVisible_FalseWhenFieldNotSet()
+    {
+        var vm = new CardViewModel { LastAutoRunSucceededAt = null };
+
+        vm.IsAutoRunSucceededIndicatorVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsAutoRunSucceededIndicatorVisible_TrueWhenSucceededAfterFailed()
+    {
+        var failed = new DateTimeOffset(2026, 5, 1, 10, 0, 0, TimeSpan.Zero);
+        var succeeded = new DateTimeOffset(2026, 5, 2, 10, 0, 0, TimeSpan.Zero);
+        var vm = new CardViewModel { LastAutoRunFailedAt = failed, LastAutoRunSucceededAt = succeeded };
+
+        vm.IsAutoRunSucceededIndicatorVisible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsAutoRunSucceededIndicatorVisible_FalseWhenFailedAfterSucceeded()
+    {
+        var succeeded = new DateTimeOffset(2026, 5, 1, 10, 0, 0, TimeSpan.Zero);
+        var failed = new DateTimeOffset(2026, 5, 2, 10, 0, 0, TimeSpan.Zero);
+        var vm = new CardViewModel { LastAutoRunFailedAt = failed, LastAutoRunSucceededAt = succeeded };
+
+        vm.IsAutoRunSucceededIndicatorVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AutoRunSucceededTooltip_ContainsFormattedTimestampWhenFieldSet()
+    {
+        var timestamp = new DateTimeOffset(2026, 5, 24, 14, 30, 0, TimeSpan.Zero);
+        var vm = new CardViewModel { LastAutoRunSucceededAt = timestamp };
+
+        vm.AutoRunSucceededTooltip.Should().Be("Auto-run succeeded at 2026-05-24 14:30");
+    }
+
+    [Fact]
+    public void AutoRunSucceededTooltip_EmptyWhenFieldNotSet()
+    {
+        var vm = new CardViewModel { LastAutoRunSucceededAt = null };
+
+        vm.AutoRunSucceededTooltip.Should().BeEmpty();
+    }
 }

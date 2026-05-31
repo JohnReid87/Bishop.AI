@@ -68,6 +68,7 @@ internal sealed class ShowCardCliCommand : Command
                     totalOutputTokens = card.TotalOutputTokens,
                     claudeRunCount = card.ClaudeRunCount,
                     lastAutoRunFailedAt = card.LastAutoRunFailedAt,
+                    lastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
                     tag = card.TagName,
                     commit = commitObj
                 }, s_jsonOpts));

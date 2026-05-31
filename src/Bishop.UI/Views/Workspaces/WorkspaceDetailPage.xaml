@@ -75,6 +75,13 @@
                                       Margin="0,0,4,0"
                                       ToolTipService.ToolTip="{x:Bind AutoRunFailedTooltip}"
                                       Visibility="{x:Bind IsAutoRunFailedIndicatorVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <FontIcon Glyph="&#xE99A;"
+                                      Foreground="#00ff41"
+                                      FontSize="12"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,4,0"
+                                      ToolTipService.ToolTip="{x:Bind AutoRunSucceededTooltip}"
+                                      Visibility="{x:Bind IsAutoRunSucceededIndicatorVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                    ToolTipService.ToolTip="Skills"
                                                    Click="CardSkillsButton_Click"

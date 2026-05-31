@@ -109,6 +109,7 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
                     GitHubIssueNumber = card.GitHubIssueNumber,
                     GitHubPushedAt = card.GitHubPushedAt,
                     LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+                    LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
                     BatchId = card.BatchId,
                     BatchName = s.Batch.Name,
                     BatchCreatedAt = s.Batch.CreatedAt,

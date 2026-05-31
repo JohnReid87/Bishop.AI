@@ -211,6 +211,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             || vm.GitHubIssueNumber != card.GitHubIssueNumber
             || vm.GitHubPushedAt != card.GitHubPushedAt
             || vm.LastAutoRunFailedAt != card.LastAutoRunFailedAt
+            || vm.LastAutoRunSucceededAt != card.LastAutoRunSucceededAt
             || vm.BatchId != card.BatchId)
             return false;
 
@@ -237,6 +238,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             GitHubIssueNumber = card.GitHubIssueNumber,
             GitHubPushedAt = card.GitHubPushedAt,
             LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+            LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
             BatchId = card.BatchId,
             BatchName = card.Batch?.Name,
             BatchCreatedAt = card.Batch?.CreatedAt,

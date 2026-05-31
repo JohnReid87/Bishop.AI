@@ -3,6 +3,7 @@ using Bishop.App.Cards.AddCard;
 using Bishop.App.Context.ContextPack;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RecordAutoRunFailure;
+using Bishop.App.Cards.RecordAutoRunSuccess;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Cards.SetCardCommit;
 using Bishop.App.Cards.UpdateCard;
@@ -98,6 +99,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         private readonly MoveCardCommandHandler _moveCard;
         private readonly RecordClaudeRunCommandHandler _recordClaudeRun;
         private readonly RecordAutoRunFailureCommandHandler _recordAutoRunFailure;
+        private readonly RecordAutoRunSuccessCommandHandler _recordAutoRunSuccess;
         private readonly SetCardCommitCommandHandler _setCardCommit;
         private readonly GetWorkspaceQueryHandler _getWorkspace;
         private readonly UpdateCardCommandHandler _updateCard;
@@ -109,6 +111,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             _moveCard = new(factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance);
             _recordClaudeRun = new(factory);
             _recordAutoRunFailure = new(factory, TimeProvider.System);
+            _recordAutoRunSuccess = new(factory, TimeProvider.System);
             _setCardCommit = new(factory, TimeProvider.System);
             _getWorkspace = new(factory);
             _updateCard = new(factory, this);
@@ -146,6 +149,8 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
                 await _recordClaudeRun.Handle(cmd1, ct);
             else if (request is RecordAutoRunFailureCommand cmd2)
                 await _recordAutoRunFailure.Handle(cmd2, ct);
+            else if (request is RecordAutoRunSuccessCommand cmd3)
+                await _recordAutoRunSuccess.Handle(cmd3, ct);
             else
                 throw new NotSupportedException($"BatchTestSender does not handle {request!.GetType().Name}");
         }

@@ -24,6 +24,7 @@ public sealed class Card : IAuditable
     public decimal TotalCostUsd { get; set; }
     public int ClaudeRunCount { get; set; }
     public DateTimeOffset? LastAutoRunFailedAt { get; set; }
+    public DateTimeOffset? LastAutoRunSucceededAt { get; set; }
 
     public Guid? BatchId { get; set; }
 

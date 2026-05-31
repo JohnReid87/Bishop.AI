@@ -22,6 +22,7 @@ public sealed partial class CardViewModel : ObservableObject
     private bool _isSelected;
     public DateTimeOffset? GitHubPushedAt { get; init; }
     public DateTimeOffset? LastAutoRunFailedAt { get; init; }
+    public DateTimeOffset? LastAutoRunSucceededAt { get; init; }
 
     public string NumberDisplay => $"#{Number}";
     public bool IsTagVisible => TagName is not null;
@@ -41,8 +42,21 @@ public sealed partial class CardViewModel : ObservableObject
         _ => "#66667a"
     };
 
-    public bool IsAutoRunFailedIndicatorVisible => LastAutoRunFailedAt.HasValue;
-    public string AutoRunFailedTooltip => LastAutoRunFailedAt.HasValue ? $"Auto-run failed at {LastAutoRunFailedAt.Value:yyyy-MM-dd HH:mm}" : string.Empty;
+    public bool IsAutoRunFailedIndicatorVisible =>
+        LastAutoRunFailedAt.HasValue &&
+        (!LastAutoRunSucceededAt.HasValue || LastAutoRunFailedAt > LastAutoRunSucceededAt);
+
+    public string AutoRunFailedTooltip => IsAutoRunFailedIndicatorVisible
+        ? $"Auto-run failed at {LastAutoRunFailedAt!.Value:yyyy-MM-dd HH:mm}"
+        : string.Empty;
+
+    public bool IsAutoRunSucceededIndicatorVisible =>
+        LastAutoRunSucceededAt.HasValue &&
+        (!LastAutoRunFailedAt.HasValue || LastAutoRunSucceededAt >= LastAutoRunFailedAt);
+
+    public string AutoRunSucceededTooltip => IsAutoRunSucceededIndicatorVisible
+        ? $"Auto-run succeeded at {LastAutoRunSucceededAt!.Value:yyyy-MM-dd HH:mm}"
+        : string.Empty;
 
     public bool IsSkillsButtonVisible { get; init; }
     public bool IsInProgress { get; init; }

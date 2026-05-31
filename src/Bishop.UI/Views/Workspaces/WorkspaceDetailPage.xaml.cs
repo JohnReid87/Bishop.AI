@@ -606,6 +606,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 GitHubIssueNumber = card.GitHubIssueNumber,
                 GitHubPushedAt = card.GitHubPushedAt,
                 LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+                LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
                 IsSkillsButtonVisible = Board.IsCardSkillsButtonVisible,
                 BatchId = card.BatchId,
                 BatchName = card.BatchName,

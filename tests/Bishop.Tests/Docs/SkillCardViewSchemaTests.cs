@@ -135,6 +135,7 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
             totalOutputTokens = card.TotalOutputTokens,
             claudeRunCount = card.ClaudeRunCount,
             lastAutoRunFailedAt = card.LastAutoRunFailedAt,
+            lastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
             tag = card.TagName,
             commit = new
             {

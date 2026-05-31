@@ -436,6 +436,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
             GitHubIssueNumber = card.GitHubIssueNumber,
             GitHubPushedAt = card.GitHubPushedAt,
             LastAutoRunFailedAt = card.LastAutoRunFailedAt,
+            LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
             IsSkillsButtonVisible = isSkillsButtonVisible,
         };
     }
