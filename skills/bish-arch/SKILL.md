@@ -162,12 +162,15 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    - Requires each finding to include: `severity` (high/med/low), `dimension`
      (one of the labels above, or a stack-derived dimension the subagent
      introduces with justification), `location` (file:line, may be multiple),
-     `what` (1 sentence describing the issue), `why_it_matters` (consequence
-     in this codebase, not a textbook quote), `suggested_action` (concrete
-     change), `fix_cost` (low/med/high — effort to apply the suggested action),
-     `complexity_delta` (adds/neutral/removes — net effect on codebase
-     structural complexity after the fix). Reject any subagent output that
-     omits `fix_cost` or `complexity_delta` from a finding.
+     `file` (the primary source file path, workspace-relative), `symbol` (the
+     canonical type or member the finding is about — e.g. `OrderService` or
+     `OrderService.Submit`), `what` (1 sentence describing the issue),
+     `why_it_matters` (consequence in this codebase, not a textbook quote),
+     `suggested_action` (concrete change), `fix_cost` (low/med/high — effort
+     to apply the suggested action), `complexity_delta` (adds/neutral/removes
+     — net effect on codebase structural complexity after the fix). Reject
+     any subagent output that omits `fix_cost`, `complexity_delta`, `file`,
+     or `symbol` from a finding.
    - Returns findings as a numbered list, severity-ordered (high first).
 
    If the subagent returns more than 15 findings, ask it to re-rank and trim
@@ -215,6 +218,10 @@ that aren't in this list — the headings above are the floor, not the ceiling.
 
    - **Track the finding** in a session log per the "Track findings during
      triage" sub-step of `Findings Recording Procedure` (in `conventions`).
+     For the identity fields: `file` = the subagent's `file`, `rule` = the
+     subagent's `dimension` (e.g. `SOLID/SRP`, `DI lifetime`), `symbol` = the
+     subagent's `symbol`. Emit all three on every finding so the handler
+     computes a stable identity hash rather than falling back to the title.
      Map this skill's triage choices to pending outcomes: **Card it (new)** and
      **Cluster with #N** → `pending-card:<session-index>` (the cluster reuses
      the index assigned to the card it folds into); **Dismiss — context** →

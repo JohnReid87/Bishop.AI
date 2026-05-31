@@ -287,10 +287,14 @@ you flag as equivalent during the interview.
    **Track each class** in a session log per the "Track findings during triage"
    sub-step of `Findings Recording Procedure` (in `conventions`) — one entry per
    audited class, using `title` = `Improve tests for <ClassName>`, `location` =
-   the class file, and a pending outcome from the interview choice: **Push
-   as-is** / **Edit** / **Merge** → `pending-card:<session-index>` (resolved to
-   `carded:#<N>` after push); **Skip** → `parked`; **All dismissed** →
-   `dismissed`. Classes with no findings (recorded `clean`) need no entry.
+   the class file, `file` = the class file path (workspace-relative),
+   `rule` = `mutation-coverage`, `symbol` = `<ClassName>`, and a pending
+   outcome from the interview choice: **Push as-is** / **Edit** / **Merge** →
+   `pending-card:<session-index>` (resolved to `carded:#<N>` after push);
+   **Skip** → `parked`; **All dismissed** → `dismissed`. Emit `file`, `rule`,
+   and `symbol` on every entry so the handler computes a stable identity hash
+   rather than falling back to the title. Classes with no findings (recorded
+   `clean`) need no entry.
 
    Push confirmed cards using `bishop card create` per `Card Push Procedure` (in `conventions`). Use `--tag test`.
 

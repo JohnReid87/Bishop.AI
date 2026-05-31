@@ -213,11 +213,15 @@ surface, because the same code often gets copy-pasted into production.
    - Each finding must include: `severity` (high/med/low), `dimension`
      (one of the labels above, or a stack-derived dimension the
      subagent introduces with justification), `location` (file:line —
-     may be multiple), `what` (1 sentence describing the issue),
-     `why_it_matters` (consequence in this codebase, not a textbook
-     quote), `cwe` (when known — e.g. `CWE-89` for SQL injection;
-     omit when not confidently identified), `suggested_action`
-     (concrete change).
+     may be multiple), `file` (primary source file path,
+     workspace-relative), `symbol` (canonical identifier the finding
+     is about — affected method/class/identifier, e.g.
+     `OrderRepository.GetByName`), `what` (1 sentence describing the
+     issue), `why_it_matters` (consequence in this codebase, not a
+     textbook quote), `cwe` (when known — e.g. `CWE-89` for SQL
+     injection; omit when not confidently identified),
+     `suggested_action` (concrete change). Reject subagent output that
+     omits `file` or `symbol`.
    - Returns findings as a numbered list, severity-ordered (high first).
 
    If the subagent reports **no findings** (all applicable dimensions
@@ -274,6 +278,11 @@ surface, because the same code often gets copy-pasted into production.
 
    - **Track the finding** in a session log per the "Track findings during
      triage" sub-step of `Findings Recording Procedure` (in `conventions`).
+     For the identity fields: `file` = the subagent's `file`, `rule` = the
+     subagent's `cwe` when known (e.g. `CWE-89`) otherwise the `dimension`
+     (e.g. `Injection/SQL`, `Crypto/Secrets`), `symbol` = the subagent's
+     `symbol`. Emit all three on every finding so the handler computes a
+     stable identity hash rather than falling back to the title.
      Map this skill's triage choices to pending outcomes: **Card it (new)** and
      **Cluster with #N** → `pending-card:<session-index>` (the cluster reuses
      the index assigned to the card it folds into); **Dismiss — context** →

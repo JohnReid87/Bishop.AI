@@ -10,7 +10,7 @@ bishop.category: code
 
 > Recommended model: Opus 4.7 — heuristic-catalogue review with per-finding triage requires sustained multi-step judgement.
 
-The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
+The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure, Findings Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---
 
@@ -69,12 +69,12 @@ Dead-code detection is grep-based, not Roslyn-based. False positives (reflection
    - Applies the **Universal** dimensions to every non-generated, non-obj `.cs` file in every project.
    - Applies the **MediatR** stack-conditional dimension only if MediatR (or an equivalent) is detected.
    - Asks for **at most 15 findings**, ranked by confidence (high/med/low — how likely the candidate is truly dead vs. a false positive). Bias toward high/medium; low-confidence items may be mentioned briefly under "also noticed" but should not be expanded.
-   - Requires each finding to include: `confidence` (high/med/low), `dimension` (one of the labels above), `location` (file:line, may be multiple), `what` (1 sentence — the type/member/request/registration name and why it appears unused), `why_it_matters` (maintenance risk: dead surface area, confusion, or a missed hook-up), `suggested_action` (delete / hook up / investigate further), `fix_cost` (low/med/high).
+   - Requires each finding to include: `confidence` (high/med/low), `dimension` (one of the labels above), `location` (file:line, may be multiple), `file` (the primary defining file path, workspace-relative), `symbol` (the canonical type / member / request / registration name — e.g. `OrderService`, `OrderService.Submit`), `what` (1 sentence — the type/member/request/registration name and why it appears unused), `why_it_matters` (maintenance risk: dead surface area, confusion, or a missed hook-up), `suggested_action` (delete / hook up / investigate further), `fix_cost` (low/med/high). Reject subagent output that omits `file` or `symbol`.
    - Returns findings as a numbered list, confidence-ordered (high first).
 
    If the subagent returns more than 15 findings, ask it to re-rank and trim to 15.
    If it returns fewer than 3, surface what it found — the codebase may genuinely be clean.
-   If the subagent reports no findings, congratulate the user and STOP without pushing anything.
+   If the subagent reports no findings, record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-dead-code`, then congratulate the user and STOP without pushing anything.
 
 3. **Echo summary.** Print a one-line overview the user can scan before triage:
 
@@ -97,6 +97,19 @@ Dead-code detection is grep-based, not Roslyn-based. False positives (reflection
      - **Dismiss — context** — not worth acting on now. Capture the reason.
      - **Defer** — note it but don't card it now.
 
+   - **Track the finding** in a session log per the "Track findings during
+     triage" sub-step of `Findings Recording Procedure` (in `conventions`).
+     For the identity fields: `file` = the subagent's `file`, `rule` = the
+     subagent's `dimension` (e.g. `Unreferenced type`, `MediatR undispatched`,
+     `DI never injected`), `symbol` = the subagent's `symbol`. Emit all three
+     on every finding so the handler computes a stable identity hash rather
+     than falling back to the title. Map triage choices to pending outcomes:
+     **Card it (new)** and **Cluster with #N** → `pending-card:<session-index>`
+     (the cluster reuses the index assigned to the card it folds into);
+     **Dismiss — false positive** and **Dismiss — context** → `dismissed`;
+     **Defer** → `parked`. Every finding the subagent surfaced must appear in
+     the log; it is the input to step 10's record call.
+
 5. **Ensure the `chore` tag exists.** If `workspace.tags[].name` from the pack doesn't include `chore`, stop and tell the user: the canonical tags are seeded by `bishop workspace init` — re-running it will restore any missing tags.
 
 6. **Granularity pass.** Before printing the task list, apply Card Granularity Rules (TUNABLE) (in `conventions`). Merge findings that touch the same type or module for the same reason; split only when pieces have independent acceptance criteria.
@@ -112,6 +125,12 @@ Dead-code detection is grep-based, not Roslyn-based. False positives (reflection
    | Card | Title | Lane | Confidence |
    |------|-------|------|------------|
    | #N | … | To Do | high |
+
+10. **Record this run** by following `Findings Recording Procedure` (in
+    `conventions`) with `--skill bish-dead-code`. Before emitting, resolve any
+    `pending-card:<n>` markers in the session log to `carded:#<N>` using the
+    card numbers returned by step 8, so every tracked finding carries one of
+    the three final outcomes (`carded:#<N>` / `dismissed` / `parked`).
 
 </what-to-do>
 

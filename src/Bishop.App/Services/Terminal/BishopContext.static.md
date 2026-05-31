@@ -441,7 +441,7 @@ be one card, folded into another, or split.
 ## Findings Recording Procedure (STABLE)
 
 Review skills (`bish-arch`, `bish-security`, `bish-tests`, `bish-coverage`,
-`bish-audit-docs`) record their findings as the **final step** of a completed
+`bish-audit-docs`, `bish-dead-code`) record their findings as the **final step** of a completed
 run via `bishop findings record`. "Completed run" means the skill ran its full
 review and the user was walked through every finding — including runs with no
 findings, or where all findings were already carded. Do NOT call it on error
@@ -459,6 +459,16 @@ session log (in memory) with one entry per surfaced finding:
   suggested-action.
 - `severity` — the finding's `high` / `med` / `low` (or `critical`).
 - `location` — `file:line` (or comma-separated locations).
+- `file` — primary source file the finding is about (path relative to the
+  workspace, e.g. `src/Bishop.App/Foo.cs`). Part of the finding identity hash
+  so reruns can match prior findings — must be stable across runs for the
+  same underlying issue.
+- `rule` — the dimension / category / rule-id the finding belongs to
+  (e.g. `SOLID/SRP`, `CWE-89`, `mutation-coverage`, `Unreferenced type`).
+  Part of the identity hash.
+- `symbol` — the canonical identifier the finding is about — the type,
+  member, request, registration, or test target (e.g. `OrderService`,
+  `OrderService.Submit`). Part of the identity hash.
 - **pending outcome** — derived from the user's triage choice:
   - **Card it (new)** → `pending-card:<session-index>` (resolved to
     `carded:#<N>` once the card is pushed and its Number is known).
@@ -487,7 +497,10 @@ unchanged — no quoting gymnastics needed.
       "body": "<full body: locations, what, why-it-matters, suggested-action>",
       "outcome": "carded:#<N>",
       "severity": "high",
-      "location": "<file:line[, file:line]>"
+      "location": "<file:line[, file:line]>",
+      "file": "<src/.../File.cs>",
+      "rule": "<dimension or rule-id>",
+      "symbol": "<TypeName or TypeName.Member>"
     }
   ]
 }
@@ -546,6 +559,18 @@ Field rules:
   chip colour. `null` or absent is allowed.
 - `location` (optional) — `file:line` or comma-separated locations for findings
   spanning multiple sites.
+- `file` (required for stable identity) — primary source file path relative to
+  the workspace. Combined with `rule` and `symbol` to compute the finding's
+  identity hash (`sha1(skillName + projectName + file + rule + symbol)`), which
+  lets reruns match prior findings. If any of `file`, `rule`, `symbol` is
+  omitted the handler falls back to a title-based identity — emit all three.
+- `rule` (required for stable identity) — the dimension / category / rule-id
+  the finding belongs to (e.g. `SOLID/SRP`, `CWE-89`, `mutation-coverage`,
+  `Unreferenced type`). Should be a stable label that doesn't change between
+  runs for the same underlying issue.
+- `symbol` (required for stable identity) — the canonical identifier the
+  finding is about (type, member, request, registration, or test target —
+  e.g. `OrderService`, `OrderService.Submit`).
 
 An empty `findings: []` array is valid and is the right shape for the
 no-findings run path.
@@ -553,7 +578,7 @@ no-findings run path.
 ## Per-finding Walk Pattern (TUNABLE)
 
 Review skills (`bish-arch`, `bish-security`, `bish-tests`,
-`bish-coverage`, `bish-audit-docs`) walk findings one at a time
+`bish-coverage`, `bish-audit-docs`, `bish-dead-code`) walk findings one at a time
 rather than batching. For each finding:
 
 1. Print the full body — location(s), what, why-it-matters,
