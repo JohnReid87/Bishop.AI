@@ -58,31 +58,57 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
         }
         else
         {
-            db.Findings.RemoveRange(run.Findings);
             run.GitSha = request.GitSha;
             run.RecordedAt = recordedAt;
             run.FindingsCount = document.Findings.Count;
         }
 
+        var existingByHash = run.Findings.ToDictionary(f => f.IdentityHash, StringComparer.Ordinal);
+        var incomingHashes = new HashSet<string>(StringComparer.Ordinal);
+
         foreach (var f in document.Findings)
         {
-            db.Findings.Add(new CoreEntities.Finding
+            var hash = FindingIdentity.Compute(
+                request.SkillName, document.ProjectName, f.File, f.Rule, f.Symbol, f.Title);
+            incomingHashes.Add(hash);
+
+            if (existingByHash.TryGetValue(hash, out var existing))
             {
-                Id = Guid.NewGuid(),
-                WorkspaceSkillRunId = run.Id,
-                IdentityHash = FindingIdentity.Compute(
-                    request.SkillName, document.ProjectName, f.File, f.Rule, f.Symbol, f.Title),
-                Status = "pending",
-                ProjectName = document.ProjectName,
-                File = f.File,
-                Symbol = f.Symbol,
-                Rule = f.Rule,
-                Severity = f.Severity,
-                Title = f.Title,
-                Body = f.Body,
-                FirstSeenAt = recordedAt,
-                LastSeenAt = recordedAt,
-            });
+                existing.LastSeenAt = recordedAt;
+                existing.Severity = f.Severity;
+                existing.Title = f.Title;
+                existing.Body = f.Body;
+                existing.File = f.File;
+                existing.Symbol = f.Symbol;
+                existing.Rule = f.Rule;
+                if (existing.Status == "resolved")
+                    existing.Status = "pending";
+            }
+            else
+            {
+                db.Findings.Add(new CoreEntities.Finding
+                {
+                    Id = Guid.NewGuid(),
+                    WorkspaceSkillRunId = run.Id,
+                    IdentityHash = hash,
+                    Status = "pending",
+                    ProjectName = document.ProjectName,
+                    File = f.File,
+                    Symbol = f.Symbol,
+                    Rule = f.Rule,
+                    Severity = f.Severity,
+                    Title = f.Title,
+                    Body = f.Body,
+                    FirstSeenAt = recordedAt,
+                    LastSeenAt = recordedAt,
+                });
+            }
+        }
+
+        foreach (var existing in run.Findings)
+        {
+            if (!incomingHashes.Contains(existing.IdentityHash))
+                existing.Status = "resolved";
         }
 
         await db.SaveChangesAsync(cancellationToken);

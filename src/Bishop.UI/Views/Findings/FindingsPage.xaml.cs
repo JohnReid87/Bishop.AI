@@ -3,6 +3,8 @@ using Bishop.ViewModels.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace Bishop.UI.Views.Findings;
@@ -96,4 +98,60 @@ public sealed partial class FindingsPage : Page
             if (sender is not FrameworkElement fe || fe.DataContext is not FindingItemViewModel item) return;
             await item.ConvertToCardCommand.ExecuteAsync(XamlRoot);
         });
+
+    private async void Dismiss_Click(object sender, RoutedEventArgs e)
+        => await SafeAsync.RunAsync(async () =>
+        {
+            if (sender is not Button button || button.Tag is not FindingItemViewModel item) return;
+
+            DependencyObject current = button;
+            StackPanel? root = null;
+            while (current is not null)
+            {
+                if (current is StackPanel sp) { root = sp; break; }
+                current = VisualTreeHelper.GetParent(current);
+            }
+            if (root is null) return;
+
+            var box = FindDescendantByName(root, "DismissRebuttalBox") as TextBox;
+            var rebuttal = box?.Text ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(rebuttal)) return;
+
+            await item.DismissCommand.ExecuteAsync(rebuttal);
+
+            if (box is not null) box.Text = string.Empty;
+
+            // Hide the containing flyout by walking up to the popup root.
+            var popupRoot = root.XamlRoot is null ? null : VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot);
+            if (popupRoot is not null)
+            {
+                foreach (var p in popupRoot)
+                    if (p.Child is FrameworkElement fe && IsAncestor(box, fe))
+                        p.IsOpen = false;
+            }
+        });
+
+    private static bool IsAncestor(DependencyObject? descendant, DependencyObject ancestor)
+    {
+        var current = descendant;
+        while (current is not null)
+        {
+            if (current == ancestor) return true;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return false;
+    }
+
+    private static DependencyObject? FindDescendantByName(DependencyObject root, string name)
+    {
+        if (root is FrameworkElement fe && fe.Name == name) return root;
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            var found = FindDescendantByName(child, name);
+            if (found is not null) return found;
+        }
+        return null;
+    }
 }

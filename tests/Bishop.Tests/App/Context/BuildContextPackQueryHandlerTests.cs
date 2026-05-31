@@ -282,10 +282,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     }
 
     [Theory]
-    [InlineData("coverage")]
-    [InlineData("arch")]
-    [InlineData("security")]
-    [InlineData("tests")]
     [InlineData("audit-docs")]
     [InlineData("grill-docs")]
     [InlineData("dead-code")]

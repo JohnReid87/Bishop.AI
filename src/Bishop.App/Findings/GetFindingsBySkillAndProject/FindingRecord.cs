@@ -9,4 +9,5 @@ public sealed record FindingRecord(
     string? Symbol,
     string? Rule,
     string Status,
+    string? RebuttalText,
     int? LinkedCardId);

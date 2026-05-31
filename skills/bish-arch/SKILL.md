@@ -29,6 +29,7 @@ Parse the JSON and extract:
 - `workspace.tags` — existing tag names (the skill needs an `arch` tag; see step 5)
 - `workspace.lanes` — lane names (`To Do` is the push target; see step 8)
 - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Findings Recording Procedure)
+- `skill_specific.prior_findings` — outcomes from previous runs of this skill in this workspace; each entry has `identity_hash`, `project_name`, `file`, `symbol`, `rule`, `title`, `status` (`pending` / `dismissed` / `resolved` / `carded:#N`), `rebuttal_text`, and `linked_card_number`. Use during triage (step 7) to skip findings the user has already decided on.
 
 Echo the workspace name on its own line:
 
@@ -192,7 +193,22 @@ that aren't in this list — the headings above are the floor, not the ceiling.
    ...
    ```
 
-4. **Triage loop.** Walk findings in severity order. For each finding:
+4. **Triage loop.** Walk findings in severity order. For each finding, first
+   match it against `skill_specific.prior_findings` from the context-pack —
+   compare by `(file, rule, symbol)` if all three are present, falling back to
+   `title` when any are missing.
+
+   - If a prior finding matches with status `dismissed`: **skip the interview
+     silently**. In the final report, list it under "previously dismissed"
+     with the prior `rebuttal_text` verbatim. Track it with outcome `dismissed`
+     in the session log (no AskUserQuestion call).
+   - If a prior finding matches with status `carded:#N` (or `linked_card_number`
+     is set): **skip the interview**. Reference the existing card #N in the
+     report. Track it with outcome `carded:#N` in the session log.
+   - If the prior status is `resolved` or `pending`, or there is no prior
+     match, fall through to the normal interview below.
+
+   For findings that fall through:
 
    - Print the full body: location(s), what, why-it-matters, suggested-action,
      plus your own recommended verdict. The verdict must weigh `fix_cost` and
@@ -258,9 +274,9 @@ that aren't in this list — the headings above are the floor, not the ceiling.
 
    Then offer:
 
-   > Re-run `/bish-arch` after these are worked. Dismissed findings will
-   > resurface — explain the same way or capture the rebuttal in a project
-   > memory if it's load-bearing.
+   > Re-run `/bish-arch` after these are worked. Dismissed findings carry
+   > their rebuttal forward — the prior reason surfaces in the report and the
+   > skill skips re-interviewing the user about them.
 
 10. **Record this run** by following `Findings Recording Procedure` (in
     `conventions`) with `--skill bish-arch`. Before emitting, resolve any

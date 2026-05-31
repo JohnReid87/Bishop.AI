@@ -214,7 +214,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task Handle_SecondRun_ReplacesFindingsWholesale()
+    public async Task Handle_SecondRun_MergesFindings_PreservingMissingAsResolved()
     {
         var ws = await CreateWorkspaceAsync();
         var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
@@ -230,9 +230,82 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             .SingleAsync(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-arch");
         var findings = await _db.Findings.AsNoTracking()
             .Where(f => f.WorkspaceSkillRunId == run.Id)
+            .OrderBy(f => f.Title)
             .ToListAsync();
-        findings.Should().HaveCount(1);
-        findings[0].Title.Should().Be("Only one");
+
+        findings.Should().HaveCount(3);
+        findings.Single(f => f.Title == "Only one").Status.Should().Be("pending");
+        findings.Where(f => f.Title != "Only one")
+            .All(f => f.Status == "resolved")
+            .Should().BeTrue("findings absent from the second run flip to resolved");
+    }
+
+    [Fact]
+    public async Task Handle_SecondRun_PreservesRebuttalAndLinkedCardForMatchingFindings()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string json = """
+            {
+              "findings": [
+                {
+                  "title": "Unused symbol",
+                  "body": "x",
+                  "outcome": "dismissed",
+                  "file": "src/Foo.cs",
+                  "rule": "SOLID/SRP",
+                  "symbol": "Foo.Bar"
+                }
+              ]
+            }
+            """;
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", json, "sha1"), default);
+
+        // Dismiss it (simulating user action via WinUI).
+        var run = await _db.WorkspaceSkillRuns
+            .Include(r => r.Findings)
+            .SingleAsync(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-arch");
+        var first = run.Findings.Single();
+        var firstSeen = first.FirstSeenAt;
+        first.Status = "dismissed";
+        first.RebuttalText = "Not actually unused — reflected via DI.";
+        first.LinkedCardId = 42;
+        await _db.SaveChangesAsync();
+
+        // Second run — same finding identity surfaces again.
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", json, "sha2"), default);
+
+        var merged = await _db.Findings.AsNoTracking()
+            .SingleAsync(f => f.WorkspaceSkillRunId == run.Id);
+        merged.Status.Should().Be("dismissed", "prior dismissal must survive a rerun");
+        merged.RebuttalText.Should().Be("Not actually unused — reflected via DI.");
+        merged.LinkedCardId.Should().Be(42);
+        merged.FirstSeenAt.Should().Be(firstSeen, "FirstSeenAt must not move on a rerun");
+        merged.LastSeenAt.Should().BeAfter(firstSeen, "LastSeenAt must update on each surfacing");
+    }
+
+    [Fact]
+    public async Task Handle_ResolvedFindingRecurs_FlipsBackToPending()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string json = """
+            { "findings": [ { "title": "F", "body": "b", "outcome": "parked",
+                              "file": "src/F.cs", "rule": "R", "symbol": "S" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", json, "sha1"), default);
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", """{ "findings": [] }""", "sha2"), default);
+
+        var resolved = await _db.Findings.AsNoTracking().SingleAsync(f => f.Run.WorkspaceId == ws.Id);
+        resolved.Status.Should().Be("resolved");
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", json, "sha3"), default);
+
+        var rerun = await _db.Findings.AsNoTracking().SingleAsync(f => f.Run.WorkspaceId == ws.Id);
+        rerun.Status.Should().Be("pending", "a re-emerging resolved finding flips back to pending");
     }
 
     [Fact]
@@ -350,9 +423,11 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             .SingleAsync(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-arch");
         var findings = await _db.Findings.AsNoTracking()
             .Where(f => f.WorkspaceSkillRunId == run.Id)
-            .Select(f => f.Title)
             .ToListAsync();
-        findings.Should().BeEquivalentTo(["New"], "new run wholesale-replaces the legacy import for the matching (skill, null project) key");
+        findings.Single(f => f.Title == "New").Status.Should().Be("pending");
+        findings.Where(f => f.Title != "New")
+            .All(f => f.Status == "resolved")
+            .Should().BeTrue("legacy-imported findings missing from the new payload flip to resolved");
     }
 
     [Fact]

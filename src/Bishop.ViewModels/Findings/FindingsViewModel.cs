@@ -26,10 +26,14 @@ public sealed partial class FindingsViewModel : ObservableObject
 
     public ObservableCollection<FindingItemViewModel> Findings { get; } = [];
 
+    public ObservableCollection<FindingItemViewModel> ResolvedFindings { get; } = [];
+
     [ObservableProperty]
     private string _filterText = string.Empty;
 
-    public bool IsEmpty => Findings.Count == 0;
+    public bool IsEmpty => Findings.Count == 0 && ResolvedFindings.Count == 0;
+
+    public bool HasResolved => ResolvedFindings.Count > 0;
 
     public FindingsViewModel(ISender mediator, ICardDetailDialogService dialogService, ISkillTagMap skillTagMap)
     {
@@ -60,13 +64,19 @@ public sealed partial class FindingsViewModel : ObservableObject
             cancellationToken);
 
         Findings.Clear();
+        ResolvedFindings.Clear();
         foreach (var r in records)
         {
-            Findings.Add(new FindingItemViewModel(
+            var vm = new FindingItemViewModel(
                 r, skillName, workspaceId, workspacePath, gitHubRepo,
-                _mediator, _dialogService, _skillTagMap));
+                _mediator, _dialogService, _skillTagMap);
+            if (r.Status == "resolved")
+                ResolvedFindings.Add(vm);
+            else
+                Findings.Add(vm);
         }
         OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(HasResolved));
     }
 
     public bool Matches(FindingItemViewModel item)

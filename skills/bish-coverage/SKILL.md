@@ -28,6 +28,7 @@ Parse the JSON and extract:
 - `workspace.tags` — existing tag names (the skill needs a `test` tag; see step 6)
 - `workspace.lanes` — lane names (defaults to `To Do` when pushing)
 - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Findings Recording Procedure)
+- `skill_specific.prior_findings` — outcomes from previous `bish-coverage` runs in this workspace; each entry has `identity_hash`, `project_name`, `file`, `symbol`, `rule`, `title`, `status` (`pending` / `dismissed` / `resolved` / `carded:#N`), `rebuttal_text`, and `linked_card_number`. Use during step 8 to skip findings the user has already decided on.
 
 Echo the workspace name back on its own line:
 
@@ -177,7 +178,19 @@ makes no assumption about specific namespace prefixes — it works for any
 
    Record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-coverage`, then STOP.
 
-8. **Interview per surviving suggestion** with `AskUserQuestion`. For each one,
+8. **Interview per surviving suggestion** with `AskUserQuestion`. Before the
+   interview, apply **Prior-findings recall** against
+   `skill_specific.prior_findings`:
+
+   - Match the current cluster against prior findings by `title` (the cluster's
+     suggested card title). If a prior finding matches with status `dismissed`:
+     skip the interview silently, list under "previously dismissed:
+     '<rebuttal_text>'" in the step 10 table, and track outcome `dismissed`.
+     If status is `carded:#N` (or `linked_card_number` is set): skip the
+     interview, reference card #N in the table, and track outcome
+     `carded:#N`. Otherwise fall through to the interview below.
+
+   For clusters that fall through,
    show the cluster name, then each class in the cluster with its coverage
    percentage and source file path (e.g. `ClassName (42%, src/Foo/Bar.cs)`), and offer:
 

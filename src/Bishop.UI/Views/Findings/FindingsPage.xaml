@@ -63,7 +63,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="220"/>
                 <ColumnDefinition Width="90"/>
-                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="220"/>
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" Click="SortBySeverity_Click"
                     Background="Transparent" BorderThickness="0" Padding="0">
@@ -100,89 +100,173 @@
                    Foreground="{ThemeResource AppTextSecondaryBrush}"
                    Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-        <!-- Findings rows -->
-        <ListView Grid.Row="3"
-                  x:Name="FindingsList"
-                  ItemsSource="{Binding Source={StaticResource FindingsView}}"
-                  SelectionMode="None">
-            <ListView.ItemContainerStyle>
-                <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                    <Setter Property="Padding" Value="0"/>
-                </Style>
-            </ListView.ItemContainerStyle>
-            <ListView.ItemTemplate>
-                <DataTemplate x:DataType="vm:FindingItemViewModel">
-                    <Grid Padding="16,8"
-                          BorderBrush="{ThemeResource AppDividerBrush}"
-                          BorderThickness="0,0,0,1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="90"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="220"/>
-                            <ColumnDefinition Width="90"/>
-                            <ColumnDefinition Width="120"/>
-                        </Grid.ColumnDefinitions>
+        <!-- Findings rows + resolved section -->
+        <ScrollViewer Grid.Row="3">
+            <StackPanel>
+                <ListView x:Name="FindingsList"
+                          ItemsSource="{Binding Source={StaticResource FindingsView}}"
+                          SelectionMode="None">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Padding" Value="0"/>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:FindingItemViewModel">
+                            <Grid Padding="16,8"
+                                  BorderBrush="{ThemeResource AppDividerBrush}"
+                                  BorderThickness="0,0,0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="220"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="220"/>
+                                </Grid.ColumnDefinitions>
 
-                        <!-- Severity chip -->
-                        <Border Grid.Column="0"
-                                Background="{x:Bind SeverityColor, Converter={StaticResource HexColorToBrushConverter}}"
-                                CornerRadius="10"
-                                Padding="6,1"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                Visibility="{x:Bind HasSeverity, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock Text="{x:Bind Severity}"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="{x:Bind SeverityColor, Converter={StaticResource HexColorToContrastForegroundConverter}}"/>
-                        </Border>
+                                <!-- Severity chip -->
+                                <Border Grid.Column="0"
+                                        Background="{x:Bind SeverityColor, Converter={StaticResource HexColorToBrushConverter}}"
+                                        CornerRadius="10"
+                                        Padding="6,1"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
+                                        Visibility="{x:Bind HasSeverity, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Text="{x:Bind Severity}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{x:Bind SeverityColor, Converter={StaticResource HexColorToContrastForegroundConverter}}"/>
+                                </Border>
 
-                        <!-- Title + expandable body -->
-                        <Expander Grid.Column="1"
-                                  Background="Transparent"
-                                  BorderThickness="0"
-                                  HorizontalContentAlignment="Stretch"
-                                  HorizontalAlignment="Stretch"
-                                  Padding="0">
-                            <Expander.Header>
-                                <TextBlock Text="{x:Bind Title}"
-                                           FontSize="13"
-                                           TextWrapping="Wrap"/>
-                            </Expander.Header>
-                            <TextBlock Text="{x:Bind Body}"
-                                       FontFamily="Cascadia Mono, Consolas"
-                                       FontSize="12"
-                                       TextWrapping="Wrap"
-                                       Foreground="{ThemeResource AppTextSecondaryBrush}"/>
-                        </Expander>
+                                <!-- Title + expandable body -->
+                                <Expander Grid.Column="1"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          HorizontalContentAlignment="Stretch"
+                                          HorizontalAlignment="Stretch"
+                                          Padding="0">
+                                    <Expander.Header>
+                                        <TextBlock Text="{x:Bind Title}"
+                                                   FontSize="13"
+                                                   TextWrapping="Wrap"/>
+                                    </Expander.Header>
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="{x:Bind Body}"
+                                                   FontFamily="Cascadia Mono, Consolas"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{ThemeResource AppTextSecondaryBrush}"/>
+                                        <Border Background="{ThemeResource AppDividerBrush}"
+                                                CornerRadius="4"
+                                                Padding="8,4"
+                                                Visibility="{x:Bind HasRebuttal, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <StackPanel>
+                                                <TextBlock Text="Previously dismissed:"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource AppTextSecondaryBrush}"/>
+                                                <TextBlock Text="{x:Bind RebuttalText, Mode=OneWay}"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Expander>
 
-                        <!-- Location -->
-                        <TextBlock Grid.Column="2"
-                                   Text="{x:Bind Location}"
-                                   FontFamily="Cascadia Mono, Consolas"
-                                   FontSize="12"
-                                   Foreground="{ThemeResource AppTextSecondaryBrush}"
-                                   TextWrapping="Wrap"
-                                   VerticalAlignment="Center"/>
+                                <!-- Location -->
+                                <TextBlock Grid.Column="2"
+                                           Text="{x:Bind Location}"
+                                           FontFamily="Cascadia Mono, Consolas"
+                                           FontSize="12"
+                                           Foreground="{ThemeResource AppTextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"/>
 
-                        <!-- Status -->
-                        <TextBlock Grid.Column="3"
-                                   Text="{x:Bind StatusLabel, Mode=OneWay}"
-                                   FontSize="12"
-                                   VerticalAlignment="Center"/>
+                                <!-- Status -->
+                                <TextBlock Grid.Column="3"
+                                           Text="{x:Bind StatusLabel, Mode=OneWay}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"/>
 
-                        <!-- Convert to card -->
-                        <Button Grid.Column="4"
-                                Content="Convert to card"
-                                FontSize="12"
-                                Padding="8,4"
-                                Click="ConvertToCard_Click"
-                                IsEnabled="{x:Bind IsConvertToCardEnabled, Mode=OneWay}"
-                                VerticalAlignment="Center"/>
-                    </Grid>
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+                                <!-- Actions -->
+                                <StackPanel Grid.Column="4"
+                                            Orientation="Horizontal"
+                                            Spacing="6"
+                                            VerticalAlignment="Center">
+                                    <Button Content="Convert to card"
+                                            FontSize="12"
+                                            Padding="8,4"
+                                            Click="ConvertToCard_Click"
+                                            IsEnabled="{x:Bind IsConvertToCardEnabled, Mode=OneWay}"/>
+                                    <Button FontSize="12"
+                                            Padding="8,4"
+                                            IsEnabled="{x:Bind IsDismissEnabled, Mode=OneWay}">
+                                        <Button.Content>
+                                            <FontIcon Glyph="&#xE711;" FontSize="12"/>
+                                        </Button.Content>
+                                        <Button.Flyout>
+                                            <Flyout>
+                                                <StackPanel Width="280" Spacing="8">
+                                                    <TextBlock Text="Dismiss with reason"
+                                                               FontWeight="SemiBold"/>
+                                                    <TextBox x:Name="DismissRebuttalBox"
+                                                             PlaceholderText="Why is this not a real finding?"
+                                                             AcceptsReturn="True"
+                                                             TextWrapping="Wrap"
+                                                             MinHeight="60"/>
+                                                    <Button Content="Dismiss"
+                                                            HorizontalAlignment="Right"
+                                                            Click="Dismiss_Click"
+                                                            Tag="{x:Bind}"/>
+                                                </StackPanel>
+                                            </Flyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <!-- Resolved since last run -->
+                <Expander Margin="16,12,16,16"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch"
+                          IsExpanded="False"
+                          Visibility="{x:Bind ViewModel.HasResolved, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Expander.Header>
+                        <TextBlock Text="Resolved since last run"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource AppTextSecondaryBrush}"/>
+                    </Expander.Header>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.ResolvedFindings, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FindingItemViewModel">
+                                <Grid Padding="0,6"
+                                      BorderBrush="{ThemeResource AppDividerBrush}"
+                                      BorderThickness="0,0,0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="220"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{x:Bind Title}"
+                                               FontSize="12"
+                                               Foreground="{ThemeResource AppTextSecondaryBrush}"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{x:Bind Location}"
+                                               FontFamily="Cascadia Mono, Consolas"
+                                               FontSize="11"
+                                               Foreground="{ThemeResource AppTextSecondaryBrush}"
+                                               TextWrapping="Wrap"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Page>

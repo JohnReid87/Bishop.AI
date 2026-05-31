@@ -38,6 +38,7 @@ public sealed class GetFindingsBySkillAndProjectQueryHandler
                 f.Symbol,
                 f.Rule,
                 f.Status,
+                f.RebuttalText,
                 f.LinkedCardId))
             .ToListAsync(cancellationToken);
 

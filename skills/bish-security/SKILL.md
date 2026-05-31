@@ -29,6 +29,7 @@ Parse the JSON and extract:
 - `workspace.tags` — existing tag names (the skill needs a `security` tag; see step 3)
 - `workspace.lanes` — lane names (defaults to `To Do` when pushing)
 - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Findings Recording Procedure)
+- `skill_specific.prior_findings` — outcomes from previous `bish-security` runs in this workspace; each entry has `identity_hash`, `project_name`, `file`, `symbol`, `rule`, `title`, `status` (`pending` / `dismissed` / `resolved` / `carded:#N`), `rebuttal_text`, and `linked_card_number`. Use during triage to skip findings the user has already decided on — see the "Prior-findings recall" rule in step 7.
 
 Echo the workspace name back on its own line:
 
@@ -253,7 +254,21 @@ surface, because the same code often gets copy-pasted into production.
    Record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-security`, then STOP.
 
 8. **Triage loop.** Walk surviving findings in severity order. For each
-   finding:
+   finding, first apply the **Prior-findings recall** rule:
+
+   - Match the current finding against `skill_specific.prior_findings` from
+     the context-pack by `(file, rule, symbol)` when all three are present,
+     falling back to `title` otherwise.
+   - If the prior status is `dismissed`: skip the interview silently. List
+     the finding in the report under "previously dismissed" with the prior
+     `rebuttal_text` verbatim. Track outcome `dismissed` in the session log.
+   - If the prior status is `carded:#N` (or `linked_card_number` is set):
+     skip the interview. Reference the existing card #N in the report and
+     track outcome `carded:#N` in the session log.
+   - Otherwise (`pending`, `resolved`, or no prior match) fall through to
+     the normal interview below.
+
+   For findings that fall through:
 
    - Print the full body: location(s), what, why-it-matters, CWE (if
      known), suggested-action, plus your own recommended verdict
@@ -310,8 +325,8 @@ surface, because the same code often gets copy-pasted into production.
     Then offer:
 
     > Re-run `/bish-security` after these are worked. Dismissed findings
-    > will resurface — capture load-bearing rebuttals as a project memory
-    > so future runs don't re-ask.
+    > carry their rebuttal forward — the prior reason surfaces in the report
+    > and the skill skips re-interviewing the user about them.
 
 12. **Record this run** by following `Findings Recording Procedure` (in
     `conventions`) with `--skill bish-security`. Before emitting, resolve any

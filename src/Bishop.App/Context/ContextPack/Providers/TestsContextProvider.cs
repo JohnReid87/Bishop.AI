@@ -1,3 +1,4 @@
+using Bishop.App.Findings.GetPriorFindings;
 using Bishop.Core;
 using MediatR;
 
@@ -14,10 +15,14 @@ public sealed class TestsContextProvider : IContextProvider
         "Findings Recording Procedure"
     };
 
-    public Task<object?> BuildSkillSpecificAsync(
+    public async Task<object?> BuildSkillSpecificAsync(
         ContextPackArgs args,
         Workspace workspace,
         ISender mediator,
         CancellationToken cancellationToken)
-        => Task.FromResult<object?>(null);
+    {
+        var prior = await mediator.Send(
+            new GetPriorFindingsQuery(workspace.Id, "bish-tests"), cancellationToken);
+        return new { PriorFindings = prior };
+    }
 }

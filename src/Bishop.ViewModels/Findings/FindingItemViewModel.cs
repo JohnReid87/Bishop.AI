@@ -1,5 +1,6 @@
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.RemoveCard;
+using Bishop.App.Findings.DismissFinding;
 using Bishop.App.Findings.GetFindingsBySkillAndProject;
 using Bishop.Core;
 using Bishop.ViewModels.Cards;
@@ -34,6 +35,9 @@ public sealed partial class FindingItemViewModel : ObservableObject
     [ObservableProperty]
     private int? _linkedCardId;
 
+    [ObservableProperty]
+    private string? _rebuttalText;
+
     public FindingItemViewModel(
         FindingRecord record,
         string skillName,
@@ -53,6 +57,7 @@ public sealed partial class FindingItemViewModel : ObservableObject
         Rule = record.Rule;
         _status = record.Status;
         _linkedCardId = record.LinkedCardId;
+        _rebuttalText = record.RebuttalText;
 
         _skillName = skillName;
         _workspaceId = workspaceId;
@@ -81,11 +86,20 @@ public sealed partial class FindingItemViewModel : ObservableObject
     {
         "dismissed" => "dismissed",
         "parked" => "parked",
+        "resolved" => "resolved",
         _ when LinkedCardId is { } n => $"#{n}",
         _ => "pending",
     };
 
-    public bool IsConvertToCardEnabled => LinkedCardId is null && Status != "dismissed";
+    public bool IsResolved => Status == "resolved";
+    public bool IsDismissed => Status == "dismissed";
+    public bool HasRebuttal => !string.IsNullOrWhiteSpace(RebuttalText);
+
+    public bool IsConvertToCardEnabled =>
+        LinkedCardId is null && Status != "dismissed" && Status != "resolved";
+
+    public bool IsDismissEnabled =>
+        Status != "dismissed" && Status != "resolved" && LinkedCardId is null;
 
     [RelayCommand]
     private async Task ConvertToCardAsync(object? xamlRoot)
@@ -125,8 +139,30 @@ public sealed partial class FindingItemViewModel : ObservableObject
 
         LinkedCardId = card.Number;
         Status = $"carded:#{card.Number}";
+        NotifyDerived();
+    }
+
+    [RelayCommand]
+    private async Task DismissAsync(string? rebuttal)
+    {
+        if (!IsDismissEnabled) return;
+        if (string.IsNullOrWhiteSpace(rebuttal)) return;
+
+        await _mediator.Send(new DismissFindingCommand(Id, rebuttal.Trim()));
+
+        Status = "dismissed";
+        RebuttalText = rebuttal.Trim();
+        NotifyDerived();
+    }
+
+    private void NotifyDerived()
+    {
         OnPropertyChanged(nameof(StatusLabel));
         OnPropertyChanged(nameof(IsConvertToCardEnabled));
+        OnPropertyChanged(nameof(IsDismissEnabled));
+        OnPropertyChanged(nameof(IsResolved));
+        OnPropertyChanged(nameof(IsDismissed));
+        OnPropertyChanged(nameof(HasRebuttal));
     }
 
     private string BuildDescription()

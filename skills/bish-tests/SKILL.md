@@ -30,6 +30,7 @@ Parse the JSON and extract:
 - `workspace.tags` — existing tag names (the skill needs a `test` tag; see step 6)
 - `workspace.lanes` — lane names (defaults to `To Do` when pushing)
 - `conventions` — STABLE/TUNABLE procedure sections (Shell selection, Card model, Findings Recording Procedure)
+- `skill_specific.prior_findings` — outcomes from previous `bish-tests` runs in this workspace; each entry has `identity_hash`, `project_name`, `file`, `symbol`, `rule`, `title`, `status` (`pending` / `dismissed` / `resolved` / `carded:#N`), `rebuttal_text`, and `linked_card_number`. Use during step 8 to skip findings the user has already decided on.
 
 Echo the workspace name back on its own line:
 
@@ -267,9 +268,21 @@ you flag as equivalent during the interview.
 
    Record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-tests` (plus `--project <name>` when a `projectName` was derived in step 1), then continue to step 9 so the clean-classes summary still prints.
 
-8. **Interview per surviving suggestion** with `AskUserQuestion`. For each
-   class, show the class name, test file path, mutation score, and the list
-   of survived mutants with the Explore agent's explanations. Offer:
+8. **Interview per surviving suggestion** with `AskUserQuestion`. Before
+   the interview, apply **Prior-findings recall** against
+   `skill_specific.prior_findings`:
+
+   - Match the current class against prior findings by `symbol = <ClassName>`
+     and `rule = mutation-coverage`. If a prior finding matches with status
+     `dismissed`: skip the interview silently, list under "previously
+     dismissed: '<rebuttal_text>'" in the step 9 table, and track outcome
+     `dismissed`. If status is `carded:#N` (or `linked_card_number` is set):
+     skip the interview, reference card #N in the table, and track outcome
+     `carded:#N`. Otherwise (`pending`, `resolved`, or no match) fall through.
+
+   For classes that fall through, show the class name, test file path,
+   mutation score, and the list of survived mutants with the Explore
+   agent's explanations. Offer:
 
    - **Push as-is (Recommended)** — file the card with all survived mutants.
    - **Mark equivalent mutants** — review each mutant individually and
