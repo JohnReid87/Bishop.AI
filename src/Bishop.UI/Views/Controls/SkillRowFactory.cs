@@ -66,7 +66,7 @@ internal static class SkillRowFactory
         {
             var viewBtn = new Button
             {
-                Content = new FontIcon { Glyph = "", FontSize = 12 },
+                Content = new FontIcon { Glyph = "", FontSize = 12 },
                 Padding = new Thickness(4, 2, 4, 2),
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 4, 0),
