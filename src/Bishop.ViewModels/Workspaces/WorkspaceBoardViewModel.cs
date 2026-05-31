@@ -1,17 +1,10 @@
 using Bishop.App.Cards.CloseCard;
-using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
-using Bishop.App.Git.GetCurrentBranch;
-using Bishop.App.Git.GetRecentCommits;
-using Bishop.App.Git.Push;
-using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Services.Settings;
 using Bishop.App.Services.Terminal;
 using Bishop.App.Skills;
-using Bishop.App.Skills.DiscoverSkills;
-using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Tags.ListTags;
 using Bishop.App.Workspaces.LaunchPlainTerminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
@@ -32,15 +25,20 @@ namespace Bishop.ViewModels.Workspaces;
 public sealed partial class WorkspaceBoardViewModel : ObservableObject
 {
     private readonly ISender _mediator;
-    private readonly IAppSettings _appSettings;
+    private readonly BoardSkillsCoordinator _skills;
+    private readonly BoardGitCoordinator _git;
     private Guid _workspaceId;
 
-    public bool IsCardSkillsButtonVisible { get; set; }
+    public bool IsCardSkillsButtonVisible
+    {
+        get => _skills.IsCardSkillsButtonVisible;
+        set => _skills.IsCardSkillsButtonVisible = value;
+    }
 
     public string WorkspacePath { get; set; } = string.Empty;
 
-    public SkillMenuItem[] CardSkills { get; private set; } = [];
-    public SkillMenuItem[] WorkspaceSkills { get; private set; } = [];
+    public SkillMenuItem[] CardSkills => _skills.CardSkills;
+    public SkillMenuItem[] WorkspaceSkills => _skills.WorkspaceSkills;
 
     public ObservableCollection<LaneViewModel> Lanes { get; } = [];
 
@@ -53,7 +51,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     partial void OnSearchTextChanged(string value)
     {
-        var batchStats = ComputeBatchStats();
+        var batchStats = BoardBatchStats.Compute(Lanes);
         foreach (var lane in Lanes)
         {
             lane.ApplyFilter(value);
@@ -62,34 +60,9 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         OnPropertyChanged(nameof(IsSearchEmpty));
     }
 
-    private IReadOnlyDictionary<Guid, BatchStats> ComputeBatchStats()
-    {
-        var raw = new Dictionary<Guid, (string Name, int TotalCount, int DoneCount, DateTimeOffset? CreatedAt)>();
-        foreach (var lane in Lanes)
-        {
-            foreach (var card in lane.Cards)
-            {
-                if (card.BatchId is not { } batchId) continue;
-                raw.TryGetValue(batchId, out var e);
-                raw[batchId] = (
-                    e.Name is not (null or "") ? e.Name : card.BatchName ?? string.Empty,
-                    e.TotalCount + 1,
-                    e.DoneCount + (card.LaneName == Bishop.Core.SystemLaneNames.Done ? 1 : 0),
-                    e.CreatedAt ?? card.BatchCreatedAt);
-            }
-        }
-        var indexByBatch = raw
-            .OrderBy(kvp => kvp.Value.CreatedAt ?? DateTimeOffset.MaxValue)
-            .Select((kvp, i) => (kvp.Key, Index: i))
-            .ToDictionary(x => x.Key, x => x.Index);
-        return raw.ToDictionary(
-            kvp => kvp.Key,
-            kvp => new BatchStats(kvp.Value.Name, kvp.Value.TotalCount, kvp.Value.DoneCount, indexByBatch[kvp.Key]));
-    }
-
     public void RefreshLaneItems()
     {
-        var batchStats = ComputeBatchStats();
+        var batchStats = BoardBatchStats.Compute(Lanes);
         foreach (var lane in Lanes)
             lane.RebuildLaneItems(batchStats);
     }
@@ -105,28 +78,18 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     public void ToggleCardSelection(CardViewModel card)
     {
-        card.IsSelected = !card.IsSelected;
-        if (card.IsSelected)
-        {
-            if (!StagingTray.Cards.Contains(card))
-                StagingTray.Cards.Add(card);
-        }
-        else
-        {
-            StagingTray.Cards.Remove(card);
-        }
-        OnPropertyChanged(nameof(SelectedCards));
-        OnPropertyChanged(nameof(SelectionCount));
-        OnPropertyChanged(nameof(HasSelection));
-        OnPropertyChanged(nameof(SelectionLabel));
+        BoardSelection.Toggle(card, StagingTray);
+        RaiseSelectionPropertyChanges();
     }
 
     public void ClearSelection()
     {
-        foreach (var lane in Lanes)
-            foreach (var c in lane.Cards)
-                c.IsSelected = false;
-        StagingTray.Reset();
+        BoardSelection.Clear(Lanes, StagingTray);
+        RaiseSelectionPropertyChanges();
+    }
+
+    private void RaiseSelectionPropertyChanges()
+    {
         OnPropertyChanged(nameof(SelectedCards));
         OnPropertyChanged(nameof(SelectionCount));
         OnPropertyChanged(nameof(HasSelection));
@@ -136,7 +99,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     public WorkspaceBoardViewModel(ISender mediator, IAppSettings appSettings)
     {
         _mediator = mediator;
-        _appSettings = appSettings;
+        _skills = new BoardSkillsCoordinator(mediator, appSettings, () => WorkspacePath);
+        _git = new BoardGitCoordinator(mediator);
     }
 
     public async Task LoadAsync(Guid workspaceId)
@@ -146,179 +110,45 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task RefreshAsync()
+    private Task RefreshAsync()
     {
-        var lanes = await _mediator.Send(new ListLanesByWorkspaceQuery(_workspaceId));
-        var tags = await _mediator.Send(new ListTagsQuery());
-        var tagColourByName = tags.ToDictionary(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
-
-        // When the lane structure is unchanged, update only cards that actually changed so
-        // ListView scroll positions are preserved and unnecessary Replace notifications are
-        // avoided. A full rebuild (Lanes.Clear) is only needed when lanes are added,
-        // removed, renamed, or reordered.
-        if (Lanes.Count == lanes.Count && Lanes.Select(l => l.Name).SequenceEqual(lanes.Select(l => l.Name), StringComparer.OrdinalIgnoreCase))
-        {
-            foreach (var laneVm in Lanes)
-            {
-                var fresh = (await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId, LaneName: laneVm.Name))).ToList();
-                for (var i = 0; i < fresh.Count; i++)
-                {
-                    var card = fresh[i];
-                    if (i < laneVm.Cards.Count && Matches(laneVm.Cards[i], card, tagColourByName))
-                        continue;
-                    var cardVm = BuildCardViewModel(card, laneVm.Name, tagColourByName);
-                    if (i < laneVm.Cards.Count)
-                        laneVm.Cards[i] = cardVm;
-                    else
-                        laneVm.Cards.Add(cardVm);
-                }
-                while (laneVm.Cards.Count > fresh.Count)
-                    laneVm.Cards.RemoveAt(laneVm.Cards.Count - 1);
-            }
-            var batchStats = ComputeBatchStats();
-            foreach (var laneVm in Lanes)
-                laneVm.RebuildLaneItems(batchStats);
-            return;
-        }
-
-        Lanes.Clear();
-        foreach (var lane in lanes)
-        {
-            var laneVm = new LaneViewModel(_mediator, () => RefreshCommand.ExecuteAsync(null)) { WorkspaceId = _workspaceId, Name = lane.Name };
-            var cards = await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId, LaneName: lane.Name));
-            foreach (var card in cards)
-                laneVm.Cards.Add(BuildCardViewModel(card, lane.Name, tagColourByName));
-            Lanes.Add(laneVm);
-        }
-
-        if (!string.IsNullOrEmpty(SearchText))
-        {
-            foreach (var laneVm in Lanes)
-                laneVm.ApplyFilter(SearchText);
-        }
-
-        var fullBatchStats = ComputeBatchStats();
-        foreach (var laneVm in Lanes)
-            laneVm.RebuildLaneItems(fullBatchStats);
+        var ctx = new BoardRefresher.Context(
+            _mediator,
+            _workspaceId,
+            Lanes,
+            CreateLaneVm,
+            IsCardSkillsButtonVisible,
+            SearchText);
+        return BoardRefresher.RefreshAsync(ctx);
     }
 
-    private static bool Matches(CardViewModel vm, Bishop.Core.Card card, IReadOnlyDictionary<string, string> tagColourByName)
+    private LaneViewModel CreateLaneVm(string name) => new(_mediator, () => RefreshCommand.ExecuteAsync(null))
     {
-        if (vm.Id != card.Id
-            || vm.Title != card.Title
-            || vm.Description != card.Description
-            || vm.IsClosed != card.IsClosed
-            || vm.GitHubIssueNumber != card.GitHubIssueNumber
-            || vm.GitHubPushedAt != card.GitHubPushedAt
-            || vm.LastAutoRunFailedAt != card.LastAutoRunFailedAt
-            || vm.LastAutoRunSucceededAt != card.LastAutoRunSucceededAt
-            || vm.BatchId != card.BatchId)
-            return false;
-
-        var expectedColour = card.TagName is { } name && tagColourByName.TryGetValue(name, out var c) ? c : null;
-        if (vm.TagName != card.TagName || vm.TagColour != expectedColour)
-            return false;
-
-        return true;
-    }
-
-    private CardViewModel BuildCardViewModel(Bishop.Core.Card card, string laneName, IReadOnlyDictionary<string, string> tagColourByName)
-    {
-        var tagColour = card.TagName is { } name && tagColourByName.TryGetValue(name, out var c) ? c : null;
-        return new CardViewModel
-        {
-            Id = card.Id,
-            Number = card.Number,
-            Title = card.Title,
-            Description = card.Description,
-            LaneName = laneName,
-            TagName = card.TagName,
-            TagColour = tagColour,
-            IsClosed = card.IsClosed,
-            GitHubIssueNumber = card.GitHubIssueNumber,
-            GitHubPushedAt = card.GitHubPushedAt,
-            LastAutoRunFailedAt = card.LastAutoRunFailedAt,
-            LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
-            BatchId = card.BatchId,
-            BatchName = card.Batch?.Name,
-            BatchCreatedAt = card.Batch?.CreatedAt,
-            IsSkillsButtonVisible = IsCardSkillsButtonVisible,
-        };
-    }
+        WorkspaceId = _workspaceId,
+        Name = name,
+    };
 
     // ── Skills ───────────────────────────────────────────────────────────────
 
-    public async Task LoadSkillsAsync()
-    {
-        var skills = await _mediator.Send(new DiscoverSkillsQuery());
-        CardSkills = SkillMenuBuilder.Build(skills, "card");
-        WorkspaceSkills = SkillMenuBuilder.Build(skills, "workspace");
-        IsCardSkillsButtonVisible = CardSkills.Length > 0;
-    }
+    public async Task LoadSkillsAsync() => await _skills.LoadAsync();
 
-    public Task<IReadOnlyList<SkillLaunchItem>> BuildWorkspaceSkillLaunchItemsAsync() =>
-        BuildLaunchItemsAsync(WorkspaceSkills, card: null);
+    public Task<IReadOnlyList<SkillLaunchItem>> BuildWorkspaceSkillLaunchItemsAsync()
+        => _skills.BuildWorkspaceLaunchItemsAsync();
 
-    public Task<IReadOnlyList<SkillLaunchItem>> BuildCardSkillLaunchItemsAsync(CardViewModel card) =>
-        BuildLaunchItemsAsync(CardSkills, card);
+    public Task<IReadOnlyList<SkillLaunchItem>> BuildCardSkillLaunchItemsAsync(CardViewModel card)
+        => _skills.BuildCardLaunchItemsAsync(card);
 
-    public async Task LaunchAsync(SkillLaunchItem item, string? stagedText, TerminalSnap snap, string modelId)
-    {
-        var command = string.IsNullOrWhiteSpace(stagedText)
-            ? item.RenderedCommand
-            : $"{item.RenderedCommand} {stagedText}";
-        await _mediator.Send(new LaunchSkillCommand(WorkspacePath, command, snap, modelId));
-    }
+    public Task LaunchAsync(SkillLaunchItem item, string? stagedText, TerminalSnap snap, string modelId)
+        => _skills.LaunchAsync(item, stagedText, snap, modelId);
 
-    public async Task LaunchWorkspaceSkillByNameAsync(string skillName, string modelId, TerminalSnap snap)
-    {
-        var item = await BuildWorkspaceSkillLaunchItemAsync(skillName);
-        if (item is null) return;
-        await LaunchAsync(item, stagedText: null, snap, modelId);
-    }
+    public Task LaunchWorkspaceSkillByNameAsync(string skillName, string modelId, TerminalSnap snap)
+        => _skills.LaunchWorkspaceByNameAsync(skillName, modelId, snap);
 
-    public async Task<SkillLaunchItem?> BuildWorkspaceSkillLaunchItemAsync(string skillName)
-    {
-        var menuItem = WorkspaceSkills.FirstOrDefault(s => string.Equals(s.Skill.Name, skillName, StringComparison.OrdinalIgnoreCase));
-        if (menuItem is null) return null;
-        return await BuildLaunchItemAsync(menuItem, card: null);
-    }
+    public Task<SkillLaunchItem?> BuildWorkspaceSkillLaunchItemAsync(string skillName)
+        => _skills.BuildWorkspaceLaunchItemByNameAsync(skillName);
 
-    public async Task SetSkillModelAsync(string skillName, string modelId)
-        => await _appSettings.SetAsync($"skill.{skillName}.last_model", modelId);
-
-    private async Task<IReadOnlyList<SkillLaunchItem>> BuildLaunchItemsAsync(SkillMenuItem[] source, CardViewModel? card)
-    {
-        var items = new List<SkillLaunchItem>(source.Length);
-        foreach (var menuItem in source)
-            items.Add(await BuildLaunchItemAsync(menuItem, card));
-        return items;
-    }
-
-    private async Task<SkillLaunchItem> BuildLaunchItemAsync(SkillMenuItem menuItem, CardViewModel? card)
-    {
-        var skill = menuItem.Skill;
-        var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, WorkspacePath);
-        var savedModel = SkillModelOptions.ResolveModelId(
-            await _appSettings.GetAsync($"skill.{skill.Name}.last_model"));
-
-        var requiresStage = SkillStaging.ShouldShowStageDialog(skill, hasCard: card is not null);
-        var prefill = skill.StagePrefill is null
-            ? null
-            : SkillCommandRenderer.Render(skill.StagePrefill, card?.Number, card?.Title, card?.Description, WorkspacePath).Trim();
-
-        return new SkillLaunchItem(
-            Name: menuItem.Name,
-            GroupHeader: menuItem.GroupHeader,
-            SavedModelId: savedModel,
-            RenderedCommand: rendered,
-            RequiresStage: requiresStage,
-            StagePrompt: skill.StagePrompt,
-            StagePrefill: string.IsNullOrEmpty(prefill) ? null : prefill,
-            MarkdownBody: skill.MarkdownBody,
-            StageProjects: skill.StageProjects,
-            StageFilePicker: skill.StageFilePicker);
-    }
+    public Task SetSkillModelAsync(string skillName, string modelId)
+        => _skills.SetSkillModelAsync(skillName, modelId);
 
     // ── Workspace launch ─────────────────────────────────────────────────────
 
@@ -330,33 +160,14 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     // ── Commits ──────────────────────────────────────────────────────────────
 
-    public async Task<RecentCommitsResult> GetRecentCommitsAsync(string workspacePath)
-    {
-        var result = await _mediator.Send(new GetRecentCommitsQuery(workspacePath));
-        return result switch
-        {
-            GetRecentCommitsResult.Success s => new RecentCommitsResult.Success(
-                s.Commits
-                    .Select(c => new CommitItem(c.ShortHash, c.FullHash, c.Subject, c.Body, c.Timestamp, c.IsPushed))
-                    .ToList(),
-                s.UpstreamRef,
-                s.UpstreamIsTracked,
-                s.UnpushedCount),
-            GetRecentCommitsResult.NotAGitRepo => new RecentCommitsResult.NotAGitRepo(),
-            GetRecentCommitsResult.GitNotFound => new RecentCommitsResult.GitNotFound(),
-            GetRecentCommitsResult.NoCommits => new RecentCommitsResult.NoCommits(),
-            _ => throw new InvalidOperationException($"Unknown GetRecentCommitsResult: {result.GetType().Name}"),
-        };
-    }
+    public Task<RecentCommitsResult> GetRecentCommitsAsync(string workspacePath)
+        => _git.GetRecentCommitsAsync(workspacePath);
 
-    public async Task<string> GetCurrentBranchAsync(string workspacePath)
-        => await _mediator.Send(new GetCurrentBranchQuery(workspacePath));
+    public Task<string> GetCurrentBranchAsync(string workspacePath)
+        => _git.GetCurrentBranchAsync(workspacePath);
 
-    public async Task<PushOutcome> PushAsync(string workspacePath, bool setUpstream = false)
-    {
-        var result = await _mediator.Send(new PushCommand(workspacePath, SetUpstream: setUpstream));
-        return new PushOutcome(result.Success, result.Message);
-    }
+    public Task<PushOutcome> PushAsync(string workspacePath, bool setUpstream = false)
+        => _git.PushAsync(workspacePath, setUpstream);
 
     // ── Card operations ──────────────────────────────────────────────────────
 
