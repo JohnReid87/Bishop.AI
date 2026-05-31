@@ -58,6 +58,13 @@ function Publish-And-Deploy {
         Write-Host "  Created $InstallDir" -ForegroundColor Gray
     }
 
+    # Clear the bundled skills directory so renamed/removed skills don't linger
+    # (Copy-Item overwrites but doesn't delete files missing from source).
+    $SkillsDir = Join-Path $InstallDir 'skills'
+    if (Test-Path $SkillsDir) {
+        Remove-Item -Recurse -Force $SkillsDir
+    }
+
     Write-Host "  Deploying to $InstallDir..." -ForegroundColor Cyan
     Copy-Item -Path (Join-Path $PublishDir '*') -Destination $InstallDir -Recurse -Force
 }
