@@ -8,6 +8,7 @@ using Bishop.Data;
 using FluentAssertions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -31,7 +32,7 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
 
     private static string U(string prefix = "x") => $"{prefix}-{Guid.NewGuid():N}"[..20];
 
-    private async Task<Batch> CreateWorkingBatchAsync()
+    private async Task<Batch> CreateWorkingBatchAsync(string? worktreePath = WorktreePath)
     {
         await using var db = await _factory.CreateDbContextAsync();
         var batch = new Batch
@@ -41,7 +42,7 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
             Name = U("batch"),
             BranchName = $"bishop/{U("br")}",
             BaseBranch = "main",
-            WorktreePath = WorktreePath,
+            WorktreePath = worktreePath,
             Status = BatchStatus.Open,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -78,14 +79,25 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
         return git;
     }
 
-    private CleanUpBatchCommandHandler CreateHandler(IGitCli? git = null, IGhCli? ghCli = null)
+    private CleanUpBatchCommandHandler CreateHandler(IGitCli? git = null, IGhCli? ghCli = null, ILogger<CleanUpBatchCommandHandler>? logger = null)
     {
         var gh = ghCli ?? Substitute.For<IGhCli>();
         ISender sender = new CleanUpBatchTestSender(_factory, gh);
         return new(_factory, sender,
                    git ?? GitMergedNoBranchNoWorktree(),
-                   NullLogger<CleanUpBatchCommandHandler>.Instance,
+                   logger ?? NullLogger<CleanUpBatchCommandHandler>.Instance,
                    TimeProvider.System);
+    }
+
+    private sealed class CapturingLogger : ILogger<CleanUpBatchCommandHandler>
+    {
+        public int WarningCount { get; private set; }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Warning) WarningCount++;
+        }
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
     }
 
     private sealed class CleanUpBatchTestSender : ISender
@@ -204,6 +216,42 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
         saved.Status.Should().Be(BatchStatus.Closed);
     }
 
+    [Fact]
+    public async Task WorktreePath_NonEmpty_CallsRemoveWorktree()
+    {
+        var batch = await CreateWorkingBatchAsync(); // WorktreePath = WorktreePath const
+        var git = GitMergedNoBranchNoWorktree();
+
+        await CreateHandler(git).Handle(new CleanUpBatchCommand(batch.Name, WorkspacePath), default);
+
+        await git.Received(1).RemoveWorktreeAsync(WorkspacePath, WorktreePath, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task WorktreePath_Empty_SkipsRemoveWorktree()
+    {
+        var batch = await CreateWorkingBatchAsync(worktreePath: "");
+        var git = GitMergedNoBranchNoWorktree();
+
+        await CreateHandler(git).Handle(new CleanUpBatchCommand(batch.Name, WorkspacePath), default);
+
+        await git.DidNotReceive().RemoveWorktreeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task WorktreeRemoveFails_LogsWarning()
+    {
+        var batch = await CreateWorkingBatchAsync();
+        var git = GitMergedNoBranchNoWorktree();
+        git.RemoveWorktreeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("worktree not found"));
+        var logger = new CapturingLogger();
+
+        await CreateHandler(git, logger: logger).Handle(new CleanUpBatchCommand(batch.Name, WorkspacePath), default);
+
+        logger.WarningCount.Should().Be(1);
+    }
+
     // ── card closure ───────────────────────────────────────────────────────────
 
     [Fact]
@@ -217,7 +265,7 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         var result = await CreateHandler().Handle(new CleanUpBatchCommand(batch.Name, WorkspacePath), default);
 
-        result.ClosedCardNumbers.Should().BeEquivalentTo([card1.Number, card2.Number]);
+        result.ClosedCardNumbers.Should().Equal(card1.Number, card2.Number);
 
         var saved1 = await _db.Cards.SingleAsync(c => c.Id == card1.Id);
         var saved2 = await _db.Cards.SingleAsync(c => c.Id == card2.Id);
