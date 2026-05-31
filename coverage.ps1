@@ -30,7 +30,7 @@ dotnet reportgenerator `
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Emit normalized summary consumed by /bish-coverage. Schema (stack-agnostic):
-#   { schemaVersion, threshold, generatedAt, modules: [{ name, file, lineCoverage, linesCoverable }] }
+#   { schemaVersion, threshold, generatedAt, modules: [{ name, file, lineCoverage, linesCoverable, cyclomaticComplexity, crapScore }] }
 $cob = Get-ChildItem $resultsDir -Recurse -Filter coverage.cobertura.xml | Select-Object -First 1
 if ($null -eq $cob) {
     Write-Warning "coverage.cobertura.xml not found; skipping normalized summary."
@@ -43,11 +43,16 @@ if ($null -eq $cob) {
             if ($rel.StartsWith($rootForward, [StringComparison]::OrdinalIgnoreCase)) {
                 $rel = $rel.Substring($rootForward.Length)
             }
+            $lineRate   = [double]$cls.'line-rate'
+            $complexity = [int]$cls.complexity
+            $crap       = ($complexity * $complexity) * [Math]::Pow(1 - $lineRate, 3) + $complexity
             [PSCustomObject]@{
-                name           = $cls.name
-                file           = $rel
-                lineCoverage   = [Math]::Round([double]$cls.'line-rate' * 100, 2)
-                linesCoverable = @($cls.lines.line).Count
+                name                 = $cls.name
+                file                 = $rel
+                lineCoverage         = [Math]::Round($lineRate * 100, 2)
+                linesCoverable       = @($cls.lines.line).Count
+                cyclomaticComplexity = $complexity
+                crapScore            = [Math]::Round($crap, 1)
             }
         }
     }
