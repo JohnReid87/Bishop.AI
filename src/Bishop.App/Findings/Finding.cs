@@ -5,4 +5,7 @@ public sealed record Finding(
     string Body,
     string Outcome,
     string? Severity = null,
-    string? Location = null);
+    string? Location = null,
+    string? File = null,
+    string? Rule = null,
+    string? Symbol = null);

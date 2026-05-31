@@ -57,7 +57,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
         """;
 
     [Fact]
-    public async Task Handle_HappyPath_WritesJsonAndHtmlAndRecordsRun()
+    public async Task Handle_HappyPath_WritesHtmlAndPersistsFindings()
     {
         var ws = await CreateWorkspaceAsync();
         var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
@@ -67,9 +67,7 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             default);
 
         result.FindingCount.Should().Be(2);
-        File.Exists(result.JsonPath).Should().BeTrue();
         File.Exists(result.HtmlPath).Should().BeTrue();
-        result.JsonPath.Should().Be(Path.Combine(ws.Path, ".bishop", "findings", "bish-dead-code.json"));
         result.HtmlPath.Should().Be(Path.Combine(ws.Path, ".bishop", "findings", "bish-dead-code.html"));
 
         var run = await _db.WorkspaceSkillRuns.AsNoTracking()
@@ -77,6 +75,15 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
         run.GitSha.Should().Be("abc1234");
         run.RecordedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
         run.FindingsCount.Should().Be(2);
+        run.ProjectName.Should().BeNull();
+
+        var findings = await _db.Findings.AsNoTracking()
+            .Where(f => f.WorkspaceSkillRunId == run.Id)
+            .OrderBy(f => f.Title)
+            .ToListAsync();
+        findings.Should().HaveCount(2);
+        findings.All(f => f.Status == "pending").Should().BeTrue();
+        findings.All(f => !string.IsNullOrEmpty(f.IdentityHash)).Should().BeTrue();
     }
 
     [Fact]
@@ -230,7 +237,173 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
             default);
 
         result.FindingCount.Should().Be(0);
-        File.Exists(result.JsonPath).Should().BeTrue();
         File.Exists(result.HtmlPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_SecondRun_ReplacesFindingsWholesale()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", ValidJson, "sha1"), default);
+
+        const string smallerJson = """
+            { "findings": [ { "title": "Only one", "body": "Just this.", "outcome": "parked" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", smallerJson, "sha2"), default);
+
+        var run = await _db.WorkspaceSkillRuns.AsNoTracking()
+            .SingleAsync(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-arch");
+        var findings = await _db.Findings.AsNoTracking()
+            .Where(f => f.WorkspaceSkillRunId == run.Id)
+            .ToListAsync();
+        findings.Should().HaveCount(1);
+        findings[0].Title.Should().Be("Only one");
+    }
+
+    [Fact]
+    public async Task Handle_PerProject_CreatesSeparateRuns()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string jsonProjectA = """
+            {
+              "projectName": "Bishop.App",
+              "findings": [ { "title": "A finding", "body": "x", "outcome": "dismissed" } ]
+            }
+            """;
+        const string jsonProjectB = """
+            {
+              "projectName": "Bishop.UI",
+              "findings": [ { "title": "B finding", "body": "y", "outcome": "dismissed" } ]
+            }
+            """;
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-tests", jsonProjectA, "sha"), default);
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-tests", jsonProjectB, "sha"), default);
+
+        var runs = await _db.WorkspaceSkillRuns.AsNoTracking()
+            .Where(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-tests")
+            .OrderBy(r => r.ProjectName)
+            .ToListAsync();
+        runs.Should().HaveCount(2);
+        runs[0].ProjectName.Should().Be("Bishop.App");
+        runs[1].ProjectName.Should().Be("Bishop.UI");
+
+        File.Exists(Path.Combine(ws.Path, ".bishop", "findings", "bish-tests__Bishop.App.html")).Should().BeTrue();
+        File.Exists(Path.Combine(ws.Path, ".bishop", "findings", "bish-tests__Bishop.UI.html")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_StructuredInputs_IdentityHashStableAcrossReruns()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string json = """
+            {
+              "findings": [
+                {
+                  "title": "Unused symbol",
+                  "body": "x",
+                  "outcome": "dismissed",
+                  "file": "src/Foo.cs",
+                  "rule": "DEAD001",
+                  "symbol": "Foo.Bar"
+                }
+              ]
+            }
+            """;
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-dead-code", json, "sha1"), default);
+        var runId = await _db.WorkspaceSkillRuns.AsNoTracking()
+            .Where(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-dead-code")
+            .Select(r => r.Id).SingleAsync();
+        var firstHash = await _db.Findings.AsNoTracking()
+            .Where(f => f.WorkspaceSkillRunId == runId)
+            .Select(f => f.IdentityHash).SingleAsync();
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-dead-code", json, "sha2"), default);
+        var secondHash = await _db.Findings.AsNoTracking()
+            .Where(f => f.WorkspaceSkillRunId == runId)
+            .Select(f => f.IdentityHash).SingleAsync();
+
+        secondHash.Should().Be(firstHash);
+    }
+
+    [Fact]
+    public void FindingIdentity_StructuredInputs_MatchSpec()
+    {
+        var hash = FindingIdentity.Compute("bish-dead-code", null, "src/Foo.cs", "DEAD001", "Foo.Bar", "ignored title");
+        var legacy = FindingIdentity.Compute("bish-dead-code", null, null, null, null, "ignored title");
+        hash.Should().NotBe(legacy);
+        hash.Should().MatchRegex("^[0-9a-f]{40}$");
+        legacy.Should().MatchRegex("^[0-9a-f]{40}$");
+    }
+
+    [Fact]
+    public void FindingIdentity_PartialStructuredInputs_FallsBackToLegacyFormula()
+    {
+        var legacy = FindingIdentity.Compute("s", "p", null, null, null, "title");
+        var partial = FindingIdentity.Compute("s", "p", "file", null, "symbol", "title");
+        partial.Should().Be(legacy, "missing any of file/rule/symbol must fall back to the legacy formula");
+    }
+
+    [Fact]
+    public async Task Handle_LegacyJsonPresent_ImportsAndDeletesOnFirstRun()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var findingsDir = Path.Combine(ws.Path, ".bishop", "findings");
+        Directory.CreateDirectory(findingsDir);
+        var legacyPath = Path.Combine(findingsDir, "bish-arch.json");
+        const string legacyJson = """
+            {
+              "findings": [
+                { "title": "Old A", "body": "a", "outcome": "dismissed" },
+                { "title": "Old B", "body": "b", "outcome": "parked" }
+              ]
+            }
+            """;
+        await File.WriteAllTextAsync(legacyPath, legacyJson);
+
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+        const string newJson = """
+            { "findings": [ { "title": "New", "body": "n", "outcome": "dismissed" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", newJson, "sha"), default);
+
+        File.Exists(legacyPath).Should().BeFalse("legacy json should be deleted after import");
+
+        var run = await _db.WorkspaceSkillRuns.AsNoTracking()
+            .SingleAsync(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-arch");
+        var findings = await _db.Findings.AsNoTracking()
+            .Where(f => f.WorkspaceSkillRunId == run.Id)
+            .Select(f => f.Title)
+            .ToListAsync();
+        findings.Should().BeEquivalentTo(["New"], "new run wholesale-replaces the legacy import for the matching (skill, null project) key");
+    }
+
+    [Fact]
+    public async Task Handle_LegacyJsonPresent_SecondCallDoesNotReImport()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var findingsDir = Path.Combine(ws.Path, ".bishop", "findings");
+        Directory.CreateDirectory(findingsDir);
+        var legacyPath = Path.Combine(findingsDir, "bish-arch.json");
+        await File.WriteAllTextAsync(legacyPath,
+            """{ "findings": [ { "title": "Old", "body": "a", "outcome": "dismissed" } ] }""");
+
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+        const string newJson = """{ "findings": [ { "title": "New", "body": "n", "outcome": "dismissed" } ] }""";
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", newJson, "sha"), default);
+
+        // Recreate the legacy file — handler should ignore it because runs now exist.
+        await File.WriteAllTextAsync(legacyPath,
+            """{ "findings": [ { "title": "Resurrected", "body": "r", "outcome": "dismissed" } ] }""");
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", newJson, "sha"), default);
+
+        File.Exists(legacyPath).Should().BeTrue("legacy import is one-shot — the file should be left alone on subsequent runs");
     }
 }

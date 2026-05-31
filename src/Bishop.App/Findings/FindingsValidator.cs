@@ -25,6 +25,16 @@ public static partial class FindingsValidator
         if (findingsEl.ValueKind != JsonValueKind.Array)
             throw new FindingsValidationException("'findings' must be an array.");
 
+        string? projectName = null;
+        if (root.TryGetProperty("projectName", out var projectEl) && projectEl.ValueKind != JsonValueKind.Null)
+        {
+            if (projectEl.ValueKind != JsonValueKind.String)
+                throw new FindingsValidationException("'projectName' must be a string when present.");
+            var value = projectEl.GetString();
+            if (!string.IsNullOrEmpty(value))
+                projectName = value;
+        }
+
         var findings = new List<Finding>(findingsEl.GetArrayLength());
         var index = 0;
         foreach (var item in findingsEl.EnumerateArray())
@@ -33,7 +43,7 @@ public static partial class FindingsValidator
             index++;
         }
 
-        return new FindingsDocument(findings);
+        return new FindingsDocument(findings, projectName);
     }
 
     private static JsonDocument ParseDocument(string json)
@@ -63,8 +73,11 @@ public static partial class FindingsValidator
 
         var severity = OptionalString(el, "severity", index);
         var location = OptionalString(el, "location", index);
+        var file = OptionalString(el, "file", index);
+        var rule = OptionalString(el, "rule", index);
+        var symbol = OptionalString(el, "symbol", index);
 
-        return new Finding(title, body, outcome, severity, location);
+        return new Finding(title, body, outcome, severity, location, file, rule, symbol);
     }
 
     private static string RequiredString(JsonElement el, string name, int index)

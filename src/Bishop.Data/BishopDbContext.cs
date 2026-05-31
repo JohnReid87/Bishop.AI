@@ -12,6 +12,7 @@ public sealed class BishopDbContext : DbContext
     public DbSet<Card> Cards => Set<Card>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<WorkspaceSkillRun> WorkspaceSkillRuns => Set<WorkspaceSkillRun>();
+    public DbSet<Finding> Findings => Set<Finding>();
     public DbSet<Batch> Batches => Set<Batch>();
 
     public BishopDbContext(DbContextOptions<BishopDbContext> options)

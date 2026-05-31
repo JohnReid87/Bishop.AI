@@ -7,7 +7,7 @@ namespace Bishop.Cli.Findings.Record;
 internal sealed class RecordFindingsCliCommand : Command
 {
     public RecordFindingsCliCommand(ISender mediator)
-        : base("record", "Record review-skill findings (writes JSON + HTML under .bishop/findings/)")
+        : base("record", "Record review-skill findings (persists to DB; writes compat HTML under .bishop/findings/)")
     {
         var resolver = new WorkspaceResolver(mediator);
         var skillOption = new Option<string>("--skill", "Name of the skill recording findings") { IsRequired = true };
@@ -29,7 +29,6 @@ internal sealed class RecordFindingsCliCommand : Command
             var result = await mediator.Send(new RecordFindingsCommand(ws.Id, ws.Path, skill, json, sha));
 
             Console.WriteLine($"Recorded {result.FindingCount} finding{(result.FindingCount == 1 ? "" : "s")} for '{skill}'");
-            Console.WriteLine($"  json: {result.JsonPath}");
             Console.WriteLine($"  html: {result.HtmlPath}");
         }, skillOption, fileOption, shaOption, CommonOptions.WorkspaceOption);
     }

@@ -1,19 +1,12 @@
-using System.Text.Json;
-using Bishop.Core;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using CoreEntities = Bishop.Core;
 
 namespace Bishop.App.Findings.RecordFindings;
 
 public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFindingsCommand, RecordFindingsResult>
 {
-    private static readonly JsonSerializerOptions CanonicalJsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-    };
-
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;
 
@@ -35,47 +28,150 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
             throw new InvalidOperationException("Git SHA must be provided.");
 
         var document = FindingsValidator.Parse(request.FindingsJson);
-
-        var findingsDir = Path.Combine(request.WorkspacePath, ".bishop", "findings");
-        Directory.CreateDirectory(findingsDir);
-
-        var jsonPath = Path.Combine(findingsDir, $"{request.SkillName}.json");
-        var htmlPath = Path.Combine(findingsDir, $"{request.SkillName}.html");
-
         var recordedAt = _timeProvider.GetUtcNow();
-        var canonicalJson = JsonSerializer.Serialize(document, CanonicalJsonOptions);
-        var html = FindingsHtmlRenderer.Render(request.SkillName, document, recordedAt, request.GitSha);
-
-        await File.WriteAllTextAsync(jsonPath, canonicalJson, cancellationToken);
-        await File.WriteAllTextAsync(htmlPath, html, cancellationToken);
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var run = await db.WorkspaceSkillRuns
-            .FirstOrDefaultAsync(r => r.WorkspaceId == request.WorkspaceId && r.SkillName == request.SkillName, cancellationToken);
 
-        var findingsCount = document.Findings.Count;
+        await ImportLegacyJsonIfPresentAsync(db, request, recordedAt, cancellationToken);
+
+        var run = await db.WorkspaceSkillRuns
+            .Include(r => r.Findings)
+            .FirstOrDefaultAsync(
+                r => r.WorkspaceId == request.WorkspaceId
+                  && r.SkillName == request.SkillName
+                  && r.ProjectName == document.ProjectName,
+                cancellationToken);
 
         if (run is null)
         {
-            db.WorkspaceSkillRuns.Add(new WorkspaceSkillRun
+            run = new CoreEntities.WorkspaceSkillRun
             {
                 Id = Guid.NewGuid(),
                 WorkspaceId = request.WorkspaceId,
                 SkillName = request.SkillName,
+                ProjectName = document.ProjectName,
                 GitSha = request.GitSha,
                 RecordedAt = recordedAt,
-                FindingsCount = findingsCount,
-            });
+                FindingsCount = document.Findings.Count,
+            };
+            db.WorkspaceSkillRuns.Add(run);
         }
         else
         {
+            db.Findings.RemoveRange(run.Findings);
             run.GitSha = request.GitSha;
             run.RecordedAt = recordedAt;
-            run.FindingsCount = findingsCount;
+            run.FindingsCount = document.Findings.Count;
+        }
+
+        foreach (var f in document.Findings)
+        {
+            db.Findings.Add(new CoreEntities.Finding
+            {
+                Id = Guid.NewGuid(),
+                WorkspaceSkillRunId = run.Id,
+                IdentityHash = FindingIdentity.Compute(
+                    request.SkillName, document.ProjectName, f.File, f.Rule, f.Symbol, f.Title),
+                Status = "pending",
+                ProjectName = document.ProjectName,
+                File = f.File,
+                Symbol = f.Symbol,
+                Rule = f.Rule,
+                Severity = f.Severity,
+                Title = f.Title,
+                Body = f.Body,
+                FirstSeenAt = recordedAt,
+                LastSeenAt = recordedAt,
+            });
         }
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return new RecordFindingsResult(jsonPath, htmlPath, document.Findings.Count);
+        var htmlPath = await WriteCompatHtmlAsync(request, document, recordedAt, cancellationToken);
+        return new RecordFindingsResult(htmlPath, document.Findings.Count);
+    }
+
+    private static async Task ImportLegacyJsonIfPresentAsync(
+        BishopDbContext db,
+        RecordFindingsCommand request,
+        DateTimeOffset recordedAt,
+        CancellationToken cancellationToken)
+    {
+        var anyRun = await db.WorkspaceSkillRuns
+            .AnyAsync(r => r.WorkspaceId == request.WorkspaceId && r.SkillName == request.SkillName, cancellationToken);
+        if (anyRun)
+            return;
+
+        var legacyJsonPath = Path.Combine(request.WorkspacePath, ".bishop", "findings", $"{request.SkillName}.json");
+        if (!File.Exists(legacyJsonPath))
+            return;
+
+        FindingsDocument legacyDoc;
+        try
+        {
+            var legacyJson = await File.ReadAllTextAsync(legacyJsonPath, cancellationToken);
+            legacyDoc = FindingsValidator.Parse(legacyJson);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Failed to import legacy findings file '{legacyJsonPath}': {ex.Message}. Delete the file or fix it to continue.",
+                ex);
+        }
+
+        var legacyRun = new CoreEntities.WorkspaceSkillRun
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = request.WorkspaceId,
+            SkillName = request.SkillName,
+            ProjectName = legacyDoc.ProjectName,
+            GitSha = request.GitSha,
+            RecordedAt = recordedAt,
+            FindingsCount = legacyDoc.Findings.Count,
+        };
+        db.WorkspaceSkillRuns.Add(legacyRun);
+
+        foreach (var f in legacyDoc.Findings)
+        {
+            db.Findings.Add(new CoreEntities.Finding
+            {
+                Id = Guid.NewGuid(),
+                WorkspaceSkillRunId = legacyRun.Id,
+                IdentityHash = FindingIdentity.Compute(
+                    request.SkillName, legacyDoc.ProjectName, f.File, f.Rule, f.Symbol, f.Title),
+                Status = "pending",
+                ProjectName = legacyDoc.ProjectName,
+                File = f.File,
+                Symbol = f.Symbol,
+                Rule = f.Rule,
+                Severity = f.Severity,
+                Title = f.Title,
+                Body = f.Body,
+                FirstSeenAt = recordedAt,
+                LastSeenAt = recordedAt,
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        File.Delete(legacyJsonPath);
+    }
+
+    private static async Task<string> WriteCompatHtmlAsync(
+        RecordFindingsCommand request,
+        FindingsDocument document,
+        DateTimeOffset recordedAt,
+        CancellationToken cancellationToken)
+    {
+        var findingsDir = Path.Combine(request.WorkspacePath, ".bishop", "findings");
+        Directory.CreateDirectory(findingsDir);
+
+        var htmlFileName = string.IsNullOrEmpty(document.ProjectName)
+            ? $"{request.SkillName}.html"
+            : $"{request.SkillName}__{document.ProjectName}.html";
+        var htmlPath = Path.Combine(findingsDir, htmlFileName);
+
+        var html = FindingsHtmlRenderer.Render(request.SkillName, document, recordedAt, request.GitSha);
+        await File.WriteAllTextAsync(htmlPath, html, cancellationToken);
+        return htmlPath;
     }
 }
