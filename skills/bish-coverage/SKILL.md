@@ -1,6 +1,6 @@
 ---
 name: bish-coverage
-description: Run code coverage for the current .NET Bishop workspace, identify classes below 80% line coverage, interview the user to confirm or cluster the gaps, and push the agreed cards to the board tagged `test`. Use when the user wants to scope test work or mentions "coverage review". Assumes a .NET workspace using coverlet + ReportGenerator with a `coverage.ps1` runner at the repo root.
+description: Run code coverage for the current .NET Bishop workspace, identify test-debt classes (low line coverage or high CRAP) and high-complexity refactor candidates, interview the user to confirm or cluster the gaps, and push agreed cards tagged `test` (test debt) or `arch` (refactor candidates). Use when the user wants to scope test work or mentions "coverage review". Assumes a .NET workspace using coverlet + ReportGenerator with a `coverage.ps1` runner at the repo root.
 allowed-tools: Read, Glob, AskUserQuestion, Bash(bishop:*), Bash(pwsh:*), Bash(dotnet:*), PowerShell
 bishop.scope: workspace
 bishop.command: /bish-coverage
@@ -55,7 +55,9 @@ A .NET workspace using `coverlet.collector` for instrumentation and a
          "name": "<full class name>",
          "file": "<repo-relative source path, forward slashes>",
          "lineCoverage": 0.0,
-         "linesCoverable": 10
+         "linesCoverable": 10,
+         "cyclomaticComplexity": 12,
+         "crapScore": 18.4
        }
      ]
    }
@@ -68,6 +70,10 @@ A .NET workspace using `coverlet.collector` for instrumentation and a
    - `linesCoverable` — instrumented line count. Surfaced in the interview so
      the user can judge effort, but the skill no longer filters on it — even
      a one-line handler may hide a guard, null check, or mapping worth testing.
+   - `cyclomaticComplexity` — sum of per-method cyclomatic complexity for the
+     class (from Cobertura `complexity`). Drives the refactor-candidate phase.
+   - `crapScore` — CRAP = complexity² × (1 − lineCoverage)³ + complexity. High
+     when complex code is also poorly tested. Drives test-debt ranking.
 
 Note: example values throughout this skill use `Bishop.App.*` names because
 that's the workspace where the skill was first written. The skill itself
@@ -103,19 +109,28 @@ makes no assumption about specific namespace prefixes — it works for any
    Validate `schemaVersion == 1`; if it's a future version the skill doesn't
    recognise, STOP and ask the user to update the skill.
 
-4. **Identify gaps.** From `modules[]`:
+4. **Identify test-debt gaps.** From `modules[]`:
 
-   - Keep any module with `lineCoverage < summary.threshold` (default 80),
-     regardless of size. Small classes are included — a 1- or 2-line handler
-     can still hide a guard, null check, or mapping worth testing, and the
-     user decides per-card in the interview whether it's worth filing.
+   - Keep any module where **`lineCoverage < summary.threshold` (default 80)
+     OR `crapScore > 30`**, regardless of size. The CRAP arm catches complex
+     classes that are technically above the line threshold but still under-
+     tested for the risk they carry; the line arm catches trivial 0%-covered
+     classes that have low CRAP. Small classes are included — a 1- or 2-line
+     handler can still hide a guard, null check, or mapping worth testing,
+     and the user decides per-card in the interview whether it's worth filing.
+   - Sort the surviving modules by `crapScore` descending so the riskiest
+     gaps surface first in the interview queue.
 
-   If nothing survives, record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-coverage`,
-   then congratulate the user — coverage is at or above the threshold — and STOP without pushing anything.
+   If nothing survives **and** the refactor phase (step 5b) also yields no
+   candidates, record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-coverage`,
+   then congratulate the user — coverage is at or above the threshold and no
+   classes exceed the complexity ceiling — and STOP without pushing anything.
 
-5. **Cluster gaps by source-file directory.** Use the `file` field's parent
-   directory as the cluster key. Classes sharing the same parent folder become
-   one suggested card; classes with no folder peers stay singleton.
+5. **Cluster test-debt gaps by source-file directory.** Use the `file` field's
+   parent directory as the cluster key. Classes sharing the same parent folder
+   become one suggested card; classes with no folder peers stay singleton.
+   Within each cluster, sort classes by `crapScore` descending; rank clusters
+   by their highest member CRAP so the worst clusters come first in step 8.
 
    Illustrative examples (using Bishop.AI's layout — your project's paths
    will look different):
@@ -139,17 +154,15 @@ makes no assumption about specific namespace prefixes — it works for any
 
      ```markdown
      ### Why
-     `<cluster>` is below the `<threshold>%` line-coverage threshold (worst class: `<name>` at `<coverage>%`).
+     `<cluster>` is under-tested for its risk: worst class `<name>` at `<coverage>%` line coverage, cyclomatic complexity `<cyclomatic>`, CRAP `<crap>` (gate: lineCoverage < `<threshold>` OR crapScore > 30).
 
      ### Classes
-     Add unit tests exercising public methods (including null/edge inputs and error paths) for the classes below.
-     - `<ClassName1>` (<coverage1>%, `<file1>`)
-     - `<ClassName2>` (<coverage2>%, `<file2>`)
+     Add unit tests exercising public methods (including null/edge inputs and error paths) for the classes below (sorted by CRAP descending).
+     - `<ClassName1>` (cov <coverage1>%, cyclomatic <cyclomatic1>, CRAP <crap1>, `<file1>`)
+     - `<ClassName2>` (cov <coverage2>%, cyclomatic <cyclomatic2>, CRAP <crap2>, `<file2>`)
 
      ### Acceptance
-     - `<ClassName1>` reports `lineCoverage ≥ <threshold>` in the next coverage run.
-     - `<ClassName2>` reports `lineCoverage ≥ <threshold>` in the next coverage run.
-     - All listed classes report `lineCoverage ≥ <threshold>` in the next coverage run.
+     - All listed classes report `lineCoverage ≥ <threshold>` AND `crapScore ≤ 30` in the next coverage run.
 
      ### Related
      - `<file1>`
@@ -159,59 +172,108 @@ makes no assumption about specific namespace prefixes — it works for any
    - **Tag:** `test`.
    - **Lane:** `To Do`.
 
-6. **Ensure the `test` tag exists.** Check `tags[].name`. If `test` is absent,
-   stop and tell the user: the canonical tags are seeded by `bishop workspace init` — re-running it will restore any missing tags.
+5b. **Identify refactor candidates.** From the full `modules[]` (not just the
+    test-debt set), keep any module with `cyclomaticComplexity > 30`,
+    regardless of coverage. A 100%-covered switch-heavy parser is still a
+    refactor candidate — high complexity is a maintainability signal in its
+    own right. Sort by `cyclomaticComplexity` descending. **Do not cluster**
+    refactor candidates by folder — refactoring is a per-class judgement, not
+    a directory sweep. Build one suggested card per surviving class:
+
+    - **Title:** `Refactor <ClassName> (cyclomatic <N>)`.
+    - **Body**:
+
+      ```markdown
+      ### Why
+      `<ClassName>` has cyclomatic complexity `<cyclomatic>` (threshold: 30), CRAP `<crap>`, line coverage `<coverage>%`. High complexity hurts readability and increases the surface area for regressions even when tests pass today.
+
+      ### Candidate
+      - `<ClassName>` (`<file>`)
+
+      ### Acceptance
+      - `<ClassName>` reports `cyclomaticComplexity ≤ 30` in the next coverage run, or the work is consciously deferred with a note on the card.
+
+      ### Related
+      - `<file>`
+      - Open `TestResults/coverage-report/index.html` for the per-method complexity breakdown.
+      ```
+    - **Tag:** `arch`.
+    - **Lane:** `To Do`.
+
+6. **Ensure the `test` and `arch` tags exist.** Check `tags[].name`. If either
+   is absent, stop and tell the user: the canonical tags are seeded by
+   `bishop workspace init` — re-running it will restore any missing tags.
 
 7. **Dedupe against existing cards.** Run `bishop card list --json`. Drop
-   any suggestion whose title matches an existing card UNLESS that card is in
-   the `Done` lane. Done cards represent shipped work — if the gap has
-   re-opened, surface it again.
+   any suggestion (test-debt or refactor) whose title matches an existing card
+   UNLESS that card is in the `Done` lane. Done cards represent shipped work —
+   if the gap has re-opened, surface it again.
 
-   If every suggestion is filtered out, tell the user:
+   If every suggestion from both phases is filtered out, tell the user:
 
-   > All under-covered areas already have open cards on the board. Nothing new
-   > to file.
+   > All under-covered and over-complex areas already have open cards on the
+   > board. Nothing new to file.
 
    Record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-coverage`, then STOP.
 
-8. **Interview per surviving suggestion** with `AskUserQuestion`. Before the
-   interview, apply **Prior-findings recall** against
-   `skill_specific.prior_findings`:
+8. **Interview per surviving suggestion** with `AskUserQuestion`, processing
+   the **test-debt phase first** (clusters ordered by highest member CRAP
+   descending), then the **refactor phase** (classes ordered by
+   `cyclomaticComplexity` descending). Before each interview, apply
+   **Prior-findings recall** against `skill_specific.prior_findings`:
 
-   - Match the current cluster against prior findings by `title` (the cluster's
-     suggested card title). If a prior finding matches with status `dismissed`:
-     skip the interview silently, list under "previously dismissed:
-     '<rebuttal_text>'" in the step 10 table, and track outcome `dismissed`.
-     If status is `carded:#N` (or `linked_card_number` is set): skip the
-     interview, reference card #N in the table, and track outcome
-     `carded:#N`. Otherwise fall through to the interview below.
+   - Match the current suggestion against prior findings by `title`. If a
+     prior finding matches with status `dismissed`: skip the interview
+     silently, list under "previously dismissed: '<rebuttal_text>'" in the
+     step 10 table, and track outcome `dismissed`. If status is `carded:#N`
+     (or `linked_card_number` is set): skip the interview, reference card #N
+     in the table, and track outcome `carded:#N`. Otherwise fall through to
+     the interview below.
 
-   For clusters that fall through,
-   show the cluster name, then each class in the cluster with its coverage
-   percentage and source file path (e.g. `ClassName (42%, src/Foo/Bar.cs)`), and offer:
+   For test-debt clusters that fall through, show the cluster name, then each
+   class with its coverage, cyclomatic complexity, CRAP score, and source file
+   (e.g. `ClassName (cov 42%, cyclomatic 18, CRAP 47, src/Foo/Bar.cs)`).
+
+   For refactor candidates that fall through, show the class name with its
+   cyclomatic complexity, CRAP score, and source file (e.g.
+   `ClassName (cyclomatic 38, CRAP 12, src/Foo/Bar.cs)`) and frame it as a
+   "refactor candidate — high complexity regardless of coverage".
+
+   Offer for both phases:
 
    - **Push as-is (Recommended)** — file the card with the proposed title/body.
    - **Skip** — do not file this card.
    - **Edit title/body** — fall back to a free-text prompt for the replacement.
 
-   When two or more suggestions clearly belong together (same top-level folder,
-   same theme), offer a fourth option to merge them into one card before pushing.
+   For the test-debt phase only, when two or more cluster suggestions clearly
+   belong together (same top-level folder, same theme), offer a fourth option
+   to merge them into one card before pushing. Refactor candidates are never
+   merged — each class is its own decision.
 
    **Track each suggestion** in a session log per the "Track findings during
    triage" sub-step of `Findings Recording Procedure` (in `conventions`) — one
-   entry per cluster, using the suggested card title and the cluster's source
-   file(s) as `location`, with a pending outcome from the choice: **Push
-   as-is** / **Edit** / **Merge** → `pending-card:<session-index>` (resolved to
+   entry per suggestion, using the suggested card title and the source file(s)
+   as `location`, with a pending outcome from the choice: **Push as-is** /
+   **Edit** / **Merge** → `pending-card:<session-index>` (resolved to
    `carded:#<N>` after step 9 pushes); **Skip** → `parked`.
 
 9. **Push confirmed cards** using `bishop card create` per `Card Push Procedure`
-   (in `conventions`). Use `--tag test`.
+   (in `conventions`). Use `--tag test` for test-debt cards and `--tag arch`
+   for refactor-candidate cards.
 
-10. **Print a summary table** after all cards are pushed:
+10. **Print a summary table** after all cards are pushed, grouped by phase:
 
-    | Card | Title | Coverage gap | Classes |
-    |------|-------|--------------|---------|
-    | #N | ... | NN% → ≥80% | n classes |
+    Test debt:
+
+    | Card | Title | Worst coverage | Worst CRAP | Classes |
+    |------|-------|----------------|------------|---------|
+    | #N | ... | NN% → ≥80% | NN.N → ≤30 | n classes |
+
+    Refactor candidates:
+
+    | Card | Title | Cyclomatic | CRAP |
+    |------|-------|------------|------|
+    | #N | Refactor `<ClassName>` | NN → ≤30 | NN.N |
 
     Then offer:
 
@@ -230,16 +292,21 @@ makes no assumption about specific namespace prefixes — it works for any
 <guardrails>
 
 - Do NOT push cards before the user confirms each suggestion via the interview.
-- Do NOT lower the threshold to surface more gaps. The interview is the signal
+- Do NOT lower the line-coverage threshold or raise the CRAP/cyclomatic
+  thresholds to surface more or fewer gaps. The interview is the signal
   filter — class size is not, since small classes can still contain logic.
 - Do NOT parse `Summary.json` (ReportGenerator) or `*.cobertura.xml` directly.
   The skill consumes `TestResults/coverage-summary.json` only. .NET-specific
   format conversion belongs in the workspace's `coverage.ps1`, not here.
 - Do NOT re-file a card whose title matches an existing open card. Re-runs
-  must be idempotent.
+  must be idempotent across both phases.
+- Do NOT cluster refactor candidates by folder. Each high-complexity class is
+  its own per-class judgement.
+- Do NOT cross-tag: test-debt cards are `test`, refactor-candidate cards are
+  `arch`. A class that appears in both phases generates two separate cards.
 - If `coverage.ps1` fails, surface its stderr and STOP. Do not try to recover
   or parse a partial summary.
-- If the `test` tag is missing, stop and tell the user to re-run `bishop workspace init` to restore canonical tags. Never push untagged.
+- If the `test` or `arch` tag is missing, stop and tell the user to re-run `bishop workspace init` to restore canonical tags. Never push untagged.
 - Do NOT assume specific namespace prefixes (`Bishop.*`, `MyApp.*`, etc.).
   The skill clusters by directory, not by namespace pattern.
 
