@@ -109,6 +109,16 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task RemoveCard_NonexistentCard_Throws()
+    {
+        var handler = new RemoveCardCommandHandler(_factory);
+
+        var act = () => handler.Handle(new RemoveCardCommand(Guid.NewGuid()), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+    }
+
+    [Fact]
     public async Task ListCardsByWorkspace_ReturnsCardsOrderedByLaneThenPosition()
     {
         // Arrange
