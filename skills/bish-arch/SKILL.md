@@ -142,7 +142,7 @@ that aren't in this list — the headings above are the floor, not the ceiling.
 1. **Workspace detection** (above).
 
 2. **Discovery phase.** Spawn one Explore subagent (via `Agent` with
-   `subagent_type: "Explore"` and `model: "haiku"`) with a brief that:
+   `subagent_type: "Explore"` and `model: "sonnet"`) with a brief that:
 
    - Names the repo root from `workspacePath`.
    - **First sub-step: detect the stack.** Read the `*.sln` to enumerate

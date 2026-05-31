@@ -198,7 +198,7 @@ you flag as equivalent during the interview.
 
 4. **Analyse each class via the Explore subagent.** For each (class, test
    file) pair, delegate to the `Explore` subagent (via the `Agent` tool with
-   `subagent_type: "Explore"` and `model: "haiku"`). Brief it with:
+   `subagent_type: "Explore"` and `model: "sonnet"`). Brief it with:
 
    - The class name, source path, mutation score, and the list of survived
      mutants (from `mutation-summary.json`).

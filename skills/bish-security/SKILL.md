@@ -186,7 +186,7 @@ surface, because the same code often gets copy-pasted into production.
      hold it for the subagent brief.
 
 5. **Discovery phase.** Spawn one Explore subagent (via `Agent` with
-   `subagent_type: "Explore"` and `model: "haiku"`). Brief it with:
+   `subagent_type: "Explore"` and `model: "sonnet"`). Brief it with:
 
    - The repo root from `workspacePath`.
    - **First sub-step: detect the stack.** Read the `*.sln` to enumerate

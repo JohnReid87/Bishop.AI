@@ -79,7 +79,7 @@ Recommend the full default set as the first option.
 **3. Drift extraction — delegate to the Explore subagent.**
 
 For the selected files, spawn the `Explore` subagent (via the `Agent` tool with
-`subagent_type: "Explore"` and `model: "haiku"`) with a structured prompt. The subagent must
+`subagent_type: "Explore"` and `model: "sonnet"`) with a structured prompt. The subagent must
 classify every concrete factual claim in the docs as one of:
 
 - `ACCURATE` — claim matches the code as shipped (do not surface these).
