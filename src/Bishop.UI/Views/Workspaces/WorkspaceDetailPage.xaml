@@ -734,7 +734,7 @@
                                                     Visibility="{x:Bind CanViewFindings, Converter={StaticResource BoolToVisibilityConverter}}"
                                                     ToolTipService.ToolTip="View findings from last run"/>
                                             <Button Grid.Column="3"
-                                                    Content="View report"
+                                                    Content="View"
                                                     FontSize="12"
                                                     Padding="8,4"
                                                     HorizontalAlignment="Left"

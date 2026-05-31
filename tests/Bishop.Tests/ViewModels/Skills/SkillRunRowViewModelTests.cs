@@ -289,7 +289,7 @@ public class SkillRunRowViewModelTests
     {
         var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow, 0, false, findingsCount: 5);
 
-        row.FindingsButtonText.Should().Be("View findings (5)");
+        row.FindingsButtonText.Should().Be("View (5)");
     }
 
     [Fact]

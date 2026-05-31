@@ -32,7 +32,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         ReportFilePath is not null
         && SkillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase);
 
-    public string FindingsButtonText => $"View findings ({FindingsCount ?? 0})";
+    public string FindingsButtonText => $"View ({FindingsCount ?? 0})";
 
     public event Action<FindingsPageNavArgs>? ViewFindingsRequested;
     public event Action<Uri>? ViewReportRequested;
