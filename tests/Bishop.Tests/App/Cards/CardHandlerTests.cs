@@ -698,4 +698,71 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         // Assert
         card.Position.Should().Be(1);
     }
+
+    [Fact]
+    public async Task AddCard_InvalidWorkspaceId_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var handler = new AddCardCommandHandler(_factory);
+
+        // Act
+        var act = () => handler.Handle(new AddCardCommand(Guid.NewGuid(), SystemLaneNames.ToDo, "X"), default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+    }
+
+    [Fact]
+    public async Task AddCard_Top_PositionsAreIsolatedByWorkspace()
+    {
+        // Arrange — two workspaces share the same lane name; a top-insert into workspace B
+        // must not shift the positions of workspace A's cards in that lane.
+        var (wsA, _) = await CreateWorkspaceWithLanesAsync();
+        var (wsB, _) = await CreateWorkspaceWithLanesAsync();
+        var add = new AddCardCommandHandler(_factory);
+        const string lane = SystemLaneNames.ToDo;
+
+        // After three top-inserts into workspace A, positions are A3=1, A2=2, A1=3
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A1"), default);
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A2"), default);
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A3"), default);
+
+        // Act
+        var bCard = await add.Handle(new AddCardCommand(wsB.Id, lane, "B1"), default);
+
+        // Assert — workspace A's positions are unchanged (1, 2, 3)
+        await using var verify = _factory.CreateDbContext();
+        var wsAPositions = await verify.Cards
+            .Where(c => c.WorkspaceId == wsA.Id && c.LaneName == lane)
+            .OrderBy(c => c.Position)
+            .Select(c => c.Position)
+            .ToListAsync();
+
+        bCard.Position.Should().Be(1, "workspace B's lane is empty so the new card lands at position 1");
+        wsAPositions.Should().Equal(new[] { 1, 2, 3 },
+            "adding a card to workspace B must not displace workspace A's card positions");
+    }
+
+    [Fact]
+    public async Task AddCard_Bottom_PositionIsIsolatedByWorkspace()
+    {
+        // Arrange — workspace A has cards (MaxPosition = 3 in its ToDo lane); workspace B is empty.
+        // A bottom-insert into workspace B must use only workspace B's cards when computing MaxPosition.
+        var (wsA, _) = await CreateWorkspaceWithLanesAsync();
+        var (wsB, _) = await CreateWorkspaceWithLanesAsync();
+        var add = new AddCardCommandHandler(_factory);
+        const string lane = SystemLaneNames.ToDo;
+
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A1"), default);
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A2"), default);
+        await add.Handle(new AddCardCommand(wsA.Id, lane, "A3"), default);
+
+        // Act
+        var bCard = await add.Handle(
+            new AddCardCommand(wsB.Id, lane, "B1", Position: CardInsertPosition.Bottom), default);
+
+        // Assert — (null ?? 0) + 1 = 1 because workspace B has no cards
+        bCard.Position.Should().Be(1,
+            "workspace B's ToDo lane is empty; bottom of an empty lane is position 1");
+    }
 }

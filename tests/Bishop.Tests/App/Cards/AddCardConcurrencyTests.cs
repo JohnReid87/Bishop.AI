@@ -60,6 +60,76 @@ public sealed class AddCardConcurrencyTests : IDisposable
         numbers.Should().Equal(Enumerable.Range(1, concurrency), "card numbers must be sequential with no gaps");
     }
 
+    [Fact]
+    public async Task AddCard_ExhaustsRetries_ThrowsDbUpdateExceptionAfterFiveAttempts()
+    {
+        // Arrange — factory always raises a card-number UNIQUE conflict; safety rail at >20
+        // prevents an infinite loop caused by the attempt-- mutant (would never reach MaxNumberMintRetries).
+        var conflictEx = new DbUpdateException("conflict", new Exception("UNIQUE constraint failed: Cards.Number"));
+        var factory = new CountingConflictingFactory(conflictEx);
+        var handler = new AddCardCommandHandler(factory);
+
+        // Act
+        var act = () => handler.Handle(new AddCardCommand(Guid.NewGuid(), SystemLaneNames.ToDo, "X"), default);
+
+        // Assert — original exception re-thrown (not NullReferenceException from skipped assignment,
+        // not OperationCanceledException from the safety rail triggered by an infinite loop)
+        await act.Should().ThrowAsync<DbUpdateException>();
+        factory.Calls.Should().Be(5, "MaxNumberMintRetries is 5; handler must not attempt a 6th time");
+    }
+
+    [Fact]
+    public async Task AddCard_NonCardNumberUniqueConstraint_PropagatesImmediately()
+    {
+        // Arrange — UNIQUE violation on a column other than Cards.Number must not be retried
+        var conflictEx = new DbUpdateException("conflict", new Exception("UNIQUE constraint failed: Workspaces.Name"));
+        var factory = new CountingConflictingFactory(conflictEx);
+        var handler = new AddCardCommandHandler(factory);
+
+        // Act
+        var act = () => handler.Handle(new AddCardCommand(Guid.NewGuid(), SystemLaneNames.ToDo, "X"), default);
+
+        // Assert
+        await act.Should().ThrowAsync<DbUpdateException>();
+        factory.Calls.Should().Be(1, "non-card-number UNIQUE conflicts must not be retried");
+    }
+
+    [Fact]
+    public async Task AddCard_ForeignKeyViolation_PropagatesImmediately()
+    {
+        // Arrange — non-UNIQUE exception with "Cards.Number" in the message must not be caught by the retry guard
+        var conflictEx = new DbUpdateException("conflict", new Exception("FOREIGN KEY constraint failed: Cards.Number"));
+        var factory = new CountingConflictingFactory(conflictEx);
+        var handler = new AddCardCommandHandler(factory);
+
+        // Act
+        var act = () => handler.Handle(new AddCardCommand(Guid.NewGuid(), SystemLaneNames.ToDo, "X"), default);
+
+        // Assert
+        await act.Should().ThrowAsync<DbUpdateException>();
+        factory.Calls.Should().Be(1, "non-UNIQUE exceptions must propagate without retry");
+    }
+
+    private sealed class CountingConflictingFactory : IDbContextFactory<BishopDbContext>
+    {
+        private readonly Exception _exception;
+        private int _calls;
+
+        public int Calls => _calls;
+
+        public CountingConflictingFactory(Exception exception) => _exception = exception;
+
+        public BishopDbContext CreateDbContext()
+        {
+            // Safety rail: terminate an infinite loop caused by a decrement mutant before
+            // the test hangs. The test asserts DbUpdateException, so OperationCanceledException
+            // from here correctly kills the mutant.
+            if (++_calls > 20)
+                throw new OperationCanceledException("Test guard: retry loop did not terminate as expected");
+            throw _exception;
+        }
+    }
+
     private sealed class FileDbContextFactory : IDbContextFactory<BishopDbContext>
     {
         private readonly DbContextOptions<BishopDbContext> _options;
