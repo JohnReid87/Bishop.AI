@@ -24,7 +24,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 - `tests/Bishop.Tests/` — xUnit project.
 - `skills/` — vendored Claude Code skill files shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`. Grouped into four categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
   - **Review:** `bish-arch`, `bish-dead-code`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`
-  - **Conversational:** `bish-chat`, `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
+  - **Conversational:** `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
   - **Setup-Execute:** `bish-auto-card`, `bish-onboard`, `bish-work-on-card`
   - **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code
 - `installer/` — Wix v5 project that produces the per-user MSI. See `installer/README.md`.
@@ -120,7 +120,7 @@ Bishop.UI is the interactive surface; the CLI remains the automation surface for
 - **Theming:** dark theme applied across shell, nav, board chrome, and dialogs.
 
 ### Skill integration
-Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). They group into four categories — Review (`bish-arch`, `bish-dead-code`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`), Conversational (`bish-chat`, `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`), Setup-Execute (`bish-auto-card`, `bish-onboard`, `bish-work-on-card`), and Bishop-level / meta (`bish-write-skill`, `bish-audit-skills`, which operate on `skills/` itself rather than a workspace's code). See [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the category rationale. Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
+Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). They group into four categories — Review (`bish-arch`, `bish-dead-code`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`), Conversational (`bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`), Setup-Execute (`bish-auto-card`, `bish-onboard`, `bish-work-on-card`), and Bishop-level / meta (`bish-write-skill`, `bish-audit-skills`, which operate on `skills/` itself rather than a workspace's code). See [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the category rationale. Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
 
 - `name` — skill identifier (required).
 - `description` — user-facing summary.

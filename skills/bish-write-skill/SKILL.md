@@ -39,7 +39,7 @@ the skill may extract.
 
 | Category | Existing members | What the skill *is*, fundamentally | SKILL.md leads with |
 |---|---|---|---|
-| **Conversational** | `bish-grill-cards`, `bish-grill-docs`, `bish-chat`, `bish-scripts` | An interview style — relentless interrogation, drift-tolerant chat, or a bug-skeleton walk. The soul is the *quality bar of the conversation*. | The contract / quality bar ("relentless means…", "non-mutating single-card chat", "bug-skeleton walk"). |
+| **Conversational** | `bish-grill-cards`, `bish-grill-docs`, `bish-scripts` | An interview style — relentless interrogation or a bug-skeleton walk. The soul is the *quality bar of the conversation*. | The contract / quality bar ("relentless means…", "bug-skeleton walk"). |
 | **Review** | `bish-arch`, `bish-security`, `bish-tests`, `bish-coverage`, `bish-audit-docs`, `bish-triage` | A body of heuristics applied to the codebase, then walked with the user finding-by-finding. The soul is the *heuristic catalogue*. | The heuristic catalogue (SOLID checks, CVE patterns, test-quality dimensions, coverage thresholds, doc-drift classifications). |
 | **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card` | A deterministic procedure that mutates state (filesystem, board, git). The soul is the *procedure itself*. | The procedure, top to bottom. No "purpose-first" reordering — the agent must read steps in order. |
 | **Bishop-level / meta** | `bish-write-skill` (this file), `bish-audit-skills` | Skills *about* the skill family. Operate on `skills/` directly, not on a workspace's code. | The authoring contract / audit checklist. |
@@ -213,7 +213,7 @@ the step-2 inputs.
 ### Skeleton — Conversational
 
 For skills whose core is an interview or chat. Modelled on
-`bish-grill-cards`, `bish-grill-docs`, `bish-chat`, and `bish-scripts`.
+`bish-grill-cards`, `bish-grill-docs`, and `bish-scripts`.
 
 ````markdown
 ---

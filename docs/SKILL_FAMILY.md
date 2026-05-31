@@ -16,7 +16,7 @@ Skills divide into four categories. The category determines the restructure appr
 
 | Category | Current members | What the skill *is*, fundamentally |
 |---|---|---|
-| **Conversational** | `bish-grill-cards`, `bish-grill-docs`, `bish-chat` | An interview style — relentless interrogation or drift-tolerant chat. The soul is the *quality bar of the conversation*. |
+| **Conversational** | `bish-grill-cards`, `bish-grill-docs` | An interview style — relentless interrogation. The soul is the *quality bar of the conversation*. |
 | **Review** | `bish-arch`, `bish-dead-code`, `bish-security`, `bish-tests`, `bish-coverage`, `bish-audit-docs`, `bish-triage` | A body of heuristics applied to the codebase, then walked with the user finding-by-finding. The soul is the *heuristic catalogue*. |
 | **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card` | A deterministic procedure that mutates state (filesystem, board, git). The soul is the *procedure itself*. |
 | **Bishop-level / meta** | `bish-write-skill`, `bish-audit-skills` | Skills *about* the skill family — authoring guides, audits. Operate on `skills/` directly, not on a workspace's code. |
@@ -31,7 +31,7 @@ Where the SKILL.md leads matters more than the total line count. Leading with me
 
 | Category | SKILL.md leads with | Why |
 |---|---|---|
-| **Conversational** | Quality bar / contract ("what relentless means", "non-mutating single-card chat", "bug-skeleton walk") | The plumbing is generic; the conversation is the entire value. Burying the soul under workspace-detection prose makes the agent treat it as one more procedural step rather than a stance. |
+| **Conversational** | Quality bar / contract ("what relentless means", "bug-skeleton walk") | The plumbing is generic; the conversation is the entire value. Burying the soul under workspace-detection prose makes the agent treat it as one more procedural step rather than a stance. |
 | **Review** | Heuristic catalogue (SOLID checks, CVE patterns, test-quality dimensions, coverage thresholds, doc-drift classifications) | The heuristics ARE the deliverable. Mechanics (workspace detection, per-finding walk, card push) are a thin frame around them — extract aggressively, but do not reorder the heuristics. |
 | **Setup-Execute** | The procedure, top to bottom | The procedure IS the value. Re-ordering for "purpose-first" obscures the imperative flow that the agent must execute literally. Extract only the workspace-detection preamble; leave the rest in step order. |
 | **Bishop-level / meta** | The authoring contract / audit checklist | These skills emit guidance or check conformance — leading with the contract is leading with the soul. |

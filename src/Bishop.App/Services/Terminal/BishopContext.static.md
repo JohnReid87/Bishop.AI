@@ -31,11 +31,6 @@ the task instead of doing everything inside a single session.
 
 ### Conversational skills — explore and plan (`bishop.category: discuss`)
 
-- `bish-chat` — quick open-ended chat about a single card. Accepts a card
-  Number, loads it, and opens a conversation; the wrap-up can edit the
-  source card and/or spin out follow-up cards. Lighter than `bish-grill-cards`,
-  and never moves the source card. Use when you have a card in hand that
-  needs more thinking before it's actionable.
 - `bish-grill-cards` — relentlessly interviews the user about a plan or design,
   then pushes the agreed-on tasks as cards on the board. Use when work is
   **not yet on the board** — you have an idea and need it stress-tested and
