@@ -56,7 +56,6 @@ public sealed class SkillContextPackSchemaTests : IClassFixture<DbFixture>
     [Theory]
     [InlineData("bish-work-on-card", "work-on-card")]
     [InlineData("bish-grill-cards", "grill-cards")]
-    [InlineData("bish-chat", "chat")]
     [InlineData("bish-triage", "triage")]
     [InlineData("bish-auto-card", "auto-card")]
     [InlineData("bish-spec-cards", "spec-cards")]
@@ -256,7 +255,6 @@ public sealed class SkillContextPackSchemaTests : IClassFixture<DbFixture>
         "work-on-card" => new WorkOnCardContextProvider(),
         "grill-cards" => new GrillCardsContextProvider(),
         "spec-cards" => new SpecCardsContextProvider(),
-        "chat" => new ChatContextProvider(),
         "triage" => new TriageContextProvider(),
         "auto-card" => new AutoCardContextProvider(),
         _ => throw new ArgumentOutOfRangeException(nameof(skillName), skillName, "Unknown provider for drift test")

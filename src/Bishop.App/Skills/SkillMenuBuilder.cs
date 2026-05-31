@@ -5,7 +5,16 @@ namespace Bishop.App.Skills;
 public static class SkillMenuBuilder
 {
     private static readonly SkillCategory[] CategoryOrder =
-        [SkillCategory.Review, SkillCategory.Discuss, SkillCategory.Execute, SkillCategory.Setup, SkillCategory.Other];
+        [
+            SkillCategory.Discuss,
+            SkillCategory.Code,
+            SkillCategory.Tests,
+            SkillCategory.Review,
+            SkillCategory.Execute,
+            SkillCategory.Setup,
+            SkillCategory.Meta,
+            SkillCategory.Other,
+        ];
 
     public static SkillMenuItem[] Build(IEnumerable<InstalledSkill> skills, string scope)
     {

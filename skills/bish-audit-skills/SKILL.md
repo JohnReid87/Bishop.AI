@@ -42,16 +42,19 @@ working directory. The notes below are short reminders; expand each
 via §7 of `SKILL_FAMILY.md` when judging an edge case.
 
 1. **Category** — frontmatter `bishop.category` is set and matches what
-   the skill actually does (`discuss` for Conversational, `review`,
-   `setup` or `execute` for Setup-Execute, `meta` for Bishop-level).
+   the skill actually does (`discuss` for Conversational; `code` for
+   production-C# reviews; `tests` for test-surface reviews; `review`
+   for everything else heuristic-driven; `setup` or `execute` for
+   Setup-Execute; `meta` for Bishop-level). Code / Tests / Review share
+   the same authoring contract — they're split only for menu navigability.
 
 2. **Leading content** — the file leads with the category-appropriate
    content per §2: quality bar / contract for Conversational, heuristic
-   catalogue for Review, the procedure for Setup-Execute, the
-   contract / checklist for Bishop-level. A Conversational skill that
+   catalogue for Code / Tests / Review, the procedure for Setup-Execute,
+   the contract / checklist for Bishop-level. A Conversational skill that
    opens with workspace-detection prose is a violation here.
 
-3. **Workspace detection** — Conversational / Review / Setup-Execute
+3. **Workspace detection** — Conversational / Code / Tests / Review / Setup-Execute
    skills use one of the two accepted patterns: `bishop context-pack
    <skill-name>` (preferred — see item 12) or `bishop skill bootstrap`
    (legacy, valid for skills not yet migrated to context-pack). No
@@ -77,9 +80,10 @@ via §7 of `SKILL_FAMILY.md` when judging an edge case.
    STABLE section anywhere. Restated card-push procedure, restated
    preview format, restated closing prompt → finding.
 
-8. **Heuristic content (Review skills only)** — the heuristic catalogue
-   still dominates the file in line count and visual weight. If
-   boilerplate extraction has eroded the heuristics, restore them.
+8. **Heuristic content (Code / Tests / Review skills only)** — the
+   heuristic catalogue still dominates the file in line count and visual
+   weight. If boilerplate extraction has eroded the heuristics, restore
+   them.
 
 9. **Procedural flow (Setup-Execute skills only)** — the procedure
    reads top-to-bottom as imperative steps. "Purpose-first" reordering
@@ -120,14 +124,14 @@ Item 13 is a family-wide check, not per-skill:
       `## Workflow` section's `### *** skills` sub-headings.
 
     Each doc must group skills under labels that map 1:1 to the
-    canonical four categories — either the doc-level names
-    (Conversational / Review / Setup-Execute / Bishop-level / meta)
-    or equivalent labels that correspond 1:1 to the frontmatter
-    `bishop.category` values (`discuss` / `review` / `setup` +
-    `execute` / `meta`). Findings:
+    canonical six categories — either the doc-level names
+    (Conversational / Code / Tests / Review / Setup-Execute /
+    Bishop-level / meta) or equivalent labels that correspond 1:1 to
+    the frontmatter `bishop.category` values (`discuss` / `code` /
+    `tests` / `review` / `setup` + `execute` / `meta`). Findings:
     - **Missing skill** — a `skills/bish-*/` directory not named in
       one of the four docs.
-    - **Missing category** — one of the four categories has no
+    - **Missing category** — one of the six categories has no
       heading or label in a doc that otherwise lists skills.
     - **Stale flat list** — a doc lists skills inline without any
       category grouping at all.
@@ -205,13 +209,13 @@ Item 13 is a family-wide check, not per-skill:
      the doc is a **missing-skill** finding (item 13, severity
      `high`).
    - Check that the doc carries headings or labels that group
-     skills by the canonical four categories. Accept either the
-     doc-level names (Conversational / Review / Setup-Execute /
-     Bishop-level / meta) or labels that map 1:1 to the frontmatter
-     values (`discuss` / `review` / `setup` + `execute` / `meta`).
-     A category with no representation at all in a doc that
-     otherwise lists skills is a **missing-category** finding
-     (item 13, severity `high`).
+     skills by the canonical six categories. Accept either the
+     doc-level names (Conversational / Code / Tests / Review /
+     Setup-Execute / Bishop-level / meta) or labels that map 1:1 to
+     the frontmatter values (`discuss` / `code` / `tests` / `review` /
+     `setup` + `execute` / `meta`). A category with no representation
+     at all in a doc that otherwise lists skills is a
+     **missing-category** finding (item 13, severity `high`).
    - If the doc renders skills as an ungrouped flat list (no
      category headings or labels at all), that is a
      **stale-flat-list** finding (item 13, severity `medium`).

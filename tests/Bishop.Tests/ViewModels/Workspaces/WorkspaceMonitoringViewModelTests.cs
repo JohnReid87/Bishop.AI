@@ -22,7 +22,6 @@ public class WorkspaceMonitoringViewModelTests
 {
     private static readonly string[] TrackedSkills =
     [
-        "bish-audit-docs",
         "bish-arch",
         "bish-tests",
         "bish-coverage",

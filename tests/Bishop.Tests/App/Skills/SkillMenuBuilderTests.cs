@@ -144,20 +144,23 @@ public sealed class SkillMenuBuilderTests
     }
 
     [Fact]
-    public void Build_FixedCategoryOrder_ReviewBeforeDiscussBeforeExecuteBeforeSetupBeforeOther()
+    public void Build_FixedCategoryOrder_DiscussCodeTestsReviewExecuteSetupMetaOther()
     {
         var skills = new[]
         {
             new InstalledSkill("other",     "", ["card"], "claude /other",     Category: Other),
+            new InstalledSkill("meta",      "", ["card"], "claude /meta",      Category: Meta),
             new InstalledSkill("setup",     "", ["card"], "claude /setup",     Category: Setup),
             new InstalledSkill("execution", "", ["card"], "claude /execution", Category: Execute),
-            new InstalledSkill("discuss",   "", ["card"], "claude /discuss",   Category: Discuss),
             new InstalledSkill("review",    "", ["card"], "claude /review",    Category: Review),
+            new InstalledSkill("tests",     "", ["card"], "claude /tests",     Category: SkillCategory.Tests),
+            new InstalledSkill("code",      "", ["card"], "claude /code",      Category: Code),
+            new InstalledSkill("discuss",   "", ["card"], "claude /discuss",   Category: Discuss),
         };
 
         var result = SkillMenuBuilder.Build(skills, "card");
 
-        result.Select(m => m.Name).Should().Equal("review", "discuss", "execution", "setup", "other");
+        result.Select(m => m.Name).Should().Equal("discuss", "code", "tests", "review", "execution", "setup", "meta", "other");
     }
 
     [Fact]

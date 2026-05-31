@@ -200,7 +200,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("spec-cards", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure", "Source Card Closing Prompt" })]
     [InlineData("grill-docs", new[] { "Shell selection" })]
     [InlineData("triage", new[] { "Shell selection", "Card Push Procedure", "Source Card Closing Prompt" })]
-    [InlineData("chat", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure" })]
     public async Task NewProviders_DeliverExpectedConventionKeys(string skillName, string[] expectedKeys)
     {
         // Arrange
@@ -224,7 +223,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("grill-cards")]
     [InlineData("spec-cards")]
     [InlineData("triage")]
-    [InlineData("chat")]
     public async Task CardAwareProviders_LoadCardWhenArgProvided(string skillName)
     {
         // Arrange
@@ -279,7 +277,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         "spec-cards" => new SpecCardsContextProvider(),
         "grill-docs" => new GrillDocsContextProvider(),
         "triage" => new TriageContextProvider(),
-        "chat" => new ChatContextProvider(),
         "auto-card" => new AutoCardContextProvider(),
         "work-on-card" => new WorkOnCardContextProvider(),
         "dead-code" => new DeadCodeContextProvider(),
@@ -292,7 +289,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("grill-cards")]
     [InlineData("spec-cards")]
     [InlineData("triage")]
-    [InlineData("chat")]
     public async Task CardProviders_NoRelatedSection_EmitsEmptyRelatedCards(string skillName)
     {
         // Arrange
@@ -318,7 +314,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("grill-cards")]
     [InlineData("spec-cards")]
     [InlineData("triage")]
-    [InlineData("chat")]
     public async Task CardProviders_WithRelatedSection_LoadsReferencedCards(string skillName)
     {
         // Arrange

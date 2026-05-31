@@ -618,8 +618,12 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
 
     [Theory]
     [InlineData("discuss",   Bishop.Core.Skills.SkillCategory.Discuss)]
+    [InlineData("code",      Bishop.Core.Skills.SkillCategory.Code)]
+    [InlineData("tests",     Bishop.Core.Skills.SkillCategory.Tests)]
+    [InlineData("review",    Bishop.Core.Skills.SkillCategory.Review)]
     [InlineData("execute",   Bishop.Core.Skills.SkillCategory.Execute)]
     [InlineData("setup",     Bishop.Core.Skills.SkillCategory.Setup)]
+    [InlineData("meta",      Bishop.Core.Skills.SkillCategory.Meta)]
     [InlineData("other",     Bishop.Core.Skills.SkillCategory.Other)]
     public async Task Handle_AllCategoryValues_ParsedCorrectly(string raw, Bishop.Core.Skills.SkillCategory expected)
     {

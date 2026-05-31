@@ -5,7 +5,7 @@ allowed-tools: Read, Glob, Grep, Agent, AskUserQuestion, Bash(bishop:*)
 bishop.scope: workspace
 bishop.command: /bish-dead-code
 bishop.stage: false
-bishop.category: review
+bishop.category: code
 ---
 
 > Recommended model: Opus 4.7 — heuristic-catalogue review with per-finding triage requires sustained multi-step judgement.

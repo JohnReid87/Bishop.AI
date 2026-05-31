@@ -54,7 +54,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IContextProvider, SpecCardsContextProvider>();
         services.AddSingleton<IContextProvider, GrillDocsContextProvider>();
         services.AddSingleton<IContextProvider, TriageContextProvider>();
-        services.AddSingleton<IContextProvider, ChatContextProvider>();
         return services;
     }
 }
