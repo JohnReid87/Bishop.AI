@@ -1,5 +1,6 @@
 using Bishop.ViewModels.Findings;
 using Bishop.ViewModels.Shared;
+using Bishop.ViewModels.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -15,6 +16,7 @@ public sealed partial class FindingsPage : Page
 
     public FindingsViewModel ViewModel { get; }
 
+    private FindingsPageNavArgs? _navArgs;
     private string _sortKey = "title";
     private bool _sortAsc = true;
 
@@ -31,6 +33,7 @@ public sealed partial class FindingsPage : Page
         base.OnNavigatedTo(e);
         if (e.Parameter is Bishop.ViewModels.Findings.FindingsPageNavArgs args)
         {
+            _navArgs = args;
             _ = _safeAsync.RunAsync(async () =>
             {
                 await ViewModel.LoadAsync(
@@ -92,7 +95,16 @@ public sealed partial class FindingsPage : Page
 
     private void BackButton_Click(object sender, RoutedEventArgs e)
     {
-        if (Frame.CanGoBack) Frame.GoBack();
+        if (_navArgs?.Workspace is { } workspace)
+        {
+            Frame.Navigate(
+                typeof(Bishop.UI.Views.Workspaces.WorkspaceDetailPage),
+                new WorkspaceDetailPageNavArgs(workspace, _navArgs.SourceTab));
+        }
+        else if (Frame.CanGoBack)
+        {
+            Frame.GoBack();
+        }
     }
 
     private async void ConvertToCard_Click(object sender, RoutedEventArgs e)

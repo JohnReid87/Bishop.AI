@@ -329,7 +329,8 @@
                 </Grid.RowDefinitions>
 
             <!-- Board + Monitoring tabs -->
-            <TabView Grid.Row="0"
+            <TabView x:Name="MainTabView"
+                     Grid.Row="0"
                      IsAddTabButtonVisible="False"
                      CanDragTabs="False"
                      CanReorderTabs="False"

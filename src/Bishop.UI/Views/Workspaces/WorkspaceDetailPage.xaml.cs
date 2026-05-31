@@ -69,7 +69,8 @@ public sealed partial class WorkspaceDetailPage : Page
     }
 
     private void OnViewFindingsRequested(Bishop.ViewModels.Findings.FindingsPageNavArgs args)
-        => Frame?.Navigate(typeof(Bishop.UI.Views.Findings.FindingsPage), args);
+        => Frame?.Navigate(typeof(Bishop.UI.Views.Findings.FindingsPage),
+            args with { Workspace = _item, SourceTab = Bishop.ViewModels.Workspaces.WorkspaceTab.Monitoring });
 
     private void OnViewReportRequested(Uri uri)
         => _ = App.ReportViewer!.ShowReport(uri);
@@ -84,7 +85,15 @@ public sealed partial class WorkspaceDetailPage : Page
         if (_item is not null)
             _item.PropertyChanged -= OnItemPropertyChanged;
 
-        if (e.Parameter is WorkspaceItemViewModel vm)
+        if (e.Parameter is WorkspaceDetailPageNavArgs navArgs)
+        {
+            _item = navArgs.Workspace;
+            _item.PropertyChanged += OnItemPropertyChanged;
+            UpdateView(navArgs.Workspace);
+            if (navArgs.InitialTab.HasValue)
+                MainTabView.SelectedIndex = (int)navArgs.InitialTab.Value;
+        }
+        else if (e.Parameter is WorkspaceItemViewModel vm)
         {
             _item = vm;
             _item.PropertyChanged += OnItemPropertyChanged;

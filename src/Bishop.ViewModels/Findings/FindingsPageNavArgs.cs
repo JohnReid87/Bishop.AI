@@ -1,3 +1,5 @@
+using Bishop.ViewModels.Workspaces;
+
 namespace Bishop.ViewModels.Findings;
 
 public sealed record FindingsPageNavArgs(
@@ -5,4 +7,6 @@ public sealed record FindingsPageNavArgs(
     string WorkspacePath,
     string? GitHubRepo,
     string SkillName,
-    string? ProjectName);
+    string? ProjectName,
+    WorkspaceItemViewModel? Workspace = null,
+    WorkspaceTab SourceTab = WorkspaceTab.Monitoring);
