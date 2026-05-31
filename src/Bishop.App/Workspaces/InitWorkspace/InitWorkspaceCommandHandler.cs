@@ -20,14 +20,12 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
     public async Task<InitWorkspaceResult> Handle(InitWorkspaceCommand request, CancellationToken cancellationToken)
     {
         var normalizedPath = Path.GetFullPath(request.Path);
+        var normalizedPathLower = normalizedPath.ToLowerInvariant();
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
-        var allWorkspaces = await db.Workspaces.ToListAsync(cancellationToken);
-
-        var existing = allWorkspaces.FirstOrDefault(w =>
-            !w.IsRemoved &&
-            string.Equals(Path.GetFullPath(w.Path), normalizedPath, StringComparison.OrdinalIgnoreCase));
+        var existing = await db.Workspaces
+            .FirstOrDefaultAsync(w => !w.IsRemoved && w.Path.ToLower() == normalizedPathLower, cancellationToken);
 
         if (existing is not null)
         {
@@ -35,9 +33,8 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
             return new InitWorkspaceResult(existing, Created: false, gitHubLinkedExisting);
         }
 
-        var archived = allWorkspaces.FirstOrDefault(w =>
-            w.IsRemoved &&
-            string.Equals(Path.GetFullPath(w.Path), normalizedPath, StringComparison.OrdinalIgnoreCase));
+        var archived = await db.Workspaces
+            .FirstOrDefaultAsync(w => w.IsRemoved && w.Path.ToLower() == normalizedPathLower, cancellationToken);
 
         if (archived is not null)
         {
@@ -58,7 +55,7 @@ public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceC
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        var activeCount = allWorkspaces.Count(w => !w.IsRemoved);
+        var activeCount = await db.Workspaces.CountAsync(w => !w.IsRemoved, cancellationToken);
         var name = request.Name ?? new DirectoryInfo(normalizedPath).Name;
         var workspace = new Workspace
         {
