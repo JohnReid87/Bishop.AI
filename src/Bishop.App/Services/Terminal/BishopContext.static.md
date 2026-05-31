@@ -516,6 +516,19 @@ git rev-parse HEAD
 bishop findings record --skill <skill-name> --sha <captured-sha> --file .bishop/findings/<skill-name>.json
 ```
 
+For project-scoped skills (currently `bish-tests`), add `--project <name>` so
+the run is keyed on `(workspace, skill, project)` instead of overwriting prior
+runs of the same skill against a different project:
+
+```bash
+bishop findings record --skill bish-tests --sha <captured-sha> --project <ProjectName> --file .bishop/findings/bish-tests.json
+```
+
+`<ProjectName>` should be the `.csproj` name (e.g. `Bishop.App`), matching what
+the staging dialog's project picker emits. Solution-scoped skills (`bish-arch`,
+`bish-security`, `bish-dead-code`, `bish-coverage`, `bish-audit-docs`) omit
+`--project`.
+
 A successful invocation prints `Recorded N finding(s) for '<skill-name>'` plus
 the JSON / HTML paths under `.bishop/findings/`. On non-zero exit, surface the
 error to the user but do not abort — the review is complete whether or not the
@@ -571,6 +584,12 @@ Field rules:
 - `symbol` (required for stable identity) — the canonical identifier the
   finding is about (type, member, request, registration, or test target —
   e.g. `OrderService`, `OrderService.Submit`).
+
+The top-level `projectName` (optional) scopes the run to a specific project
+within the solution. Equivalent to passing `--project <name>` on the CLI, which
+overrides any value already present in the JSON. Used by `bish-tests` so that
+running it against `Bishop.App` then `Bishop.UI` keeps both finding sets
+instead of overwriting the first.
 
 An empty `findings: []` array is valid and is the right shape for the
 no-findings run path.

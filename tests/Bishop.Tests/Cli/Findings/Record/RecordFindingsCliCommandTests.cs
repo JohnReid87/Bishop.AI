@@ -65,6 +65,78 @@ public sealed class RecordFindingsCliCommandTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WithProjectOption_InjectsProjectNameIntoPayload()
+    {
+        var ws = DefaultWorkspace();
+        var result = new RecordFindingsResult(@".bishop\findings\f.html", 0);
+        var (mediator, cmd) = Build(ws, result);
+        var json = """{"findings":[]}""";
+        var tempFile = Path.GetTempFileName();
+
+        try
+        {
+            await File.WriteAllTextAsync(tempFile, json);
+
+            var output = new StringWriter();
+            var originalOut = Console.Out;
+            Console.SetOut(output);
+            int exitCode;
+            try
+            {
+                exitCode = await cmd.InvokeAsync(
+                    ["--skill", "bish-tests", "--file", tempFile, "--sha", "abc1234", "--project", "Bishop.App", "--workspace", "test-ws"]);
+            }
+            finally { Console.SetOut(originalOut); }
+
+            exitCode.Should().Be(0);
+            await mediator.Received(1).Send(
+                Arg.Is<RecordFindingsCommand>(c =>
+                    c.SkillName == "bish-tests" &&
+                    c.FindingsJson.Contains("\"projectName\":\"Bishop.App\"")),
+                Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithProjectOption_OverridesPayloadProjectName()
+    {
+        var ws = DefaultWorkspace();
+        var result = new RecordFindingsResult(@".bishop\findings\f.html", 0);
+        var (mediator, cmd) = Build(ws, result);
+        var json = """{"projectName":"Bishop.UI","findings":[]}""";
+        var tempFile = Path.GetTempFileName();
+
+        try
+        {
+            await File.WriteAllTextAsync(tempFile, json);
+
+            var output = new StringWriter();
+            var originalOut = Console.Out;
+            Console.SetOut(output);
+            try
+            {
+                await cmd.InvokeAsync(
+                    ["--skill", "bish-tests", "--file", tempFile, "--sha", "abc1234", "--project", "Bishop.App", "--workspace", "test-ws"]);
+            }
+            finally { Console.SetOut(originalOut); }
+
+            await mediator.Received(1).Send(
+                Arg.Is<RecordFindingsCommand>(c =>
+                    c.FindingsJson.Contains("\"projectName\":\"Bishop.App\"") &&
+                    !c.FindingsJson.Contains("Bishop.UI")),
+                Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
     public async Task InvokeAsync_WithStdinOption_ExitsZeroAndSendsRecordFindingsCommand()
     {
         var ws = DefaultWorkspace();

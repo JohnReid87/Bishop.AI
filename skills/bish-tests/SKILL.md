@@ -122,6 +122,22 @@ you flag as equivalent during the interview.
 
 1. **Resolve scope.** Two paths:
 
+   **Project name for findings.** Before either path, derive a `--project` value
+   for `bishop findings record` (see step 10). The staging dialog's project
+   picker writes `src/<ProjectName>` into the argument; treat that as the
+   authoritative source:
+   - If the argument matches `src/<ProjectName>` (or `src\<ProjectName>`) —
+     possibly with a trailing sub-path — set `projectName` to the second path
+     segment (e.g. `src/Bishop.App` → `Bishop.App`,
+     `src/Bishop.UI/Views` → `Bishop.UI`).
+   - Otherwise (blank, a bare class name, or any other shape) leave
+     `projectName` unset — the run is recorded without `--project` and keyed
+     on `(workspace, bish-tests, null)`.
+
+   Carry this value through to every `bishop findings record` invocation
+   below — both the no-findings paths in this step / step 7 and the final
+   call in step 10.
+
    **Path A — no argument (default).** Read both summary files.
 
    - Read `TestResults/coverage-summary.json`.
@@ -148,7 +164,8 @@ you flag as equivalent during the interview.
      > All coverage-mature classes are above the 60% mutation threshold. Nothing to file.
 
      Record this run via the no-findings path of `Findings Recording Procedure`
-     (in `conventions`) with `--skill bish-tests` and STOP.
+     (in `conventions`) with `--skill bish-tests` (plus `--project <name>` when
+     a `projectName` was derived above) and STOP.
 
    **Path B — argument supplied.** Treat the argument as either a class
    name (full or short, case-insensitive) or a folder path under `src/`.
@@ -248,7 +265,7 @@ you flag as equivalent during the interview.
    > All audited classes already have open quality cards on the board.
    > Nothing new to file.
 
-   Record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-tests`, then continue to step 9 so the clean-classes summary still prints.
+   Record this run via the no-findings path of `Findings Recording Procedure` (in `conventions`) with `--skill bish-tests` (plus `--project <name>` when a `projectName` was derived in step 1), then continue to step 9 so the clean-classes summary still prints.
 
 8. **Interview per surviving suggestion** with `AskUserQuestion`. For each
    class, show the class name, test file path, mutation score, and the list
@@ -315,10 +332,12 @@ you flag as equivalent during the interview.
    > repeated runs safe.
 
 10. **Record this run** by following `Findings Recording Procedure` (in
-    `conventions`) with `--skill bish-tests`. Before emitting, resolve any
-    `pending-card:<n>` markers in the session log to `carded:#<N>` using the
-    card numbers returned by step 8's push, so every tracked class carries one
-    of the three final outcomes (`carded:#<N>` / `dismissed` / `parked`).
+    `conventions`) with `--skill bish-tests` (plus `--project <name>` when a
+    `projectName` was derived in step 1, so the run is keyed on this project
+    rather than overwriting the prior project's run). Before emitting, resolve
+    any `pending-card:<n>` markers in the session log to `carded:#<N>` using
+    the card numbers returned by step 8's push, so every tracked class carries
+    one of the three final outcomes (`carded:#<N>` / `dismissed` / `parked`).
 
 </what-to-do>
 
