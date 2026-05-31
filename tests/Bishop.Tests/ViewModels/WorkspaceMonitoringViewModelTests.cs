@@ -14,7 +14,6 @@ public class WorkspaceMonitoringViewModelTests
 {
     private static readonly string[] TrackedSkills =
     [
-        "bish-audit-docs",
         "bish-arch",
         "bish-tests",
         "bish-coverage",
@@ -155,7 +154,7 @@ public class WorkspaceMonitoringViewModelTests
         _vm.BadgeIsVisible.Should().BeTrue();
         _vm.BadgeColor.Should().Be("#c97a8a");
         _vm.BadgeCount.Should().Be(TrackedSkills.Length);
-        _vm.BadgeTooltip.Should().Be($"{TrackedSkills.Length} of 5 reviews need attention");
+        _vm.BadgeTooltip.Should().Be($"{TrackedSkills.Length} of {TrackedSkills.Length} reviews need attention");
     }
 
     [Fact]

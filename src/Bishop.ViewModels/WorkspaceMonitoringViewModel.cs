@@ -13,7 +13,6 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
 {
     private static readonly string[] TrackedSkills =
     [
-        "bish-audit-docs",
         "bish-arch",
         "bish-tests",
         "bish-coverage",
