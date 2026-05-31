@@ -680,6 +680,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 item.StagePrompt,
                 item.StagePrefill,
                 item.StageProjects,
+                item.StageFilePicker,
                 Board.WorkspacePath) { XamlRoot = XamlRoot };
             if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
             stagedText = dialog.InputText?.Trim();

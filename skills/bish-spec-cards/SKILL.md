@@ -6,6 +6,7 @@ bishop.scope: workspace
 bishop.command: /bish-spec-cards
 bishop.stage: true
 bishop.stage_prompt: "Path to feature spec markdown file"
+bishop.stage_file_picker: true
 bishop.category: discuss
 ---
 

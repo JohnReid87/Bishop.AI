@@ -18,6 +18,10 @@
                   HorizontalAlignment="Stretch"
                   PlaceholderText="Project"
                   SelectionChanged="ProjectsCombo_SelectionChanged"/>
+        <Button x:Name="FilePickerButton"
+                Content="Browse&#x2026;"
+                Visibility="Collapsed"
+                Click="FilePickerButton_Click"/>
         <TextBox x:Name="InputBox"
                  AcceptsReturn="True"
                  TextWrapping="Wrap"

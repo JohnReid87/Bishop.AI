@@ -11,4 +11,5 @@ public sealed record InstalledSkill(
     string MarkdownBody = "",
     string SourcePath = "",
     SkillCategory Category = SkillCategory.Other,
-    bool StageProjects = false);
+    bool StageProjects = false,
+    bool StageFilePicker = false);

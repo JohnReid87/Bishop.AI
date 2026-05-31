@@ -216,7 +216,7 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
     {
         // Arrange
         WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"),
-            "---\nname: my-skill\ndescription: Does something useful\nbishop.scope: card\nbishop.command: /my-skill {{card_number}}\nbishop.stage: true\nbishop.stage_prompt: Enter a card number\nbishop.stage_prefill: \"{{card_title}}\\n\\n{{card_description}}\"\nbishop.stage_projects: true\n---\n");
+            "---\nname: my-skill\ndescription: Does something useful\nbishop.scope: card\nbishop.command: /my-skill {{card_number}}\nbishop.stage: true\nbishop.stage_prompt: Enter a card number\nbishop.stage_prefill: \"{{card_title}}\\n\\n{{card_description}}\"\nbishop.stage_projects: true\nbishop.stage_file_picker: true\n---\n");
         var sut = CreateSut();
 
         // Act
@@ -233,6 +233,7 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
         skill.StagePrompt.Should().Be("Enter a card number");
         skill.StagePrefill.Should().Be("{{card_title}}\n\n{{card_description}}");
         skill.StageProjects.Should().BeTrue();
+        skill.StageFilePicker.Should().BeTrue();
     }
 
     [Fact]
@@ -667,6 +668,34 @@ public sealed class DiscoverSkillsQueryHandlerTests : IDisposable
 
         // Assert
         result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_StageFilePickerMissing_DefaultsToFalse()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].StageFilePicker.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_StageFilePickerUppercaseTrue_SetsStageFilePickerTrueIgnoringCase()
+    {
+        // Arrange
+        WriteSkillMd(Path.Combine(_skillsRoot, "my-skill"), "---\nname: my-skill\nbishop.stage_file_picker: TRUE\n---\n");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new DiscoverSkillsQuery(), CancellationToken.None);
+
+        // Assert
+        result[0].StageFilePicker.Should().BeTrue();
     }
 
 }

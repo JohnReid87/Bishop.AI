@@ -316,7 +316,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             StagePrompt: skill.StagePrompt,
             StagePrefill: string.IsNullOrEmpty(prefill) ? null : prefill,
             MarkdownBody: skill.MarkdownBody,
-            StageProjects: skill.StageProjects);
+            StageProjects: skill.StageProjects,
+            StageFilePicker: skill.StageFilePicker);
     }
 
     // ── Workspace launch ─────────────────────────────────────────────────────

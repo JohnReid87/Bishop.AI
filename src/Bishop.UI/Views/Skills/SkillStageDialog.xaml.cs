@@ -1,4 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace Bishop.UI.Views.Skills;
 
@@ -11,6 +13,7 @@ public sealed partial class SkillStageDialog : ContentDialog
         string? customPrompt,
         string? initialText = null,
         bool stageProjects = false,
+        bool stageFilePicker = false,
         string? workspacePath = null)
     {
         InitializeComponent();
@@ -21,6 +24,9 @@ public sealed partial class SkillStageDialog : ContentDialog
 
         if (stageProjects && !string.IsNullOrWhiteSpace(workspacePath))
             PopulateProjects(workspacePath);
+
+        if (stageFilePicker)
+            FilePickerButton.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
     }
 
     public string InputText => InputBox.Text;
@@ -56,5 +62,19 @@ public sealed partial class SkillStageDialog : ContentDialog
         InputBox.Text = selected == FullWorkspaceLabel
             ? string.Empty
             : $"src/{selected}";
+    }
+
+    private async void FilePickerButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        var picker = new FileOpenPicker();
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(App.MainWindow));
+        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add(".md");
+        picker.FileTypeFilter.Add(".txt");
+        picker.FileTypeFilter.Add("*");
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null)
+            InputBox.Text = file.Path;
     }
 }

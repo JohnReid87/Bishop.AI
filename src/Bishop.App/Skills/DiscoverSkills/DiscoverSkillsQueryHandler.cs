@@ -42,6 +42,7 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
             fm.TryGetValue("bishop.stage_prompt", out var stagePrompt);
             fm.TryGetValue("bishop.stage_prefill", out var stagePrefill);
             fm.TryGetValue("bishop.stage_projects", out var stageProjects);
+            fm.TryGetValue("bishop.stage_file_picker", out var stageFilePicker);
             fm.TryGetValue("bishop.category", out var category);
 
             skills.Add(new InstalledSkill(
@@ -55,7 +56,8 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
                 body,
                 skillFile,
                 ParseCategory(category),
-                string.Equals(stageProjects, "true", StringComparison.OrdinalIgnoreCase)));
+                string.Equals(stageProjects, "true", StringComparison.OrdinalIgnoreCase),
+                string.Equals(stageFilePicker, "true", StringComparison.OrdinalIgnoreCase)));
         }
 
         return Task.FromResult<IReadOnlyList<InstalledSkill>>(skills);

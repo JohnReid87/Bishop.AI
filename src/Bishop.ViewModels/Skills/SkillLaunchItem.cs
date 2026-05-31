@@ -15,4 +15,5 @@ public sealed record SkillLaunchItem(
     string? StagePrompt,
     string? StagePrefill,
     string MarkdownBody,
-    bool StageProjects = false);
+    bool StageProjects = false,
+    bool StageFilePicker = false);
