@@ -663,7 +663,7 @@
                                     <ColumnDefinition Width="160"/>
                                     <ColumnDefinition Width="130"/>
                                     <ColumnDefinition Width="90"/>
-                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="50"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
@@ -725,27 +725,23 @@
                                                        FontSize="12"
                                                        VerticalAlignment="Center"/>
                                             <Button Grid.Column="3"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    Padding="0"
-                                                    MinWidth="0" MinHeight="0"
+                                                    Content="{x:Bind FindingsButtonText}"
+                                                    FontSize="12"
+                                                    Padding="8,4"
                                                     HorizontalAlignment="Left"
                                                     VerticalAlignment="Center"
                                                     Command="{x:Bind ViewFindingsCommand}"
-                                                    IsEnabled="{x:Bind CanViewFindings}"
-                                                    Visibility="{x:Bind FindingsBadgeIsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                    ToolTipService.ToolTip="View findings from last run">
-                                                <Grid MinWidth="24" MinHeight="16">
-                                                    <Rectangle RadiusX="8" RadiusY="8"
-                                                               Fill="#5d8fa8"/>
-                                                    <TextBlock Text="{x:Bind FindingsCount}"
-                                                               Foreground="Black"
-                                                               FontSize="11"
-                                                               HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center"
-                                                               Margin="6,1"/>
-                                                </Grid>
-                                            </Button>
+                                                    Visibility="{x:Bind CanViewFindings, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    ToolTipService.ToolTip="View findings from last run"/>
+                                            <Button Grid.Column="3"
+                                                    Content="View report"
+                                                    FontSize="12"
+                                                    Padding="8,4"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center"
+                                                    Command="{x:Bind ViewReportCommand}"
+                                                    Visibility="{x:Bind CanViewReport, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    ToolTipService.ToolTip="Open coverage report"/>
                                             <Ellipse Grid.Column="4"
                                                      Width="10"
                                                      Height="10"

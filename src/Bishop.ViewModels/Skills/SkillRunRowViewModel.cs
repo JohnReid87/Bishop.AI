@@ -28,7 +28,14 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         FindingsCount is > 0
         && !SkillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase);
 
+    public bool CanViewReport =>
+        ReportFilePath is not null
+        && SkillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase);
+
+    public string FindingsButtonText => $"View findings ({FindingsCount ?? 0})";
+
     public event Action<FindingsPageNavArgs>? ViewFindingsRequested;
+    public event Action<Uri>? ViewReportRequested;
 
     [ObservableProperty]
     private string _selectedModelId = ClaudeModels.Sonnet46;
@@ -50,6 +57,13 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         if (!CanViewFindings) return;
         ViewFindingsRequested?.Invoke(new FindingsPageNavArgs(
             WorkspaceId, WorkspacePath, GitHubRepo, SkillName, ProjectName));
+    }
+
+    [RelayCommand]
+    private void ViewReport()
+    {
+        if (!CanViewReport || ReportFilePath is null) return;
+        ViewReportRequested?.Invoke(new Uri(ReportFilePath));
     }
 
     public SkillRunRowViewModel(

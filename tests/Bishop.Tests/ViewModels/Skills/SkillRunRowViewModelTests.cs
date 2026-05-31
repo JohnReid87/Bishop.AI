@@ -249,6 +249,50 @@ public class SkillRunRowViewModelTests
     }
 
     [Fact]
+    public void CanViewReport_BishCoverageWithWorkspacePath_IsTrue()
+    {
+        var row = new SkillRunRowViewModel("bish-coverage", null, null, false, @"C:\myrepo");
+
+        row.CanViewReport.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CanViewReport_NonCoverage_IsFalse()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", null, null, false, @"C:\myrepo");
+
+        row.CanViewReport.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CanViewReport_BishCoverageWithoutWorkspacePath_IsFalse()
+    {
+        var row = new SkillRunRowViewModel("bish-coverage", null, null, false);
+
+        row.CanViewReport.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ViewReport_RaisesEventWithUri()
+    {
+        var row = new SkillRunRowViewModel("bish-coverage", null, null, false, @"C:\myrepo");
+        Uri? captured = null;
+        row.ViewReportRequested += u => captured = u;
+
+        row.ViewReportCommand.Execute(null);
+
+        captured.Should().Be(new Uri(@"C:\myrepo\TestResults\coverage-report\index.html"));
+    }
+
+    [Fact]
+    public void FindingsButtonText_ReflectsCount()
+    {
+        var row = new SkillRunRowViewModel("bish-arch", DateTimeOffset.UtcNow, 0, false, findingsCount: 5);
+
+        row.FindingsButtonText.Should().Be("View findings (5)");
+    }
+
+    [Fact]
     public void FindingsBadgeIsVisible_WhenFindingsCountNull_IsFalse()
     {
         var row = new SkillRunRowViewModel("bish-arch", null, null, false, findingsCount: null);

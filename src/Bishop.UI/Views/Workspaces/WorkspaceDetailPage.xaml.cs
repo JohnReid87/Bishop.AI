@@ -62,12 +62,15 @@ public sealed partial class WorkspaceDetailPage : Page
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
         Board.StagingTray.Cards.CollectionChanged += OnStagingTrayCardsChanged;
-        Monitoring.PropertyChanged += OnMonitoringPropertyChanged;
         Monitoring.ViewFindingsRequested += OnViewFindingsRequested;
+        Monitoring.ViewReportRequested += OnViewReportRequested;
     }
 
     private void OnViewFindingsRequested(Bishop.ViewModels.Findings.FindingsPageNavArgs args)
         => Frame?.Navigate(typeof(Bishop.UI.Views.Findings.FindingsPage), args);
+
+    private void OnViewReportRequested(Uri uri)
+        => _ = App.ReportViewer!.ShowReport(uri);
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
@@ -1143,15 +1146,6 @@ public sealed partial class WorkspaceDetailPage : Page
     private void NotesSplitter_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
     {
         _isDraggingNotes = false;
-    }
-
-    private void OnMonitoringPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(WorkspaceMonitoringViewModel.SelectedReportUri)
-            && Monitoring.SelectedReportUri is { } uri)
-        {
-            _ = App.ReportViewer!.ShowReport(uri);
-        }
     }
 
     private void BeginAddCard_Click(object sender, RoutedEventArgs e)

@@ -217,63 +217,19 @@ public class WorkspaceMonitoringViewModelTests
     }
 
     [Fact]
-    public async Task SelectedRow_WhenSet_ExposesReportUriForCoverageRow()
+    public async Task RowViewReport_PropagatesUriOnViewReportRequestedEvent()
     {
         await _vm.LoadAsync(Guid.NewGuid(), @"C:\myrepo");
+        Uri? captured = null;
+        _vm.ViewReportRequested += uri => captured = uri;
 
         var coverageRow = _vm.Rows.First(r => r.SkillName == "bish-coverage");
-        _vm.SelectedRow = coverageRow;
+        coverageRow.ViewReportCommand.Execute(null);
 
-        _vm.SelectedReportUri.Should().Be(new Uri(@"C:\myrepo\TestResults\coverage-report\index.html"));
+        captured.Should().Be(new Uri(@"C:\myrepo\TestResults\coverage-report\index.html"));
     }
 
-    [Fact]
-    public async Task SelectedRow_WhenSetToNonCoverageRow_SelectedReportUriIsNull()
-    {
-        await _vm.LoadAsync(Guid.NewGuid(), @"C:\myrepo");
-
-        _vm.SelectedRow = _vm.Rows.First(r => r.SkillName == "bish-arch");
-
-        _vm.SelectedReportUri.Should().BeNull();
-    }
-
-    [Fact]
-    public void SelectedRow_WhenNull_SelectedReportUriIsNull()
-    {
-        _vm.SelectedRow = null;
-
-        _vm.SelectedReportUri.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task SelectedRow_WhenSetToCoverageRow_HasSelectedReportIsTrue()
-    {
-        await _vm.LoadAsync(Guid.NewGuid(), @"C:\myrepo");
-
-        _vm.SelectedRow = _vm.Rows.First(r => r.SkillName == "bish-coverage");
-
-        _vm.HasSelectedReport.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task SelectedRow_WhenSetToNonCoverageRow_HasSelectedReportIsFalse()
-    {
-        await _vm.LoadAsync(Guid.NewGuid(), @"C:\myrepo");
-
-        _vm.SelectedRow = _vm.Rows.First(r => r.SkillName == "bish-arch");
-
-        _vm.HasSelectedReport.Should().BeFalse();
-    }
-
-    [Fact]
-    public void HasSelectedReport_WhenSelectedRowIsNull_IsFalse()
-    {
-        _vm.SelectedRow = null;
-
-        _vm.HasSelectedReport.Should().BeFalse();
-    }
-
-    [Fact]
+[Fact]
     public async Task LoadAsync_BishTestsWithTwoProjects_EmitsTwoRows()
     {
         var workspaceId = Guid.NewGuid();

@@ -28,6 +28,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     private string? _gitHubRepo;
 
     public event Action<FindingsPageNavArgs>? ViewFindingsRequested;
+    public event Action<Uri>? ViewReportRequested;
 
     public ObservableCollection<SkillRunRowViewModel> Rows { get; } = [];
 
@@ -45,19 +46,6 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
 
     [ObservableProperty]
     private SkillRunRowViewModel? _selectedRow;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelectedReport))]
-    private Uri? _selectedReportUri;
-
-    public bool HasSelectedReport => SelectedReportUri is not null;
-
-    partial void OnSelectedRowChanged(SkillRunRowViewModel? value)
-    {
-        SelectedReportUri = value?.ReportFilePath is { } path
-            ? new Uri(path)
-            : null;
-    }
 
     public WorkspaceMonitoringViewModel(ISender mediator, IGitCli gitCli, TimeProvider timeProvider)
     {
@@ -126,6 +114,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             _workspaceId,
             _gitHubRepo);
         row.ViewFindingsRequested += args => ViewFindingsRequested?.Invoke(args);
+        row.ViewReportRequested += uri => ViewReportRequested?.Invoke(uri);
         return row;
     }
 
