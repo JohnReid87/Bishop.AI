@@ -8,11 +8,7 @@ bishop.stage: true
 bishop.stage_prompt: "Class name or folder path (leave blank for full workspace)"
 bishop.stage_projects: true
 bishop.category: tests
-firstRunModel: claude-opus-4-7
-reRunModel: claude-sonnet-4-6
 ---
-
-> Recommended model: Opus 4.7 — test-quality heuristic catalogue requires sustained multi-step judgement.
 
 The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Findings Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 

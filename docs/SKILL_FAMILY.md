@@ -121,46 +121,7 @@ A short STABLE/TUNABLE convention note belongs at the top of BISHOP_CONTEXT.md s
 
 ---
 
-## 6. Recommended-model convention
-
-Every `SKILL.md` carries a `> Recommended model:` line immediately after the
-frontmatter closing `---`, above the first heading or body paragraph. This
-makes the preferred model visible at the point of running each skill and
-prevents it drifting across new skills as the family grows.
-
-### Format
-
-```markdown
-> Recommended model: <model> — <one-line reason>
-```
-
-The line is a Markdown blockquote so it renders visually distinct from body
-text. The reason is mandatory and must be a single clause — no line breaks,
-no restatement of the model name.
-
-### Allowed values
-
-| Value | Use when |
-|---|---|
-| `Sonnet 4.6` | The skill follows a structured procedure or performs retrieval and formatting — extended reasoning is not required. |
-| `Opus 4.7` | The skill requires sustained multi-step judgement: interviewing, heuristic-catalogue review, architectural critique, or anything where the model must hold many considerations in flight simultaneously. |
-
-### Examples
-
-```markdown
-> Recommended model: Sonnet 4.6 — procedure-following; extended reasoning not required.
-> Recommended model: Opus 4.7 — relentless interview requires sustained multi-step judgement.
-```
-
-### Placement
-
-- **Below** the closing `---` of the frontmatter block.
-- **Above** the first heading or body paragraph.
-- Applies to every category — Conversational, Review, Setup-Execute, and Bishop-level / meta.
-
----
-
-## 7. Audit checklist
+## 6. Audit checklist
 
 Run through this list when auditing the skill family (the future `bish-audit-skills` skill walks it with the user).
 
@@ -176,12 +137,11 @@ For each skill in `skills/`:
 8. **Heuristic content** — for review skills: are the heuristics still the dominant portion of the file? If extraction has eroded them, restore.
 9. **Procedural flow** — for setup/execute skills: is the procedure still readable top-to-bottom as imperative steps? Reordering for "purpose-first" is a bug here.
 10. **Frontmatter** — `name`, `description`, `allowed-tools`, `bishop.scope`, `bishop.command` all present and accurate? Stage flags (`bishop.stage`, `bishop.stage_prompt`) correct for the workspace-launch path?
-11. **Recommended model** — does the file carry a `> Recommended model:` line immediately after the frontmatter `---`, with an allowed value (`Sonnet 4.6` or `Opus 4.7`) and a one-line reason? If not, flag it. See §6 for placement and allowed values.
-12. **Context-pack entry-point** — workspace-level skills (Conversational / Review / Setup-Execute) open the body with a single `bishop context-pack <skill-name> [--card N]` call and a one-line intro about the pack's contents. Any inline `bishop context print --section "<name>"` reference in the SKILL.md prose is drift — the pack already delivers those sections. Bishop-level / meta skills do not call context-pack. See §4 ("Context-pack entry-point pattern") for the rationale.
+11. **Context-pack entry-point** — workspace-level skills (Conversational / Review / Setup-Execute) open the body with a single `bishop context-pack <skill-name> [--card N]` call and a one-line intro about the pack's contents. Any inline `bishop context print --section "<name>"` reference in the SKILL.md prose is drift — the pack already delivers those sections. Bishop-level / meta skills do not call context-pack. See §4 ("Context-pack entry-point pattern") for the rationale.
 
 Finally, run this family-wide check (not per-skill):
 
-13. **Bundled-skills-list drift** — every skill in `skills/bish-*/` must appear at least once in each of these four canonical bundled-skills lists, grouped by category rather than as a flat list:
+12. **Bundled-skills-list drift** — every skill in `skills/bish-*/` must appear at least once in each of these four canonical bundled-skills lists, grouped by category rather than as a flat list:
     - `README.md` — "Getting started → After MSI install" bullet group.
     - `CONTEXT.md` — both the `skills/` entry under "Repository layout" and the "Skill integration" paragraph.
     - `DIRECTION.md` — the "Skills live in this repo" decision block.
@@ -192,7 +152,7 @@ Finally, run this family-wide check (not per-skill):
     - **Missing category** — one of the four categories has no heading or label in a doc that otherwise lists skills.
     - **Stale flat list** — a doc lists skills inline without any category grouping at all.
 
-Flag findings (per-skill for items 1–12, family-wide for item 13) and walk them with the user before pushing follow-up cards (the standard per-finding cadence used by `bish-arch` / `bish-security`).
+Flag findings (per-skill for items 1–11, family-wide for item 12) and walk them with the user before pushing follow-up cards (the standard per-finding cadence used by `bish-arch` / `bish-security`).
 
 ---
 

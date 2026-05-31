@@ -36,9 +36,6 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     [ObservableProperty]
     private string _selectedModelLabel = ClaudeModels.Sonnet46Display + " ▾";
 
-    [ObservableProperty]
-    private string _modelSelectionReason = string.Empty;
-
     [RelayCommand]
     private void SelectModel(string modelId)
     {

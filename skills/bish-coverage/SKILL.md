@@ -6,11 +6,7 @@ bishop.scope: workspace
 bishop.command: /bish-coverage
 bishop.stage: false
 bishop.category: tests
-firstRunModel: claude-sonnet-4-6
-reRunModel: claude-sonnet-4-6
 ---
-
-> Recommended model: Sonnet 4.6 — procedure-following; extended reasoning not required.
 
 The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Findings Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 

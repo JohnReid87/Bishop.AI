@@ -8,8 +8,6 @@ bishop.stage: false
 bishop.category: execute
 ---
 
-> Recommended model: Sonnet 4.6 — procedure-following; extended reasoning not required.
-
 The context-pack below bundles workspace metadata, task data (card body), recent git history, and Bishop convention procedures (including shell tool selection) used by both Bishop CLI and Claude — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---

@@ -8,8 +8,6 @@ bishop.stage: false
 bishop.category: code
 ---
 
-> Recommended model: Opus 4.7 — heuristic-catalogue review with per-finding triage requires sustained multi-step judgement.
-
 The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card Granularity Rules, Task List Preview Format, Card Push Procedure, Findings Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 
 ---

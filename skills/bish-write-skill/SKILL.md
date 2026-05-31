@@ -5,8 +5,6 @@ allowed-tools: Read, Glob, Grep, Write, Edit, AskUserQuestion, Bash(bishop:*)
 bishop.category: meta
 ---
 
-> Recommended model: Sonnet 4.6 — structured authoring procedure; extended reasoning not required.
-
 ## What this skill is
 
 A **Bishop-level meta-skill**. It operates on `skills/` in the Bishop.AI
@@ -231,8 +229,6 @@ bishop.stage_prompt: "<staging prompt if stage:true>"
 bishop.category: discuss
 ---
 
-> Recommended model: <tier> — <one-line reason>
-
 ## What this skill is
 
 A **<one-phrase contract>** (e.g. "relentless interview", "non-mutating
@@ -361,8 +357,6 @@ bishop.stage: false
 bishop.category: <code|tests|review>
 ---
 
-> Recommended model: <tier> — <one-line reason>
-
 **Before anything else — initialize from `bishop context-pack`:**
 
 Run `bishop context-pack <skill-name>`. If it exits non-zero, surface the
@@ -490,8 +484,6 @@ bishop.stage: false
 bishop.category: <setup|execute>
 ---
 
-> Recommended model: <tier> — <one-line reason>
-
 **Goal:** <one sentence — what this procedure accomplishes and the
 end state on success>.
 
@@ -574,8 +566,6 @@ description: <one-line description>
 allowed-tools: Read, Glob, Grep, Write, Edit, AskUserQuestion
 bishop.category: meta
 ---
-
-> Recommended model: <tier> — <one-line reason>
 
 ## What this skill is
 

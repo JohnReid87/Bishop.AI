@@ -5,8 +5,6 @@ allowed-tools: Write, Read, AskUserQuestion, Bash(bishop:*)
 bishop.category: discuss
 ---
 
-> Recommended model: Sonnet 4.6 — structured script authoring; extended reasoning not required.
-
 ## What this skill is
 
 A **script authoring conversation**. The user describes what they want to automate; the skill interviews, drafts a PowerShell `.ps1`, and saves it to `%AppData%\Bishop.AI\scripts\` so it appears in the ScriptsPage launcher on next navigation.

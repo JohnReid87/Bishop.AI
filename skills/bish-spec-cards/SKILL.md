@@ -9,8 +9,6 @@ bishop.stage_prompt: "Path to feature spec markdown file"
 bishop.category: discuss
 ---
 
-> Recommended model: Opus 4.7 — interrogating a document for gaps and missing acceptance criteria requires sustained multi-step judgement.
-
 ## What this skill is
 
 A **document-seeded interrogation**. The user provides a markdown file describing a feature; the skill reads it and grills the user about what is missing, ambiguous, or underspecified — working through the document until every implementation decision has either an answer or an explicit out-of-scope statement. Cards are generated from what remains.

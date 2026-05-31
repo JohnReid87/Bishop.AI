@@ -6,11 +6,7 @@ bishop.scope: workspace
 bishop.command: /bish-audit-docs
 bishop.stage: false
 bishop.category: review
-firstRunModel: claude-sonnet-4-6
-reRunModel: claude-sonnet-4-6
 ---
-
-> Recommended model: Sonnet 4.6 — doc-drift detection is pattern-matching; extended reasoning not required.
 
 ---
 

@@ -9,8 +9,6 @@ bishop.stage_prompt: "Describe the bug — symptom, repro if known, and any stac
 bishop.category: review
 ---
 
-> Recommended model: Sonnet 4.6 — structured bug-checklist walk; extended reasoning not required.
-
 ## What this skill is
 
 A **bug-skeleton walk plus a scope decision**. The soul of the skill is

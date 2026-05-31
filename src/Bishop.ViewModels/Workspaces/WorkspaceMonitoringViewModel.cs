@@ -1,6 +1,4 @@
 using Bishop.App.Git;
-using Bishop.App.Skills;
-using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 using Bishop.ViewModels.Findings;
 using Bishop.ViewModels.Skills;
@@ -84,22 +82,17 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             .GroupBy(r => r.SkillName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.OrderBy(r => r.ProjectName, StringComparer.OrdinalIgnoreCase).ToList(), StringComparer.OrdinalIgnoreCase);
 
-        var skills = await _mediator.Send(new DiscoverSkillsQuery());
-        var skillsByName = skills.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
-
         var rows = new List<SkillRunRowViewModel>();
         foreach (var skillName in TrackedSkills)
         {
-            skillsByName.TryGetValue(skillName, out var skill);
-
             if (runsBySkill.TryGetValue(skillName, out var skillRuns) && skillRuns.Count > 0)
             {
                 foreach (var run in skillRuns)
-                    rows.Add(await BuildRowAsync(skillName, skill, run));
+                    rows.Add(await BuildRowAsync(skillName, run));
             }
             else
             {
-                rows.Add(await BuildRowAsync(skillName, skill, run: null));
+                rows.Add(await BuildRowAsync(skillName, run: null));
             }
         }
 
@@ -110,7 +103,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         UpdateBadge();
     }
 
-    private async Task<SkillRunRowViewModel> BuildRowAsync(string skillName, Bishop.Core.Skills.InstalledSkill? skill, Bishop.Core.WorkspaceSkillRun? run)
+    private async Task<SkillRunRowViewModel> BuildRowAsync(string skillName, Bishop.Core.WorkspaceSkillRun? run)
     {
         int? commitsSince = null;
         var shaUnreachable = false;
@@ -120,11 +113,6 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             commitsSince = await _gitCli.GetCommitCountSinceAsync(run.GitSha, _workspacePath);
             shaUnreachable = commitsSince is null;
         }
-
-        var isFirstRun = run is null;
-        var defaultModelId = isFirstRun
-            ? SkillModelOptions.ResolveModelId(skill?.FirstRunModel)
-            : SkillModelOptions.ResolveModelId(skill?.ReRunModel);
 
         var row = new SkillRunRowViewModel(
             skillName,
@@ -138,8 +126,6 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             _workspaceId,
             _gitHubRepo);
         row.ViewFindingsRequested += args => ViewFindingsRequested?.Invoke(args);
-        row.SelectModelCommand.Execute(defaultModelId);
-        row.ModelSelectionReason = isFirstRun ? "(first run)" : "(re-run default)";
         return row;
     }
 

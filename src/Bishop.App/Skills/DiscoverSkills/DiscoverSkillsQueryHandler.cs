@@ -43,8 +43,6 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
             fm.TryGetValue("bishop.stage_prefill", out var stagePrefill);
             fm.TryGetValue("bishop.stage_projects", out var stageProjects);
             fm.TryGetValue("bishop.category", out var category);
-            fm.TryGetValue("firstRunModel", out var firstRunModel);
-            fm.TryGetValue("reRunModel", out var reRunModel);
 
             skills.Add(new InstalledSkill(
                 name,
@@ -57,8 +55,6 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
                 body,
                 skillFile,
                 ParseCategory(category),
-                string.IsNullOrWhiteSpace(firstRunModel) ? null : firstRunModel,
-                string.IsNullOrWhiteSpace(reRunModel) ? null : reRunModel,
                 string.Equals(stageProjects, "true", StringComparison.OrdinalIgnoreCase)));
         }
 

@@ -9,8 +9,6 @@ bishop.stage_prompt: "Doc path (optional) or what should I grill you about?"
 bishop.category: discuss
 ---
 
-> Recommended model: Opus 4.7 — relentless interview requires sustained multi-step judgement.
-
 ## What this skill is
 
 A **relentless interview** that ends in a markdown file written in-session.

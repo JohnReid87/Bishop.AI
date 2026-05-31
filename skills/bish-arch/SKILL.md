@@ -6,11 +6,7 @@ bishop.scope: workspace
 bishop.command: /bish-arch
 bishop.stage: false
 bishop.category: code
-firstRunModel: claude-opus-4-7
-reRunModel: claude-sonnet-4-6
 ---
-
-> Recommended model: Opus 4.7 — architectural critique requires sustained multi-step judgement.
 
 The context-pack below bundles workspace metadata, recent git history, and Bishop convention procedures (Shell selection, Card model, Findings Recording Procedure) — canonical source: `.bishop/BISHOP_CONTEXT.md`.
 

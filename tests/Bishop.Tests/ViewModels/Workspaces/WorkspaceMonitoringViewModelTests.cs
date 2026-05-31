@@ -1,8 +1,6 @@
 using Bishop.App.Git;
-using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 using Bishop.Core;
-using Bishop.Core.Skills;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
@@ -39,9 +37,6 @@ public class WorkspaceMonitoringViewModelTests
         _mediator
             .Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>([]));
-        _mediator
-            .Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<InstalledSkill>>([]));
         _gitCli
             .GetCommitCountSinceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<int?>(0));
@@ -222,48 +217,6 @@ public class WorkspaceMonitoringViewModelTests
     }
 
     [Fact]
-    public async Task LoadAsync_NoPriorRun_UsesFirstRunModel()
-    {
-        _mediator
-            .Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<InstalledSkill>>(
-            [
-                new InstalledSkill("bish-arch", "", [], null, FirstRunModel: "claude-opus-4-7", ReRunModel: "claude-sonnet-4-6"),
-            ]));
-
-        await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
-
-        var row = _vm.Rows.First(r => r.SkillName == "bish-arch");
-        row.SelectedModelId.Should().Be("claude-opus-4-7");
-        row.SelectedModelLabel.Should().Be("Opus 4.7 ▾");
-        row.ModelSelectionReason.Should().Be("(first run)");
-    }
-
-    [Fact]
-    public async Task LoadAsync_WithPriorRun_UsesReRunModel()
-    {
-        var workspaceId = Guid.NewGuid();
-        _mediator
-            .Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<InstalledSkill>>(
-            [
-                new InstalledSkill("bish-arch", "", [], null, FirstRunModel: "claude-opus-4-7", ReRunModel: "claude-sonnet-4-6"),
-            ]));
-        _mediator
-            .Send(Arg.Is<GetWorkspaceSkillRunsQuery>(q => q.WorkspaceId == workspaceId), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>(
-            [
-                new WorkspaceSkillRun { Id = Guid.NewGuid(), WorkspaceId = workspaceId, SkillName = "bish-arch", RecordedAt = DateTimeOffset.UtcNow.AddDays(-1), GitSha = "abc" },
-            ]));
-
-        await _vm.LoadAsync(workspaceId, @"C:\fake");
-
-        var row = _vm.Rows.First(r => r.SkillName == "bish-arch");
-        row.SelectedModelId.Should().Be("claude-sonnet-4-6");
-        row.ModelSelectionReason.Should().Be("(re-run default)");
-    }
-
-    [Fact]
     public async Task SelectedRow_WhenSet_ExposesReportUriForCoverageRow()
     {
         await _vm.LoadAsync(Guid.NewGuid(), @"C:\myrepo");
@@ -344,13 +297,6 @@ public class WorkspaceMonitoringViewModelTests
     [Fact]
     public async Task LoadAsync_ModelChangeDoesNotPersistAcrossRefresh()
     {
-        _mediator
-            .Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<InstalledSkill>>(
-            [
-                new InstalledSkill("bish-arch", "", [], null, FirstRunModel: "claude-opus-4-7", ReRunModel: "claude-sonnet-4-6"),
-            ]));
-
         await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
         var row = _vm.Rows.First(r => r.SkillName == "bish-arch");
         row.SelectModelCommand.Execute("claude-haiku-4-5-20251001");
@@ -358,6 +304,6 @@ public class WorkspaceMonitoringViewModelTests
         await _vm.RefreshCommand.ExecuteAsync(null);
 
         var refreshedRow = _vm.Rows.First(r => r.SkillName == "bish-arch");
-        refreshedRow.SelectedModelId.Should().Be("claude-opus-4-7");
+        refreshedRow.SelectedModelId.Should().Be("claude-sonnet-4-6");
     }
 }
