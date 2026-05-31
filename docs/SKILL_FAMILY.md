@@ -12,16 +12,20 @@ Read this once before:
 
 ## 1. Skill categories
 
-Skills divide into four categories. The category determines the restructure approach (see §2) and what may be extracted to shared surfaces (see §3).
+Skills divide into six categories. The category determines the restructure approach (see §2) and what may be extracted to shared surfaces (see §3). Code, Tests and Review are three flavours of the same underlying *Review* shape — a heuristic catalogue walked finding-by-finding — split out because the flyout was unreadable with seven skills under one header.
 
 | Category | Current members | What the skill *is*, fundamentally |
 |---|---|---|
 | **Conversational** | `bish-grill-cards`, `bish-grill-docs` | An interview style — relentless interrogation. The soul is the *quality bar of the conversation*. |
-| **Review** | `bish-arch`, `bish-dead-code`, `bish-security`, `bish-tests`, `bish-coverage`, `bish-audit-docs`, `bish-triage` | A body of heuristics applied to the codebase, then walked with the user finding-by-finding. The soul is the *heuristic catalogue*. |
+| **Code** | `bish-arch`, `bish-dead-code`, `bish-security` | Heuristic catalogue applied to production C# — structure, dead code, security. The soul is the *heuristic catalogue*. |
+| **Tests** | `bish-coverage`, `bish-tests` | Heuristic catalogue applied to the test surface — line coverage gaps, mutation/quality. The soul is the *heuristic catalogue*. |
+| **Review** | `bish-audit-docs`, `bish-triage` | Heuristic catalogue applied to artefacts that aren't production code or tests — docs drift, bug-skeleton walks. The soul is the *heuristic catalogue*. |
 | **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card` | A deterministic procedure that mutates state (filesystem, board, git). The soul is the *procedure itself*. |
 | **Bishop-level / meta** | `bish-write-skill`, `bish-audit-skills` | Skills *about* the skill family — authoring guides, audits. Operate on `skills/` directly, not on a workspace's code. |
 
-The Conversational / Review / Setup-Execute split is **workspace-level** — each skill targets the user's current Bishop workspace. Bishop-level skills are distinct: they treat the Bishop repository itself (or any `skills/` directory) as their subject. Keep them separate so workspace-level skills do not accumulate self-referential plumbing.
+The Conversational / Code / Tests / Review / Setup-Execute split is **workspace-level** — each skill targets the user's current Bishop workspace. Bishop-level skills are distinct: they treat the Bishop repository itself (or any `skills/` directory) as their subject. Keep them separate so workspace-level skills do not accumulate self-referential plumbing.
+
+Code, Tests, and Review share the same restructure rules (see §2 "Review" row) — they are split only for menu navigability, not because their authoring contract differs.
 
 ---
 
@@ -32,7 +36,7 @@ Where the SKILL.md leads matters more than the total line count. Leading with me
 | Category | SKILL.md leads with | Why |
 |---|---|---|
 | **Conversational** | Quality bar / contract ("what relentless means", "bug-skeleton walk") | The plumbing is generic; the conversation is the entire value. Burying the soul under workspace-detection prose makes the agent treat it as one more procedural step rather than a stance. |
-| **Review** | Heuristic catalogue (SOLID checks, CVE patterns, test-quality dimensions, coverage thresholds, doc-drift classifications) | The heuristics ARE the deliverable. Mechanics (workspace detection, per-finding walk, card push) are a thin frame around them — extract aggressively, but do not reorder the heuristics. |
+| **Code / Tests / Review** | Heuristic catalogue (SOLID checks, CVE patterns, test-quality dimensions, coverage thresholds, doc-drift classifications) | The heuristics ARE the deliverable. Mechanics (workspace detection, per-finding walk, card push) are a thin frame around them — extract aggressively, but do not reorder the heuristics. Same authoring contract across all three buckets. |
 | **Setup-Execute** | The procedure, top to bottom | The procedure IS the value. Re-ordering for "purpose-first" obscures the imperative flow that the agent must execute literally. Extract only the workspace-detection preamble; leave the rest in step order. |
 | **Bishop-level / meta** | The authoring contract / audit checklist | These skills emit guidance or check conformance — leading with the contract is leading with the soul. |
 
@@ -162,7 +166,7 @@ Run through this list when auditing the skill family (the future `bish-audit-ski
 
 For each skill in `skills/`:
 
-1. **Category** — is the skill correctly tagged Conversational / Review / Setup-Execute / Bishop-level? (Frontmatter `bishop.category` once introduced.)
+1. **Category** — is the skill correctly tagged Conversational (`discuss`) / Code (`code`) / Tests (`tests`) / Review (`review`) / Setup-Execute (`setup` or `execute`) / Bishop-level (`meta`)? Frontmatter `bishop.category` must match one of those values.
 2. **Leading content** — does the SKILL.md lead with the category-appropriate content (see §2)? If a Conversational skill leads with workspace-detection, flag it.
 3. **Workspace detection** — does the skill use one of the two accepted patterns: `bishop context-pack <skill-name>` (preferred) or `bishop skill bootstrap` (legacy, valid for skills not yet migrated to context-pack)? No inline `bishop workspace current --json` preamble. The only documented exception is `bish-onboard` (the workspace does not yet exist when it runs); the exception must carry a one-line comment explaining why. Bishop-level / meta skills must not call bootstrap or context-pack. If inline workspace-detection prose remains, flag it.
 4. **Card push** — if the skill pushes cards, does it reference the BISHOP_CONTEXT `Card Push Procedure (STABLE)` section rather than restating the write→push→remove temp-file procedure?
@@ -183,7 +187,7 @@ Finally, run this family-wide check (not per-skill):
     - `DIRECTION.md` — the "Skills live in this repo" decision block.
     - `src/Bishop.App/Terminal/BishopContext.static.md` — the `## Workflow` section's `### *** skills` sub-headings.
 
-    Each doc must group skills under labels that map 1:1 to the canonical four categories — either the doc-level names (Conversational / Review / Setup-Execute / Bishop-level / meta) or equivalent labels that correspond 1:1 to the frontmatter `bishop.category` values (`discuss` / `review` / `setup` and `execute` (as separate values) / `meta`). Flag:
+    Each doc must group skills under labels that map 1:1 to the canonical six categories — either the doc-level names (Conversational / Code / Tests / Review / Setup-Execute / Bishop-level / meta) or equivalent labels that correspond 1:1 to the frontmatter `bishop.category` values (`discuss` / `code` / `tests` / `review` / `setup` and `execute` (as separate values) / `meta`). Flag:
     - **Missing skill** — a `skills/bish-*/` directory not named in one of the four docs.
     - **Missing category** — one of the four categories has no heading or label in a doc that otherwise lists skills.
     - **Stale flat list** — a doc lists skills inline without any category grouping at all.

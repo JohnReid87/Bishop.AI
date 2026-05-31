@@ -82,6 +82,8 @@ public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQ
 
         return raw.Trim().ToLowerInvariant() switch
         {
+            "code"      => Code,
+            "tests"     => Tests,
             "review"    => Review,
             "discuss"   => Discuss,
             "execute"   => Execute,

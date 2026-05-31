@@ -1,6 +1,6 @@
 ---
 name: bish-write-skill
-description: Author a new Bishop skill — interview to pick a category (Conversational / Review / Setup-Execute / Bishop-level), emit a skeleton `SKILL.md` to `skills/<name>/`, and check the result against the family's canonical patterns. Use when adding a new `bish-*` skill or rewriting one from scratch.
+description: Author a new Bishop skill — interview to pick a category (Conversational / Code / Tests / Review / Setup-Execute / Bishop-level), emit a skeleton `SKILL.md` to `skills/<name>/`, and check the result against the family's canonical patterns. Use when adding a new `bish-*` skill or rewriting one from scratch.
 allowed-tools: Read, Glob, Grep, Write, Edit, AskUserQuestion, Bash(bishop:*)
 bishop.category: meta
 ---
@@ -39,10 +39,14 @@ the skill may extract.
 
 | Category | Existing members | What the skill *is*, fundamentally | SKILL.md leads with |
 |---|---|---|---|
-| **Conversational** | `bish-grill-cards`, `bish-grill-docs`, `bish-scripts` | An interview style — relentless interrogation or a bug-skeleton walk. The soul is the *quality bar of the conversation*. | The contract / quality bar ("relentless means…", "bug-skeleton walk"). |
-| **Review** | `bish-arch`, `bish-security`, `bish-tests`, `bish-coverage`, `bish-audit-docs`, `bish-triage` | A body of heuristics applied to the codebase, then walked with the user finding-by-finding. The soul is the *heuristic catalogue*. | The heuristic catalogue (SOLID checks, CVE patterns, test-quality dimensions, coverage thresholds, doc-drift classifications). |
-| **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card` | A deterministic procedure that mutates state (filesystem, board, git). The soul is the *procedure itself*. | The procedure, top to bottom. No "purpose-first" reordering — the agent must read steps in order. |
-| **Bishop-level / meta** | `bish-write-skill` (this file), `bish-audit-skills` | Skills *about* the skill family. Operate on `skills/` directly, not on a workspace's code. | The authoring contract / audit checklist. |
+| **Conversational** (`discuss`) | `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards` | An interview style — relentless interrogation or a bug-skeleton walk. The soul is the *quality bar of the conversation*. | The contract / quality bar ("relentless means…", "bug-skeleton walk"). |
+| **Code** (`code`) | `bish-arch`, `bish-dead-code`, `bish-security` | Heuristic catalogue applied to production C# — structure, dead code, security. The soul is the *heuristic catalogue*. | The heuristic catalogue (SOLID checks, dead-code patterns, CVE patterns). |
+| **Tests** (`tests`) | `bish-coverage`, `bish-tests` | Heuristic catalogue applied to the test surface — line coverage gaps, mutation/quality. The soul is the *heuristic catalogue*. | The heuristic catalogue (coverage thresholds, mutation thresholds, brittleness signals). |
+| **Review** (`review`) | `bish-audit-docs`, `bish-triage` | Heuristic catalogue applied to artefacts that aren't production code or tests — doc drift, bug-skeleton walks. The soul is the *heuristic catalogue*. | The heuristic catalogue (doc-drift classifications, bug-skeleton walk). |
+| **Setup-Execute** (`setup` / `execute`) | `bish-onboard`, `bish-auto-card`, `bish-work-on-card` | A deterministic procedure that mutates state (filesystem, board, git). The soul is the *procedure itself*. | The procedure, top to bottom. No "purpose-first" reordering — the agent must read steps in order. |
+| **Bishop-level / meta** (`meta`) | `bish-write-skill` (this file), `bish-audit-skills` | Skills *about* the skill family. Operate on `skills/` directly, not on a workspace's code. | The authoring contract / audit checklist. |
+
+Code / Tests / Review share the same authoring contract — they were split out from a single Review bucket only for menu navigability. Pick the bucket that matches the *artefact under review*: production C# → `code`, test code or coverage → `tests`, anything else (docs, bug reports) → `review`.
 
 **Rule of thumb:** if a paragraph could be in any skill in the family, it
 is plumbing — extract it (see §"Canonical references" below). If it
@@ -148,7 +152,7 @@ Keep heuristics inline in the review skill.
    shipping a known-broken file.
 
    1. **Category** — frontmatter `bishop.category` matches the chosen
-      category (`discuss` / `review` / `setup` / `execute` / `meta`).
+      category (`discuss` / `code` / `tests` / `review` / `setup` / `execute` / `meta`).
    2. **Leading content** — does the file lead with the
       category-appropriate content (per the triage table)? If a
       Conversational skill leads with workspace-detection, fix it.
@@ -337,11 +341,14 @@ there is no source card (Paths 2 and 3), skip this prompt entirely.
 ARGUMENTS: $ARGUMENTS
 ````
 
-### Skeleton — Review
+### Skeleton — Code / Tests / Review
 
 For skills that apply a heuristic catalogue to the codebase and walk
-findings with the user. Modelled on `bish-arch`, `bish-security`,
-`bish-tests`, `bish-coverage`, `bish-audit-docs`, `bish-triage`.
+findings with the user. Modelled on `bish-arch`, `bish-dead-code`,
+`bish-security` (`code`); `bish-coverage`, `bish-tests` (`tests`);
+`bish-audit-docs`, `bish-triage` (`review`). The skeleton is identical
+across the three buckets — pick the `bishop.category` value that
+matches the artefact under review.
 
 ````markdown
 ---
@@ -351,7 +358,7 @@ allowed-tools: Read, Glob, Grep, Agent, AskUserQuestion, Bash(bishop:*)
 bishop.scope: workspace
 bishop.command: /<name>
 bishop.stage: false
-bishop.category: review
+bishop.category: <code|tests|review>
 ---
 
 > Recommended model: <tier> — <one-line reason>

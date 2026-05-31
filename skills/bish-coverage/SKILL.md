@@ -5,7 +5,7 @@ allowed-tools: Read, Glob, AskUserQuestion, Bash(bishop:*), Bash(pwsh:*), Bash(d
 bishop.scope: workspace
 bishop.command: /bish-coverage
 bishop.stage: false
-bishop.category: review
+bishop.category: tests
 firstRunModel: claude-sonnet-4-6
 reRunModel: claude-sonnet-4-6
 ---

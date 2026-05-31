@@ -38,10 +38,12 @@ Bishop does not inject anything into workspace `CLAUDE.md` files. Skills are com
 Cut because (a) workspaces attached from existing repos (FotM.IO-style) already have authored `CLAUDE.md` files and auto-seeding risks collisions, (b) keeping ownership clean is cheap, (c) the skill is already loaded globally for the only consumer that matters.
 
 ### Skills live in this repo
-The bundled skills are vendored under `skills/` in the Bishop.AI repo, and `bishop install-skills` copies them to `%USERPROFILE%/.claude/skills/`. Skills version with Bishop; CLI evolution and skill text update in the same commit. They group into four categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
+The bundled skills are vendored under `skills/` in the Bishop.AI repo, and `bishop install-skills` copies them to `%USERPROFILE%/.claude/skills/`. Skills version with Bishop; CLI evolution and skill text update in the same commit. They group into six categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
 
-- **Review:** `bish-arch`, `bish-dead-code`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`
 - **Conversational:** `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
+- **Code:** `bish-arch`, `bish-dead-code`, `bish-security`
+- **Tests:** `bish-coverage`, `bish-tests`
+- **Review:** `bish-audit-docs`, `bish-triage`
 - **Setup-Execute:** `bish-auto-card`, `bish-onboard`, `bish-work-on-card`
 - **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code
 

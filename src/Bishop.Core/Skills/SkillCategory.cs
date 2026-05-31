@@ -2,8 +2,10 @@ namespace Bishop.Core.Skills;
 
 public enum SkillCategory
 {
-    Review,
     Discuss,
+    Code,
+    Tests,
+    Review,
     Execute,
     Setup,
     Meta,

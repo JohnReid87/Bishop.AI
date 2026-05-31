@@ -4,7 +4,7 @@ Bishop ships with a family of Claude Code skills (`bish-*`) that collaborate
 through the kanban board. Each skill plays one role; pick the right one for
 the task instead of doing everything inside a single session.
 
-### Review skills — analyse and produce cards (`bishop.category: review`)
+### Code skills — analyse production C# and produce cards (`bishop.category: code`)
 
 - `bish-arch` — architectural / SOLID review of the current .NET solution.
   Walks findings one at a time; agreed items become cards tagged `arch`.
@@ -12,18 +12,24 @@ the task instead of doing everything inside a single session.
   unreferenced C# types/members, MediatR requests never dispatched, and DI
   registrations never injected. Walks findings one at a time; agreed items
   become cards tagged `chore`.
-- `bish-audit-docs` — audits Markdown docs in the repo for drift against the
-  code and edits the docs in place per agreed finding.
-- `bish-coverage` — runs the coverage script, identifies classes below the
-  line threshold, and pushes test-gap cards tagged `test`.
 - `bish-security` — security audit of the current .NET solution. Scans for
   injection, weak crypto and hardcoded secrets, unsafe deserialization,
   missing authn/authz, plus stack-conditional checks and GitHub Actions
   workflow misconfig. Also runs `dotnet list package --vulnerable`. Walks
   findings one at a time; agreed items become cards tagged `security`.
+
+### Tests skills — analyse the test surface and produce cards (`bishop.category: tests`)
+
+- `bish-coverage` — runs the coverage script, identifies classes below the
+  line threshold, and pushes test-gap cards tagged `test`.
 - `bish-tests` — audits the quality of existing tests (shallow asserts,
   brittle mocks, missing edge cases, untested public methods) and pushes
   cards tagged `test`.
+
+### Review skills — analyse other artefacts and produce cards (`bishop.category: review`)
+
+- `bish-audit-docs` — audits Markdown docs in the repo for drift against the
+  code and edits the docs in place per agreed finding.
 - `bish-triage` — interrogates a free-text bug description, validates the
   suspected cause against the repo via the Explore subagent, and pushes a
   structured `bug` card (or a `spike` + fix-stub pair when root cause is
@@ -73,9 +79,9 @@ in the Bishop.AI repository. See [`docs/SKILL_FAMILY.md`](../docs/SKILL_FAMILY.m
 for the category rationale.
 
 - `bish-write-skill` — authors a new Bishop skill. Interviews to pick a
-  category (Conversational / Review / Setup-Execute / Bishop-level), emits
-  a skeleton `SKILL.md` to `skills/<name>/`, and checks the result against
-  the family's canonical patterns.
+  category (Conversational / Code / Tests / Review / Setup-Execute /
+  Bishop-level), emits a skeleton `SKILL.md` to `skills/<name>/`, and
+  checks the result against the family's canonical patterns.
 - `bish-audit-skills` — audits the skill family against the canonical
   patterns in `docs/SKILL_FAMILY.md` (category, leading content,
   workspace-detection, STABLE-section references, heuristic content,

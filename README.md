@@ -10,9 +10,11 @@ See **[OVERVIEW.md](OVERVIEW.md)** for what Bishop is, who it's for, and how you
 - Build: `dotnet build Bishop.AI.slnx`
 - Tests: `dotnet test`
 - Per-user MSI: `pwsh installer/build.ps1` (one-time prereq: `dotnet tool install --global wix --version 5.0.2`). Output at `installer/bin/Release/Bishop.AI.msi`.
-- After MSI install: run `bishop install-skills` once to populate `~/.claude/skills/` with the bundled Claude Code skills. They group into four categories — see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the rationale:
-  - **Review:** `bish-arch`, `bish-dead-code`, `bish-audit-docs`, `bish-coverage`, `bish-security`, `bish-tests`, `bish-triage`
+- After MSI install: run `bishop install-skills` once to populate `~/.claude/skills/` with the bundled Claude Code skills. They group into six categories — see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the rationale:
   - **Conversational:** `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
+  - **Code:** `bish-arch`, `bish-dead-code`, `bish-security`
+  - **Tests:** `bish-coverage`, `bish-tests`
+  - **Review:** `bish-audit-docs`, `bish-triage`
   - **Setup-Execute:** `bish-auto-card`, `bish-onboard`, `bish-work-on-card`
   - **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code
 

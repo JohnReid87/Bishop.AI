@@ -5,7 +5,7 @@ allowed-tools: Read, Glob, Grep, Agent, AskUserQuestion, Bash(bishop:*)
 bishop.scope: workspace
 bishop.command: /bish-arch
 bishop.stage: false
-bishop.category: review
+bishop.category: code
 firstRunModel: claude-opus-4-7
 reRunModel: claude-sonnet-4-6
 ---
