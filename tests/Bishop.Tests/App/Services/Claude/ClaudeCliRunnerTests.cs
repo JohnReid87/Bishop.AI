@@ -354,6 +354,46 @@ public sealed class ClaudeCliRunnerTests
         capturedOutput.Should().Contain("my-test-prompt");
     }
 
+    [Fact]
+    public async Task RunPromptAsync_WithNullClaudePath_ResolvesAndStartsProcess_WhenClaudeOnPath()
+    {
+        try { ClaudeCliRunner.ResolveClaudePath(); }
+        catch (ClaudeNotFoundException) { return; } // claude not on PATH in this environment — skip
+
+        var sut = new ClaudeCliRunner(_ => CmdProcess("/c exit 0"), TimeProvider.System, null);
+
+        var result = await sut.RunPromptAsync("C:\\ws", "hello");
+
+        result.ExitCode.Should().Be(0);
+    }
+
+    [Fact]
+    public void BuildNotFoundMessage_WithEmptyDirectories_IncludesEmptyPathNote()
+    {
+        var ex = new ClaudeNotFoundException(["claude.EXE"], []);
+
+        var message = ClaudeCliRunner.BuildNotFoundMessage(ex);
+
+        message.Should().Contain("Could not find 'claude' on PATH.");
+        message.Should().Contain("claude.EXE");
+        message.Should().Contain("(PATH was empty)");
+        message.Should().Contain("Install Claude Code");
+    }
+
+    [Fact]
+    public void BuildNotFoundMessage_WithDirectories_ListsEachDirectory()
+    {
+        var ex = new ClaudeNotFoundException(["claude.EXE", "claude.CMD"], [@"C:\bin", @"C:\tools"]);
+
+        var message = ClaudeCliRunner.BuildNotFoundMessage(ex);
+
+        message.Should().Contain("Could not find 'claude' on PATH.");
+        message.Should().Contain(@"C:\bin");
+        message.Should().Contain(@"C:\tools");
+        message.Should().NotContain("(PATH was empty)");
+        message.Should().Contain("Install Claude Code");
+    }
+
     private static Process CmdProcess(string arguments) =>
         Process.Start(new ProcessStartInfo("cmd.exe")
         {
