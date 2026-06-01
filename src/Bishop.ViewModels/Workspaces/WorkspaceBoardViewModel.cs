@@ -14,6 +14,7 @@ using Bishop.Core;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.GitHub;
+using Bishop.ViewModels.Shared;
 using Bishop.ViewModels.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -27,6 +28,7 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
     private readonly ISender _mediator;
     private readonly BoardSkillsCoordinator _skills;
     private readonly BoardGitCoordinator _git;
+    private readonly IUiDispatcher? _uiDispatcher;
     private Guid _workspaceId;
 
     public bool IsCardSkillsButtonVisible
@@ -96,11 +98,12 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectionLabel));
     }
 
-    public WorkspaceBoardViewModel(ISender mediator, IAppSettings appSettings)
+    public WorkspaceBoardViewModel(ISender mediator, IAppSettings appSettings, IUiDispatcher? uiDispatcher = null)
     {
         _mediator = mediator;
         _skills = new BoardSkillsCoordinator(mediator, appSettings, () => WorkspacePath);
         _git = new BoardGitCoordinator(mediator);
+        _uiDispatcher = uiDispatcher;
     }
 
     public async Task LoadAsync(Guid workspaceId)
@@ -118,7 +121,8 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             Lanes,
             CreateLaneVm,
             IsCardSkillsButtonVisible,
-            SearchText);
+            SearchText,
+            _uiDispatcher);
         return BoardRefresher.RefreshAsync(ctx);
     }
 

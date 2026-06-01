@@ -1718,4 +1718,36 @@ public class WorkspaceBoardViewModelTests
 
         await mediator.Received(1).Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task RefreshCommand_WhenDispatcherSupplied_MarshalsLaneMutationsThroughIt()
+    {
+        var workspaceId = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<LaneInfo> { new("To Do", 1) });
+        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Card> { new() { Id = Guid.NewGuid(), Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
+        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<TagInfo>());
+
+        var dispatcher = new CountingDispatcher();
+        var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), dispatcher);
+
+        await vm.LoadAsync(workspaceId);
+
+        dispatcher.ActionEnqueueCount.Should().BeGreaterThan(0);
+        vm.Lanes[0].Cards.Should().HaveCount(1);
+    }
+
+    private sealed class CountingDispatcher : IUiDispatcher
+    {
+        public int ActionEnqueueCount { get; private set; }
+        public void TryEnqueue(Action work)
+        {
+            ActionEnqueueCount++;
+            work();
+        }
+        public void TryEnqueue(Func<Task> work) => _ = work();
+    }
 }

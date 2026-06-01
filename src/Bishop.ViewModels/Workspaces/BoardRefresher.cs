@@ -2,6 +2,7 @@ using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Tags.ListTags;
 using Bishop.Core;
+using Bishop.ViewModels.Shared;
 using MediatR;
 using System.Collections.ObjectModel;
 
@@ -15,7 +16,8 @@ internal static class BoardRefresher
         ObservableCollection<LaneViewModel> Lanes,
         Func<string, LaneViewModel> CreateLaneVm,
         bool IsCardSkillsButtonVisible,
-        string SearchText);
+        string SearchText,
+        IUiDispatcher? UiDispatcher = null);
 
     public static async Task RefreshAsync(Context ctx)
     {
@@ -25,18 +27,47 @@ internal static class BoardRefresher
 
         var cardsByLane = await LoadCardsByLaneAsync(ctx);
 
-        if (CanUpdateInPlace(ctx.Lanes, lanes))
+        await RunOnUiThreadAsync(ctx.UiDispatcher, () =>
         {
-            UpdateLanesInPlace(ctx, cardsByLane, tagColourByName);
-        }
-        else
+            if (CanUpdateInPlace(ctx.Lanes, lanes))
+            {
+                UpdateLanesInPlace(ctx, cardsByLane, tagColourByName);
+            }
+            else
+            {
+                RebuildLanes(ctx, lanes, cardsByLane, tagColourByName);
+            }
+
+            var batchStats = BoardBatchStats.Compute(ctx.Lanes);
+            foreach (var laneVm in ctx.Lanes)
+                laneVm.RebuildLaneItems(batchStats);
+        });
+    }
+
+    // Marshals the synchronous mutation block onto the UI thread when a dispatcher is supplied.
+    // ObservableCollection<T> raises COMException (HRESULT 0x8001010E) if mutated off the UI thread under WinUI.
+    private static Task RunOnUiThreadAsync(IUiDispatcher? dispatcher, Action work)
+    {
+        if (dispatcher is null)
         {
-            RebuildLanes(ctx, lanes, cardsByLane, tagColourByName);
+            work();
+            return Task.CompletedTask;
         }
 
-        var batchStats = BoardBatchStats.Compute(ctx.Lanes);
-        foreach (var laneVm in ctx.Lanes)
-            laneVm.RebuildLaneItems(batchStats);
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.TryEnqueue(() =>
+        {
+            try
+            {
+                work();
+                tcs.SetResult();
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+        return tcs.Task;
     }
 
     private static bool CanUpdateInPlace(
