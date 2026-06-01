@@ -47,30 +47,20 @@ public sealed partial class CardViewModel : ObservableObject
     };
 
     public bool IsAutoRunFailedIndicatorVisible =>
-        LastAutoRunFailedAt.HasValue &&
-        (!LastAutoRunSucceededAt.HasValue || LastAutoRunFailedAt > LastAutoRunSucceededAt);
+        CardAutoRunState.For(LastAutoRunFailedAt, LastAutoRunSucceededAt).FailedIndicatorVisible;
 
-    public string AutoRunFailedTooltip => IsAutoRunFailedIndicatorVisible
-        ? $"Auto-run failed at {LastAutoRunFailedAt!.Value:yyyy-MM-dd HH:mm}"
-        : string.Empty;
+    public string AutoRunFailedTooltip =>
+        CardAutoRunState.For(LastAutoRunFailedAt, LastAutoRunSucceededAt).FailedTooltip;
 
     public bool IsAutoRunSucceededIndicatorVisible =>
-        LastAutoRunSucceededAt.HasValue &&
-        (!LastAutoRunFailedAt.HasValue || LastAutoRunSucceededAt >= LastAutoRunFailedAt);
+        CardAutoRunState.For(LastAutoRunFailedAt, LastAutoRunSucceededAt).SucceededIndicatorVisible;
 
-    public string AutoRunSucceededTooltip => IsAutoRunSucceededIndicatorVisible
-        ? $"Auto-run succeeded at {LastAutoRunSucceededAt!.Value:yyyy-MM-dd HH:mm}"
-        : string.Empty;
+    public string AutoRunSucceededTooltip =>
+        CardAutoRunState.For(LastAutoRunFailedAt, LastAutoRunSucceededAt).SucceededTooltip;
 
     public bool IsSkillsButtonVisible { get; init; }
     public bool IsInProgress { get; init; }
 
-    public bool MatchesSearch(string searchText)
-    {
-        var query = searchText.StartsWith('#') ? searchText[1..] : searchText;
-        return Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-               (TagName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
-               Number.ToString().Contains(query, StringComparison.OrdinalIgnoreCase) ||
-               Description.Contains(query, StringComparison.OrdinalIgnoreCase);
-    }
+    public bool MatchesSearch(string searchText) =>
+        CardSearch.Matches(Title, TagName, Number, Description, searchText);
 }
