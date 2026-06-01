@@ -45,13 +45,14 @@ internal sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchCom
         db.Batches.Add(batch);
         await db.SaveChangesAsync(cancellationToken);
 
-        foreach (var cardId in cardIds)
+        if (cardIds.Count > 0)
         {
             await using var txDb = await _dbFactory.CreateDbContextAsync(cancellationToken);
             await using var tx = await txDb.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             var batchInTx = await txDb.Batches.FirstOrDefaultAsync(b => b.Id == batch.Id, cancellationToken)
                 ?? throw new InvalidOperationException($"Batch {batch.Id} not found.");
-            await BatchAssignment.AssignAsync(txDb, batchInTx, cardId, cancellationToken);
+            foreach (var cardId in cardIds)
+                await BatchAssignment.AssignAsync(txDb, batchInTx, cardId, cancellationToken);
             await txDb.SaveChangesAsync(cancellationToken);
             await tx.CommitAsync(cancellationToken);
         }

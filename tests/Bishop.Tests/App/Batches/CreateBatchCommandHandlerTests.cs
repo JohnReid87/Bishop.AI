@@ -148,6 +148,32 @@ public sealed class CreateBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task Handle_WithMultipleCards_AssignsAllCardsInDb()
+    {
+        // Arrange
+        var ws = await CreateWorkspaceAsync();
+        var addHandler = new AddCardCommandHandler(_factory);
+        var card1 = await addHandler.Handle(new AddCardCommand(ws.Id, SystemLaneNames.ToDo, "Card A"), default);
+        var card2 = await addHandler.Handle(new AddCardCommand(ws.Id, SystemLaneNames.ToDo, "Card B"), default);
+        var card3 = await addHandler.Handle(new AddCardCommand(ws.Id, SystemLaneNames.ToDo, "Card C"), default);
+
+        var cmd = new CreateBatchCommand(
+            ws.Id, ws.Path, "Multi Card", "bishop/multi-card", "main",
+            @"C:\worktrees\multi-card", [card1.Number, card2.Number, card3.Number], null, null);
+
+        // Act
+        var result = await MakeHandler().Handle(cmd, default);
+
+        // Assert
+        result.CardCount.Should().Be(3);
+        await using var db = await _factory.CreateDbContextAsync();
+        var assigned = await db.Cards
+            .Where(c => c.BatchId == result.Batch.Id)
+            .CountAsync();
+        assigned.Should().Be(3);
+    }
+
+    [Fact]
     public async Task Handle_TagFilter_AssignsMatchingCards()
     {
         // Arrange
