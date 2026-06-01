@@ -394,6 +394,38 @@ public sealed class ClaudeCliRunnerTests
         message.Should().Contain("Install Claude Code");
     }
 
+    [Fact]
+    public async Task WriteDenialLine_ConcurrentCalls_ProduceValidJsonlPerLine()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var filePath = Path.Combine(tempDir, "denials.jsonl");
+            const int iterations = 500;
+
+            var tasks = Enumerable.Range(0, iterations)
+                .Select(i => Task.Run(() =>
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(
+                        new { index = i, payload = new string('x', 128) });
+                    ClaudeCliRunner.WriteDenialLine(filePath, json);
+                }))
+                .ToArray();
+
+            await Task.WhenAll(tasks);
+
+            var lines = File.ReadAllLines(filePath).Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+            lines.Should().HaveCount(iterations);
+            foreach (var line in lines)
+                System.Text.Json.JsonDocument.Parse(line).Dispose();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
     private static Process CmdProcess(string arguments) =>
         Process.Start(new ProcessStartInfo("cmd.exe")
         {

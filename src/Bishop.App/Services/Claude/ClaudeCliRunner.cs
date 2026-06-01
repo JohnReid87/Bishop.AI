@@ -189,6 +189,10 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
 
+    // OutputDataReceived fires on thread-pool threads; serialize appends so concurrent
+    // denials cannot interleave bytes and corrupt the JSONL audit file.
+    private static readonly object DenialFileGate = new();
+
     private void AppendDenial(string workspacePath, int? cardNumber, PermissionDeniedEvent ev)
     {
         var bishopDir = Path.Combine(workspacePath, ".bishop");
@@ -200,7 +204,15 @@ public sealed class ClaudeCliRunner : IClaudeCliRunner
             ev.Command,
             ev.Message);
         var json = JsonSerializer.Serialize(entry, DenialSerializerOptions);
-        File.AppendAllText(Path.Combine(bishopDir, "denials.jsonl"), json + "\n");
+        WriteDenialLine(Path.Combine(bishopDir, "denials.jsonl"), json);
+    }
+
+    internal static void WriteDenialLine(string filePath, string json)
+    {
+        lock (DenialFileGate)
+        {
+            File.AppendAllText(filePath, json + "\n");
+        }
     }
 
     private sealed record DenialLogEntry(
