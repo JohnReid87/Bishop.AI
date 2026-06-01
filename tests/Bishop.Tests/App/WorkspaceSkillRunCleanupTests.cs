@@ -78,4 +78,32 @@ public sealed class WorkspaceSkillRunCleanupTests : IClassFixture<DbFixture>
         runs.Should().HaveCount(1);
         runs[0].Id.Should().Be(genericId);
     }
+
+    [Fact]
+    public async Task StartAsync_NoOp_WhenNoPerProjectRowsExist()
+    {
+        var workspaceId = _fixture.SeedWorkspace();
+        var genericId = Guid.NewGuid();
+
+        _fixture.Db.WorkspaceSkillRuns.Add(
+            new WorkspaceSkillRun { Id = genericId, WorkspaceId = workspaceId, SkillName = "bish-coverage", ProjectName = null, GitSha = "sha-only", RecordedAt = DateTimeOffset.UtcNow, FindingsCount = 0 });
+        await _fixture.Db.SaveChangesAsync();
+
+        var sut = new WorkspaceSkillRunCleanup(_fixture.Factory);
+        await sut.StartAsync(default);
+
+        var runs = await _fixture.Db.WorkspaceSkillRuns.AsNoTracking()
+            .Where(r => r.WorkspaceId == workspaceId)
+            .ToListAsync();
+        runs.Should().HaveCount(1);
+        runs[0].Id.Should().Be(genericId);
+    }
+
+    [Fact]
+    public async Task StopAsync_CompletesWithoutThrowing()
+    {
+        var sut = new WorkspaceSkillRunCleanup(_fixture.Factory);
+        var act = async () => await sut.StopAsync(default);
+        await act.Should().NotThrowAsync();
+    }
 }
