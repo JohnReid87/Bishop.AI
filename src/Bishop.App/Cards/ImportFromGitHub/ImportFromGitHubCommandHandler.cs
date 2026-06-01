@@ -1,3 +1,4 @@
+using System.Data;
 using System.Text.Json;
 using Bishop.App.Services.GitHub;
 using Bishop.Core;
@@ -73,69 +74,53 @@ public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromG
             return new ImportFromGitHubResult(dryImported, drySkipped, []);
         }
 
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+        var maxPosition = await db.Cards
+            .Where(c => c.WorkspaceId == request.WorkspaceId && c.LaneName == backlogLaneName)
+            .MaxAsync(c => (int?)c.Position, cancellationToken) ?? 0;
+
         var imported = new List<Card>();
         var skipped = new List<int>();
-        var failed = new List<ImportFailure>();
 
         foreach (var issue in issues)
         {
-            try
+            if (existingIssueNumbers.Contains(issue.Number))
             {
-                await using var issueDb = await _dbFactory.CreateDbContextAsync(cancellationToken);
-
-                var alreadyPresent = await issueDb.Cards
-                    .AnyAsync(
-                        c => c.WorkspaceId == request.WorkspaceId && c.GitHubIssueNumber == issue.Number,
-                        cancellationToken);
-
-                if (alreadyPresent)
-                {
-                    skipped.Add(issue.Number);
-                    continue;
-                }
-
-                var maxPosition = await issueDb.Cards
-                    .Where(c => c.WorkspaceId == request.WorkspaceId && c.LaneName == backlogLaneName)
-                    .MaxAsync(c => (int?)c.Position, cancellationToken);
-                var newPosition = (maxPosition ?? 0) + 1;
-
-                var ws = await issueDb.Workspaces.FindAsync([request.WorkspaceId], cancellationToken)!;
-                var number = ws!.NextCardNumber++;
-
-                var issueBody = issue.Body ?? string.Empty;
-                var footer = $"---\n*Imported from GitHub issue #{issue.Number} ({repo}).*";
-                var description = string.IsNullOrWhiteSpace(issueBody)
-                    ? footer
-                    : $"{issueBody}\n\n{footer}";
-
-                var firstTagName = issue.Labels
-                    .Select(l => l.Name)
-                    .FirstOrDefault(n => tagNameSet.Contains(n));
-
-                var card = new Card
-                {
-                    Id = Guid.NewGuid(),
-                    WorkspaceId = request.WorkspaceId,
-                    LaneName = backlogLaneName,
-                    TagName = firstTagName,
-                    Title = issue.Title,
-                    Description = description,
-                    Number = number,
-                    Position = newPosition,
-                    GitHubIssueNumber = issue.Number,
-                };
-                issueDb.Cards.Add(card);
-
-                await issueDb.SaveChangesAsync(cancellationToken);
-                imported.Add(card);
+                skipped.Add(issue.Number);
+                continue;
             }
-            catch (Exception ex)
+
+            var issueBody = issue.Body ?? string.Empty;
+            var footer = $"---\n*Imported from GitHub issue #{issue.Number} ({repo}).*";
+            var description = string.IsNullOrWhiteSpace(issueBody)
+                ? footer
+                : $"{issueBody}\n\n{footer}";
+
+            var firstTagName = issue.Labels
+                .Select(l => l.Name)
+                .FirstOrDefault(n => tagNameSet.Contains(n));
+
+            var card = new Card
             {
-                failed.Add(new ImportFailure(issue.Number, ex.Message));
-            }
+                Id = Guid.NewGuid(),
+                WorkspaceId = request.WorkspaceId,
+                LaneName = backlogLaneName,
+                TagName = firstTagName,
+                Title = issue.Title,
+                Description = description,
+                Number = workspace.NextCardNumber++,
+                Position = ++maxPosition,
+                GitHubIssueNumber = issue.Number,
+            };
+            db.Cards.Add(card);
+            imported.Add(card);
         }
 
-        return new ImportFromGitHubResult(imported, skipped, failed);
+        await db.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
+
+        return new ImportFromGitHubResult(imported, skipped, []);
     }
 
     private static readonly JsonSerializerOptions GhJsonOptions = new() { PropertyNameCaseInsensitive = true };
