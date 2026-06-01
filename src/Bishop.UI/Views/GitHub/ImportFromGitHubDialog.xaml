@@ -11,7 +11,10 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"
             xmlns:converters="using:Bishop.UI.Converters"/>
     </ContentDialog.Resources>
-    <StackPanel Spacing="12" MinWidth="360">
+    <StackPanel Spacing="12" MinWidth="360" Translation="0,0,32">
+        <StackPanel.Shadow>
+            <ThemeShadow/>
+        </StackPanel.Shadow>
         <StackPanel Spacing="4">
             <TextBlock Text="Label" Style="{StaticResource CaptionTextBlockStyle}"/>
             <ComboBox ItemsSource="{x:Bind ViewModel.Labels, Mode=OneWay}"

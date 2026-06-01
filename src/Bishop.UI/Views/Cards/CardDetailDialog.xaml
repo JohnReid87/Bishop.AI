@@ -11,7 +11,10 @@
         <x:Double x:Key="ContentDialogMaxHeight">900</x:Double>
     </ContentDialog.Resources>
 
-    <StackPanel Spacing="0" MinWidth="520" MaxWidth="780">
+    <StackPanel Spacing="0" MinWidth="520" MaxWidth="780" Translation="0,0,32">
+        <StackPanel.Shadow>
+            <ThemeShadow/>
+        </StackPanel.Shadow>
 
         <!-- Header: #N · lane chip · tags · + | skills | X -->
         <Grid Margin="0,0,0,10">
