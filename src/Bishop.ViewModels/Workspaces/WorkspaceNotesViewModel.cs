@@ -19,6 +19,7 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
     private string _lastSavedContent = string.Empty;
     private FileSystemWatcher? _watcher;
     private CancellationTokenSource? _debounceCts;
+    private CancellationTokenSource? _fileChangedDebounceCts;
     private bool _isLoadingFromFile;
     private bool _isLoadingPrefs;
 
@@ -130,23 +131,32 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
 
     private void OnFileChanged(object sender, FileSystemEventArgs e)
     {
+        _fileChangedDebounceCts?.Cancel();
+        _fileChangedDebounceCts = new CancellationTokenSource();
+        var token = _fileChangedDebounceCts.Token;
         _uiDispatcher.TryEnqueue(async () =>
         {
-            var fileContent = await ReadNotesAsync();
-            if (fileContent == _lastSavedContent) return;
+            try
+            {
+                await Task.Delay(100, token);
+                var fileContent = await ReadNotesAsync();
+                if (token.IsCancellationRequested) return;
+                if (fileContent == _lastSavedContent) return;
 
-            var isDirty = NotesContent != _lastSavedContent;
-            if (!isDirty)
-            {
-                _lastSavedContent = fileContent;
-                _isLoadingFromFile = true;
-                NotesContent = fileContent;
-                _isLoadingFromFile = false;
+                var isDirty = NotesContent != _lastSavedContent;
+                if (!isDirty)
+                {
+                    _lastSavedContent = fileContent;
+                    _isLoadingFromFile = true;
+                    NotesContent = fileContent;
+                    _isLoadingFromFile = false;
+                }
+                else
+                {
+                    IsExternalChangeBarVisible = true;
+                }
             }
-            else
-            {
-                IsExternalChangeBarVisible = true;
-            }
+            catch (OperationCanceledException) { } // superseded by a newer inbound change — drop this stale read
         });
     }
 
@@ -288,6 +298,8 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
         TearDownWatcher();
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
+        _fileChangedDebounceCts?.Cancel();
+        _fileChangedDebounceCts?.Dispose();
     }
 
     private sealed record WorkspaceNotesPrefs(bool IsExpanded, double PanelHeight);
