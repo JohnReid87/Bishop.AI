@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Workspaces.LaunchPlainTerminal;
 
-public sealed class LaunchPlainTerminalCommandHandler : IRequestHandler<LaunchPlainTerminalCommand, bool>
+internal sealed class LaunchPlainTerminalCommandHandler : IRequestHandler<LaunchPlainTerminalCommand, bool>
 {
     private readonly ITerminalLauncher _launcher;
 

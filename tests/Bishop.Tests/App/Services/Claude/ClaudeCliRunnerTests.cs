@@ -403,13 +403,14 @@ public sealed class ClaudeCliRunnerTests
         {
             var filePath = Path.Combine(tempDir, "denials.jsonl");
             const int iterations = 500;
+            var runner = new ClaudeCliRunner(_ => null, TimeProvider.System, "claude");
 
             var tasks = Enumerable.Range(0, iterations)
                 .Select(i => Task.Run(() =>
                 {
                     var json = System.Text.Json.JsonSerializer.Serialize(
                         new { index = i, payload = new string('x', 128) });
-                    ClaudeCliRunner.WriteDenialLine(filePath, json);
+                    runner.WriteDenialLine(filePath, json);
                 }))
                 .ToArray();
 

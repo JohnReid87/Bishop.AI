@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Lanes.ListLanesByWorkspace;
 
-public sealed class ListLanesByWorkspaceQueryHandler : IRequestHandler<ListLanesByWorkspaceQuery, IReadOnlyList<LaneInfo>>
+internal sealed class ListLanesByWorkspaceQueryHandler : IRequestHandler<ListLanesByWorkspaceQuery, IReadOnlyList<LaneInfo>>
 {
     private static readonly IReadOnlyList<LaneInfo> Lanes =
         SystemLaneNames.All.Select((name, i) => new LaneInfo(name, i + 1)).ToList();

@@ -297,31 +297,54 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         result.SkippedAlreadyPresent.Should().ContainSingle().Which.Should().Be(30);
     }
 
-    // ── Partial failure ──────────────────────────────────────────────────────
+    // ── Atomicity ────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task ImportFromGitHub_PartialFailure_ContinuesBatch_AndCollectsError()
+    public async Task ImportFromGitHub_SaveFailure_RollsBackAll_NoCardsImported_NextCardNumberUnchanged()
     {
-        // Arrange — two issues; DB factory throws on the second per-issue context creation
+        // Arrange — pre-create a card whose Number equals the workspace's NextCardNumber,
+        // so the second card the import assigns (NextCardNumber + 1) is fine, but the
+        // first card collides on the unique (WorkspaceId, Number) index when SaveChanges
+        // runs. With atomic semantics, neither card is persisted and NextCardNumber is
+        // unchanged after rollback.
         const string repo = "owner/repo";
         var (workspace, _) = await CreateWorkspaceAsync(gitHubRepo: repo);
+        var initialNextCardNumber = workspace.NextCardNumber;
+
+        _db.Cards.Add(new Card
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = workspace.Id,
+            LaneName = SystemLaneNames.Backlog,
+            Title = "Pre-existing collider",
+            Description = string.Empty,
+            Number = initialNextCardNumber,
+            Position = 1,
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
 
         _ghCli.RunCaptureAsync(Arg.Any<string[]>(), Arg.Any<CancellationToken>())
-            .Returns(IssueListJson((100, "First issue", "", []), (101, "Second issue", "", [])));
+            .Returns(IssueListJson((200, "First", "", []), (201, "Second", "", [])));
 
-        // Wrap the real factory so that the third CreateDbContextAsync call (second issue) throws
-        var failingFactory = new ThrowOnCallNFactory(_factory, failAtCall: 3);
-        var handler = new ImportFromGitHubCommandHandler(failingFactory, _ghCli);
+        var handler = CreateHandler();
 
         // Act
-        var result = await handler.Handle(new ImportFromGitHubCommand(workspace.Id, null, 100, false), default);
+        var act = async () =>
+            await handler.Handle(new ImportFromGitHubCommand(workspace.Id, null, 100, false), default);
 
-        // Assert — first issue imported, second failed
-        result.Imported.Should().HaveCount(1);
-        result.Imported[0].GitHubIssueNumber.Should().Be(100);
-        result.Failed.Should().HaveCount(1);
-        result.Failed[0].IssueNumber.Should().Be(101);
-        result.SkippedAlreadyPresent.Should().BeEmpty();
+        // Assert — save threw and the entire transaction rolled back
+        await act.Should().ThrowAsync<DbUpdateException>();
+
+        var importedIssueNumbers = await _db.Cards
+            .Where(c => c.WorkspaceId == workspace.Id && c.GitHubIssueNumber.HasValue)
+            .Select(c => c.GitHubIssueNumber!.Value)
+            .ToListAsync();
+        importedIssueNumbers.Should().BeEmpty();
+
+        _db.ChangeTracker.Clear();
+        var wsAfter = await _db.Workspaces.FindAsync(workspace.Id);
+        wsAfter!.NextCardNumber.Should().Be(initialNextCardNumber);
     }
 
     // ── Missing workspace ─────────────────────────────────────────────────────
@@ -457,19 +480,4 @@ public sealed class ImportFromGitHubHandlerTests : IClassFixture<DbFixture>
         wsAfter!.NextCardNumber.Should().Be(initialNextCardNumber + 2);
     }
 
-    private sealed class ThrowOnCallNFactory(IDbContextFactory<BishopDbContext> inner, int failAtCall)
-        : IDbContextFactory<BishopDbContext>
-    {
-        private int _callCount;
-
-        public BishopDbContext CreateDbContext() => inner.CreateDbContext();
-
-        public Task<BishopDbContext> CreateDbContextAsync(CancellationToken cancellationToken)
-        {
-            _callCount++;
-            if (_callCount == failAtCall)
-                throw new InvalidOperationException("Simulated DB failure");
-            return inner.CreateDbContextAsync(cancellationToken);
-        }
-    }
 }

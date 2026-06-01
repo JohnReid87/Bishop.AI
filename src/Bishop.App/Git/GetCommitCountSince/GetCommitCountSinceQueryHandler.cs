@@ -2,7 +2,7 @@ using MediatR;
 
 namespace Bishop.App.Git.GetCommitCountSince;
 
-public sealed class GetCommitCountSinceQueryHandler : IRequestHandler<GetCommitCountSinceQuery, int?>
+internal sealed class GetCommitCountSinceQueryHandler : IRequestHandler<GetCommitCountSinceQuery, int?>
 {
     private readonly IGitCli _git;
 

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.RemoveBatch;
 
-public sealed class RemoveBatchCommandHandler : IRequestHandler<RemoveBatchCommand>
+internal sealed class RemoveBatchCommandHandler : IRequestHandler<RemoveBatchCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

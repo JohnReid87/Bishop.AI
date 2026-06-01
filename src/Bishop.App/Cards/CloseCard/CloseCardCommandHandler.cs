@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.CloseCard;
 
-public sealed class CloseCardCommandHandler : IRequestHandler<CloseCardCommand, Card>
+internal sealed class CloseCardCommandHandler : IRequestHandler<CloseCardCommand, Card>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGhCli _ghCli;

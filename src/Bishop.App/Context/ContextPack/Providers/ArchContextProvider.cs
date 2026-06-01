@@ -4,7 +4,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class ArchContextProvider : IContextProvider
+internal sealed class ArchContextProvider : IContextProvider
 {
     public string SkillName => "arch";
 

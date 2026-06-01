@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class MutationContextProvider : IContextProvider
+internal sealed class MutationContextProvider : IContextProvider
 {
     public string SkillName => "mutation";
 

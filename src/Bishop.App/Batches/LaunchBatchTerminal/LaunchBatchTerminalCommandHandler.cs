@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Batches.LaunchBatchTerminal;
 
-public sealed class LaunchBatchTerminalCommandHandler : IRequestHandler<LaunchBatchTerminalCommand, bool>
+internal sealed class LaunchBatchTerminalCommandHandler : IRequestHandler<LaunchBatchTerminalCommand, bool>
 {
     private readonly ITerminalLauncher _launcher;
 

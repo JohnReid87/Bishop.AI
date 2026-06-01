@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.RequestStopBatch;
 
-public sealed class RequestStopBatchCommandHandler : IRequestHandler<RequestStopBatchCommand>
+internal sealed class RequestStopBatchCommandHandler : IRequestHandler<RequestStopBatchCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

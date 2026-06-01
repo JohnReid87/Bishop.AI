@@ -26,8 +26,8 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
             return;
 
         var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(workspacePath));
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var workspace = await ResolveWorkspaceAsync(db, fullPath, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await ResolveWorkspaceAsync(db, fullPath, cancellationToken).ConfigureAwait(false);
         if (workspace is null) return;
 
         var bishopDir = Path.Combine(fullPath, BishopFolder);
@@ -35,19 +35,23 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         Directory.CreateDirectory(bishopDir);
 
         var bishopFile = Path.Combine(bishopDir, BishopContextFileName);
-        File.WriteAllText(bishopFile, BuildBishopContext(workspace));
+        await File.WriteAllTextAsync(bishopFile, BuildBishopContext(workspace), cancellationToken).ConfigureAwait(false);
 
         var contextFile = Path.Combine(fullPath, ContextFileName);
-        var existing = File.Exists(contextFile) ? File.ReadAllText(contextFile) : null;
+        var existing = File.Exists(contextFile)
+            ? await File.ReadAllTextAsync(contextFile, cancellationToken).ConfigureAwait(false)
+            : null;
         var merged = EnsureContextMd(existing, workspace);
         if (!string.Equals(existing, merged, StringComparison.Ordinal))
-            File.WriteAllText(contextFile, merged);
+            await File.WriteAllTextAsync(contextFile, merged, cancellationToken).ConfigureAwait(false);
 
         var claudeFile = Path.Combine(fullPath, ClaudeMdFileName);
-        var existingClaude = File.Exists(claudeFile) ? File.ReadAllText(claudeFile) : null;
+        var existingClaude = File.Exists(claudeFile)
+            ? await File.ReadAllTextAsync(claudeFile, cancellationToken).ConfigureAwait(false)
+            : null;
         var mergedClaude = EnsureClaudeMd(existingClaude, workspace);
         if (!string.Equals(existingClaude, mergedClaude, StringComparison.Ordinal))
-            File.WriteAllText(claudeFile, mergedClaude);
+            await File.WriteAllTextAsync(claudeFile, mergedClaude, cancellationToken).ConfigureAwait(false);
     }
 
     internal static void MigrateLegacyFiles(string fullPath, string bishopDir)
@@ -71,12 +75,12 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 
     private static async Task<Workspace?> ResolveWorkspaceAsync(BishopDbContext db, string fullPath, CancellationToken cancellationToken)
     {
-        var workspaces = await db.Workspaces
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        var normalizedPathLower = fullPath.ToLowerInvariant();
 
-        return workspaces.FirstOrDefault(w =>
-            string.Equals(Path.GetFullPath(w.Path), fullPath, StringComparison.OrdinalIgnoreCase));
+        return await db.Workspaces
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Path.ToLower() == normalizedPathLower, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     internal static string BuildBishopContext(Workspace workspace)
@@ -127,10 +131,16 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         return raw.Replace("\r\n", "\n").Replace("\n", Environment.NewLine);
     }
 
-    internal static string EnsureContextMd(string? existing, Workspace workspace)
+    internal static string EnsureContextMd(string? existing, Workspace workspace) =>
+        EnsurePointerInFile(existing, () => BuildContextMdStub(workspace));
+
+    internal static string EnsureClaudeMd(string? existing, Workspace workspace) =>
+        EnsurePointerInFile(existing, () => BuildClaudeMdStub(workspace));
+
+    private static string EnsurePointerInFile(string? existing, Func<string> buildStub)
     {
         if (existing is null)
-            return BuildContextMdStub(workspace);
+            return buildStub();
 
         var rewritten = existing.Replace(LegacyPointerLine, PointerLine, StringComparison.Ordinal);
         if (rewritten.Contains(PointerMarker, StringComparison.Ordinal))
@@ -172,41 +182,6 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         sb.AppendLine("<!-- Add a description of this workspace here: what it is, who uses it, and");
         sb.AppendLine("     the conventions a contributor (human or LLM) needs to know. -->");
         return sb.ToString();
-    }
-
-    internal static string EnsureClaudeMd(string? existing, Workspace workspace)
-    {
-        if (existing is null)
-            return BuildClaudeMdStub(workspace);
-
-        var rewritten = existing.Replace(LegacyPointerLine, PointerLine, StringComparison.Ordinal);
-        if (rewritten.Contains(PointerMarker, StringComparison.Ordinal))
-            return rewritten;
-
-        var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-        var lines = existing.Split('\n').ToList();
-        var h1Index = -1;
-        for (var i = 0; i < lines.Count; i++)
-        {
-            var trimmed = lines[i].TrimEnd('\r');
-            if (trimmed.StartsWith("# ", StringComparison.Ordinal))
-            {
-                h1Index = i;
-                break;
-            }
-        }
-
-        var pointerBlock = new[] { "", PointerLine, "" };
-        if (h1Index >= 0)
-        {
-            lines.InsertRange(h1Index + 1, pointerBlock);
-        }
-        else
-        {
-            lines.InsertRange(0, new[] { PointerLine, "" });
-        }
-
-        return string.Join(newline, lines.Select(l => l.TrimEnd('\r')));
     }
 
     private static string BuildClaudeMdStub(Workspace workspace)

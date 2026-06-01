@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class DeadCodeContextProvider : IContextProvider
+internal sealed class DeadCodeContextProvider : IContextProvider
 {
     public string SkillName => "dead-code";
 

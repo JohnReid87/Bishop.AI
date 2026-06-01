@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.CreateBatch;
 
-public sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchCommand, CreateBatchResult>
+internal sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchCommand, CreateBatchResult>
 {
     private readonly IGitCli _git;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;

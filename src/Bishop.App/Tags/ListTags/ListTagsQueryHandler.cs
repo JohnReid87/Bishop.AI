@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Tags.ListTags;
 
-public sealed class ListTagsQueryHandler : IRequestHandler<ListTagsQuery, IReadOnlyList<TagInfo>>
+internal sealed class ListTagsQueryHandler : IRequestHandler<ListTagsQuery, IReadOnlyList<TagInfo>>
 {
     private static readonly IReadOnlyList<TagInfo> Tags = BrandTagPalette.DefaultColours
         .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)

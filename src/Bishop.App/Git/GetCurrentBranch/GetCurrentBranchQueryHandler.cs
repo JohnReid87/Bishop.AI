@@ -2,7 +2,7 @@ using MediatR;
 
 namespace Bishop.App.Git.GetCurrentBranch;
 
-public sealed class GetCurrentBranchQueryHandler : IRequestHandler<GetCurrentBranchQuery, string>
+internal sealed class GetCurrentBranchQueryHandler : IRequestHandler<GetCurrentBranchQuery, string>
 {
     private readonly IGitCli _git;
 

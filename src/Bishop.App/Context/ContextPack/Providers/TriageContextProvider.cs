@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class TriageContextProvider : IContextProvider
+internal sealed class TriageContextProvider : IContextProvider
 {
     public string SkillName => "triage";
 

@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Skills.DiscoverSkills;
 
-public sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQuery, IReadOnlyList<InstalledSkill>>
+internal sealed class DiscoverSkillsQueryHandler : IRequestHandler<DiscoverSkillsQuery, IReadOnlyList<InstalledSkill>>
 {
     private readonly string _skillsRoot;
 

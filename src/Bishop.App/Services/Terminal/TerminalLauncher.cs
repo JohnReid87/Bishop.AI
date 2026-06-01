@@ -7,7 +7,7 @@ using System.Text;
 namespace Bishop.App.Services.Terminal;
 
 [SupportedOSPlatform("windows")]
-public sealed class TerminalLauncher : ITerminalLauncher
+internal sealed class TerminalLauncher : ITerminalLauncher
 {
     private const string WtWindowClass = "CASCADIA_HOSTING_WINDOW_CLASS";
     private const string PsWindowClass = "ConsoleWindowClass";

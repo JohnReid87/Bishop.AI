@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.RecordAutoRunSuccess;
 
-public sealed class RecordAutoRunSuccessCommandHandler : IRequestHandler<RecordAutoRunSuccessCommand>
+internal sealed class RecordAutoRunSuccessCommandHandler : IRequestHandler<RecordAutoRunSuccessCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

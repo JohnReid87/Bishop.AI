@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.RenameBatch;
 
-public sealed class RenameBatchCommandHandler : IRequestHandler<RenameBatchCommand, Batch>
+internal sealed class RenameBatchCommandHandler : IRequestHandler<RenameBatchCommand, Batch>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

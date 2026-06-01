@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.MergeBatch;
 
-public sealed class MergeBatchCommandHandler : IRequestHandler<MergeBatchCommand, MergeBatchResult>
+internal sealed class MergeBatchCommandHandler : IRequestHandler<MergeBatchCommand, MergeBatchResult>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGitCli _git;

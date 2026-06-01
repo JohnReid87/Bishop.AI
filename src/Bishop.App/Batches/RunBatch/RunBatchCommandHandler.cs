@@ -15,7 +15,7 @@ using System.Text.Json.Serialization;
 
 namespace Bishop.App.Batches.RunBatch;
 
-public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, RunBatchResult>
+internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, RunBatchResult>
 {
     private readonly IGitCli _git;
     private readonly IClaudeCliRunner _claude;

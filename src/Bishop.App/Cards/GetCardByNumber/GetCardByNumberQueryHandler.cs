@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.GetCardByNumber;
 
-public sealed class GetCardByNumberQueryHandler : IRequestHandler<GetCardByNumberQuery, Card?>
+internal sealed class GetCardByNumberQueryHandler : IRequestHandler<GetCardByNumberQuery, Card?>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

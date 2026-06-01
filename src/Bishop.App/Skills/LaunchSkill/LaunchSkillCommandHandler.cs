@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Skills.LaunchSkill;
 
-public sealed class LaunchSkillCommandHandler : IRequestHandler<LaunchSkillCommand, bool>
+internal sealed class LaunchSkillCommandHandler : IRequestHandler<LaunchSkillCommand, bool>
 {
     private readonly ITerminalLauncher _launcher;
     private readonly IWorkspaceContextSeeder _seeder;

@@ -2,7 +2,7 @@ using System.ComponentModel;
 
 namespace Bishop.App.Services.CatMode;
 
-public sealed class CatModeService : ICatModeService
+internal sealed class CatModeService : ICatModeService
 {
     private bool _isActive;
 

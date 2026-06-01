@@ -2,7 +2,7 @@ using MediatR;
 
 namespace Bishop.App.Context;
 
-public sealed class PrintContextQueryHandler : IRequestHandler<PrintContextQuery, string>
+internal sealed class PrintContextQueryHandler : IRequestHandler<PrintContextQuery, string>
 {
     private const string BishopContextPath = ".bishop/BISHOP_CONTEXT.md";
 

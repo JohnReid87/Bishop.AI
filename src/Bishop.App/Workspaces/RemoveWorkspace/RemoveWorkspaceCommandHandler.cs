@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.RemoveWorkspace;
 
-public sealed class RemoveWorkspaceCommandHandler : IRequestHandler<RemoveWorkspaceCommand>
+internal sealed class RemoveWorkspaceCommandHandler : IRequestHandler<RemoveWorkspaceCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

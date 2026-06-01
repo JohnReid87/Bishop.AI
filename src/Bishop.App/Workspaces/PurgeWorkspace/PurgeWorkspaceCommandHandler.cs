@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.PurgeWorkspace;
 
-public sealed class PurgeWorkspaceCommandHandler : IRequestHandler<PurgeWorkspaceCommand>
+internal sealed class PurgeWorkspaceCommandHandler : IRequestHandler<PurgeWorkspaceCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

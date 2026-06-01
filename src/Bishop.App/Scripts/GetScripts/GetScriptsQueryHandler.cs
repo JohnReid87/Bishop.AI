@@ -2,7 +2,7 @@ using MediatR;
 
 namespace Bishop.App.Scripts.GetScripts;
 
-public sealed class GetScriptsQueryHandler : IRequestHandler<GetScriptsQuery, IReadOnlyList<ScriptInfo>>
+internal sealed class GetScriptsQueryHandler : IRequestHandler<GetScriptsQuery, IReadOnlyList<ScriptInfo>>
 {
     private readonly string _scriptsFolder;
 

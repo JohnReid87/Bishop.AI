@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.RecordClaudeRun;
 
-public sealed class RecordClaudeRunCommandHandler : IRequestHandler<RecordClaudeRunCommand>
+internal sealed class RecordClaudeRunCommandHandler : IRequestHandler<RecordClaudeRunCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

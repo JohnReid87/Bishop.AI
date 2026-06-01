@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack;
 
-public sealed class BuildContextPackQueryHandler : IRequestHandler<BuildContextPackQuery, ContextPack>
+internal sealed class BuildContextPackQueryHandler : IRequestHandler<BuildContextPackQuery, ContextPack>
 {
     internal const int ContextMdMaxBytes = 32 * 1024;
     private const string ContextMdFileName = "CONTEXT.md";

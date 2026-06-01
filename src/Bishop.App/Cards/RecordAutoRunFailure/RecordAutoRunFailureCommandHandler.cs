@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.RecordAutoRunFailure;
 
-public sealed class RecordAutoRunFailureCommandHandler : IRequestHandler<RecordAutoRunFailureCommand>
+internal sealed class RecordAutoRunFailureCommandHandler : IRequestHandler<RecordAutoRunFailureCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

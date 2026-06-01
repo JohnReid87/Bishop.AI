@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Bishop.App.Batches.CleanUpBatch;
 
-public sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCommand, CleanUpBatchResult>
+internal sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchCommand, CleanUpBatchResult>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly ISender _sender;

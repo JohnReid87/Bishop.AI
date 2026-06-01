@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Scripts.LaunchScript;
 
-public sealed class LaunchScriptCommandHandler : IRequestHandler<LaunchScriptCommand, bool>
+internal sealed class LaunchScriptCommandHandler : IRequestHandler<LaunchScriptCommand, bool>
 {
     private readonly ITerminalLauncher _launcher;
 

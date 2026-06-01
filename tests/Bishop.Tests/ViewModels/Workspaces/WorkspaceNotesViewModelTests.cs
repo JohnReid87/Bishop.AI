@@ -460,6 +460,41 @@ public class WorkspaceNotesViewModelTests
         }
     }
 
+    [Fact]
+    public async Task ExternalFileChange_WhenNoLocalEdits_UpdatesNotesContent()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        var vm = NewVm();
+        try
+        {
+            await vm.LoadAsync(Guid.NewGuid(), dir);
+
+            var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(WorkspaceNotesViewModel.NotesContent) && vm.NotesContent == "external-2")
+                    tcs.TrySetResult(vm.NotesContent);
+            };
+
+            var notesPath = Path.Combine(dir, ".bishop", "BISHOP_NOTES.md");
+            await File.WriteAllTextAsync(notesPath, "external-1");
+            await File.WriteAllTextAsync(notesPath, "external-2");
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            var act = async () => await tcs.Task.WaitAsync(cts.Token);
+            await act.Should().NotThrowAsync("the file watcher should propagate the latest external write");
+
+            vm.NotesContent.Should().Be("external-2");
+            vm.IsExternalChangeBarVisible.Should().BeFalse();
+        }
+        finally
+        {
+            vm.Dispose();
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static WorkspaceNotesViewModel NewVm(TimeProvider? timeProvider = null) =>
         new(new FakeUiDispatcher(), timeProvider ?? new FakeTimeProvider(), new PassThroughSafeAsyncRunner());
 

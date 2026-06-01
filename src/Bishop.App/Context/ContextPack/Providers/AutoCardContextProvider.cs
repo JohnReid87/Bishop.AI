@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class AutoCardContextProvider : IContextProvider
+internal sealed class AutoCardContextProvider : IContextProvider
 {
     public string SkillName => "auto-card";
 

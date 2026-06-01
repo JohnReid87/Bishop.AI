@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.ClaimCard;
 
-public sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, Card?>
+internal sealed class ClaimCardCommandHandler : IRequestHandler<ClaimCardCommand, Card?>
 {
     private const int MaxAttempts = 3;
     private static readonly TimeSpan RetryBackoff = TimeSpan.FromMilliseconds(50);

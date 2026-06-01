@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace Bishop.App.Batches.ReconcileOrphanedBatches;
 
-public sealed class ReconcileOrphanedBatchesCommandHandler : IRequestHandler<ReconcileOrphanedBatchesCommand>
+internal sealed class ReconcileOrphanedBatchesCommandHandler : IRequestHandler<ReconcileOrphanedBatchesCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

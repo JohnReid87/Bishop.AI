@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class SpecCardsContextProvider : IContextProvider
+internal sealed class SpecCardsContextProvider : IContextProvider
 {
     public string SkillName => "spec-cards";
 

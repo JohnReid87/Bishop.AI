@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
 
-public sealed class UnsetWorkspaceGitHubRepoCommandHandler : IRequestHandler<UnsetWorkspaceGitHubRepoCommand, Workspace>
+internal sealed class UnsetWorkspaceGitHubRepoCommandHandler : IRequestHandler<UnsetWorkspaceGitHubRepoCommand, Workspace>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.RecordSkillRun;
 
-public sealed class RecordSkillRunCommandHandler : IRequestHandler<RecordSkillRunCommand>
+internal sealed class RecordSkillRunCommandHandler : IRequestHandler<RecordSkillRunCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

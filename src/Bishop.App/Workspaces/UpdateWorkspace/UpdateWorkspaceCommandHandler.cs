@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.UpdateWorkspace;
 
-public sealed class UpdateWorkspaceCommandHandler : IRequestHandler<UpdateWorkspaceCommand, Workspace>
+internal sealed class UpdateWorkspaceCommandHandler : IRequestHandler<UpdateWorkspaceCommand, Workspace>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

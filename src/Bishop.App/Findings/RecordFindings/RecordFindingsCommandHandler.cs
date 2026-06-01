@@ -6,7 +6,7 @@ using CoreEntities = Bishop.Core;
 
 namespace Bishop.App.Findings.RecordFindings;
 
-public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFindingsCommand, RecordFindingsResult>
+internal sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFindingsCommand, RecordFindingsResult>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.AddCardToBatch;
 
-public sealed class AddCardToBatchCommandHandler : IRequestHandler<AddCardToBatchCommand>
+internal sealed class AddCardToBatchCommandHandler : IRequestHandler<AddCardToBatchCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

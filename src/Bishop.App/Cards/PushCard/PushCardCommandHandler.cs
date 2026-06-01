@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.PushCard;
 
-public sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Card>
+internal sealed class PushCardCommandHandler : IRequestHandler<PushCardCommand, Card>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGhCli _ghCli;
