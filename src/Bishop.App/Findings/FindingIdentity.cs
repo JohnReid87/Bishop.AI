@@ -3,7 +3,7 @@ using System.Text;
 
 namespace Bishop.App.Findings;
 
-public static class FindingIdentity
+internal static class FindingIdentity
 {
     public static string Compute(string skillName, string? projectName, string? file, string? rule, string? symbol, string title)
     {
