@@ -337,6 +337,38 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_SetsIsPathMissing_WhenWorkspacePathDoesNotExist()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>
+            {
+                new() { Id = Guid.NewGuid(), Name = "ws", Path = @"C:\definitely\not\a\real\directory\__xyz__" },
+            });
+        var vm = NewVm(mediator: mediator);
+
+        await vm.LoadAsync();
+
+        vm.Workspaces[0].IsPathMissing.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LoadAsync_ClearsIsPathMissing_WhenWorkspacePathExists()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>
+            {
+                new() { Id = Guid.NewGuid(), Name = "ws", Path = Path.GetTempPath() },
+            });
+        var vm = NewVm(mediator: mediator);
+
+        await vm.LoadAsync();
+
+        vm.Workspaces[0].IsPathMissing.Should().BeFalse();
+    }
+
+    [Fact]
     public void IsWorkspaceListEmpty_RaisesPropertyChanged_WhenWorkspacesTransitionsToNonEmpty()
     {
         var vm = NewVm();
@@ -360,22 +392,6 @@ public class MainWindowViewModelTests
 
         raised.Should().Contain(nameof(vm.IsContentEmpty));
         vm.IsContentEmpty.Should().BeFalse();
-    }
-
-    [Fact]
-    public void OnSelectedWorkspaceChanged_SetsIsPathMissing_WhenPathDoesNotExist()
-    {
-        var vm = NewVm(dispatcher: new SynchronousDispatcher());
-        var item = new WorkspaceItemViewModel
-        {
-            Id = Guid.NewGuid(),
-            Name = "ws",
-            Path = @"C:\definitely\not\a\real\path\__xyz__bishop__",
-        };
-
-        vm.SelectedWorkspace = item;
-
-        item.IsPathMissing.Should().BeTrue();
     }
 
     [Fact]
@@ -754,22 +770,6 @@ public class MainWindowViewModelTests
         vm.IsPaneOpen = false;
 
         raised.Should().Contain(nameof(vm.IsPaneOpen));
-    }
-
-    [Fact]
-    public void OnSelectedWorkspaceChanged_DoesNotSetIsPathMissing_WhenPathExists()
-    {
-        var vm = NewVm(dispatcher: new SynchronousDispatcher());
-        var item = new WorkspaceItemViewModel
-        {
-            Id = Guid.NewGuid(),
-            Name = "ws",
-            Path = Path.GetTempPath(),
-        };
-
-        vm.SelectedWorkspace = item;
-
-        item.IsPathMissing.Should().BeFalse();
     }
 
     // Polls for the file to appear and have content, up to timeoutMs.

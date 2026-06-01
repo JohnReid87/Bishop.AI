@@ -26,7 +26,4 @@ public sealed partial class WorkspaceItemViewModel : ObservableObject
     public partial string? GitHubRepo { get; set; }
 
     public string FirstLetter => Name.Length > 0 ? Name[0..1].ToUpperInvariant() : "?";
-
-    partial void OnPathChanged(string value) =>
-        IsPathMissing = !Directory.Exists(value);
 }

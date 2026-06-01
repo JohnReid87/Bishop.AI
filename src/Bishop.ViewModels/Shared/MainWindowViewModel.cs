@@ -106,16 +106,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Workspaces.Clear();
         foreach (var w in workspaces)
             Workspaces.Add(ToViewModel(w));
+        var items = Workspaces.ToList();
+        await Task.WhenAll(items.Select(async item =>
+        {
+            var missing = !await Task.Run(() => Directory.Exists(item.Path));
+            item.IsPathMissing = missing;
+        }));
     }
 
     partial void OnSelectedWorkspaceChanged(WorkspaceItemViewModel? value)
     {
         SyncSelectedWorkspaceSelection(value);
         if (value is not null)
-        {
             IsWorkspacelessPageActive = false;
-            value.IsPathMissing = !Directory.Exists(value.Path);
-        }
         _ = _safeAsync.RunAsync(SaveNavPrefsAsync);
     }
 
