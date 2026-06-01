@@ -87,13 +87,19 @@
                                                    ToolTipService.ToolTip="Skills"
                                                    Click="CardSkillsButton_Click"
                                                    Visibility="{x:Bind IsSkillsButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                   VerticalAlignment="Center">
+                                                   VerticalAlignment="Center"
+                                                   Padding="4"
+                                                   MinWidth="28"
+                                                   MinHeight="28">
                                 <FontIcon Glyph="&#xEBD2;" FontSize="12"/>
                             </controls:HandCursorButton>
                             <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                    ToolTipService.ToolTip="{x:Bind CloseReopenTooltip}"
                                                    Click="CardCloseButton_Click"
-                                                   VerticalAlignment="Center">
+                                                   VerticalAlignment="Center"
+                                                   Padding="4"
+                                                   MinWidth="28"
+                                                   MinHeight="28">
                                 <FontIcon Glyph="{x:Bind CloseReopenGlyph}" FontSize="12"/>
                             </controls:HandCursorButton>
                         </StackPanel>
