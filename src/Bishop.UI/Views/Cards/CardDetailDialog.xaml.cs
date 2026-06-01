@@ -31,6 +31,7 @@ public sealed partial class CardDetailDialog : ContentDialog
         _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         ViewModel = vm;
         InitializeComponent();
+        Animations.EntranceAnimation.ApplyDialogEntrance(Content as FrameworkElement);
         PreviewKeyDown += CardDetailDialog_PreviewKeyDown;
         Loaded += CardDetailDialog_Loaded;
         DescriptionMarkdown.OnLinkClicked += DescriptionMarkdown_LinkClicked;

@@ -16,6 +16,7 @@ public sealed partial class PushLaneToGitHubDialog : ContentDialog
         _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         ViewModel = vm;
         InitializeComponent();
+        Bishop.UI.Animations.EntranceAnimation.ApplyDialogEntrance(Content as Microsoft.UI.Xaml.FrameworkElement);
         IsPrimaryButtonEnabled = ViewModel.HasWillPush;
         PrimaryButtonClick += OnPushClick;
     }

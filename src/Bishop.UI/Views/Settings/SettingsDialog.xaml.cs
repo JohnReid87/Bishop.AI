@@ -21,6 +21,7 @@ public sealed partial class SettingsDialog : ContentDialog
         _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         ViewModel = vm;
         InitializeComponent();
+        Animations.EntranceAnimation.ApplyDialogEntrance(Content as FrameworkElement);
         Loaded += (_, _) => _safeAsync.RunAsync(LoadSkillsAsync);
     }
 

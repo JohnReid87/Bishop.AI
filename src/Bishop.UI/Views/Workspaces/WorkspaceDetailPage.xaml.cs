@@ -753,6 +753,9 @@ public sealed partial class WorkspaceDetailPage : Page
         }
     }
 
+    private void CardRoot_Loaded(object sender, RoutedEventArgs e)
+        => Animations.EntranceAnimation.ApplyCardEntrance(sender as FrameworkElement);
+
     private void Card_DragStarting(UIElement sender, DragStartingEventArgs e)
     {
         _draggedCard = GetCardFromSender(sender);

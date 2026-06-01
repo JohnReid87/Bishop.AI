@@ -17,6 +17,7 @@ public sealed partial class SkillStageDialog : ContentDialog
         string? workspacePath = null)
     {
         InitializeComponent();
+        Bishop.UI.Animations.EntranceAnimation.ApplyDialogEntrance(Content as Microsoft.UI.Xaml.FrameworkElement);
         Title = $"Stage /{skillName}";
         PromptText.Text = customPrompt ?? "Optional input appended to the command before launch. Leave blank to run with no arguments.";
         if (!string.IsNullOrEmpty(initialText))
