@@ -71,24 +71,11 @@ public sealed partial class FindingItemViewModel : ObservableObject
         ? Symbol ?? string.Empty
         : string.IsNullOrEmpty(Symbol) ? File : $"{File} · {Symbol}";
 
-    public string SeverityColor => (Severity ?? string.Empty).ToLowerInvariant() switch
-    {
-        "critical" or "high" => "#c97a8a",
-        "medium" or "med" => "#c4a85f",
-        "low" or "info" => "#5fa89c",
-        _ => "#9aa86a",
-    };
+    public string SeverityColor => FindingSeverityColor.For(Severity);
 
     public bool HasSeverity => !string.IsNullOrEmpty(Severity);
 
-    public string StatusLabel => Status switch
-    {
-        "dismissed" => "dismissed",
-        "parked" => "parked",
-        "resolved" => "resolved",
-        _ when LinkedCardId is { } n => $"#{n}",
-        _ => "pending",
-    };
+    public string StatusLabel => FindingStatusState.For(Status, LinkedCardId).StatusLabel;
 
     public bool IsResolved => Status == "resolved";
     public bool IsDismissed => Status == "dismissed";
@@ -97,10 +84,10 @@ public sealed partial class FindingItemViewModel : ObservableObject
     public string LinkedCardLabel => LinkedCardId is { } n ? $"Open card #{n}" : string.Empty;
 
     public bool IsConvertToCardVisible =>
-        LinkedCardId is null && Status != "dismissed" && Status != "resolved";
+        FindingStatusState.For(Status, LinkedCardId).IsConvertToCardVisible;
 
     public bool IsDismissEnabled =>
-        Status != "dismissed" && Status != "resolved" && LinkedCardId is null;
+        FindingStatusState.For(Status, LinkedCardId).IsDismissEnabled;
 
     [RelayCommand]
     private async Task ConvertToCardAsync(object? xamlRoot)
