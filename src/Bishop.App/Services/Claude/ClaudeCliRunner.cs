@@ -191,7 +191,7 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
 
     // OutputDataReceived fires on thread-pool threads; serialize appends so concurrent
     // denials cannot interleave bytes and corrupt the JSONL audit file.
-    private static readonly object DenialFileGate = new();
+    private readonly object DenialFileGate = new();
 
     private void AppendDenial(string workspacePath, int? cardNumber, PermissionDeniedEvent ev)
     {
@@ -207,7 +207,7 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
         WriteDenialLine(Path.Combine(bishopDir, "denials.jsonl"), json);
     }
 
-    internal static void WriteDenialLine(string filePath, string json)
+    internal void WriteDenialLine(string filePath, string json)
     {
         lock (DenialFileGate)
         {
