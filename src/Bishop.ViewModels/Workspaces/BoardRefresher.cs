@@ -23,13 +23,15 @@ internal static class BoardRefresher
         var tags = await ctx.Mediator.Send(new ListTagsQuery());
         var tagColourByName = tags.ToDictionary(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
 
+        var cardsByLane = await LoadCardsByLaneAsync(ctx);
+
         if (CanUpdateInPlace(ctx.Lanes, lanes))
         {
-            await UpdateLanesInPlaceAsync(ctx, tagColourByName);
+            UpdateLanesInPlace(ctx, cardsByLane, tagColourByName);
         }
         else
         {
-            await RebuildLanesAsync(ctx, lanes, tagColourByName);
+            RebuildLanes(ctx, lanes, cardsByLane, tagColourByName);
         }
 
         var batchStats = BoardBatchStats.Compute(ctx.Lanes);
@@ -45,11 +47,26 @@ internal static class BoardRefresher
             && current.Select(l => l.Name).SequenceEqual(fresh.Select(l => l.Name), StringComparer.OrdinalIgnoreCase);
     }
 
-    private static async Task UpdateLanesInPlaceAsync(Context ctx, IReadOnlyDictionary<string, string> tagColourByName)
+    private static async Task<IReadOnlyDictionary<string, IReadOnlyList<Card>>> LoadCardsByLaneAsync(Context ctx)
+    {
+        var all = await ctx.Mediator.Send(new ListCardsByWorkspaceQuery(ctx.WorkspaceId));
+        var grouped = new Dictionary<string, IReadOnlyList<Card>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var group in all.GroupBy(c => c.LaneName, StringComparer.OrdinalIgnoreCase))
+            grouped[group.Key] = group.ToList();
+        return grouped;
+    }
+
+    private static IReadOnlyList<Card> GetLaneCards(IReadOnlyDictionary<string, IReadOnlyList<Card>> cardsByLane, string laneName)
+        => cardsByLane.TryGetValue(laneName, out var cards) ? cards : Array.Empty<Card>();
+
+    private static void UpdateLanesInPlace(
+        Context ctx,
+        IReadOnlyDictionary<string, IReadOnlyList<Card>> cardsByLane,
+        IReadOnlyDictionary<string, string> tagColourByName)
     {
         foreach (var laneVm in ctx.Lanes)
         {
-            var fresh = (await ctx.Mediator.Send(new ListCardsByWorkspaceQuery(ctx.WorkspaceId, LaneName: laneVm.Name))).ToList();
+            var fresh = GetLaneCards(cardsByLane, laneVm.Name);
             ReconcileLaneCards(laneVm, fresh, tagColourByName, ctx.IsCardSkillsButtonVisible);
         }
     }
@@ -75,17 +92,17 @@ internal static class BoardRefresher
             laneVm.Cards.RemoveAt(laneVm.Cards.Count - 1);
     }
 
-    private static async Task RebuildLanesAsync(
+    private static void RebuildLanes(
         Context ctx,
         IReadOnlyList<LaneInfo> lanes,
+        IReadOnlyDictionary<string, IReadOnlyList<Card>> cardsByLane,
         IReadOnlyDictionary<string, string> tagColourByName)
     {
         ctx.Lanes.Clear();
         foreach (var lane in lanes)
         {
             var laneVm = ctx.CreateLaneVm(lane.Name);
-            var cards = await ctx.Mediator.Send(new ListCardsByWorkspaceQuery(ctx.WorkspaceId, LaneName: lane.Name));
-            foreach (var card in cards)
+            foreach (var card in GetLaneCards(cardsByLane, lane.Name))
                 laneVm.Cards.Add(BoardCardFactory.Build(card, lane.Name, tagColourByName, ctx.IsCardSkillsButtonVisible));
             ctx.Lanes.Add(laneVm);
         }

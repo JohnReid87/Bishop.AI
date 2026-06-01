@@ -17,7 +17,6 @@ public sealed partial class FindingItemViewModel : ObservableObject
 {
     private readonly ISender _mediator;
     private readonly ICardDetailDialogService _dialogService;
-    private readonly ISkillTagMap _skillTagMap;
     private readonly Guid _workspaceId;
     private readonly string _workspacePath;
     private readonly string? _gitHubRepo;
@@ -47,8 +46,7 @@ public sealed partial class FindingItemViewModel : ObservableObject
         string workspacePath,
         string? gitHubRepo,
         ISender mediator,
-        ICardDetailDialogService dialogService,
-        ISkillTagMap skillTagMap)
+        ICardDetailDialogService dialogService)
     {
         Id = record.Id;
         Title = record.Title;
@@ -67,7 +65,6 @@ public sealed partial class FindingItemViewModel : ObservableObject
         _gitHubRepo = gitHubRepo;
         _mediator = mediator;
         _dialogService = dialogService;
-        _skillTagMap = skillTagMap;
     }
 
     public string Location => string.IsNullOrEmpty(File)
@@ -113,7 +110,7 @@ public sealed partial class FindingItemViewModel : ObservableObject
         if (xamlRoot is null) return;
         if (!IsConvertToCardEnabled) return;
 
-        var tag = _skillTagMap.GetTag(_skillName);
+        var tag = SkillTagMap.GetTag(_skillName);
         var description = BuildDescription();
 
         var card = await _mediator.Send(new AddCardCommand(

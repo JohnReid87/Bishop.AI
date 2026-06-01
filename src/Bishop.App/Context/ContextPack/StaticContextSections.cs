@@ -4,24 +4,42 @@ namespace Bishop.App.Context.ContextPack;
 
 internal static class StaticContextSections
 {
+    private static readonly Lazy<ParsedSections> _parsed = new(LoadAndParse);
+
+    internal static int ParseInvocationCount;
+
     public static IReadOnlyDictionary<string, string> Slice(IReadOnlyList<string> requiredSections)
     {
-        var body = WorkspaceContextSeeder.LoadStaticBody();
-        var parsed = PrintContextQueryHandler.ParseH2Sections(body);
-
-        var byName = parsed.ToDictionary(s => s.Name, s => s.Body, StringComparer.OrdinalIgnoreCase);
-        var validNames = string.Join(", ", parsed.Select(s => $"\"{s.Name}\""));
+        var parsed = _parsed.Value;
 
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var name in requiredSections)
         {
-            if (!byName.TryGetValue(name, out var sectionBody))
+            if (!parsed.ByName.TryGetValue(name, out var sectionBody))
                 throw new InvalidOperationException(
-                    $"Unknown context section \"{name}\". Valid sections: {validNames}");
+                    $"Unknown context section \"{name}\". Valid sections: {parsed.ValidNames}");
 
-            result[name] = sectionBody.TrimEnd();
+            result[name] = sectionBody;
         }
 
         return result;
     }
+
+    private static ParsedSections LoadAndParse()
+    {
+        Interlocked.Increment(ref ParseInvocationCount);
+
+        var body = WorkspaceContextSeeder.LoadStaticBody();
+        var sections = PrintContextQueryHandler.ParseH2Sections(body);
+
+        var byName = sections.ToDictionary(
+            s => s.Name,
+            s => s.Body.TrimEnd(),
+            StringComparer.OrdinalIgnoreCase);
+        var validNames = string.Join(", ", sections.Select(s => $"\"{s.Name}\""));
+
+        return new ParsedSections(byName, validNames);
+    }
+
+    private sealed record ParsedSections(IReadOnlyDictionary<string, string> ByName, string ValidNames);
 }

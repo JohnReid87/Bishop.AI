@@ -11,7 +11,6 @@ public sealed partial class FindingsViewModel : ObservableObject
 {
     private readonly ISender _mediator;
     private readonly ICardDetailDialogService _dialogService;
-    private readonly ISkillTagMap _skillTagMap;
 
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
@@ -35,11 +34,10 @@ public sealed partial class FindingsViewModel : ObservableObject
 
     public bool HasResolved => ResolvedFindings.Count > 0;
 
-    public FindingsViewModel(ISender mediator, ICardDetailDialogService dialogService, ISkillTagMap skillTagMap)
+    public FindingsViewModel(ISender mediator, ICardDetailDialogService dialogService)
     {
         _mediator = mediator;
         _dialogService = dialogService;
-        _skillTagMap = skillTagMap;
     }
 
     public async Task LoadAsync(
@@ -69,7 +67,7 @@ public sealed partial class FindingsViewModel : ObservableObject
         {
             var vm = new FindingItemViewModel(
                 r, skillName, workspaceId, workspacePath, gitHubRepo,
-                _mediator, _dialogService, _skillTagMap);
+                _mediator, _dialogService);
             if (r.Status == "resolved")
                 ResolvedFindings.Add(vm);
             else

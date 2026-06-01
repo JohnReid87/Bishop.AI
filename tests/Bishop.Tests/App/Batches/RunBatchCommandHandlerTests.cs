@@ -4,6 +4,8 @@ using Bishop.App.Context.ContextPack;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordAutoRunSuccess;
+using Bishop.App.Cards.RecordCardFailure;
+using Bishop.App.Cards.RecordCardSuccess;
 using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Cards.SetCardCommit;
 using Bishop.App.Cards.UpdateCard;
@@ -92,7 +94,8 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         return batch;
     }
 
-    private ISender CreateSender(Exception? contextPackException = null) => new BatchTestSender(_factory, contextPackException);
+    private ISender CreateSender(Exception? contextPackException = null, Exception? recordCardSuccessException = null)
+        => new BatchTestSender(_factory, contextPackException, recordCardSuccessException);
 
     private sealed class BatchTestSender : ISender
     {
@@ -100,18 +103,27 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         private readonly RecordClaudeRunCommandHandler _recordClaudeRun;
         private readonly RecordAutoRunFailureCommandHandler _recordAutoRunFailure;
         private readonly RecordAutoRunSuccessCommandHandler _recordAutoRunSuccess;
+        private readonly RecordCardSuccessCommandHandler _recordCardSuccess;
+        private readonly RecordCardFailureCommandHandler _recordCardFailure;
         private readonly SetCardCommitCommandHandler _setCardCommit;
         private readonly GetWorkspaceQueryHandler _getWorkspace;
         private readonly UpdateCardCommandHandler _updateCard;
         private readonly Exception? _contextPackException;
+        private readonly Exception? _recordCardSuccessException;
 
-        public BatchTestSender(IDbContextFactory<BishopDbContext> factory, Exception? contextPackException = null)
+        public BatchTestSender(
+            IDbContextFactory<BishopDbContext> factory,
+            Exception? contextPackException = null,
+            Exception? recordCardSuccessException = null)
         {
             _contextPackException = contextPackException;
+            _recordCardSuccessException = recordCardSuccessException;
             _moveCard = new(factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance);
             _recordClaudeRun = new(factory);
             _recordAutoRunFailure = new(factory, TimeProvider.System);
             _recordAutoRunSuccess = new(factory, TimeProvider.System);
+            _recordCardSuccess = new(factory, TimeProvider.System);
+            _recordCardFailure = new(factory, TimeProvider.System);
             _setCardCommit = new(factory, TimeProvider.System);
             _getWorkspace = new(factory);
             _updateCard = new(factory, this);
@@ -151,6 +163,13 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
                 await _recordAutoRunFailure.Handle(cmd2, ct);
             else if (request is RecordAutoRunSuccessCommand cmd3)
                 await _recordAutoRunSuccess.Handle(cmd3, ct);
+            else if (request is RecordCardSuccessCommand cmd4)
+            {
+                if (_recordCardSuccessException is not null) throw _recordCardSuccessException;
+                await _recordCardSuccess.Handle(cmd4, ct);
+            }
+            else if (request is RecordCardFailureCommand cmd5)
+                await _recordCardFailure.Handle(cmd5, ct);
             else
                 throw new NotSupportedException($"BatchTestSender does not handle {request!.GetType().Name}");
         }
@@ -199,11 +218,12 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         IGitCli? git = null,
         IClaudeCliRunner? claude = null,
         ISender? sender = null,
-        Exception? contextPackException = null)
+        Exception? contextPackException = null,
+        Exception? recordCardSuccessException = null)
         => new(
             git ?? GitAlwaysClean(),
             claude ?? ClaudeAlwaysSucceeds(),
-            sender ?? CreateSender(contextPackException),
+            sender ?? CreateSender(contextPackException, recordCardSuccessException),
             _factory,
             NullLogger<RunBatchCommandHandler>.Instance,
             TimeProvider.System);
@@ -1356,6 +1376,48 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
         saved.StoppedAt.Should().NotBeNull();
         saved.StoppedAt!.Value.Should().BeOnOrAfter(before);
+    }
+
+    // ── post-run atomicity ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RecordCardSuccessThrows_NoPartialCardState_IsPersisted()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var todo = lanes.Single(l => l.Name == SystemLaneNames.ToDo);
+        var card = await AddCardAsync(workspace.Id, todo.Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(path, ValidHandoffJson);
+                return new ClaudeRunResult(0, new ClaudeRunTotals(1000, 250, 500, 100, 0.42m), 0);
+            });
+
+        Func<Task> act = () => CreateHandler(
+                claude: claude,
+                recordCardSuccessException: new InvalidOperationException("simulated DB failure mid-mutation"))
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*simulated DB failure*");
+
+        // Atomic guarantee: none of the success-path mutations were persisted —
+        // the card remains exactly as the pre-run "moved to Doing" state.
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.LaneName.Should().Be(SystemLaneNames.Doing);
+        saved.CommitHash.Should().BeNull();
+        saved.BranchName.Should().BeNull();
+        saved.LastAutoRunSucceededAt.Should().BeNull();
+        saved.TotalInputTokens.Should().Be(0);
+        saved.TotalOutputTokens.Should().Be(0);
+        saved.TotalCacheCreationTokens.Should().Be(0);
+        saved.TotalCacheReadTokens.Should().Be(0);
+        saved.TotalCostUsd.Should().Be(0m);
+        saved.ClaudeRunCount.Should().Be(0);
+        saved.Description.Should().BeNullOrEmpty();
     }
 
 }

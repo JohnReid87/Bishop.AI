@@ -1,7 +1,5 @@
-using Bishop.App.Cards.RecordAutoRunFailure;
-using Bishop.App.Cards.RecordAutoRunSuccess;
-using Bishop.App.Cards.RecordClaudeRun;
-using Bishop.App.Cards.SetCardCommit;
+using Bishop.App.Cards.RecordCardFailure;
+using Bishop.App.Cards.RecordCardSuccess;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Context.ContextPack;
 using Bishop.App.Git;
@@ -99,7 +97,7 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
         {
             var ws = await _sender.Send(new GetWorkspaceQuery(allCards[0].WorkspaceId), cancellationToken)
                 ?? throw new InvalidOperationException($"Workspace not found for batch '{batch.Name}'.");
-            worktreeWorkspace = CreateBatchWorkspace(ws, batch.WorktreePath);
+            worktreeWorkspace = ws.With(path: batch.WorktreePath);
         }
 
         if (!request.AllowExternalContent)
@@ -160,11 +158,6 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
 
                 if (runResult.ExitCode == 0)
                 {
-                    var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
-                    await _sender.Send(
-                        new RecordClaudeRunCommand(card.Id, totals.InputTokens, totals.OutputTokens, totals.CacheCreationTokens, totals.CacheReadTokens, totals.CostUsd),
-                        cancellationToken);
-
                     var handoff = await ReadAndDeleteHandoffAsync(batch.WorktreePath, cancellationToken);
 
                     if (handoff is null)
@@ -185,14 +178,19 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
                         return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.CardFailure, cancellationToken);
                     }
 
-                    await _sender.Send(new SetCardCommitCommand(card.Id, commitHash, batch.BranchName), cancellationToken);
-                    await _sender.Send(new RecordAutoRunSuccessCommand(card.Id), cancellationToken);
+                    var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
                     var costFinding = ClaudeCostFormatter.FormatCardFinding(model, runResult.Totals);
                     await _sender.Send(
-                        new UpdateCardCommand(card.Id, null, null, false, null,
-                            AppendDescription: CombineNotes(handoff.Notes, costFinding),
-                            ToLaneName: SystemLaneNames.Done,
-                            KeepOpen: true),
+                        new RecordCardSuccessCommand(
+                            card.Id,
+                            commitHash,
+                            batch.BranchName,
+                            totals.InputTokens,
+                            totals.OutputTokens,
+                            totals.CacheCreationTokens,
+                            totals.CacheReadTokens,
+                            totals.CostUsd,
+                            CombineNotes(handoff.Notes, costFinding)),
                         cancellationToken);
 
                     succeeded++;
@@ -222,19 +220,9 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
     {
         await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
         await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
-        await _sender.Send(new RecordAutoRunFailureCommand(card.Id), cancellationToken);
+        await _sender.Send(new RecordCardFailureCommand(card.Id, batch.Id), cancellationToken);
         failedNumbers.Add(card.Number);
-        await SetBatchStoppedAtNowAsync(batch.Id, cancellationToken);
         return new RunBatchResult(succeeded, ToNullableList(failedNumbers), stopReason);
-    }
-
-    private async Task SetBatchStoppedAtNowAsync(Guid batchId, CancellationToken cancellationToken)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var b = await db.Batches.FirstOrDefaultAsync(x => x.Id == batchId, cancellationToken)
-            ?? throw new InvalidOperationException($"Batch {batchId} not found.");
-        b.StoppedAt = _timeProvider.GetUtcNow();
-        await db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task SetBatchFinishedAtNowAsync(Guid batchId, CancellationToken cancellationToken)
@@ -320,21 +308,6 @@ public sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, Ru
         var body = string.Join("\n", bullets.Select(b => $"- {b}"));
         return $"{subject}\n\n{body}";
     }
-
-    private static Workspace CreateBatchWorkspace(Workspace original, string worktreePath) =>
-        new()
-        {
-            Id = original.Id,
-            Name = original.Name,
-            Path = worktreePath,
-            GitHubRepo = original.GitHubRepo,
-            NextCardNumber = original.NextCardNumber,
-            Position = original.Position,
-            IsRemoved = original.IsRemoved,
-            RemovedAt = original.RemovedAt,
-            CreatedAt = original.CreatedAt,
-            UpdatedAt = original.UpdatedAt,
-        };
 
     private static IReadOnlyList<int>? ToNullableList(List<int> list) => list.Count > 0 ? list : null;
 

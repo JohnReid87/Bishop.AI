@@ -7,7 +7,6 @@ using Bishop.ViewModels.Findings;
 using Bishop.ViewModels.Scripts;
 using Bishop.ViewModels.Settings;
 using Bishop.ViewModels.Shared;
-using Bishop.ViewModels.Skills;
 using Bishop.ViewModels.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -71,7 +70,6 @@ public partial class App : Application
                     }));
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<ICardDetailDialogService, CardDetailDialogService>();
-                services.AddSingleton<ISkillTagMap, SkillTagMap>();
                 services.AddTransient<SettingsDialogViewModel>();
                 services.AddTransient<FindingsViewModel>();
                 services.AddTransient<MainWindowViewModel>();

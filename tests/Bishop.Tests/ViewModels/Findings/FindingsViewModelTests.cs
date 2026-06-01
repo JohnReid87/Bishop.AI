@@ -1,7 +1,6 @@
 using Bishop.App.Findings.GetFindingsBySkillAndProject;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Findings;
-using Bishop.ViewModels.Skills;
 using FluentAssertions;
 using MediatR;
 using NSubstitute;
@@ -36,8 +35,7 @@ public class FindingsViewModelTests
     private static FindingsViewModel MakeVm(ISender? mediator = null) =>
         new(
             mediator ?? Substitute.For<ISender>(),
-            Substitute.For<ICardDetailDialogService>(),
-            Substitute.For<ISkillTagMap>());
+            Substitute.For<ICardDetailDialogService>());
 
     // --- Header ---
 
@@ -200,7 +198,7 @@ public class FindingsViewModelTests
         var record = MakeRecord(title: "Foo");
         var finding = new FindingItemViewModel(
             record, SkillName, WorkspaceId, WorkspacePath, null,
-            Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>(), Substitute.For<ISkillTagMap>());
+            Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>());
 
         vm.FilterText = string.Empty;
         vm.Matches(finding).Should().BeTrue();
@@ -227,7 +225,7 @@ public class FindingsViewModelTests
         var record = MakeRecord(title: title, severity: severity, file: file, symbol: symbol);
         var finding = new FindingItemViewModel(
             record, SkillName, WorkspaceId, WorkspacePath, null,
-            Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>(), Substitute.For<ISkillTagMap>());
+            Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>());
 
         vm.Matches(finding).Should().Be(expected);
     }
@@ -241,7 +239,7 @@ public class FindingsViewModelTests
         var record = MakeRecord(severity: "high");
         var finding = new FindingItemViewModel(
             record, SkillName, WorkspaceId, WorkspacePath, null,
-            Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>(), Substitute.For<ISkillTagMap>());
+            Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>());
 
         vm.Matches(finding).Should().BeTrue();
     }
@@ -255,7 +253,7 @@ public class FindingsViewModelTests
         var record = MakeRecord();
         var finding = new FindingItemViewModel(
             record, SkillName, WorkspaceId, WorkspacePath, null,
-            Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>(), Substitute.For<ISkillTagMap>());
+            Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>());
 
         vm.Matches(finding).Should().BeTrue();
     }

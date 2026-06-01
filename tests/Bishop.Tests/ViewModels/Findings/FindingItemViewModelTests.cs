@@ -7,7 +7,6 @@ using Bishop.App.Findings.LinkFindingToCard;
 using Bishop.Core;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Findings;
-using Bishop.ViewModels.Skills;
 using FluentAssertions;
 using MediatR;
 using NSubstitute;
@@ -43,8 +42,7 @@ public class FindingItemViewModelTests
     private static FindingItemViewModel MakeVm(
         FindingRecord? record = null,
         ISender? mediator = null,
-        ICardDetailDialogService? dialogService = null,
-        ISkillTagMap? skillTagMap = null) =>
+        ICardDetailDialogService? dialogService = null) =>
         new(
             record ?? MakeRecord(),
             SkillName,
@@ -52,8 +50,7 @@ public class FindingItemViewModelTests
             WorkspacePath,
             null,
             mediator ?? Substitute.For<ISender>(),
-            dialogService ?? Substitute.For<ICardDetailDialogService>(),
-            skillTagMap ?? Substitute.For<ISkillTagMap>());
+            dialogService ?? Substitute.For<ICardDetailDialogService>());
 
     // --- Location ---
 
@@ -322,8 +319,6 @@ public class FindingItemViewModelTests
     {
         var mediator = Substitute.For<ISender>();
         var dialogService = Substitute.For<ICardDetailDialogService>();
-        var skillTagMap = Substitute.For<ISkillTagMap>();
-        skillTagMap.GetTag(SkillName).Returns("arch");
 
         var card = new Card
         {
@@ -338,7 +333,7 @@ public class FindingItemViewModelTests
         dialogService.ShowAsync(Arg.Any<CardViewModel>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<object>())
             .Returns(true);
 
-        var vm = MakeVm(MakeRecord(status: "pending"), mediator: mediator, dialogService: dialogService, skillTagMap: skillTagMap);
+        var vm = MakeVm(MakeRecord(status: "pending"), mediator: mediator, dialogService: dialogService);
 
         await vm.ConvertToCardCommand.ExecuteAsync(new object());
 
