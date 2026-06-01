@@ -16,6 +16,7 @@ public sealed partial class AddWorkspaceDialog : ContentDialog
     {
         _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         InitializeComponent();
+        Animations.EntranceAnimation.ApplyDialogEntrance(Content as Microsoft.UI.Xaml.FrameworkElement);
         IsPrimaryButtonEnabled = false;
         ViewModel.PropertyChanged += (_, _) =>
             IsPrimaryButtonEnabled = ViewModel.CanConfirm;

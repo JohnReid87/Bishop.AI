@@ -14,7 +14,7 @@
 
         <!-- Custom title bar drag region -->
         <Grid x:Name="AppTitleBar" Grid.Row="0"
-              Background="{StaticResource AppSurfaceBrush}">
+              Background="Transparent">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>

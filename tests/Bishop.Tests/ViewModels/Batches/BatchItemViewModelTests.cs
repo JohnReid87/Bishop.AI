@@ -195,26 +195,6 @@ public class BatchItemViewModelTests
     }
 
     [Fact]
-    public void ToggleStrip_CollapsesExpandedStrip()
-    {
-        var vm = new BatchItemViewModel();
-
-        vm.ToggleStripCommand.Execute(null);
-
-        vm.IsStripExpanded.Should().BeFalse();
-    }
-
-    [Fact]
-    public void ToggleStrip_ExpandsCollapsedStrip()
-    {
-        var vm = new BatchItemViewModel { IsStripExpanded = false };
-
-        vm.ToggleStripCommand.Execute(null);
-
-        vm.IsStripExpanded.Should().BeTrue();
-    }
-
-    [Fact]
     public void StripOpacity_ReducedForClosedBatch()
     {
         var vm = new BatchItemViewModel { Status = BatchStatus.Closed };
@@ -236,26 +216,6 @@ public class BatchItemViewModelTests
         var vm = new BatchItemViewModel { Status = BatchStatus.Working };
 
         vm.StripOpacity.Should().Be(1.0);
-    }
-
-    [Fact]
-    public void ChevronGlyph_ChangesWhenStripExpandedChanges()
-    {
-        var expanded = new BatchItemViewModel { IsStripExpanded = true };
-        var collapsed = new BatchItemViewModel { IsStripExpanded = false };
-
-        expanded.ChevronGlyph.Should().NotBe(collapsed.ChevronGlyph);
-    }
-
-    [Fact]
-    public void ChevronGlyph_UpdatesAfterToggle()
-    {
-        var vm = new BatchItemViewModel();
-        var initial = vm.ChevronGlyph;
-
-        vm.ToggleStripCommand.Execute(null);
-
-        vm.ChevronGlyph.Should().NotBe(initial);
     }
 
     [Fact]

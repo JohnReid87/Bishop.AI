@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
@@ -32,6 +33,7 @@ public sealed partial class MainWindow : Window
     {
         _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         InitializeComponent();
+        SystemBackdrop = new MicaBackdrop();
         ViewModel = viewModel;
 
         SetupTitleBar();

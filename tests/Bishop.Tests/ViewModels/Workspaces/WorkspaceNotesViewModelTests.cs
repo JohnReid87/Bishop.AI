@@ -16,18 +16,6 @@ namespace Bishop.Tests.ViewModels.Workspaces;
 public class WorkspaceNotesViewModelTests
 {
     [Fact]
-    public void IsExpanded_TogglingRaisesChevronGlyphChange()
-    {
-        var vm = NewVm();
-        var changed = new List<string?>();
-        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
-
-        vm.IsExpanded = true;
-
-        changed.Should().Contain(nameof(WorkspaceNotesViewModel.ChevronGlyph));
-    }
-
-    [Fact]
     public void SaveStatusOpacity_DimsWhileEditing()
     {
         var vm = NewVm();
@@ -50,18 +38,6 @@ public class WorkspaceNotesViewModelTests
         vm.SaveStatusIsError.Should().BeFalse();
         vm.NotesContent.Should().BeEmpty();
         vm.PanelHeight.Should().Be(200);
-    }
-
-    [Fact]
-    public void ChevronGlyph_IsAccessibleForBothExpandedStates()
-    {
-        var vm = NewVm();
-
-        vm.IsExpanded = false;
-        vm.ChevronGlyph.Should().NotBeNull();
-
-        vm.IsExpanded = true;
-        vm.ChevronGlyph.Should().NotBeNull();
     }
 
     [Fact]
@@ -141,28 +117,6 @@ public class WorkspaceNotesViewModelTests
         vm.SaveStatusIsEditing.Should().BeTrue();
         vm.SaveStatusIsError.Should().BeFalse();
         vm.SaveStatusText.Should().Be("Editing…");
-    }
-
-    [Fact]
-    public async Task ToggleCommand_WhenCollapsed_Expands()
-    {
-        var vm = NewVm();
-        vm.IsExpanded = false;
-
-        await vm.ToggleCommand.ExecuteAsync(null);
-
-        vm.IsExpanded.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task ToggleCommand_WhenExpanded_Collapses()
-    {
-        var vm = NewVm();
-        vm.IsExpanded = true;
-
-        await vm.ToggleCommand.ExecuteAsync(null);
-
-        vm.IsExpanded.Should().BeFalse();
     }
 
     [Fact]
@@ -359,31 +313,6 @@ public class WorkspaceNotesViewModelTests
             (await File.ReadAllTextAsync(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md")))
                 .Should().Be("flush content");
             vm.SaveStatusIsEditing.Should().BeFalse();
-        }
-        finally
-        {
-            vm.Dispose();
-            Directory.Delete(dir, recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task ToggleCommand_WhenCollapsingWithWorkspace_WritesNotes()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-        Directory.CreateDirectory(dir);
-        var vm = NewVm();
-        try
-        {
-            await vm.LoadAsync(Guid.NewGuid(), dir);
-            vm.IsExpanded = true;
-            vm.NotesContent = "collapse notes";
-
-            await vm.ToggleCommand.ExecuteAsync(null);
-
-            vm.IsExpanded.Should().BeFalse();
-            (await File.ReadAllTextAsync(Path.Combine(dir, ".bishop", "BISHOP_NOTES.md")))
-                .Should().Be("collapse notes");
         }
         finally
         {

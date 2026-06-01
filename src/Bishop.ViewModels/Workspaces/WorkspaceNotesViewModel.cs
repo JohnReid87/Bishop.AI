@@ -47,7 +47,6 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
 
     public double SaveStatusOpacity => SaveStatusIsEditing ? 0.5 : 1.0;
 
-    public string ChevronGlyph => IsExpanded ? "" : "";
 
     public WorkspaceNotesViewModel(IUiDispatcher uiDispatcher, TimeProvider timeProvider, ISafeAsyncRunner safeAsync)
     {
@@ -58,9 +57,13 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
 
     partial void OnIsExpandedChanged(bool value)
     {
-        OnPropertyChanged(nameof(ChevronGlyph));
-        if (!_isLoadingPrefs && _workspaceId != Guid.Empty)
-            _ = _safeAsync.RunAsync(SavePrefsAsync);
+        if (_isLoadingPrefs || _workspaceId == Guid.Empty) return;
+        if (!value)
+        {
+            _debounceCts?.Cancel();
+            _ = _safeAsync.RunAsync(() => WriteNotesAsync(NotesContent));
+        }
+        _ = _safeAsync.RunAsync(SavePrefsAsync);
     }
 
     partial void OnNotesContentChanged(string value)
@@ -158,17 +161,6 @@ public sealed partial class WorkspaceNotesViewModel : ObservableObject, IDisposa
             }
             catch (OperationCanceledException) { } // superseded by a newer inbound change — drop this stale read
         });
-    }
-
-    [RelayCommand]
-    private async Task ToggleAsync()
-    {
-        if (IsExpanded)
-        {
-            _debounceCts?.Cancel();
-            await WriteNotesAsync(NotesContent);
-        }
-        IsExpanded = !IsExpanded;
     }
 
     [RelayCommand]

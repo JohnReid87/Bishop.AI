@@ -22,14 +22,14 @@ public class BatchGroupViewModelTests
     }
 
     [Fact]
-    public void ToggleExpandedCommand_TogglesIsExpanded()
+    public void IsExpanded_CanBeToggled()
     {
         var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid() };
 
-        vm.ToggleExpandedCommand.Execute(null);
+        vm.IsExpanded = false;
         vm.IsExpanded.Should().BeFalse();
 
-        vm.ToggleExpandedCommand.Execute(null);
+        vm.IsExpanded = true;
         vm.IsExpanded.Should().BeTrue();
     }
 

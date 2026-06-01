@@ -1,6 +1,7 @@
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
+using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git.GetRecentCommits;
@@ -1498,6 +1499,19 @@ public class WorkspaceBoardViewModelTests
 
         await mediator.Received(1).Send(
             Arg.Is<MoveCardCommand>(c => c.CardId == cardId && c.ToLaneName == "Doing" && c.ToPosition == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteCardAsync_SendsRemoveCardCommand()
+    {
+        var (vm, mediator, _) = MakeVm();
+        var cardId = Guid.NewGuid();
+
+        await vm.DeleteCardAsync(cardId);
+
+        await mediator.Received(1).Send(
+            Arg.Is<RemoveCardCommand>(c => c.CardId == cardId),
             Arg.Any<CancellationToken>());
     }
 

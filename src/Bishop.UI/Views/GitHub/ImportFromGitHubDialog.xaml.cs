@@ -16,6 +16,7 @@ public sealed partial class ImportFromGitHubDialog : ContentDialog
         _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         ViewModel = vm;
         InitializeComponent();
+        Bishop.UI.Animations.EntranceAnimation.ApplyDialogEntrance(Content as Microsoft.UI.Xaml.FrameworkElement);
         IsPrimaryButtonEnabled = false;
         Loaded += (_, _) => _safeAsync.RunAsync(ViewModel.LoadLabelsAsync);
         PrimaryButtonClick += OnImportClick;

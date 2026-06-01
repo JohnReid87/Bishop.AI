@@ -1,5 +1,6 @@
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.MoveCard;
+using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Services.Settings;
@@ -191,6 +192,9 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     public async Task MoveCardAsync(Guid cardId, string targetLane, int position)
         => await _mediator.Send(new MoveCardCommand(cardId, targetLane, position));
+
+    public async Task DeleteCardAsync(Guid cardId)
+        => await _mediator.Send(new RemoveCardCommand(cardId));
 
     // ── GitHub settings ──────────────────────────────────────────────────────
 

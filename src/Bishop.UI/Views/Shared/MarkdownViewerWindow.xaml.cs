@@ -17,6 +17,7 @@ public sealed partial class MarkdownViewerWindow : Window
     public MarkdownViewerWindow()
     {
         InitializeComponent();
+        SystemBackdrop = new MicaBackdrop();
 
         MarkdownContent.Config = new MarkdownConfig
         {

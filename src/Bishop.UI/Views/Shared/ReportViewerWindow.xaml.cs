@@ -1,6 +1,7 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 using System.IO;
 using Windows.Graphics;
 using Windows.UI;
@@ -13,6 +14,7 @@ public sealed partial class ReportViewerWindow : Window
     public ReportViewerWindow()
     {
         InitializeComponent();
+        SystemBackdrop = new MicaBackdrop();
         SetupTitleBar();
 
         AppWindow.Closing += (_, args) =>
