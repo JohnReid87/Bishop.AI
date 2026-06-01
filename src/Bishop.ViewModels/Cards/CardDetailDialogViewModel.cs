@@ -447,22 +447,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     {
         var items = new List<SkillLaunchItem>(CardSkills.Length);
         foreach (var menuItem in CardSkills)
-        {
-            var skill = menuItem.Skill;
-            var rendered = SkillCommandRenderer.Render(skill.Command!, Number, Title, Description, _workspacePath);
-            var savedModel = SkillModelOptions.ResolveModelId(
-                await _appSettings.GetAsync($"skill.{skill.Name}.last_model"));
-
-            items.Add(new SkillLaunchItem(
-                Name: menuItem.Name,
-                GroupHeader: menuItem.GroupHeader,
-                SavedModelId: savedModel,
-                RenderedCommand: rendered,
-                RequiresStage: SkillStaging.ShouldShowStageDialog(skill, hasCard: true),
-                StagePrompt: skill.StagePrompt,
-                StagePrefill: null,
-                MarkdownBody: skill.MarkdownBody));
-        }
+            items.Add(await SkillLaunchItemBuilder.BuildAsync(menuItem, Number, Title, Description, _workspacePath, _appSettings));
         return items;
     }
 
@@ -475,5 +460,5 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     }
 
     public async Task SetSkillModelAsync(string skillName, string modelId)
-        => await _appSettings.SetAsync($"skill.{skillName}.last_model", modelId);
+        => await _appSettings.SetAsync(SkillLaunchItemBuilder.LastModelKey(skillName), modelId);
 }

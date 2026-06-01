@@ -63,7 +63,7 @@ internal sealed class BoardSkillsCoordinator
     }
 
     public Task SetSkillModelAsync(string skillName, string modelId)
-        => _appSettings.SetAsync($"skill.{skillName}.last_model", modelId);
+        => _appSettings.SetAsync(SkillLaunchItemBuilder.LastModelKey(skillName), modelId);
 
     private async Task<IReadOnlyList<SkillLaunchItem>> BuildLaunchItemsAsync(SkillMenuItem[] source, CardViewModel? card)
     {
@@ -73,33 +73,10 @@ internal sealed class BoardSkillsCoordinator
         return items;
     }
 
-    private async Task<SkillLaunchItem> BuildLaunchItemAsync(SkillMenuItem menuItem, CardViewModel? card)
+    private Task<SkillLaunchItem> BuildLaunchItemAsync(SkillMenuItem menuItem, CardViewModel? card)
     {
-        var skill = menuItem.Skill;
         var workspacePath = _getWorkspacePath();
-        var rendered = SkillCommandRenderer.Render(skill.Command!, card?.Number, card?.Title, card?.Description, workspacePath);
-        var savedModel = SkillModelOptions.ResolveModelId(
-            await _appSettings.GetAsync($"skill.{skill.Name}.last_model"));
-
-        var requiresStage = SkillStaging.ShouldShowStageDialog(skill, hasCard: card is not null);
-        var prefill = RenderPrefill(skill, card, workspacePath);
-
-        return new SkillLaunchItem(
-            Name: menuItem.Name,
-            GroupHeader: menuItem.GroupHeader,
-            SavedModelId: savedModel,
-            RenderedCommand: rendered,
-            RequiresStage: requiresStage,
-            StagePrompt: skill.StagePrompt,
-            StagePrefill: string.IsNullOrEmpty(prefill) ? null : prefill,
-            MarkdownBody: skill.MarkdownBody,
-            StageProjects: skill.StageProjects,
-            StageFilePicker: skill.StageFilePicker);
-    }
-
-    private static string? RenderPrefill(Bishop.Core.Skills.InstalledSkill skill, CardViewModel? card, string workspacePath)
-    {
-        if (skill.StagePrefill is null) return null;
-        return SkillCommandRenderer.Render(skill.StagePrefill, card?.Number, card?.Title, card?.Description, workspacePath).Trim();
+        return SkillLaunchItemBuilder.BuildAsync(menuItem, card?.Number, card?.Title, card?.Description,
+            workspacePath, _appSettings);
     }
 }
