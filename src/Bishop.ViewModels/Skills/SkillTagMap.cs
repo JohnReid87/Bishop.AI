@@ -1,6 +1,6 @@
 namespace Bishop.ViewModels.Skills;
 
-public sealed class SkillTagMap : ISkillTagMap
+public static class SkillTagMap
 {
     private static readonly IReadOnlyDictionary<string, string> Map =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -14,6 +14,6 @@ public sealed class SkillTagMap : ISkillTagMap
             ["bish-triage"] = "bug",
         };
 
-    public string? GetTag(string skillName) =>
+    public static string? GetTag(string skillName) =>
         !string.IsNullOrEmpty(skillName) && Map.TryGetValue(skillName, out var tag) ? tag : null;
 }

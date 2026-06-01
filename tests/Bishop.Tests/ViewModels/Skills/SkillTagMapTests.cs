@@ -22,7 +22,7 @@ public class SkillTagMapTests
     [InlineData("bish-audit-docs", "docs")]
     [InlineData("bish-triage", "bug")]
     public void GetTag_MapsKnownSkills(string skill, string expected)
-        => new SkillTagMap().GetTag(skill).Should().Be(expected);
+        => SkillTagMap.GetTag(skill).Should().Be(expected);
 
     [Theory]
     [InlineData("bish-grill-cards")]
@@ -30,9 +30,9 @@ public class SkillTagMapTests
     [InlineData("")]
     [InlineData("unrelated-skill")]
     public void GetTag_ReturnsNullForUnmappedSkill(string skill)
-        => new SkillTagMap().GetTag(skill).Should().BeNull();
+        => SkillTagMap.GetTag(skill).Should().BeNull();
 
     [Fact]
     public void GetTag_IsCaseInsensitive()
-        => new SkillTagMap().GetTag("BISH-ARCH").Should().Be("arch");
+        => SkillTagMap.GetTag("BISH-ARCH").Should().Be("arch");
 }
