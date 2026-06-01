@@ -1101,7 +1101,8 @@
                              TextWrapping="Wrap"
                              FontFamily="Cascadia Mono"
                              Height="{x:Bind Notes.PanelHeight, Mode=OneWay}"
-                             Margin="0,8,0,8"
+
+                             Margin="0,0,0,8"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                              PreviewKeyDown="NotesTextBox_PreviewKeyDown"/>
                 </StackPanel>
