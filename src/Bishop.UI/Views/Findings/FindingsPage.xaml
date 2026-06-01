@@ -209,7 +209,7 @@
                                             Padding="8,4"
                                             Click="ConvertToCard_Click"
                                             Visibility="{x:Bind IsConvertToCardVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                            IsEnabled="{x:Bind IsConvertToCardEnabled, Mode=OneWay}"/>
+                                            IsEnabled="{x:Bind IsConvertToCardVisible, Mode=OneWay}"/>
                                     <Button Content="Dismiss"
                                             FontSize="12"
                                             Padding="8,4"
