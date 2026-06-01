@@ -21,8 +21,9 @@ internal sealed class ReconcileOrphanedBatchesCommandHandler : IRequestHandler<R
     public async Task Handle(ReconcileOrphanedBatchesCommand request, CancellationToken cancellationToken)
     {
         await using var listDb = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var allBatches = await listDb.Batches.AsNoTracking().ToListAsync(cancellationToken);
-        var workingBatches = allBatches.Where(b => b.Status == BatchStatus.Working).ToList();
+        var workingBatches = await listDb.Batches.AsNoTracking()
+            .Where(b => b.Status == BatchStatus.Working)
+            .ToListAsync(cancellationToken);
         if (workingBatches.Count == 0)
             return;
 
