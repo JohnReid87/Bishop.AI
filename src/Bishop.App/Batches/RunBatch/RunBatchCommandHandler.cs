@@ -92,11 +92,13 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
         var failedNumbers = new List<int>();
         var batchCostUsd = 0m;
 
+        string? mainWorkspacePath = null;
         Workspace? worktreeWorkspace = null;
         if (pendingCards.Count > 0)
         {
             var ws = await _sender.Send(new GetWorkspaceQuery(allCards[0].WorkspaceId), cancellationToken)
                 ?? throw new InvalidOperationException($"Workspace not found for batch '{batch.Name}'.");
+            mainWorkspacePath = ws.Path;
             worktreeWorkspace = ws.With(path: batch.WorktreePath);
         }
 
@@ -147,7 +149,10 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
                     cancellationToken);
                 var contextJson = JsonSerializer.Serialize(contextPack, s_contextPackOpts);
                 var prompt = $"<bishop-context>\n{contextJson}\n</bishop-context>\n\n/bish-auto-card #{card.Number}";
-                var runResult = await _claude.RunPromptAsync(batch.WorktreePath, prompt, model, card.Number, cancellationToken);
+                var runResult = await _claude.RunPromptAsync(
+                    batch.WorktreePath, prompt, model, card.Number,
+                    transcriptBasePath: mainWorkspacePath,
+                    cancellationToken: cancellationToken);
 
                 var runCostUsd = runResult.Totals?.CostUsd ?? 0m;
                 batchCostUsd += runCostUsd;

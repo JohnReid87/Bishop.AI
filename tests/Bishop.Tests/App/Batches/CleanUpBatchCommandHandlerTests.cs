@@ -1,3 +1,4 @@
+using System.IO;
 using Bishop.App.Batches.CleanUpBatch;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.CloseCard;
@@ -312,5 +313,62 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
         await ghCli.Received(1).RunAsync(
             Arg.Is<string[]>(args => args.Contains("close") && args.Contains("99")),
             Arg.Any<CancellationToken>());
+    }
+
+    // ── transcript cleanup ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CleanUp_DeletesTranscriptFilesForBatchCards()
+    {
+        var workspaceDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(workspaceDir);
+        try
+        {
+            var batch = await CreateWorkingBatchAsync();
+            var card1 = await AddCardAsync(SystemLaneNames.Done);
+            var card2 = await AddCardAsync(SystemLaneNames.Doing);
+            await AssignCardToBatchAsync(batch, card1);
+            await AssignCardToBatchAsync(batch, card2);
+
+            var runsDir = Path.Combine(workspaceDir, ".bishop", "runs");
+            Directory.CreateDirectory(runsDir);
+            var file1 = Path.Combine(runsDir, $"{card1.Number}-20260601T100000Z.jsonl");
+            var file2 = Path.Combine(runsDir, $"{card2.Number}-20260601T110000Z.jsonl");
+            var unrelated = Path.Combine(runsDir, "999-20260601T120000Z.jsonl");
+            await File.WriteAllTextAsync(file1, "{}\n");
+            await File.WriteAllTextAsync(file2, "{}\n");
+            await File.WriteAllTextAsync(unrelated, "{}\n");
+
+            await CreateHandler().Handle(new CleanUpBatchCommand(batch.Name, workspaceDir), default);
+
+            File.Exists(file1).Should().BeFalse();
+            File.Exists(file2).Should().BeFalse();
+            File.Exists(unrelated).Should().BeTrue("unrelated card transcripts must not be deleted");
+        }
+        finally
+        {
+            Directory.Delete(workspaceDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CleanUp_NoRunsDir_DoesNotThrow()
+    {
+        var workspaceDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(workspaceDir);
+        try
+        {
+            var batch = await CreateWorkingBatchAsync();
+            var card = await AddCardAsync(SystemLaneNames.Done);
+            await AssignCardToBatchAsync(batch, card);
+
+            Func<Task> act = () => CreateHandler().Handle(new CleanUpBatchCommand(batch.Name, workspaceDir), default);
+
+            await act.Should().NotThrowAsync();
+        }
+        finally
+        {
+            Directory.Delete(workspaceDir, recursive: true);
+        }
     }
 }

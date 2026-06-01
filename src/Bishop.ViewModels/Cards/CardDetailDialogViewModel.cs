@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.RegularExpressions;
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.GetCard;
@@ -102,6 +103,12 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public partial string? ClaudeTotalsText { get; set; }
 
     public bool HasClaudeTotals => !string.IsNullOrEmpty(ClaudeTotalsText);
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFailedRunTranscript))]
+    public partial string? LastFailedRunTranscriptPath { get; set; }
+
+    public bool HasFailedRunTranscript => !string.IsNullOrEmpty(LastFailedRunTranscriptPath);
 
     public void SetClaudeTotals(int inputTokens, int outputTokens, int runCount) =>
         ClaudeTotalsText = ClaudeTotalsFormatter.Format(inputTokens, outputTokens, runCount);
@@ -226,6 +233,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         CommitHash = null;
         CommitIsPushed = false;
         ClaudeTotalsText = null;
+        LastFailedRunTranscriptPath = null;
         CanGoBack = canGoBack;
     }
 
@@ -402,6 +410,9 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
             var card = await _mediator.Send(new GetCardQuery(_cardId));
             if (card is null) return;
             SetClaudeTotals(card.TotalInputTokens, card.TotalOutputTokens, card.ClaudeRunCount);
+            LastFailedRunTranscriptPath = card.LastAutoRunFailedAt.HasValue
+                ? FindLatestTranscript(_workspacePath, Number)
+                : null;
             var commitResult = await _mediator.Send(new GetCardCommitQuery(Number, _workspacePath));
             if (commitResult is GetCardCommitResult.Found found)
                 SetCommit(found.Commit);
@@ -411,6 +422,15 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
             _logger.LogWarning(ex, "Failed to load card extras for card {CardId}", _cardId);
             _errorBus.Report(ex);
         }
+    }
+
+    private static string? FindLatestTranscript(string workspacePath, int cardNumber)
+    {
+        var dir = Path.Combine(workspacePath, ".bishop", "runs");
+        if (!Directory.Exists(dir)) return null;
+        return Directory.GetFiles(dir, $"{cardNumber}-*.jsonl")
+            .OrderDescending()
+            .FirstOrDefault();
     }
 
     public async Task<CardViewModel?> GetCardByNumberAsync(int number, bool isSkillsButtonVisible)

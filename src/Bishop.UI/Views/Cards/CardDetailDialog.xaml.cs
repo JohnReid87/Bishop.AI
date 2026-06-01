@@ -1,3 +1,4 @@
+using System.IO;
 using Bishop.UI.Views.Controls;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Shared;
@@ -220,6 +221,17 @@ public sealed partial class CardDetailDialog : ContentDialog
             var flyout = TagPickerFlyout.Build(allTags, [], async (name, colour) =>
                 await ViewModel.SetTagAsync(name, colour));
             flyout.ShowAt((FrameworkElement)sender);
+        });
+
+    // ── Transcript viewer ─────────────────────────────────────────────────────
+
+    private async void ViewLastFailedRun_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            var path = ViewModel.LastFailedRunTranscriptPath;
+            if (path is null || !File.Exists(path)) return;
+            var content = await File.ReadAllTextAsync(path);
+            App.MarkdownViewer!.ShowContent("Last failed run", $"```\n{content}\n```");
         });
 
     // ── Skills ────────────────────────────────────────────────────────────────

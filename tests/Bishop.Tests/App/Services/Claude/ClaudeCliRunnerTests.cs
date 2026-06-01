@@ -395,6 +395,130 @@ public sealed class ClaudeCliRunnerTests
     }
 
     [Fact]
+    public async Task RunPromptAsync_WithCardNumber_WritesTranscriptJsonlAndReturnsPath()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            Func<ProcessStartInfo, Process?> starter = _ =>
+            {
+                var psi = new ProcessStartInfo("cmd.exe")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    Arguments = "/c more",
+                };
+                var proc = Process.Start(psi)!;
+                proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":10}");
+                return proc;
+            };
+            var sut = new ClaudeCliRunner(starter, TimeProvider.System, "claude");
+
+            var result = await sut.RunPromptAsync(tempDir, "hello", cardNumber: 42);
+
+            result.TranscriptPath.Should().NotBeNull();
+            File.Exists(result.TranscriptPath).Should().BeTrue();
+            var lines = File.ReadAllLines(result.TranscriptPath!)
+                .Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+            lines.Should().HaveCountGreaterThan(0);
+            lines.Should().Contain(l => l.Contains("result"));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RunPromptAsync_WithTranscriptBasePath_WritesTranscriptToBasePath()
+    {
+        var worktreeDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        var mainDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(worktreeDir);
+        Directory.CreateDirectory(mainDir);
+        try
+        {
+            Func<ProcessStartInfo, Process?> starter = _ =>
+            {
+                var psi = new ProcessStartInfo("cmd.exe")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    Arguments = "/c more",
+                };
+                var proc = Process.Start(psi)!;
+                proc.StandardInput.WriteLine("{\"type\":\"result\",\"duration_ms\":10}");
+                return proc;
+            };
+            var sut = new ClaudeCliRunner(starter, TimeProvider.System, "claude");
+
+            var result = await sut.RunPromptAsync(worktreeDir, "hello", cardNumber: 7, transcriptBasePath: mainDir);
+
+            result.TranscriptPath.Should().StartWith(mainDir);
+            File.Exists(result.TranscriptPath).Should().BeTrue();
+            Directory.Exists(Path.Combine(worktreeDir, ".bishop", "runs")).Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(worktreeDir, recursive: true);
+            Directory.Delete(mainDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RunPromptAsync_WithNullCardNumber_DoesNotWriteTranscript()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var sut = new ClaudeCliRunner(_ => CmdProcess("/c exit 0"), TimeProvider.System, "claude");
+
+            var result = await sut.RunPromptAsync(tempDir, "hello");
+
+            result.TranscriptPath.Should().BeNull();
+            Directory.Exists(Path.Combine(tempDir, ".bishop", "runs")).Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task WriteTranscriptLine_ConcurrentCalls_ProduceOneLineEach()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var filePath = Path.Combine(tempDir, "transcript.jsonl");
+            const int iterations = 200;
+            var runner = new ClaudeCliRunner(_ => null, TimeProvider.System, "claude");
+
+            var tasks = Enumerable.Range(0, iterations)
+                .Select(i => Task.Run(() => runner.WriteTranscriptLine(filePath, $"{{\"i\":{i}}}")))
+                .ToArray();
+
+            await Task.WhenAll(tasks);
+
+            var lines = File.ReadAllLines(filePath).Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+            lines.Should().HaveCount(iterations);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task WriteDenialLine_ConcurrentCalls_ProduceValidJsonlPerLine()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());

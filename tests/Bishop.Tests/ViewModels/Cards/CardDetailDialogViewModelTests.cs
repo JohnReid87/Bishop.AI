@@ -1,3 +1,4 @@
+using System.IO;
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.PushCard;
@@ -1070,5 +1071,104 @@ public class CardDetailDialogViewModelTests
         var vm = NewVm(card);
 
         vm.NumberDisplay.Should().Be("#42");
+    }
+
+    // ── Transcript link ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task LoadExtrasAsync_CardWithLastAutoRunFailedAt_AndTranscriptFile_SetsHasFailedRunTranscript()
+    {
+        var tempDir = Path.GetTempPath() + Path.GetRandomFileName();
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var runsDir = Path.Combine(tempDir, ".bishop", "runs");
+            Directory.CreateDirectory(runsDir);
+            var transcriptFile = Path.Combine(runsDir, "1-20260601T120000Z.jsonl");
+            await File.WriteAllTextAsync(transcriptFile, "{\"type\":\"result\"}\n");
+
+            var mediator = Substitute.For<IMediator>();
+            var card = new CardViewModel { Id = Guid.NewGuid(), Number = 1, Title = "T", Description = "", LaneName = "To Do" };
+            var vm = new CardDetailDialogViewModel(
+                card, [], Guid.NewGuid(), null, mediator,
+                Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), tempDir,
+                NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+            var domainCard = new Bishop.Core.Card { Id = card.Id, LastAutoRunFailedAt = DateTimeOffset.UtcNow };
+            mediator.Send(Arg.Any<Bishop.App.Cards.GetCard.GetCardQuery>(), Arg.Any<CancellationToken>())
+                .Returns(domainCard);
+            mediator.Send(Arg.Any<Bishop.App.Git.GetCardCommit.GetCardCommitQuery>(), Arg.Any<CancellationToken>())
+                .Returns(new Bishop.App.Git.GetCardCommit.GetCardCommitResult.NotFound());
+
+            await vm.LoadExtrasAsync();
+
+            vm.HasFailedRunTranscript.Should().BeTrue();
+            vm.LastFailedRunTranscriptPath.Should().Be(transcriptFile);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadExtrasAsync_CardWithoutLastAutoRunFailedAt_LeavesHasFailedRunTranscriptFalse()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var card = new CardViewModel { Id = Guid.NewGuid(), Number = 1, Title = "T", Description = "", LaneName = "To Do" };
+        var vm = new CardDetailDialogViewModel(
+            card, [], Guid.NewGuid(), null, mediator,
+            Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
+            NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+        var domainCard = new Bishop.Core.Card { Id = card.Id, LastAutoRunFailedAt = null };
+        mediator.Send(Arg.Any<Bishop.App.Cards.GetCard.GetCardQuery>(), Arg.Any<CancellationToken>())
+            .Returns(domainCard);
+        mediator.Send(Arg.Any<Bishop.App.Git.GetCardCommit.GetCardCommitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new Bishop.App.Git.GetCardCommit.GetCardCommitResult.NotFound());
+
+        await vm.LoadExtrasAsync();
+
+        vm.HasFailedRunTranscript.Should().BeFalse();
+        vm.LastFailedRunTranscriptPath.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LoadExtrasAsync_CardWithLastAutoRunFailedAt_ButNoTranscriptFile_LeavesHasFailedRunTranscriptFalse()
+    {
+        var tempDir = Path.GetTempPath() + Path.GetRandomFileName();
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var mediator = Substitute.For<IMediator>();
+            var card = new CardViewModel { Id = Guid.NewGuid(), Number = 99, Title = "T", Description = "", LaneName = "To Do" };
+            var vm = new CardDetailDialogViewModel(
+                card, [], Guid.NewGuid(), null, mediator,
+                Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), tempDir,
+                NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+            var domainCard = new Bishop.Core.Card { Id = card.Id, LastAutoRunFailedAt = DateTimeOffset.UtcNow };
+            mediator.Send(Arg.Any<Bishop.App.Cards.GetCard.GetCardQuery>(), Arg.Any<CancellationToken>())
+                .Returns(domainCard);
+            mediator.Send(Arg.Any<Bishop.App.Git.GetCardCommit.GetCardCommitQuery>(), Arg.Any<CancellationToken>())
+                .Returns(new Bishop.App.Git.GetCardCommit.GetCardCommitResult.NotFound());
+
+            await vm.LoadExtrasAsync();
+
+            vm.HasFailedRunTranscript.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void NavigateTo_ClearsLastFailedRunTranscriptPath()
+    {
+        var vm = NewVm();
+        vm.LastFailedRunTranscriptPath = @"C:\workspace\.bishop\runs\1-20260601T120000Z.jsonl";
+
+        vm.NavigateTo(NewCard(), canGoBack: false);
+
+        vm.LastFailedRunTranscriptPath.Should().BeNull();
+        vm.HasFailedRunTranscript.Should().BeFalse();
     }
 }
