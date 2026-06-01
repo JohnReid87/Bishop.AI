@@ -12,7 +12,7 @@
     <Page.Resources>
         <DataTemplate x:Key="CardItemTemplate" x:DataType="vmCards:CardViewModel">
             <Grid Margin="8,0,8,4"
-                  Opacity="{x:Bind CardOpacity}"
+                  Opacity="{x:Bind CardOpacity, Mode=OneWay}"
                   Tag="{x:Bind}"
                   Loaded="CardRoot_Loaded">
                 <Border Background="{StaticResource AppCardBackgroundBrush}"
@@ -94,13 +94,13 @@
                                 <FontIcon Glyph="&#xEBD2;" FontSize="12"/>
                             </controls:HandCursorButton>
                             <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                   ToolTipService.ToolTip="{x:Bind CloseReopenTooltip}"
+                                                   ToolTipService.ToolTip="{x:Bind CloseReopenTooltip, Mode=OneWay}"
                                                    Click="CardCloseButton_Click"
                                                    VerticalAlignment="Center"
                                                    Padding="4"
                                                    MinWidth="28"
                                                    MinHeight="28">
-                                <FontIcon Glyph="{x:Bind CloseReopenGlyph}" FontSize="12"/>
+                                <FontIcon Glyph="{x:Bind CloseReopenGlyph, Mode=OneWay}" FontSize="12"/>
                             </controls:HandCursorButton>
                         </StackPanel>
                     </controls:SizeAllCursorGrid>
@@ -128,7 +128,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="CompactCardItemTemplate" x:DataType="vmCards:CardViewModel">
-            <Grid Margin="4,0,4,4" Opacity="{x:Bind CardOpacity}" Tag="{x:Bind}" RightTapped="CompactCard_RightTapped" Loaded="CardRoot_Loaded">
+            <Grid Margin="4,0,4,4" Opacity="{x:Bind CardOpacity, Mode=OneWay}" Tag="{x:Bind}" RightTapped="CompactCard_RightTapped" Loaded="CardRoot_Loaded">
                 <Border Background="{StaticResource AppCardBackgroundBrush}"
                         CornerRadius="4"
                         BorderBrush="#cc4444"
