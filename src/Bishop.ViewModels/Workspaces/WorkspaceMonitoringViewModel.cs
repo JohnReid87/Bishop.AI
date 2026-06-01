@@ -68,19 +68,21 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             .GroupBy(r => r.SkillName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.OrderBy(r => r.ProjectName, StringComparer.OrdinalIgnoreCase).ToList(), StringComparer.OrdinalIgnoreCase);
 
-        var rows = new List<SkillRunRowViewModel>();
+        var tasks = new List<Task<SkillRunRowViewModel>>();
         foreach (var skillName in TrackedSkills)
         {
             if (runsBySkill.TryGetValue(skillName, out var skillRuns) && skillRuns.Count > 0)
             {
                 foreach (var run in skillRuns)
-                    rows.Add(await BuildRowAsync(skillName, run));
+                    tasks.Add(BuildRowAsync(skillName, run));
             }
             else
             {
-                rows.Add(await BuildRowAsync(skillName, run: null));
+                tasks.Add(BuildRowAsync(skillName, run: null));
             }
         }
+
+        var rows = await Task.WhenAll(tasks);
 
         Rows.Clear();
         foreach (var row in rows)
