@@ -1,6 +1,5 @@
 using Bishop.ViewModels.Cards;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 
 namespace Bishop.ViewModels.Batches;
@@ -37,7 +36,4 @@ public sealed partial class BatchGroupViewModel : ObservableObject
     public string ProgressDisplay => $"({DoneCount}/{TotalCount})";
 
     public ObservableCollection<CardViewModel> Cards { get; } = [];
-
-    [RelayCommand]
-    private void ToggleExpanded() => IsExpanded = !IsExpanded;
 }

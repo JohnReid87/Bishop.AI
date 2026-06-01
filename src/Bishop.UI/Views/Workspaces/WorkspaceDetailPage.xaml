@@ -168,19 +168,17 @@
                         </Grid.ColumnDefinitions>
                         <Rectangle Grid.Column="0"
                                    Fill="{x:Bind AccentColor, Converter={StaticResource HexColorToBrushConverter}}"/>
-                        <StackPanel Grid.Column="1">
-                            <Button Command="{x:Bind ToggleExpandedCommand}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Stretch"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Padding="0">
-                                <Grid Padding="10,6,4,6"
-                                      BorderBrush="{StaticResource AppDividerBrush}"
-                                      BorderThickness="0,0,0,1">
+                        <Expander Grid.Column="1"
+                                  IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Padding="0">
+                            <Expander.Header>
+                                <Grid HorizontalAlignment="Stretch">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0"
@@ -196,31 +194,15 @@
                                                FontFamily="Cascadia Mono"
                                                VerticalAlignment="Center"
                                                Margin="4,0,4,0"/>
-                                    <FontIcon Grid.Column="2"
-                                              Glyph="&#xE70D;"
-                                              FontSize="10"
-                                              Foreground="{StaticResource AppTextTertiaryBrush}"
-                                              VerticalAlignment="Center"
-                                              Margin="0,0,8,0"
-                                              Visibility="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                    <FontIcon Grid.Column="2"
-                                              Glyph="&#xE76C;"
-                                              FontSize="10"
-                                              Foreground="{StaticResource AppTextTertiaryBrush}"
-                                              VerticalAlignment="Center"
-                                              Margin="0,0,8,0"
-                                              Visibility="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
                                 </Grid>
-                            </Button>
+                            </Expander.Header>
                             <ItemsRepeater ItemsSource="{x:Bind Cards, Mode=OneWay}"
-                                           ItemTemplate="{StaticResource CardItemTemplate}"
-                                           Visibility="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                           ItemTemplate="{StaticResource CardItemTemplate}">
                                 <ItemsRepeater.Layout>
                                     <StackLayout Orientation="Vertical"/>
                                 </ItemsRepeater.Layout>
                             </ItemsRepeater>
-                            <Border Height="4"/>
-                        </StackPanel>
+                        </Expander>
                     </Grid>
                 </Border>
             </Grid>
@@ -327,7 +309,6 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
@@ -878,37 +859,24 @@
                                         <DataTemplate x:DataType="vmBatches:BatchItemViewModel">
                                             <Grid BorderBrush="{StaticResource AppDividerBrush}"
                                                   BorderThickness="0,0,0,1">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                </Grid.RowDefinitions>
-
+                                                <Expander IsExpanded="{x:Bind IsStripExpanded, Mode=TwoWay}"
+                                                          HorizontalAlignment="Stretch"
+                                                          HorizontalContentAlignment="Stretch"
+                                                          Background="Transparent"
+                                                          BorderThickness="0"
+                                                          Padding="0">
+                                                    <Expander.Header>
                                                 <!-- Batch info row -->
-                                                <Grid Grid.Row="0"
-                                                      Padding="16,8,16,8"
-                                                      BorderBrush="{StaticResource AppDividerBrush}"
-                                                      BorderThickness="0,0,0,1">
+                                                <Grid Padding="0,4,0,4"
+                                                      HorizontalAlignment="Stretch">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="28"/>
                                                         <ColumnDefinition Width="180"/>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="70"/>
                                                         <ColumnDefinition Width="60"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <Button Grid.Column="0"
-                                                            Command="{x:Bind ToggleStripCommand}"
-                                                            Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                            Padding="2"
-                                                            MinWidth="0"
-                                                            MinHeight="0"
-                                                            VerticalAlignment="Center"
-                                                            HorizontalAlignment="Center"
-                                                            ToolTipService.ToolTip="Toggle card strip">
-                                                        <FontIcon Glyph="{x:Bind ChevronGlyph, Mode=OneWay}"
-                                                                  FontSize="10"/>
-                                                    </Button>
-                                                    <TextBlock Grid.Column="1"
+                                                    <TextBlock Grid.Column="0"
                                                                x:Name="BatchNameTextBlock"
                                                                Text="{x:Bind Name, Mode=OneWay}"
                                                                FontSize="12"
@@ -916,7 +884,7 @@
                                                                TextTrimming="CharacterEllipsis"
                                                                Visibility="{x:Bind IsNameEditing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                                                Tapped="BatchNameTextBlock_Tapped"/>
-                                                    <TextBox Grid.Column="1"
+                                                    <TextBox Grid.Column="0"
                                                              x:Name="BatchNameTextBox"
                                                              FontSize="12"
                                                              VerticalAlignment="Center"
@@ -924,7 +892,7 @@
                                                              Visibility="{x:Bind IsNameEditing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                                              KeyDown="BatchNameTextBox_KeyDown"
                                                              LostFocus="BatchNameTextBox_LostFocus"/>
-                                                    <StackPanel Grid.Column="2"
+                                                    <StackPanel Grid.Column="1"
                                                                 VerticalAlignment="Center"
                                                                 Spacing="2">
                                                         <TextBlock Text="{x:Bind BranchName}"
@@ -969,16 +937,16 @@
                                                             </StackPanel>
                                                         </StackPanel>
                                                     </StackPanel>
-                                                    <TextBlock Grid.Column="3"
+                                                    <TextBlock Grid.Column="2"
                                                                Text="{x:Bind StatusLabel}"
                                                                FontSize="12"
                                                                VerticalAlignment="Center"/>
-                                                    <TextBlock Grid.Column="4"
+                                                    <TextBlock Grid.Column="3"
                                                                Text="{x:Bind CardCountLabel}"
                                                                FontSize="12"
                                                                VerticalAlignment="Center"
                                                                Foreground="{StaticResource AppTextSecondaryBrush}"/>
-                                                    <StackPanel Grid.Column="5"
+                                                    <StackPanel Grid.Column="4"
                                                                 Orientation="Horizontal"
                                                                 Spacing="6"
                                                                 VerticalAlignment="Center">
@@ -1026,32 +994,32 @@
                                                                 ToolTipService.ToolTip="Delete batch record; cards stay on the board"/>
                                                     </StackPanel>
                                                 </Grid>
+                                                    </Expander.Header>
 
-                                                <!-- Card strip -->
-                                                <Grid Grid.Row="1"
-                                                      Opacity="{x:Bind StripOpacity}"
-                                                      Visibility="{x:Bind IsStripExpanded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                    <TextBlock Text="No cards in this batch."
-                                                               Margin="44,8,16,8"
-                                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                                               Foreground="{StaticResource AppTextTertiaryBrush}"
-                                                               Visibility="{x:Bind IsStripEmpty, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                    <ItemsRepeater ItemsSource="{x:Bind Cards, Mode=OneWay}"
-                                                                   Margin="44,8,8,8"
-                                                                   Visibility="{x:Bind IsStripEmpty, Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                                                        <ItemsRepeater.Layout>
-                                                            <UniformGridLayout MinItemWidth="140"
-                                                                               MinColumnSpacing="0"
-                                                                               MinRowSpacing="0"/>
-                                                        </ItemsRepeater.Layout>
-                                                        <ItemsRepeater.ItemTemplate>
-                                                            <DataTemplate x:DataType="vmCards:CardViewModel">
-                                                                <ContentPresenter Content="{x:Bind}"
-                                                                                  ContentTemplate="{StaticResource CompactCardItemTemplate}"/>
-                                                            </DataTemplate>
-                                                        </ItemsRepeater.ItemTemplate>
-                                                    </ItemsRepeater>
-                                                </Grid>
+                                                    <!-- Card strip -->
+                                                    <Grid Opacity="{x:Bind StripOpacity}">
+                                                        <TextBlock Text="No cards in this batch."
+                                                                   Margin="0,4,16,4"
+                                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                                   Foreground="{StaticResource AppTextTertiaryBrush}"
+                                                                   Visibility="{x:Bind IsStripEmpty, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        <ItemsRepeater ItemsSource="{x:Bind Cards, Mode=OneWay}"
+                                                                       Margin="0,4,8,4"
+                                                                       Visibility="{x:Bind IsStripEmpty, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                                            <ItemsRepeater.Layout>
+                                                                <UniformGridLayout MinItemWidth="140"
+                                                                                   MinColumnSpacing="0"
+                                                                                   MinRowSpacing="0"/>
+                                                            </ItemsRepeater.Layout>
+                                                            <ItemsRepeater.ItemTemplate>
+                                                                <DataTemplate x:DataType="vmCards:CardViewModel">
+                                                                    <ContentPresenter Content="{x:Bind}"
+                                                                                      ContentTemplate="{StaticResource CompactCardItemTemplate}"/>
+                                                                </DataTemplate>
+                                                            </ItemsRepeater.ItemTemplate>
+                                                        </ItemsRepeater>
+                                                    </Grid>
+                                                </Expander>
                                             </Grid>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
@@ -1062,43 +1030,23 @@
                 </TabViewItem>
             </TabView>
 
-            <!-- Notes splitter -->
-            <controls:NotesSplitter Grid.Row="1"
-                                 Height="6"
-                                 Background="{StaticResource AppDividerBrush}"
-                                 Visibility="{x:Bind Notes.IsExpanded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                 PointerPressed="NotesSplitter_PointerPressed"
-                                 PointerMoved="NotesSplitter_PointerMoved"
-                                 PointerReleased="NotesSplitter_PointerReleased"
-                                 PointerCaptureLost="NotesSplitter_PointerCaptureLost"/>
-
             <!-- Notes panel -->
-            <Grid Grid.Row="2"
-                  BorderBrush="{StaticResource AppDividerBrush}"
-                  BorderThickness="0,1,0,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <Button Grid.Row="0"
-                        Command="{x:Bind Notes.ToggleCommand}"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Stretch"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Padding="16,8"
-                        CornerRadius="0"
-                        ToolTipService.ToolTip="Ctrl+S to save">
-                    <Grid>
-                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" VerticalAlignment="Center">
-                            <FontIcon Glyph="{x:Bind Notes.ChevronGlyph, Mode=OneWay}"
-                                      FontSize="12"
-                                      VerticalAlignment="Center"/>
-                            <TextBlock Text="Notes"
-                                       Style="{StaticResource BodyStrongTextBlockStyle}"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
+            <Expander Grid.Row="1"
+                      IsExpanded="{x:Bind Notes.IsExpanded, Mode=TwoWay}"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Stretch"
+                      Background="Transparent"
+                      BorderBrush="{StaticResource AppDividerBrush}"
+                      BorderThickness="0,1,0,0"
+                      CornerRadius="0"
+                      Padding="0"
+                      ToolTipService.ToolTip="Ctrl+S to save">
+                <Expander.Header>
+                    <Grid HorizontalAlignment="Stretch">
+                        <TextBlock Text="Notes"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"/>
                         <TextBlock Text="{x:Bind Notes.SaveStatusText, Mode=OneWay}"
                                    HorizontalAlignment="Right"
                                    VerticalAlignment="Center"
@@ -1114,15 +1062,19 @@
                                    Foreground="Red"
                                    Visibility="{x:Bind Notes.SaveStatusIsError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     </Grid>
-                </Button>
-
-                <StackPanel Grid.Row="1"
-                            Visibility="{x:Bind Notes.IsExpanded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                </Expander.Header>
+                <StackPanel HorizontalAlignment="Stretch">
+                    <controls:NotesSplitter Height="6"
+                                            Background="{StaticResource AppDividerBrush}"
+                                            PointerPressed="NotesSplitter_PointerPressed"
+                                            PointerMoved="NotesSplitter_PointerMoved"
+                                            PointerReleased="NotesSplitter_PointerReleased"
+                                            PointerCaptureLost="NotesSplitter_PointerCaptureLost"/>
                     <InfoBar IsOpen="{x:Bind Notes.IsExternalChangeBarVisible, Mode=OneWay}"
                              IsClosable="False"
                              Severity="Warning"
                              Title="File changed externally"
-                             Margin="16,0,16,8">
+                             Margin="0,8,0,8">
                         <InfoBar.Content>
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,4">
                                 <HyperlinkButton Content="Reload"
@@ -1143,11 +1095,11 @@
                              TextWrapping="Wrap"
                              FontFamily="Cascadia Mono"
                              Height="{x:Bind Notes.PanelHeight, Mode=OneWay}"
-                             Margin="16,0,16,16"
+                             Margin="0,8,0,8"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                              PreviewKeyDown="NotesTextBox_PreviewKeyDown"/>
                 </StackPanel>
-            </Grid>
+            </Expander>
             </Grid>
 
         </Grid>
