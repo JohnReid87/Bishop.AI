@@ -14,7 +14,8 @@
             <Grid Margin="8,0,8,4"
                   Opacity="{x:Bind CardOpacity}"
                   Tag="{x:Bind}"
-                  Loaded="CardRoot_Loaded">
+                  Loaded="CardRoot_Loaded"
+                  RightTapped="Card_RightTapped">
                 <Border Background="{StaticResource AppCardBackgroundBrush}"
                         CornerRadius="4">
                 <StackPanel>
