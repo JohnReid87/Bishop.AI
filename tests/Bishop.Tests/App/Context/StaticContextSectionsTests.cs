@@ -31,4 +31,16 @@ public sealed class StaticContextSectionsTests
 
         result.Should().ContainKey("shell selection");
     }
+
+    [Fact]
+    public void Slice_CalledMultipleTimes_ParsesEmbeddedResourceOnce()
+    {
+        _ = StaticContextSections.Slice(["Shell selection"]);
+        var before = StaticContextSections.ParseInvocationCount;
+
+        _ = StaticContextSections.Slice(["Shell selection"]);
+        _ = StaticContextSections.Slice(["Card Push Procedure"]);
+
+        StaticContextSections.ParseInvocationCount.Should().Be(before);
+    }
 }
