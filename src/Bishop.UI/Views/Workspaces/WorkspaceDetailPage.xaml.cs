@@ -1,3 +1,4 @@
+using Bishop.Core;
 using CommunityToolkit.WinUI.Controls;
 using Bishop.UI.Services;
 using Bishop.UI.Views.Controls;
@@ -463,6 +464,37 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private static BatchItemViewModel? GetBatchFromSender(object sender) =>
         (sender as FrameworkElement)?.DataContext as BatchItemViewModel;
+
+    private void CompactCard_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (GetCardFromSender(sender) is not CardViewModel card) return;
+        if (!card.IsAutoRunFailedIndicatorVisible || card.LaneName != SystemLaneNames.Doing) return;
+        var batch = card.BatchId.HasValue
+            ? Batches.Batches.FirstOrDefault(b => b.Id == card.BatchId.Value)
+            : null;
+        if (batch is null || !batch.CanResume) return;
+
+        var markDoneItem = new MenuFlyoutItem { Text = "Mark Done & resume batch" };
+        markDoneItem.Click += (_, _) => _ = _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            await Batches.MarkCardDoneAndResumeAsync(card.Id, batch.Name, _item.Path, batch.Model, SnapHelper.ComputeSnap());
+            await Task.WhenAll(Board.RefreshCommand.ExecuteAsync(null), Batches.RefreshCommand.ExecuteAsync(null));
+        });
+
+        var removeItem = new MenuFlyoutItem { Text = "Remove from batch & resume" };
+        removeItem.Click += (_, _) => _ = _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            await Batches.RemoveCardAndResumeAsync(batch.Name, card.Id, _item.Path, batch.Model, SnapHelper.ComputeSnap());
+            await Task.WhenAll(Board.RefreshCommand.ExecuteAsync(null), Batches.RefreshCommand.ExecuteAsync(null));
+        });
+
+        var flyout = new MenuFlyout();
+        flyout.Items.Add(markDoneItem);
+        flyout.Items.Add(removeItem);
+        flyout.ShowAt((FrameworkElement)sender);
+    }
 
     private async void BatchRun_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>

@@ -92,6 +92,31 @@ internal sealed class CleanUpBatchCommandHandler : IRequestHandler<CleanUpBatchC
             closedNumbers.Add(card.Number);
         }
 
+        // Delete transcript files written to the main workspace during batch execution
+        var allBatchCardNumbers = await db.Cards
+            .Where(c => c.BatchId == batch.Id)
+            .Select(c => c.Number)
+            .ToListAsync(cancellationToken);
+
+        var runsDir = Path.Combine(request.WorkspacePath, ".bishop", "runs");
+        if (Directory.Exists(runsDir))
+        {
+            foreach (var cardNumber in allBatchCardNumbers)
+            {
+                foreach (var file in Directory.GetFiles(runsDir, $"{cardNumber}-*.jsonl"))
+                {
+                    try
+                    {
+                        File.Delete(file);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to delete transcript file '{File}'.", file);
+                    }
+                }
+            }
+        }
+
         return new CleanUpBatchResult(closedNumbers);
     }
 }

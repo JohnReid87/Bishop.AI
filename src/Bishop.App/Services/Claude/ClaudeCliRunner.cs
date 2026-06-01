@@ -37,6 +37,7 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
         string prompt,
         string model = SkillModelOptions.DefaultModelId,
         int? cardNumber = null,
+        string? transcriptBasePath = null,
         CancellationToken cancellationToken = default)
     {
         string claudePath;
@@ -82,6 +83,15 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
         if (proc is null)
             throw new InvalidOperationException("Failed to start 'claude' process.");
 
+        string? transcriptPath = null;
+        if (cardNumber.HasValue)
+        {
+            var stamp = _timeProvider.GetUtcNow().ToString("yyyyMMddTHHmmss");
+            var runsDir = Path.Combine(transcriptBasePath ?? workspacePath, ".bishop", "runs");
+            Directory.CreateDirectory(runsDir);
+            transcriptPath = Path.Combine(runsDir, $"{cardNumber}-{stamp}Z.jsonl");
+        }
+
         using (proc)
         {
             ClaudeRunTotals? totals = null;
@@ -99,6 +109,8 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
                         if (e.Data is null) return;
                         var formatted = formatter.Format(e.Data);
                         if (formatted is not null) AnsiConsole.WriteLine(formatted);
+                        if (transcriptPath is not null)
+                            WriteTranscriptLine(transcriptPath, e.Data);
                     };
                     proc.ErrorDataReceived += (_, e) =>
                     {
@@ -120,7 +132,7 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
                     toolUseCount = formatter.ToolUseCount;
                 });
 
-            return new ClaudeRunResult(proc.ExitCode, totals, toolUseCount);
+            return new ClaudeRunResult(proc.ExitCode, totals, toolUseCount, transcriptPath);
         }
     }
 
@@ -190,8 +202,9 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
     };
 
     // OutputDataReceived fires on thread-pool threads; serialize appends so concurrent
-    // denials cannot interleave bytes and corrupt the JSONL audit file.
+    // writes cannot interleave bytes and corrupt the JSONL files.
     private readonly object DenialFileGate = new();
+    private readonly object TranscriptFileGate = new();
 
     private void AppendDenial(string workspacePath, int? cardNumber, PermissionDeniedEvent ev)
     {
@@ -212,6 +225,14 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
         lock (DenialFileGate)
         {
             File.AppendAllText(filePath, json + "\n");
+        }
+    }
+
+    internal void WriteTranscriptLine(string filePath, string line)
+    {
+        lock (TranscriptFileGate)
+        {
+            File.AppendAllText(filePath, line + "\n");
         }
     }
 

@@ -121,9 +121,11 @@
         </DataTemplate>
 
         <DataTemplate x:Key="CompactCardItemTemplate" x:DataType="vmCards:CardViewModel">
-            <Grid Margin="4,0,4,4" Opacity="{x:Bind CardOpacity}">
+            <Grid Margin="4,0,4,4" Opacity="{x:Bind CardOpacity}" Tag="{x:Bind}" RightTapped="CompactCard_RightTapped">
                 <Border Background="{StaticResource AppCardBackgroundBrush}"
-                        CornerRadius="4">
+                        CornerRadius="4"
+                        BorderBrush="#cc4444"
+                        BorderThickness="{x:Bind IsAutoRunFailedIndicatorVisible, Converter={StaticResource BoolToThicknessConverter}, ConverterParameter='1.5|0'}">
                     <StackPanel Padding="8,6">
                         <TextBlock Text="{x:Bind Title}"
                                    MaxLines="2"

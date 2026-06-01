@@ -9,5 +9,6 @@ public interface IClaudeCliRunner
         string prompt,
         string model = SkillModelOptions.DefaultModelId,
         int? cardNumber = null,
+        string? transcriptBasePath = null,
         CancellationToken cancellationToken = default);
 }

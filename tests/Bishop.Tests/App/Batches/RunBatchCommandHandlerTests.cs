@@ -196,7 +196,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     private IClaudeCliRunner ClaudeAlwaysSucceeds()
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
@@ -209,7 +209,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     private static IClaudeCliRunner ClaudeReturnsExitCode(int exitCode)
     {
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(exitCode, null, 0));
         return claude;
     }
@@ -533,6 +533,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<int?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -550,6 +551,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
                 Arg.Do<string>(p => capturedPrompt = p),
                 Arg.Any<string>(),
                 Arg.Any<int?>(),
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
@@ -578,6 +580,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             Arg.Any<string>(),
             "claude-sonnet-4-6",
             Arg.Any<int?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -602,6 +605,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             Arg.Any<string>(),
             "claude-opus-4-7",
             Arg.Any<int?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -630,7 +634,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var batch = await CreateBatchAsync(card.Id);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
@@ -658,7 +662,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var batch = await CreateBatchAsync(card.Id);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
@@ -739,6 +743,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
                 Arg.Do<string>(p => capturedPrompt = p),
                 Arg.Any<string>(),
                 Arg.Any<int?>(),
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
@@ -792,7 +797,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         var git = GitAlwaysClean();
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(0, null, 0));
 
         var result = await CreateHandler(git: git, claude: claude)
@@ -814,7 +819,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var batch = await CreateBatchAsync(card.Id);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
@@ -900,7 +905,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         var callCount = 0;
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 if (++callCount == 1)
@@ -1026,7 +1031,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var batch = await CreateBatchAsync(card.Id);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
@@ -1091,7 +1096,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var batch = await CreateBatchAsync(c1.Id, c2.Id);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 // Simulate an external stop request while card 1 is running
@@ -1131,7 +1136,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var lockExistedDuringRun = false;
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 lockExistedDuringRun = File.Exists(lockPath);
@@ -1156,7 +1161,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var lockPath = Path.Combine(_worktreePath, ".bishop", $"batch-{batch.Id}.lock");
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 if (File.Exists(lockPath))
@@ -1254,6 +1259,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             Arg.Any<string>(),
             "claude-sonnet-4-6",
             Arg.Any<int?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -1270,7 +1276,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         string? capturedContent = null;
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 capturedContent = await File.ReadAllTextAsync(lockPath);
@@ -1320,7 +1326,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             .Returns(new GetWorkingTreeStatusResult.Clean());
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new ClaudeRunResult(0, null, 0));
 
         await CreateHandler(git: git, claude: claude)
@@ -1343,7 +1349,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         var callCount = 0;
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var cost = ++callCount == 1 ? 0.10m : 0.20m;
@@ -1389,7 +1395,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var batch = await CreateBatchAsync(card.Id);
 
         var claude = Substitute.For<IClaudeCliRunner>();
-        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
