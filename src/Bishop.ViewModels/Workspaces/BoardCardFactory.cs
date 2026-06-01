@@ -42,15 +42,12 @@ internal static class BoardCardFactory
 
     private static bool ScalarFieldsMatch(CardViewModel vm, Bishop.Core.Card card)
     {
-        return vm.Id == card.Id
-            && vm.Title == card.Title
-            && vm.Description == card.Description
-            && vm.IsClosed == card.IsClosed
-            && vm.GitHubIssueNumber == card.GitHubIssueNumber
-            && vm.GitHubPushedAt == card.GitHubPushedAt
-            && vm.LastAutoRunFailedAt == card.LastAutoRunFailedAt
-            && vm.LastAutoRunSucceededAt == card.LastAutoRunSucceededAt
-            && vm.BatchId == card.BatchId;
+        return (vm.Id, vm.Title, vm.Description, vm.IsClosed) ==
+                   (card.Id, card.Title, card.Description, card.IsClosed)
+               && (vm.GitHubIssueNumber, vm.GitHubPushedAt,
+                   vm.LastAutoRunFailedAt, vm.LastAutoRunSucceededAt, vm.BatchId) ==
+                   (card.GitHubIssueNumber, card.GitHubPushedAt,
+                    card.LastAutoRunFailedAt, card.LastAutoRunSucceededAt, card.BatchId);
     }
 
     private static bool TagMatches(

@@ -25,10 +25,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     public string? GitHubRepo { get; }
 
     public bool CanViewFindings => FindingsCount is > 0;
-
-    public bool CanViewReport =>
-        ReportFilePath is not null
-        && SkillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase);
+    public bool CanViewReport => ReportFilePath is not null;
 
     public string FindingsButtonText => $"View ({FindingsCount ?? 0})";
 
@@ -60,7 +57,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     [RelayCommand]
     private void ViewReport()
     {
-        if (!CanViewReport || ReportFilePath is null) return;
+        if (ReportFilePath is null) return;
         ViewReportRequested?.Invoke(new Uri(ReportFilePath));
     }
 
@@ -83,30 +80,13 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         GitHubRepo = gitHubRepo;
         ReportFilePath = ResolveReportFilePath(skillName, workspacePath);
         FindingsCount = findingsCount;
-        LastRunText = lastRun is null ? "Never" : FormatRelativeTime(lastRun.Value, timeProvider ?? TimeProvider.System);
+        LastRunText = lastRun is null ? "Never" : RelativeTimeFormatter.Format(lastRun.Value, timeProvider ?? TimeProvider.System);
 
-        if (lastRun is null)
-        {
-            CommitsSinceText = "—";
-            StatusDotColor = "#c97a8a";
-            StatusTooltip = "Never audited";
-            SeverityRank = 2;
-        }
-        else if (shaUnreachable)
-        {
-            CommitsSinceText = "Re-audit";
-            StatusDotColor = "#c97a8a";
-            StatusTooltip = "Audit SHA is no longer reachable from HEAD";
-            SeverityRank = 2;
-        }
-        else
-        {
-            var count = commitsSince ?? 0;
-            CommitsSinceText = count.ToString();
-            StatusDotColor = count < 10 ? "#4a9e6a" : count < 50 ? "#c4a85f" : "#c97a8a";
-            StatusTooltip = count < 10 ? "Fresh" : count < 50 ? "Getting stale" : "Stale — re-audit recommended";
-            SeverityRank = count < 10 ? 0 : count < 50 ? 1 : 2;
-        }
+        var status = SkillRunStatus.For(lastRun, commitsSince, shaUnreachable);
+        CommitsSinceText = status.CommitsSince;
+        StatusDotColor = status.DotColor;
+        StatusTooltip = status.Tooltip;
+        SeverityRank = status.SeverityRank;
     }
 
     private static string? ResolveReportFilePath(string skillName, string workspacePath)
@@ -116,15 +96,5 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         if (skillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase))
             return Path.Combine(workspacePath, "TestResults", "coverage-report", "index.html");
         return null;
-    }
-
-    private static string FormatRelativeTime(DateTimeOffset timestamp, TimeProvider timeProvider)
-    {
-        var elapsed = timeProvider.GetUtcNow() - timestamp.ToUniversalTime();
-        if (elapsed.TotalSeconds < 60) return "just now";
-        if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes}m ago";
-        if (elapsed.TotalHours < 24) return $"{(int)elapsed.TotalHours}h ago";
-        if (elapsed.TotalDays < 30) return $"{(int)elapsed.TotalDays}d ago";
-        return $"{(int)(elapsed.TotalDays / 30)}mo ago";
     }
 }

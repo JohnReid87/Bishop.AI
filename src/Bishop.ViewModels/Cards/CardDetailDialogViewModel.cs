@@ -1,7 +1,4 @@
-using System.IO;
-using System.Text.RegularExpressions;
 using Bishop.App.Cards.CloseCard;
-using Bishop.App.Cards.GetCard;
 using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.PushCard;
@@ -9,7 +6,6 @@ using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git;
-using Bishop.App.Git.GetCardCommit;
 using Bishop.App.Services.Claude;
 using Bishop.App.Services.Settings;
 using Bishop.App.Services.Terminal;
@@ -28,10 +24,6 @@ namespace Bishop.ViewModels.Cards;
 
 public sealed partial class CardDetailDialogViewModel : ObservableObject
 {
-    private static readonly Regex CardRefRegex = new(
-        @"(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`]*`)|(\\#\d+)|((?<!\w)#(\d+)\b)",
-        RegexOptions.Compiled);
-
     private readonly ISender _mediator;
     private readonly IAppSettings _appSettings;
     private readonly ILogger<CardDetailDialogViewModel> _logger;
@@ -39,7 +31,8 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     private readonly Guid _workspaceId;
     private readonly string? _workspaceGitHubRepo;
     private readonly string _workspacePath;
-    private HashSet<int>? _validCardNumbers;
+    private readonly CardLinkRenderer _linkRenderer = new();
+    private readonly CardExtrasLoader _extrasLoader;
     private Guid _cardId;
 
     public Guid CardId => _cardId;
@@ -91,8 +84,14 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public partial bool IsClosed { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanPushToGitHub), nameof(IsPushButtonVisible), nameof(IsGitHubLinkVisible), nameof(GitHubIssueUrl))]
+    [NotifyPropertyChangedFor(nameof(IsPushButtonVisible), nameof(IsGitHubLinkVisible))]
     public partial int? GitHubIssueNumber { get; set; }
+
+    [ObservableProperty]
+    public partial string? GitHubIssueUrl { get; private set; }
+
+    [ObservableProperty]
+    public partial bool CanPushToGitHub { get; private set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPushError))]
@@ -117,58 +116,38 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
 
     public string CloseReopenText => IsClosed ? "Reopen" : "Close";
 
-    public bool CanPushToGitHub => GitHubIssueNumber is null && _workspaceGitHubRepo is not null;
-
-    public string? GitHubIssueUrl => GitHubIssueNumber is not null && _workspaceGitHubRepo is not null
-        ? $"https://github.com/{_workspaceGitHubRepo}/issues/{GitHubIssueNumber}"
-        : null;
-
     public bool IsPushButtonVisible => GitHubIssueNumber is null;
     public bool IsGitHubLinkVisible => GitHubIssueNumber is not null;
     public bool HasPushError => !string.IsNullOrEmpty(PushError);
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsCommitVisible), nameof(IsCommitTextVisible))]
-    public partial string? CommitShortHash { get; set; }
+    [NotifyPropertyChangedFor(nameof(IsCommitVisible))]
+    public partial string? CommitShortHash { get; private set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsCommitLinkVisible), nameof(IsCommitTextVisible), nameof(CommitUrl))]
-    public partial string? CommitHash { get; set; }
+    public partial string? CommitUrl { get; private set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsCommitLinkVisible), nameof(IsCommitTextVisible), nameof(CommitUrl))]
-    public partial bool CommitIsPushed { get; set; }
+    public partial bool IsCommitLinkVisible { get; private set; }
 
-    public string? CommitUrl => CommitIsPushed && CommitHash is not null && _workspaceGitHubRepo is not null
-        ? $"https://github.com/{_workspaceGitHubRepo}/commit/{CommitHash}"
-        : null;
+    [ObservableProperty]
+    public partial bool IsCommitTextVisible { get; private set; }
 
     public bool IsCommitVisible => !string.IsNullOrEmpty(CommitShortHash);
-    public bool IsCommitLinkVisible => CommitUrl is not null;
-    public bool IsCommitTextVisible => !string.IsNullOrEmpty(CommitShortHash) && CommitUrl is null;
 
     public void SetCommit(CommitInfo commit)
     {
-        CommitHash = commit.FullHash;
-        CommitIsPushed = commit.IsPushed;
-        CommitShortHash = commit.ShortHash;
+        var state = CardCommitState.From(commit, _workspaceGitHubRepo);
+        CommitShortHash = state.ShortHash;
+        CommitUrl = state.Url;
+        IsCommitLinkVisible = state.IsLinkVisible;
+        IsCommitTextVisible = state.IsTextVisible;
     }
 
     public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
     public bool HasEditError => !string.IsNullOrEmpty(EditError);
 
-    public string LinkableDescription =>
-        _validCardNumbers is null
-            ? Description
-            : CardRefRegex.Replace(Description ?? string.Empty, match =>
-            {
-                if (match.Groups[1].Success || match.Groups[2].Success)
-                    return match.Value;
-                var number = int.Parse(match.Groups[4].Value);
-                return _validCardNumbers.Contains(number)
-                    ? $"[#{number}](bishop://card/{number})"
-                    : $"~~#{number}~~";
-            });
+    public string LinkableDescription => _linkRenderer.Render(Description ?? string.Empty);
 
     [ObservableProperty]
     public partial bool ShowDeleteConfirm { get; set; }
@@ -185,6 +164,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         _workspaceId = workspaceId;
         _workspaceGitHubRepo = gitHubRepo;
         _workspacePath = workspacePath;
+        _extrasLoader = new CardExtrasLoader(mediator, logger, errorBus);
         _cardId = card.Id;
         Number = card.Number;
         LaneName = card.LaneName;
@@ -192,25 +172,24 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         Description = card.Description;
         IsClosed = card.IsClosed;
         GitHubIssueNumber = card.GitHubIssueNumber;
+        OnGitHubIssueNumberChanged(card.GitHubIssueNumber);
         TagName = card.TagName;
         TagColour = card.TagColour;
         CardSkills = cardSkills;
         IsSkillsButtonVisible = cardSkills.Length > 0;
     }
 
+    partial void OnGitHubIssueNumberChanged(int? value)
+    {
+        var state = CardGitHubUrlState.For(value, _workspaceGitHubRepo);
+        GitHubIssueUrl = state.IssueUrl;
+        CanPushToGitHub = state.CanPush;
+    }
+
     public async Task LoadCardNumbersAsync()
     {
-        try
-        {
-            var cards = await _mediator.Send(new ListCardsByWorkspaceQuery(_workspaceId));
-            _validCardNumbers = cards.Select(c => c.Number).ToHashSet();
-            OnPropertyChanged(nameof(LinkableDescription));
-        }
-        catch (Exception ex)
-        {
-            // intentional: description stays unlinked when card-number list unavailable
-            _logger.LogDebug(ex, "Card numbers unavailable; description links disabled for card {CardId}", _cardId);
-        }
+        await _linkRenderer.LoadAsync(_mediator, _workspaceId, _logger, _cardId);
+        OnPropertyChanged(nameof(LinkableDescription));
     }
 
     public void NavigateTo(CardViewModel card, bool canGoBack)
@@ -230,8 +209,9 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         EditError = null;
         PushError = null;
         CommitShortHash = null;
-        CommitHash = null;
-        CommitIsPushed = false;
+        CommitUrl = null;
+        IsCommitLinkVisible = false;
+        IsCommitTextVisible = false;
         ClaudeTotalsText = null;
         LastFailedRunTranscriptPath = null;
         CanGoBack = canGoBack;
@@ -405,32 +385,11 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
 
     public async Task LoadExtrasAsync()
     {
-        try
-        {
-            var card = await _mediator.Send(new GetCardQuery(_cardId));
-            if (card is null) return;
-            SetClaudeTotals(card.TotalInputTokens, card.TotalOutputTokens, card.ClaudeRunCount);
-            LastFailedRunTranscriptPath = card.LastAutoRunFailedAt.HasValue
-                ? FindLatestTranscript(_workspacePath, Number)
-                : null;
-            var commitResult = await _mediator.Send(new GetCardCommitQuery(Number, _workspacePath));
-            if (commitResult is GetCardCommitResult.Found found)
-                SetCommit(found.Commit);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load card extras for card {CardId}", _cardId);
-            _errorBus.Report(ex);
-        }
-    }
-
-    private static string? FindLatestTranscript(string workspacePath, int cardNumber)
-    {
-        var dir = Path.Combine(workspacePath, ".bishop", "runs");
-        if (!Directory.Exists(dir)) return null;
-        return Directory.GetFiles(dir, $"{cardNumber}-*.jsonl")
-            .OrderDescending()
-            .FirstOrDefault();
+        var result = await _extrasLoader.LoadAsync(_cardId, _workspacePath, Number);
+        if (result is null) return;
+        SetClaudeTotals(result.InputTokens, result.OutputTokens, result.RunCount);
+        LastFailedRunTranscriptPath = result.FailedTranscriptPath;
+        if (result.Commit is { } commit) SetCommit(commit);
     }
 
     public async Task<CardViewModel?> GetCardByNumberAsync(int number, bool isSkillsButtonVisible)
@@ -439,9 +398,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         if (card is null) return null;
 
         var tags = await GetWorkspaceTagsAsync();
-        var tagColour = card.TagName is { } tagName
-            ? tags.FirstOrDefault(t => t.Name == tagName)?.Colour
-            : null;
+        var tagColour = tags.FirstOrDefault(t => t.Name == card.TagName)?.Colour;
 
         return new CardViewModel
         {

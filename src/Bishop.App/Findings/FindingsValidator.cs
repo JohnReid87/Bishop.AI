@@ -25,16 +25,23 @@ internal static partial class FindingsValidator
         if (findingsEl.ValueKind != JsonValueKind.Array)
             throw new FindingsValidationException("'findings' must be an array.");
 
-        string? projectName = null;
-        if (root.TryGetProperty("projectName", out var projectEl) && projectEl.ValueKind != JsonValueKind.Null)
-        {
-            if (projectEl.ValueKind != JsonValueKind.String)
-                throw new FindingsValidationException("'projectName' must be a string when present.");
-            var value = projectEl.GetString();
-            if (!string.IsNullOrEmpty(value))
-                projectName = value;
-        }
+        return new FindingsDocument(ParseFindingsList(findingsEl), ParseProjectName(root));
+    }
 
+    private static string? ParseProjectName(JsonElement root)
+    {
+        if (!root.TryGetProperty("projectName", out var projectEl) || projectEl.ValueKind == JsonValueKind.Null)
+            return null;
+
+        if (projectEl.ValueKind != JsonValueKind.String)
+            throw new FindingsValidationException("'projectName' must be a string when present.");
+
+        var value = projectEl.GetString();
+        return string.IsNullOrEmpty(value) ? null : value;
+    }
+
+    private static List<Finding> ParseFindingsList(JsonElement findingsEl)
+    {
         var findings = new List<Finding>(findingsEl.GetArrayLength());
         var index = 0;
         foreach (var item in findingsEl.EnumerateArray())
@@ -42,8 +49,7 @@ internal static partial class FindingsValidator
             findings.Add(ParseFinding(item, index));
             index++;
         }
-
-        return new FindingsDocument(findings, projectName);
+        return findings;
     }
 
     private static JsonDocument ParseDocument(string json)
@@ -67,17 +73,22 @@ internal static partial class FindingsValidator
         var body = RequiredString(el, "body", index);
         var outcome = RequiredString(el, "outcome", index);
 
+        ValidateOutcome(outcome, index);
+
+        return new Finding(
+            title, body, outcome,
+            OptionalString(el, "severity", index),
+            OptionalString(el, "location", index),
+            OptionalString(el, "file", index),
+            OptionalString(el, "rule", index),
+            OptionalString(el, "symbol", index));
+    }
+
+    private static void ValidateOutcome(string outcome, int index)
+    {
         if (outcome is not "dismissed" and not "parked" && !CardedOutcomeRegex().IsMatch(outcome))
             throw new FindingsValidationException(
                 $"findings[{index}].outcome must be 'dismissed', 'parked', or 'carded:#<n>'; got '{outcome}'.");
-
-        var severity = OptionalString(el, "severity", index);
-        var location = OptionalString(el, "location", index);
-        var file = OptionalString(el, "file", index);
-        var rule = OptionalString(el, "rule", index);
-        var symbol = OptionalString(el, "symbol", index);
-
-        return new Finding(title, body, outcome, severity, location, file, rule, symbol);
     }
 
     private static string RequiredString(JsonElement el, string name, int index)

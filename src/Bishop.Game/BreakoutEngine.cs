@@ -39,6 +39,7 @@ public sealed class BreakoutEngine
     private int _lives;
     private GameState _state;
     private readonly Brick[] _bricks;
+    private int _destroyedBrickCount;
 
     public BreakoutEngine()
     {
@@ -63,73 +64,18 @@ public sealed class BreakoutEngine
         _ballX += _ballDx * dt;
         _ballY += _ballDy * dt;
 
-        // Left / right walls
-        if (_ballX - BallRadius < 0f)
-        {
-            _ballX = BallRadius;
-            _ballDx = MathF.Abs(_ballDx);
-        }
-        else if (_ballX + BallRadius > FieldWidth)
-        {
-            _ballX = FieldWidth - BallRadius;
-            _ballDx = -MathF.Abs(_ballDx);
-        }
+        HandleWallCollisions();
 
-        // Top wall
-        if (_ballY - BallRadius < 0f)
-        {
-            _ballY = BallRadius;
-            _ballDy = MathF.Abs(_ballDy);
-        }
-
-        // Ball exits bottom — life lost
         if (_ballY > FieldHeight)
         {
             LoseBall();
             return;
         }
 
-        // Paddle collision (ball moving downward only to prevent sticking)
-        if (_ballDy > 0f &&
-            _ballX + BallRadius > _paddleX &&
-            _ballX - BallRadius < _paddleX + PaddleWidth &&
-            _ballY + BallRadius > PaddleY &&
-            _ballY - BallRadius < PaddleY + PaddleHeight)
-        {
-            // Deflection angle scales with how far from paddle centre the ball hits
-            float offset = (_ballX - (_paddleX + PaddleWidth / 2f)) / (PaddleWidth / 2f);
-            _ballDx = offset * 400f;
-            _ballDy = -MathF.Abs(_ballDy);
-            _ballY = PaddleY - BallRadius;
-        }
+        HandlePaddleCollision();
+        HandleBrickCollisions();
 
-        // Brick collisions — process at most one brick per tick
-        for (int i = 0; i < _bricks.Length; i++)
-        {
-            ref Brick brick = ref _bricks[i];
-            if (brick.IsDestroyed) continue;
-            if (!BallOverlapsBrick(_ballX, _ballY, BallRadius, ref brick)) continue;
-
-            brick.IsDestroyed = true;
-            _score += 10;
-
-            // Reflect on the axis with the smaller overlap (= the face that was hit)
-            float overlapX = MathF.Min(
-                _ballX + BallRadius - brick.X,
-                brick.X + BrickWidth - (_ballX - BallRadius));
-            float overlapY = MathF.Min(
-                _ballY + BallRadius - brick.Y,
-                brick.Y + BrickHeight - (_ballY - BallRadius));
-
-            if (overlapX < overlapY)
-                _ballDx = -_ballDx;
-            else
-                _ballDy = -_ballDy;
-
-            break;
-        }
-
-        if (_bricks.All(b => b.IsDestroyed))
+        if (_destroyedBrickCount == _bricks.Length)
             _state = GameState.LevelComplete;
     }
 
@@ -164,6 +110,7 @@ public sealed class BreakoutEngine
         _paddleX = (FieldWidth - PaddleWidth) / 2f;
         _score = 0;
         _lives = 3;
+        _destroyedBrickCount = 0;
         _state = GameState.WaitingToLaunch;
         ResetBall();
         for (int i = 0; i < _bricks.Length; i++)
@@ -187,12 +134,81 @@ public sealed class BreakoutEngine
     {
         for (int i = 0; i < _bricks.Length; i++)
             _bricks[i].IsDestroyed = true;
+        _destroyedBrickCount = _bricks.Length;
     }
 
     internal float BallDxForTest => _ballDx;
     internal float BallDyForTest => _ballDy;
 
     // ── Private helpers ────────────────────────────────────────────────────────
+
+    private void HandleWallCollisions()
+    {
+        if (_ballX - BallRadius < 0f)
+        {
+            _ballX = BallRadius;
+            _ballDx = MathF.Abs(_ballDx);
+        }
+        else if (_ballX + BallRadius > FieldWidth)
+        {
+            _ballX = FieldWidth - BallRadius;
+            _ballDx = -MathF.Abs(_ballDx);
+        }
+
+        if (_ballY - BallRadius < 0f)
+        {
+            _ballY = BallRadius;
+            _ballDy = MathF.Abs(_ballDy);
+        }
+    }
+
+    private void HandlePaddleCollision()
+    {
+        if (!BallTouchesPaddle()) return;
+
+        float offset = (_ballX - (_paddleX + PaddleWidth / 2f)) / (PaddleWidth / 2f);
+        _ballDx = offset * 400f;
+        _ballDy = -MathF.Abs(_ballDy);
+        _ballY = PaddleY - BallRadius;
+    }
+
+    private bool BallTouchesPaddle() =>
+        _ballDy > 0f &&
+        _ballX + BallRadius > _paddleX &&
+        _ballX - BallRadius < _paddleX + PaddleWidth &&
+        _ballY + BallRadius > PaddleY &&
+        _ballY - BallRadius < PaddleY + PaddleHeight;
+
+    private void HandleBrickCollisions()
+    {
+        for (int i = 0; i < _bricks.Length; i++)
+        {
+            ref Brick brick = ref _bricks[i];
+            if (brick.IsDestroyed) continue;
+            if (!BallOverlapsBrick(_ballX, _ballY, BallRadius, ref brick)) continue;
+
+            brick.IsDestroyed = true;
+            _score += 10;
+            _destroyedBrickCount++;
+            ReflectBallOffBrick(brick.X, brick.Y);
+            break;
+        }
+    }
+
+    private void ReflectBallOffBrick(float brickX, float brickY)
+    {
+        float overlapX = MathF.Min(
+            _ballX + BallRadius - brickX,
+            brickX + BrickWidth - (_ballX - BallRadius));
+        float overlapY = MathF.Min(
+            _ballY + BallRadius - brickY,
+            brickY + BrickHeight - (_ballY - BallRadius));
+
+        if (overlapX < overlapY)
+            _ballDx = -_ballDx;
+        else
+            _ballDy = -_ballDy;
+    }
 
     private void ResetBall()
     {

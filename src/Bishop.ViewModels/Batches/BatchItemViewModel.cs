@@ -55,11 +55,13 @@ public sealed partial class BatchItemViewModel : ObservableObject
     public string BranchExistsColor => BranchExists ? ActiveColor : InactiveColor;
     public string WorktreeExistsColor => WorktreeExists ? ActiveColor : InactiveColor;
 
-    public bool CanRun => Status == BatchStatus.Open;
-    public bool CanPause => Status == BatchStatus.Working && FinishedAt is null && StoppedAt is null;
-    public bool CanResume => Status == BatchStatus.Working && FinishedAt is null && StoppedAt is not null;
-    public bool CanMerge => Status == BatchStatus.Working && FinishedAt is not null && !IsMerged;
-    public bool CanCleanUp => IsMerged && (BranchExists || WorktreeExists);
-    public bool CanAbandon => Status != BatchStatus.Closed && !IsMerged;
-    public bool CanRemove => Status == BatchStatus.Closed;
+    private BatchItemActions Actions => BatchItemActions.For(Status, FinishedAt, StoppedAt, IsMerged, BranchExists, WorktreeExists);
+
+    public bool CanRun => Actions.CanRun;
+    public bool CanPause => Actions.CanPause;
+    public bool CanResume => Actions.CanResume;
+    public bool CanMerge => Actions.CanMerge;
+    public bool CanCleanUp => Actions.CanCleanUp;
+    public bool CanAbandon => Actions.CanAbandon;
+    public bool CanRemove => Actions.CanRemove;
 }
