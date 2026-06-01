@@ -16,8 +16,13 @@ public sealed partial class FindingsViewModel : ObservableObject
     private string _workspacePath = string.Empty;
     private string? _gitHubRepo;
 
-    public string SkillName { get; private set; } = string.Empty;
-    public string? ProjectName { get; private set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Header))]
+    private string _skillName = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Header))]
+    private string? _projectName;
 
     public string Header => string.IsNullOrEmpty(ProjectName)
         ? $"{SkillName} — findings"
@@ -53,9 +58,6 @@ public sealed partial class FindingsViewModel : ObservableObject
         _gitHubRepo = gitHubRepo;
         SkillName = skillName;
         ProjectName = projectName;
-        OnPropertyChanged(nameof(SkillName));
-        OnPropertyChanged(nameof(ProjectName));
-        OnPropertyChanged(nameof(Header));
 
         var records = await _mediator.Send(
             new GetFindingsBySkillAndProjectQuery(workspaceId, skillName, projectName),
