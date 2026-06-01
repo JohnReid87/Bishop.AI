@@ -24,7 +24,10 @@ public sealed class DeadCodeContextProviderTests
         {
             "Shell selection",
             "Card model",
-            "Findings Recording Procedure"
+            "Findings Recording Procedure",
+            "Card Push Procedure",
+            "Task List Preview Format",
+            "Per-finding Walk Pattern",
         });
     }
 
