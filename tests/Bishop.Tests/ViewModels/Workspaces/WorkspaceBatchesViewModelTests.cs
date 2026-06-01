@@ -1,5 +1,7 @@
 using Bishop.App.Batches.LaunchBatchTerminal;
 using Bishop.App.Batches.ListBatches;
+using Bishop.App.Batches.RemoveCardFromBatch;
+using Bishop.App.Cards.MoveCard;
 using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using Bishop.ViewModels.Batches;
@@ -439,6 +441,46 @@ public class WorkspaceBatchesViewModelTests
                 c.WorkspacePath == @"C:\repo"
                 && c.BatchName == "my-batch"
                 && c.Model == "claude-opus-4-7"
+                && c.Resume == true),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task MarkCardDoneAndResumeAsync_SendsMoveCardToDone_ThenResumesLaunch()
+    {
+        var (vm, mediator) = MakeVm();
+        var cardId = Guid.NewGuid();
+        var snap = new Bishop.App.Services.Terminal.TerminalSnap();
+
+        await vm.MarkCardDoneAndResumeAsync(cardId, "my-batch", @"C:\repo", "claude-sonnet-4-6", snap);
+
+        await mediator.Received(1).Send(
+            Arg.Is<MoveCardCommand>(c => c.CardId == cardId && c.ToLaneName == SystemLaneNames.Done),
+            Arg.Any<CancellationToken>());
+        await mediator.Received(1).Send(
+            Arg.Is<LaunchBatchTerminalCommand>(c =>
+                c.BatchName == "my-batch"
+                && c.WorkspacePath == @"C:\repo"
+                && c.Resume == true),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RemoveCardAndResumeAsync_SendsRemoveCardFromBatch_ThenResumesLaunch()
+    {
+        var (vm, mediator) = MakeVm();
+        var cardId = Guid.NewGuid();
+        var snap = new Bishop.App.Services.Terminal.TerminalSnap();
+
+        await vm.RemoveCardAndResumeAsync("my-batch", cardId, @"C:\repo", "claude-sonnet-4-6", snap);
+
+        await mediator.Received(1).Send(
+            Arg.Is<RemoveCardFromBatchCommand>(c => c.BatchName == "my-batch" && c.CardId == cardId),
+            Arg.Any<CancellationToken>());
+        await mediator.Received(1).Send(
+            Arg.Is<LaunchBatchTerminalCommand>(c =>
+                c.BatchName == "my-batch"
+                && c.WorkspacePath == @"C:\repo"
                 && c.Resume == true),
             Arg.Any<CancellationToken>());
     }

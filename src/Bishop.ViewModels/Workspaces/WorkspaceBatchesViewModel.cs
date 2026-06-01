@@ -5,8 +5,10 @@ using Bishop.App.Batches.LaunchBatchTerminal;
 using Bishop.App.Batches.ListBatches;
 using Bishop.App.Batches.MergeBatch;
 using Bishop.App.Batches.RemoveBatch;
+using Bishop.App.Batches.RemoveCardFromBatch;
 using Bishop.App.Batches.RenameBatch;
 using Bishop.App.Batches.RequestStopBatch;
+using Bishop.App.Cards.MoveCard;
 using Bishop.App.Services.Terminal;
 using Bishop.App.Skills;
 using Bishop.App.Tags.ListTags;
@@ -178,4 +180,16 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
 
     public async Task ResumeBatch(string workspacePath, string batchName, string model, TerminalSnap snap)
         => await _mediator.Send(new LaunchBatchTerminalCommand(workspacePath, batchName, model, Resume: true, snap));
+
+    public async Task MarkCardDoneAndResumeAsync(Guid cardId, string batchName, string workspacePath, string model, TerminalSnap snap)
+    {
+        await _mediator.Send(new MoveCardCommand(cardId, SystemLaneNames.Done, 1));
+        await _mediator.Send(new LaunchBatchTerminalCommand(workspacePath, batchName, model, Resume: true, snap));
+    }
+
+    public async Task RemoveCardAndResumeAsync(string batchName, Guid cardId, string workspacePath, string model, TerminalSnap snap)
+    {
+        await _mediator.Send(new RemoveCardFromBatchCommand(batchName, cardId));
+        await _mediator.Send(new LaunchBatchTerminalCommand(workspacePath, batchName, model, Resume: true, snap));
+    }
 }
