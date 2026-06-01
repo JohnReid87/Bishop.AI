@@ -22,7 +22,7 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 
     public async Task SeedAsync(string workspacePath, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(workspacePath) || !Directory.Exists(workspacePath))
+        if (!Directory.Exists(workspacePath))
             return;
 
         var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(workspacePath));
@@ -148,16 +148,7 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 
         var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var lines = existing.Split('\n').ToList();
-        var h1Index = -1;
-        for (var i = 0; i < lines.Count; i++)
-        {
-            var trimmed = lines[i].TrimEnd('\r');
-            if (trimmed.StartsWith("# ", StringComparison.Ordinal))
-            {
-                h1Index = i;
-                break;
-            }
-        }
+        var h1Index = lines.FindIndex(l => l.TrimEnd('\r').StartsWith("# ", StringComparison.Ordinal));
 
         var pointerBlock = new[] { "", PointerLine, "" };
         if (h1Index >= 0)
