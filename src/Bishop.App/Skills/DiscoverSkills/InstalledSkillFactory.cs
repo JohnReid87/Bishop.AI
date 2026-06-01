@@ -5,6 +5,18 @@ namespace Bishop.App.Skills.DiscoverSkills;
 
 internal static class InstalledSkillFactory
 {
+    private static readonly IReadOnlyDictionary<string, SkillCategory> _categoryMap =
+        new Dictionary<string, SkillCategory>
+        {
+            ["code"]    = Code,
+            ["tests"]   = Tests,
+            ["review"]  = Review,
+            ["discuss"] = Discuss,
+            ["execute"] = Execute,
+            ["setup"]   = Setup,
+            ["meta"]    = Meta,
+        };
+
     public static InstalledSkill? TryCreate(SkillMdDocument doc, string sourcePath)
     {
         var fm = doc.Frontmatter;
@@ -49,33 +61,19 @@ internal static class InstalledSkillFactory
             .ToList();
     }
 
-    private static SkillCategory ParseCategory(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-            return Other;
-
-        return raw.Trim().ToLowerInvariant() switch
-        {
-            "code"      => Code,
-            "tests"     => Tests,
-            "review"    => Review,
-            "discuss"   => Discuss,
-            "execute"   => Execute,
-            "setup"     => Setup,
-            "meta"      => Meta,
-            _           => Other,
-        };
-    }
+    private static SkillCategory ParseCategory(string? raw) =>
+        !string.IsNullOrWhiteSpace(raw) && _categoryMap.TryGetValue(raw.Trim().ToLowerInvariant(), out var cat)
+            ? cat
+            : Other;
 
     private static string? ParseStagePrefill(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
             return null;
 
-        var value = raw;
-        if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
-            value = value[1..^1].Replace("\\n", "\n");
+        if (raw.Length >= 2 && raw[0] == '"' && raw[^1] == '"')
+            return raw[1..^1].Replace("\\n", "\n");
 
-        return value;
+        return raw;
     }
 }
