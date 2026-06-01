@@ -1,3 +1,4 @@
+using Bishop.App;
 using Bishop.App.Scripts.GetScripts;
 using FluentAssertions;
 
@@ -125,9 +126,7 @@ public sealed class GetScriptsQueryHandlerTests : IDisposable
     [Fact]
     public async Task ParameterlessConstructor_UsesExpectedAppDataPath()
     {
-        var expectedFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Bishop.AI", "scripts");
+        var expectedFolder = BishopScriptsFolderPath.Resolve();
 
         var sut = new GetScriptsQueryHandler();
 

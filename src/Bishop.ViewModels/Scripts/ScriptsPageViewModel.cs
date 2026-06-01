@@ -1,3 +1,4 @@
+using Bishop.App;
 using Bishop.App.Scripts.GetScripts;
 using Bishop.App.Scripts.LaunchScript;
 using Bishop.App.Skills.LaunchSkill;
@@ -51,7 +52,5 @@ public sealed partial class ScriptsPageViewModel : ObservableObject
         await _mediator.Send(new LaunchSkillCommand(ScriptsFolder, "/bish-scripts"));
     }
 
-    private static string ScriptsFolder => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Bishop.AI", "scripts");
+    private static string ScriptsFolder => BishopScriptsFolderPath.Resolve();
 }
