@@ -11,6 +11,9 @@ internal sealed class DeadCodeContextProvider : IContextProvider
     {
         "Shell selection",
         "Card model",
+        "Card Push Procedure",
+        "Task List Preview Format",
+        "Per-finding Walk Pattern",
         "Findings Recording Procedure"
     };
 

@@ -229,11 +229,11 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     }
 
     [Theory]
-    [InlineData("coverage", new[] { "Shell selection", "Card model", "Findings Recording Procedure" })]
-    [InlineData("arch", new[] { "Shell selection", "Card model", "Findings Recording Procedure" })]
-    [InlineData("security", new[] { "Shell selection", "Card model", "Findings Recording Procedure" })]
-    [InlineData("tests", new[] { "Shell selection", "Card model", "Findings Recording Procedure" })]
-    [InlineData("dead-code", new[] { "Shell selection", "Card model", "Findings Recording Procedure" })]
+    [InlineData("coverage", new[] { "Shell selection", "Card model", "Card Push Procedure", "Task List Preview Format", "Per-finding Walk Pattern", "Findings Recording Procedure" })]
+    [InlineData("arch", new[] { "Shell selection", "Card model", "Card Push Procedure", "Task List Preview Format", "Per-finding Walk Pattern", "Findings Recording Procedure" })]
+    [InlineData("security", new[] { "Shell selection", "Card model", "Card Push Procedure", "Task List Preview Format", "Per-finding Walk Pattern", "Findings Recording Procedure" })]
+    [InlineData("tests", new[] { "Shell selection", "Card model", "Card Push Procedure", "Task List Preview Format", "Per-finding Walk Pattern", "Findings Recording Procedure" })]
+    [InlineData("dead-code", new[] { "Shell selection", "Card model", "Card Push Procedure", "Task List Preview Format", "Per-finding Walk Pattern", "Findings Recording Procedure" })]
     [InlineData("audit-docs", new[] { "Shell selection", "Findings Recording Procedure" })]
     [InlineData("grill-cards", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure", "Source Card Closing Prompt" })]
     [InlineData("spec-cards", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure", "Source Card Closing Prompt" })]

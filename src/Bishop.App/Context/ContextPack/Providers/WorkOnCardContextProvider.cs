@@ -13,7 +13,8 @@ internal sealed class WorkOnCardContextProvider : IContextProvider
     {
         "Shell selection",
         "Commit-reference convention",
-        "Card model"
+        "Card model",
+        "Card Push Procedure"
     };
 
     public async Task<object?> BuildSkillSpecificAsync(
