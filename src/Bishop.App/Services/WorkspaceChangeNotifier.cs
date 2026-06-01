@@ -1,6 +1,6 @@
 namespace Bishop.App.Services;
 
-internal sealed class WorkspaceChangeNotifier : IWorkspaceChangeNotifier
+public class WorkspaceChangeNotifier
 {
     public event Action? WorkspacesChanged;
     public void NotifyChanged() => WorkspacesChanged?.Invoke();

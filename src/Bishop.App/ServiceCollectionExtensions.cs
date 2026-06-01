@@ -40,7 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IWorkspaceContextSeeder, WorkspaceContextSeeder>();
         services.AddSingleton<ICatModeService, CatModeService>();
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<IWorkspaceChangeNotifier, WorkspaceChangeNotifier>();
+        services.AddSingleton<WorkspaceChangeNotifier>();
         services.AddSingleton<IContextProvider, WorkOnCardContextProvider>();
         services.AddSingleton<IContextProvider, AutoCardContextProvider>();
         services.AddSingleton<IContextProvider, CoverageContextProvider>();

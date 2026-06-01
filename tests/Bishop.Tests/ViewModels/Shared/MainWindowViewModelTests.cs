@@ -455,13 +455,12 @@ public class MainWindowViewModelTests
     [Fact]
     public async Task AddWorkspaceAsync_RaisesWorkspacesChangedNotifier()
     {
-        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
             .Returns(new InitWorkspaceResult(
                 new Workspace { Id = Guid.NewGuid(), Name = "New", Path = @"C:\new", Position = 1 },
                 Created: true, GitHubLinked: false));
-        var vm = NewVm(mediator: mediator, notifier: notifier);
+        var vm = NewVm(mediator: mediator);
         var dialog = new AddWorkspaceDialogViewModel { Name = "New", FolderPath = @"C:\new" };
 
         await vm.AddWorkspaceAsync(dialog);
@@ -605,10 +604,10 @@ public class MainWindowViewModelTests
             {
                 new() { Id = id, Name = "alpha", Path = "C:/a", Position = 1 }
             });
-        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
+        var notifier = new WorkspaceChangeNotifier();
         var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: new SynchronousDispatcher());
 
-        notifier.WorkspacesChanged += Raise.Event<Action>();
+        notifier.NotifyChanged();
 
         vm.Workspaces.Should().HaveCount(1);
         vm.Workspaces[0].Id.Should().Be(id);
@@ -624,13 +623,13 @@ public class MainWindowViewModelTests
             .Returns(
                 new List<Workspace> { new() { Id = originalId, Name = "original", Path = "C:/o", Position = 1 } },
                 new List<Workspace> { new() { Id = newId, Name = "replacement", Path = "C:/n", Position = 1 } });
-        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
+        var notifier = new WorkspaceChangeNotifier();
         var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: new SynchronousDispatcher());
 
         await vm.LoadAsync();
         vm.SelectedWorkspace = vm.Workspaces[0];
 
-        notifier.WorkspacesChanged += Raise.Event<Action>();
+        notifier.NotifyChanged();
 
         vm.SelectedWorkspace.Should().NotBeNull();
         vm.SelectedWorkspace!.Id.Should().Be(newId);
@@ -645,10 +644,10 @@ public class MainWindowViewModelTests
             {
                 new() { Id = Guid.NewGuid(), Name = "alpha", Path = "C:/a", Position = 1 }
             });
-        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
+        var notifier = new WorkspaceChangeNotifier();
         var vm = NewVm(mediator: mediator, notifier: notifier, dispatcher: new SynchronousDispatcher());
 
-        notifier.WorkspacesChanged += Raise.Event<Action>();
+        notifier.NotifyChanged();
 
         vm.SelectedWorkspace.Should().BeNull();
     }
@@ -795,7 +794,7 @@ public class MainWindowViewModelTests
     private static MainWindowViewModel NewVm(
         IMediator? mediator = null,
         ICatModeService? catMode = null,
-        IWorkspaceChangeNotifier? notifier = null,
+        WorkspaceChangeNotifier? notifier = null,
         IUiDispatcher? dispatcher = null,
         IErrorBus? errorBus = null,
         ISafeAsyncRunner? safeAsync = null,
@@ -803,7 +802,7 @@ public class MainWindowViewModelTests
         new(
             mediator ?? Substitute.For<IMediator>(),
             catMode ?? new CatModeService(),
-            notifier ?? Substitute.For<IWorkspaceChangeNotifier>(),
+            notifier ?? new WorkspaceChangeNotifier(),
             dispatcher ?? Substitute.For<IUiDispatcher>(),
             errorBus ?? Substitute.For<IErrorBus>(),
             safeAsync ?? Substitute.For<ISafeAsyncRunner>(),

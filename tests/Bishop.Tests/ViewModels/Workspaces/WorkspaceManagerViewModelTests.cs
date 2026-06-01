@@ -31,7 +31,7 @@ public class WorkspaceManagerViewModelTests
                 new() { Id = Guid.NewGuid(), Name = "removed-ws", Path = @"C:\removed", IsRemoved = true, RemovedAt = DateTimeOffset.UtcNow },
             });
 
-        var vm = new WorkspaceManagerViewModel(mediator, Substitute.For<IWorkspaceChangeNotifier>());
+        var vm = new WorkspaceManagerViewModel(mediator, new WorkspaceChangeNotifier());
         await vm.LoadAsync();
 
         vm.Workspaces.Should().HaveCount(2);
@@ -46,7 +46,7 @@ public class WorkspaceManagerViewModelTests
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Workspace>());
 
-        var vm = new WorkspaceManagerViewModel(mediator, Substitute.For<IWorkspaceChangeNotifier>());
+        var vm = new WorkspaceManagerViewModel(mediator, new WorkspaceChangeNotifier());
         await vm.LoadAsync();
 
         await mediator.Received(1).Send(
@@ -62,7 +62,7 @@ public class WorkspaceManagerViewModelTests
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Workspace>());
 
-        var vm = new WorkspaceManagerViewModel(mediator, Substitute.For<IWorkspaceChangeNotifier>());
+        var vm = new WorkspaceManagerViewModel(mediator, new WorkspaceChangeNotifier());
         await vm.RemoveAsync(id);
 
         await mediator.Received(1).Send(
@@ -81,7 +81,7 @@ public class WorkspaceManagerViewModelTests
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Workspace>());
 
-        var vm = new WorkspaceManagerViewModel(mediator, Substitute.For<IWorkspaceChangeNotifier>());
+        var vm = new WorkspaceManagerViewModel(mediator, new WorkspaceChangeNotifier());
         await vm.PurgeAsync(id);
 
         await mediator.Received(1).Send(
@@ -99,12 +99,14 @@ public class WorkspaceManagerViewModelTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Workspace>());
-        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
+        var notifier = new WorkspaceChangeNotifier();
+        var fired = false;
+        notifier.WorkspacesChanged += () => fired = true;
 
         var vm = new WorkspaceManagerViewModel(mediator, notifier);
         await vm.RemoveAsync(id);
 
-        notifier.Received(1).NotifyChanged();
+        fired.Should().BeTrue();
     }
 
     [Fact]
@@ -114,12 +116,14 @@ public class WorkspaceManagerViewModelTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Workspace>());
-        var notifier = Substitute.For<IWorkspaceChangeNotifier>();
+        var notifier = new WorkspaceChangeNotifier();
+        var fired = false;
+        notifier.WorkspacesChanged += () => fired = true;
 
         var vm = new WorkspaceManagerViewModel(mediator, notifier);
         await vm.PurgeAsync(id);
 
-        notifier.Received(1).NotifyChanged();
+        fired.Should().BeTrue();
     }
 
     [Fact]
