@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace Bishop.App.Git;
 
-public sealed class GitCli : IGitCli
+internal sealed class GitCli : IGitCli
 {
     public async Task<GetRecentCommitsResult> GetRecentCommitsAsync(
         string workspacePath, CancellationToken cancellationToken = default)

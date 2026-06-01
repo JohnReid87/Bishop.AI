@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class GrillDocsContextProvider : IContextProvider
+internal sealed class GrillDocsContextProvider : IContextProvider
 {
     public string SkillName => "grill-docs";
 

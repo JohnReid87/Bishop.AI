@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.AddCard;
 
-public sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card>
+internal sealed class AddCardCommandHandler : IRequestHandler<AddCardCommand, Card>
 {
     private const int MaxNumberMintRetries = 5;
 

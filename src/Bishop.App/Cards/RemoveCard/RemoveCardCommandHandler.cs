@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.RemoveCard;
 
-public sealed class RemoveCardCommandHandler : IRequestHandler<RemoveCardCommand>
+internal sealed class RemoveCardCommandHandler : IRequestHandler<RemoveCardCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

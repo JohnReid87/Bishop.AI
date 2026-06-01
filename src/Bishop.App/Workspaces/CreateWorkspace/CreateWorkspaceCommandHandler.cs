@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace Bishop.App.Workspaces.CreateWorkspace;
 
-public sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorkspaceCommand, Workspace>
+internal sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorkspaceCommand, Workspace>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

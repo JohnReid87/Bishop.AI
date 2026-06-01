@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Findings.GetPriorFindings;
 
-public sealed class GetPriorFindingsQueryHandler
+internal sealed class GetPriorFindingsQueryHandler
     : IRequestHandler<GetPriorFindingsQuery, IReadOnlyList<PriorFindingRecord>>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;

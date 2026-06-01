@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Findings.LinkFindingToCard;
 
-public sealed class LinkFindingToCardCommandHandler : IRequestHandler<LinkFindingToCardCommand>
+internal sealed class LinkFindingToCardCommandHandler : IRequestHandler<LinkFindingToCardCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

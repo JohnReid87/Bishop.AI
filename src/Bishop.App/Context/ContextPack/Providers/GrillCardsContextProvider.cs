@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class GrillCardsContextProvider : IContextProvider
+internal sealed class GrillCardsContextProvider : IContextProvider
 {
     public string SkillName => "grill-cards";
 

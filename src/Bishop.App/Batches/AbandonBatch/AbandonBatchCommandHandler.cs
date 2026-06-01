@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.AbandonBatch;
 
-public sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCommand, AbandonBatchResult>
+internal sealed class AbandonBatchCommandHandler : IRequestHandler<AbandonBatchCommand, AbandonBatchResult>
 {
     private readonly IGitCli _git;
     private readonly ISender _sender;

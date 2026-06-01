@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Skills.GetSkillBootstrapInfo;
 
-public sealed class GetSkillBootstrapInfoQueryHandler : IRequestHandler<GetSkillBootstrapInfoQuery, SkillBootstrapInfo>
+internal sealed class GetSkillBootstrapInfoQueryHandler : IRequestHandler<GetSkillBootstrapInfoQuery, SkillBootstrapInfo>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly ISender _mediator;

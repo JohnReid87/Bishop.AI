@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Findings.GetFindingsBySkillAndProject;
 
-public sealed class GetFindingsBySkillAndProjectQueryHandler
+internal sealed class GetFindingsBySkillAndProjectQueryHandler
     : IRequestHandler<GetFindingsBySkillAndProjectQuery, IReadOnlyList<FindingRecord>>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;

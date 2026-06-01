@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Batches.DeleteBatchBranch;
 
-public sealed class DeleteBatchBranchCommandHandler
+internal sealed class DeleteBatchBranchCommandHandler
     : IRequestHandler<DeleteBatchBranchCommand, DeleteBatchBranchResult>
 {
     private readonly IGitCli _git;

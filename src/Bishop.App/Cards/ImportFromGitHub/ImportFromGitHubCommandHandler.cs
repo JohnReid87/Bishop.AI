@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.ImportFromGitHub;
 
-public sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromGitHubCommand, ImportFromGitHubResult>
+internal sealed class ImportFromGitHubCommandHandler : IRequestHandler<ImportFromGitHubCommand, ImportFromGitHubResult>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGhCli _ghCli;

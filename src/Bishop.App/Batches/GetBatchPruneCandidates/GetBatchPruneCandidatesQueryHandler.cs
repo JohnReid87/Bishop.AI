@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.GetBatchPruneCandidates;
 
-public sealed class GetBatchPruneCandidatesQueryHandler
+internal sealed class GetBatchPruneCandidatesQueryHandler
     : IRequestHandler<GetBatchPruneCandidatesQuery, IReadOnlyList<PruneBatchCandidate>>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;

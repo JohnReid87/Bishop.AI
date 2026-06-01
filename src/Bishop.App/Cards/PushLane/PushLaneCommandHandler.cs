@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.PushLane;
 
-public sealed class PushLaneCommandHandler : IRequestHandler<PushLaneCommand, PushLaneResult>
+internal sealed class PushLaneCommandHandler : IRequestHandler<PushLaneCommand, PushLaneResult>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly ISender _sender;

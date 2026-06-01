@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Bishop.App.Cards.MoveCard;
 
-public sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Card>
+internal sealed class MoveCardCommandHandler : IRequestHandler<MoveCardCommand, Card>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGhCli _ghCli;

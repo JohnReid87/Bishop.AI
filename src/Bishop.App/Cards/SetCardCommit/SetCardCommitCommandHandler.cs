@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.SetCardCommit;
 
-public sealed class SetCardCommitCommandHandler : IRequestHandler<SetCardCommitCommand, Card>
+internal sealed class SetCardCommitCommandHandler : IRequestHandler<SetCardCommitCommand, Card>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

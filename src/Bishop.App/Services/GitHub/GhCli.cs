@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace Bishop.App.Services.GitHub;
 
-public sealed class GhCli : IGhCli
+internal sealed class GhCli : IGhCli
 {
     public async Task RunAsync(string[] args, CancellationToken cancellationToken = default)
     {

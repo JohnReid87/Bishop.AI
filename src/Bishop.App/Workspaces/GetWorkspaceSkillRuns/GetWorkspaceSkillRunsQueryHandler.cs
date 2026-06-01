@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 
-public sealed class GetWorkspaceSkillRunsQueryHandler : IRequestHandler<GetWorkspaceSkillRunsQuery, IReadOnlyList<WorkspaceSkillRun>>
+internal sealed class GetWorkspaceSkillRunsQueryHandler : IRequestHandler<GetWorkspaceSkillRunsQuery, IReadOnlyList<WorkspaceSkillRun>>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

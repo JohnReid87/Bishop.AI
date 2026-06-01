@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.GetBatch;
 
-public sealed class GetBatchQueryHandler : IRequestHandler<GetBatchQuery, GetBatchResult>
+internal sealed class GetBatchQueryHandler : IRequestHandler<GetBatchQuery, GetBatchResult>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

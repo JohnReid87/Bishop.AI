@@ -7,7 +7,7 @@ using Spectre.Console;
 
 namespace Bishop.App.Services.Claude;
 
-public sealed class ClaudeCliRunner : IClaudeCliRunner
+internal sealed class ClaudeCliRunner : IClaudeCliRunner
 {
     private const string InstallUrl = "https://docs.claude.com/en/docs/claude-code/setup";
 

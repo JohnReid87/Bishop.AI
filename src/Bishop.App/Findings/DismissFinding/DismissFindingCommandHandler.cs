@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Findings.DismissFinding;
 
-public sealed class DismissFindingCommandHandler : IRequestHandler<DismissFindingCommand>
+internal sealed class DismissFindingCommandHandler : IRequestHandler<DismissFindingCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

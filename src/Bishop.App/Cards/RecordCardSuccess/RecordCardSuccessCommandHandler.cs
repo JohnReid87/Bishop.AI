@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.RecordCardSuccess;
 
-public sealed class RecordCardSuccessCommandHandler : IRequestHandler<RecordCardSuccessCommand>
+internal sealed class RecordCardSuccessCommandHandler : IRequestHandler<RecordCardSuccessCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

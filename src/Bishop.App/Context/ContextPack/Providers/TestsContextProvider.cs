@@ -4,7 +4,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class TestsContextProvider : IContextProvider
+internal sealed class TestsContextProvider : IContextProvider
 {
     public string SkillName => "tests";
 

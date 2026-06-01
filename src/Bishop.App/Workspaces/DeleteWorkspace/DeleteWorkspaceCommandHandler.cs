@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.DeleteWorkspace;
 
-public sealed class DeleteWorkspaceCommandHandler : IRequestHandler<DeleteWorkspaceCommand>
+internal sealed class DeleteWorkspaceCommandHandler : IRequestHandler<DeleteWorkspaceCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

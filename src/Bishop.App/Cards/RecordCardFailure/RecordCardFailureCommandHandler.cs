@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.RecordCardFailure;
 
-public sealed class RecordCardFailureCommandHandler : IRequestHandler<RecordCardFailureCommand>
+internal sealed class RecordCardFailureCommandHandler : IRequestHandler<RecordCardFailureCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly TimeProvider _timeProvider;

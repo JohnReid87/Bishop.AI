@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Context.ContextPack.Providers;
 
-public sealed class AuditDocsContextProvider : IContextProvider
+internal sealed class AuditDocsContextProvider : IContextProvider
 {
     public string SkillName => "audit-docs";
 

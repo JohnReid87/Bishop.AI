@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Batches.ListBatches;
 
-public sealed class ListBatchesQueryHandler : IRequestHandler<ListBatchesQuery, IReadOnlyList<BatchSummary>>
+internal sealed class ListBatchesQueryHandler : IRequestHandler<ListBatchesQuery, IReadOnlyList<BatchSummary>>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGitCli _git;

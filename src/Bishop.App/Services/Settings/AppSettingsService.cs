@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Services.Settings;
 
-public sealed class AppSettingsService(IDbContextFactory<BishopDbContext> dbFactory) : IAppSettings
+internal sealed class AppSettingsService(IDbContextFactory<BishopDbContext> dbFactory) : IAppSettings
 {
     public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
     {

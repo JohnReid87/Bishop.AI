@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.ReorderWorkspaces;
 
-public sealed class ReorderWorkspacesCommandHandler : IRequestHandler<ReorderWorkspacesCommand>
+internal sealed class ReorderWorkspacesCommandHandler : IRequestHandler<ReorderWorkspacesCommand>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
 

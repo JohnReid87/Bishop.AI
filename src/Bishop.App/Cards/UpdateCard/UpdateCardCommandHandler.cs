@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.UpdateCard;
 
-public sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand, Card>
+internal sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardCommand, Card>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly ISender _sender;

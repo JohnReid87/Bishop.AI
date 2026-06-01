@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Git.GetCardCommit;
 
-public sealed class GetCardCommitQueryHandler : IRequestHandler<GetCardCommitQuery, GetCardCommitResult>
+internal sealed class GetCardCommitQueryHandler : IRequestHandler<GetCardCommitQuery, GetCardCommitResult>
 {
     private readonly IGitCli _git;
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;

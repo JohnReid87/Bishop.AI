@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Git.Push;
 
-public sealed class PushCommandHandler : IRequestHandler<PushCommand, PushResult>
+internal sealed class PushCommandHandler : IRequestHandler<PushCommand, PushResult>
 {
     private readonly IGitCli _git;
 

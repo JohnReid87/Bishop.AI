@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bishop.App.Git.GetRecentCommits;
 
-public sealed class GetRecentCommitsQueryHandler : IRequestHandler<GetRecentCommitsQuery, GetRecentCommitsResult>
+internal sealed class GetRecentCommitsQueryHandler : IRequestHandler<GetRecentCommitsQuery, GetRecentCommitsResult>
 {
     private readonly IGitCli _git;
 

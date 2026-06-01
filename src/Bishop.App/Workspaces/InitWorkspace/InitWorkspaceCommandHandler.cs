@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Workspaces.InitWorkspace;
 
-public sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceCommand, InitWorkspaceResult>
+internal sealed class InitWorkspaceCommandHandler : IRequestHandler<InitWorkspaceCommand, InitWorkspaceResult>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGitCli _git;

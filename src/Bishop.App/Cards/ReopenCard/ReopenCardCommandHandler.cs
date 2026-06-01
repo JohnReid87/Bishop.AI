@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bishop.App.Cards.ReopenCard;
 
-public sealed class ReopenCardCommandHandler : IRequestHandler<ReopenCardCommand, Card>
+internal sealed class ReopenCardCommandHandler : IRequestHandler<ReopenCardCommand, Card>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGhCli _ghCli;
