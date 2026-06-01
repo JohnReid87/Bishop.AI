@@ -26,8 +26,8 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
             return;
 
         var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(workspacePath));
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var workspace = await ResolveWorkspaceAsync(db, fullPath, cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var workspace = await ResolveWorkspaceAsync(db, fullPath, cancellationToken).ConfigureAwait(false);
         if (workspace is null) return;
 
         var bishopDir = Path.Combine(fullPath, BishopFolder);
@@ -35,19 +35,23 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         Directory.CreateDirectory(bishopDir);
 
         var bishopFile = Path.Combine(bishopDir, BishopContextFileName);
-        File.WriteAllText(bishopFile, BuildBishopContext(workspace));
+        await File.WriteAllTextAsync(bishopFile, BuildBishopContext(workspace), cancellationToken).ConfigureAwait(false);
 
         var contextFile = Path.Combine(fullPath, ContextFileName);
-        var existing = File.Exists(contextFile) ? File.ReadAllText(contextFile) : null;
+        var existing = File.Exists(contextFile)
+            ? await File.ReadAllTextAsync(contextFile, cancellationToken).ConfigureAwait(false)
+            : null;
         var merged = EnsureContextMd(existing, workspace);
         if (!string.Equals(existing, merged, StringComparison.Ordinal))
-            File.WriteAllText(contextFile, merged);
+            await File.WriteAllTextAsync(contextFile, merged, cancellationToken).ConfigureAwait(false);
 
         var claudeFile = Path.Combine(fullPath, ClaudeMdFileName);
-        var existingClaude = File.Exists(claudeFile) ? File.ReadAllText(claudeFile) : null;
+        var existingClaude = File.Exists(claudeFile)
+            ? await File.ReadAllTextAsync(claudeFile, cancellationToken).ConfigureAwait(false)
+            : null;
         var mergedClaude = EnsureClaudeMd(existingClaude, workspace);
         if (!string.Equals(existingClaude, mergedClaude, StringComparison.Ordinal))
-            File.WriteAllText(claudeFile, mergedClaude);
+            await File.WriteAllTextAsync(claudeFile, mergedClaude, cancellationToken).ConfigureAwait(false);
     }
 
     internal static void MigrateLegacyFiles(string fullPath, string bishopDir)
@@ -71,12 +75,12 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
 
     private static async Task<Workspace?> ResolveWorkspaceAsync(BishopDbContext db, string fullPath, CancellationToken cancellationToken)
     {
-        var workspaces = await db.Workspaces
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        var normalizedPathLower = fullPath.ToLowerInvariant();
 
-        return workspaces.FirstOrDefault(w =>
-            string.Equals(Path.GetFullPath(w.Path), fullPath, StringComparison.OrdinalIgnoreCase));
+        return await db.Workspaces
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Path.ToLower() == normalizedPathLower, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     internal static string BuildBishopContext(Workspace workspace)
