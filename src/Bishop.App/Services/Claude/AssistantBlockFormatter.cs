@@ -13,15 +13,28 @@ internal static class AssistantBlockFormatter
 
         AccumulateAssistantUsage(message, state);
 
+        var lines = CollectLines(content, state);
+        return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
+    }
+
+    private static List<string> CollectLines(JsonElement content, StreamJsonFormatter state)
+    {
         var lines = new List<string>();
         foreach (var block in content.EnumerateArray())
         {
-            if (block.ValueKind != JsonValueKind.Object) continue;
-            if (!block.TryGetProperty("type", out var t) || t.ValueKind != JsonValueKind.String) continue;
-            HandleBlock(block, t.GetString(), state, lines);
+            if (!TryGetBlockType(block, out var blockType)) continue;
+            HandleBlock(block, blockType, state, lines);
         }
+        return lines;
+    }
 
-        return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
+    private static bool TryGetBlockType(JsonElement block, out string? blockType)
+    {
+        blockType = null;
+        if (block.ValueKind != JsonValueKind.Object) return false;
+        if (!block.TryGetProperty("type", out var t) || t.ValueKind != JsonValueKind.String) return false;
+        blockType = t.GetString();
+        return true;
     }
 
     private static void HandleBlock(JsonElement block, string? blockType, StreamJsonFormatter state, List<string> lines)
