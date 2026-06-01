@@ -244,32 +244,7 @@ public sealed partial class WorkspaceDetailPage : Page
             if (_item is null || Board.WorkspaceSkills.Length == 0) return;
 
             var items = await Board.BuildWorkspaceSkillLaunchItemsAsync();
-            var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-            var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
-
-            foreach (var item in items)
-            {
-                if (item.GroupHeader is not null)
-                    panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
-
-                var captured = item;
-                panel.Children.Add(SkillRowFactory.MakeRow(captured.Name, captured.SavedModelId,
-                    onLaunch: async chosenModel =>
-                    {
-                        await Board.SetSkillModelAsync(captured.Name, chosenModel);
-                        flyout.Hide();
-                        await LaunchSkillAsync(captured, chosenModel);
-                    },
-                    onView: () =>
-                    {
-                        flyout.Hide();
-                        App.MarkdownViewer!.ShowContent(captured.Name, captured.MarkdownBody);
-                        return Task.CompletedTask;
-                    }));
-            }
-
-            flyout.Content = panel;
-            flyout.ShowAt((FrameworkElement)sender);
+            ShowSkillFlyout((FrameworkElement)sender, items);
         });
 
     private async void CommitsButton_Click(object sender, RoutedEventArgs e)
@@ -365,33 +340,38 @@ public sealed partial class WorkspaceDetailPage : Page
             if (GetCardFromSender(sender) is not CardViewModel card) return;
 
             var items = await Board.BuildCardSkillLaunchItemsAsync(card);
-            var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-            var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
-
-            foreach (var item in items)
-            {
-                if (item.GroupHeader is not null)
-                    panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
-
-                var captured = item;
-                panel.Children.Add(SkillRowFactory.MakeRow(captured.Name, captured.SavedModelId,
-                    onLaunch: async chosenModel =>
-                    {
-                        await Board.SetSkillModelAsync(captured.Name, chosenModel);
-                        flyout.Hide();
-                        await LaunchSkillAsync(captured, chosenModel);
-                    },
-                    onView: () =>
-                    {
-                        flyout.Hide();
-                        App.MarkdownViewer!.ShowContent(captured.Name, captured.MarkdownBody);
-                        return Task.CompletedTask;
-                    }));
-            }
-
-            flyout.Content = panel;
-            flyout.ShowAt((FrameworkElement)sender);
+            ShowSkillFlyout((FrameworkElement)sender, items);
         });
+
+    private void ShowSkillFlyout(FrameworkElement anchor, IReadOnlyList<SkillLaunchItem> items)
+    {
+        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
+        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
+
+        foreach (var item in items)
+        {
+            if (item.GroupHeader is not null)
+                panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
+
+            var captured = item;
+            panel.Children.Add(SkillRowFactory.MakeRow(captured.Name, captured.SavedModelId,
+                onLaunch: async chosenModel =>
+                {
+                    await Board.SetSkillModelAsync(captured.Name, chosenModel);
+                    flyout.Hide();
+                    await LaunchSkillAsync(captured, chosenModel);
+                },
+                onView: () =>
+                {
+                    flyout.Hide();
+                    App.MarkdownViewer!.ShowContent(captured.Name, captured.MarkdownBody);
+                    return Task.CompletedTask;
+                }));
+        }
+
+        flyout.Content = panel;
+        flyout.ShowAt(anchor);
+    }
 
     private async void CardCloseButton_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>
