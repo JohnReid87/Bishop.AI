@@ -30,6 +30,9 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
 
         var document = FindingsValidator.Parse(request.FindingsJson);
         var recordedAt = _timeProvider.GetUtcNow();
+        var runProjectName = CoreEntities.PerProjectSkills.IsPerProject(request.SkillName)
+            ? document.ProjectName
+            : null;
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
@@ -40,7 +43,7 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
             .FirstOrDefaultAsync(
                 r => r.WorkspaceId == request.WorkspaceId
                   && r.SkillName == request.SkillName
-                  && r.ProjectName == document.ProjectName,
+                  && r.ProjectName == runProjectName,
                 cancellationToken);
 
         if (run is null)
@@ -50,7 +53,7 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
                 Id = Guid.NewGuid(),
                 WorkspaceId = request.WorkspaceId,
                 SkillName = request.SkillName,
-                ProjectName = document.ProjectName,
+                ProjectName = runProjectName,
                 GitSha = request.GitSha,
                 RecordedAt = recordedAt,
                 FindingsCount = document.Findings.Count,
@@ -174,7 +177,7 @@ public sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFinding
             Id = Guid.NewGuid(),
             WorkspaceId = request.WorkspaceId,
             SkillName = request.SkillName,
-            ProjectName = legacyDoc.ProjectName,
+            ProjectName = CoreEntities.PerProjectSkills.IsPerProject(request.SkillName) ? legacyDoc.ProjectName : null,
             GitSha = request.GitSha,
             RecordedAt = recordedAt,
             FindingsCount = legacyDoc.Findings.Count,

@@ -24,9 +24,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     public string WorkspacePath { get; }
     public string? GitHubRepo { get; }
 
-    public bool CanViewFindings =>
-        FindingsCount is > 0
-        && !SkillName.Equals("bish-coverage", StringComparison.OrdinalIgnoreCase);
+    public bool CanViewFindings => FindingsCount is > 0;
 
     public bool CanViewReport =>
         ReportFilePath is not null

@@ -29,6 +29,7 @@ public static class ServiceCollectionExtensions
         services.AddHostedService(sp => new DatabaseInitializer(
             sp.GetRequiredService<IDbContextFactory<BishopDbContext>>(),
             dbConnectionString));
+        services.AddHostedService<WorkspaceSkillRunCleanup>();
         services.AddSingleton<IGitCli, GitCli>();
         services.AddSingleton<IGhCli, GhCli>();
         services.AddSingleton<IClaudeCliRunner, ClaudeCliRunner>();

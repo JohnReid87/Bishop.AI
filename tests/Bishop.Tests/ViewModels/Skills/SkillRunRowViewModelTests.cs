@@ -208,11 +208,11 @@ public class SkillRunRowViewModelTests
     }
 
     [Fact]
-    public void CanViewFindings_BishCoverage_IsFalse()
+    public void CanViewFindings_BishCoverageWithPositiveCount_IsTrue()
     {
         var row = new SkillRunRowViewModel("bish-coverage", DateTimeOffset.UtcNow, 0, false, findingsCount: 3);
 
-        row.CanViewFindings.Should().BeFalse();
+        row.CanViewFindings.Should().BeTrue();
     }
 
     [Fact]

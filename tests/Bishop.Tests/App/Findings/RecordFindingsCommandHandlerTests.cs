@@ -450,6 +450,35 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
+    public async Task Handle_NonAllowlistedSkill_CollapsesProjectNameToNull()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string jsonProjectA = """
+            {
+              "projectName": "Bishop.App",
+              "findings": [ { "title": "A finding", "body": "x", "outcome": "dismissed" } ]
+            }
+            """;
+        const string jsonProjectB = """
+            {
+              "projectName": "Bishop.UI",
+              "findings": [ { "title": "B finding", "body": "y", "outcome": "dismissed" } ]
+            }
+            """;
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-coverage", jsonProjectA, "sha"), default);
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-coverage", jsonProjectB, "sha"), default);
+
+        var runs = await _db.WorkspaceSkillRuns.AsNoTracking()
+            .Where(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-coverage")
+            .ToListAsync();
+        runs.Should().HaveCount(1);
+        runs[0].ProjectName.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_StructuredInputs_IdentityHashStableAcrossReruns()
     {
         var ws = await CreateWorkspaceAsync();
