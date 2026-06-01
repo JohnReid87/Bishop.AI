@@ -1,6 +1,6 @@
 namespace Bishop.ViewModels.Skills;
 
-public static class SkillTagMap
+internal static class SkillTagMap
 {
     private static readonly IReadOnlyDictionary<string, string> Map =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
