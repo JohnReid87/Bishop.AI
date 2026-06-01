@@ -69,75 +69,20 @@ public sealed partial class LaneViewModel : ObservableObject
         var wanted = string.IsNullOrEmpty(_currentFilter)
             ? Cards.ToList()
             : Cards.Where(c => c.MatchesSearch(_currentFilter)).ToList();
-
-        for (var i = 0; i < wanted.Count; i++)
-        {
-            if (i < FilteredCards.Count)
-            {
-                if (!ReferenceEquals(FilteredCards[i], wanted[i]))
-                    FilteredCards[i] = wanted[i];
-            }
-            else
-                FilteredCards.Add(wanted[i]);
-        }
-        while (FilteredCards.Count > wanted.Count)
-            FilteredCards.RemoveAt(FilteredCards.Count - 1);
+        LaneItemsBuilder.ReconcileItems(FilteredCards, wanted);
     }
 
     public void RebuildLaneItems(IReadOnlyDictionary<Guid, BatchStats> batchStats)
     {
         var existingGroups = LaneItems.OfType<BatchGroupViewModel>().ToDictionary(g => g.BatchId);
-        var activeGroups = new Dictionary<Guid, BatchGroupViewModel>();
-        var groupCards = new Dictionary<Guid, List<CardViewModel>>();
-        var target = new List<object>(FilteredCards.Count);
-
-        foreach (var card in FilteredCards)
-        {
-            if (card.BatchId is { } batchId)
-            {
-                if (!activeGroups.TryGetValue(batchId, out var group))
-                {
-                    if (!existingGroups.TryGetValue(batchId, out group))
-                        group = new BatchGroupViewModel { BatchId = batchId };
-
-                    if (batchStats.TryGetValue(batchId, out var s))
-                        (group.BatchName, group.TotalCount, group.DoneCount, group.AccentIndex) = (s.Name, s.TotalCount, s.DoneCount, s.AccentIndex);
-                    else
-                        group.BatchName = card.BatchName ?? string.Empty;
-
-                    activeGroups[batchId] = group;
-                    groupCards[batchId] = [];
-                    target.Add(group);
-                }
-                groupCards[batchId].Add(card);
-            }
-            else
-                target.Add(card);
-        }
+        var (activeGroups, groupCards, target) = LaneItemsBuilder.Build(FilteredCards, batchStats, existingGroups);
 
         // In-place update avoids the Reset notification that Clear() emits, which can cause
         // ItemsRepeater to snapshot an empty collection before Add() notifications arrive.
         foreach (var (batchId, group) in activeGroups)
-        {
-            var wanted = groupCards[batchId];
-            for (var i = 0; i < wanted.Count; i++)
-            {
-                if (i < group.Cards.Count)
-                { if (!ReferenceEquals(group.Cards[i], wanted[i])) group.Cards[i] = wanted[i]; }
-                else group.Cards.Add(wanted[i]);
-            }
-            while (group.Cards.Count > wanted.Count)
-                group.Cards.RemoveAt(group.Cards.Count - 1);
-        }
+            LaneItemsBuilder.ReconcileItems(group.Cards, groupCards[batchId]);
 
-        for (var i = 0; i < target.Count; i++)
-        {
-            if (i < LaneItems.Count)
-            { if (!ReferenceEquals(LaneItems[i], target[i])) LaneItems[i] = target[i]; }
-            else LaneItems.Add(target[i]);
-        }
-        while (LaneItems.Count > target.Count)
-            LaneItems.RemoveAt(LaneItems.Count - 1);
+        LaneItemsBuilder.ReconcileItems(LaneItems, target);
     }
 
     private void OnCardsChanged(object? sender, NotifyCollectionChangedEventArgs e)
