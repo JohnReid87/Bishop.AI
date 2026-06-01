@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace Bishop.App.Findings;
 
-public static partial class FindingsValidator
+internal static partial class FindingsValidator
 {
     [GeneratedRegex(@"^carded:#\d+$", RegexOptions.CultureInvariant)]
     private static partial Regex CardedOutcomeRegex();

@@ -7,9 +7,7 @@ internal sealed class GetScriptsQueryHandler : IRequestHandler<GetScriptsQuery, 
     private readonly string _scriptsFolder;
 
     public GetScriptsQueryHandler()
-        : this(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Bishop.AI", "scripts"))
+        : this(BishopScriptsFolderPath.Resolve())
     { }
 
     internal GetScriptsQueryHandler(string scriptsFolder) => _scriptsFolder = scriptsFolder;

@@ -36,13 +36,7 @@ public sealed partial class BatchStagingTrayViewModel : ObservableObject
 
     public BatchStagingTrayViewModel()
     {
-        Cards.CollectionChanged += (_, _) =>
-        {
-            OnPropertyChanged(nameof(IsVisible));
-            OnPropertyChanged(nameof(Count));
-            OnPropertyChanged(nameof(CreateLabel));
-            OnPropertyChanged(nameof(CanCreate));
-        };
+        Cards.CollectionChanged += (_, _) => NotifyBatchStagingDerivedProperties();
     }
 
     partial void OnNameChanged(string value)
@@ -54,7 +48,7 @@ public sealed partial class BatchStagingTrayViewModel : ObservableObject
             Branch = slug.Length > 0 ? $"bishop/{slug}" : string.Empty;
             _suppressBranchEditedFlag = false;
         }
-        OnPropertyChanged(nameof(CanCreate));
+        NotifyBatchStagingDerivedProperties();
     }
 
     partial void OnBranchChanged(string value)
@@ -73,6 +67,15 @@ public sealed partial class BatchStagingTrayViewModel : ObservableObject
         Model = SkillModelOptions.DefaultModelId;
         BaseBranch = string.Empty;
         _branchManuallyEdited = false;
+        NotifyBatchStagingDerivedProperties();
+    }
+
+    private void NotifyBatchStagingDerivedProperties()
+    {
+        OnPropertyChanged(nameof(IsVisible));
+        OnPropertyChanged(nameof(Count));
+        OnPropertyChanged(nameof(CreateLabel));
+        OnPropertyChanged(nameof(CanCreate));
     }
 
     public static string Slugify(string name) =>

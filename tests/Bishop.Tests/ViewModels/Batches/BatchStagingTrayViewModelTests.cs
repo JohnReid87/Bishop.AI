@@ -152,6 +152,38 @@ public class BatchStagingTrayViewModelTests
         changes.Should().Contain(nameof(BatchStagingTrayViewModel.CreateLabel));
     }
 
+    [Fact]
+    public void AllDerivedProperties_PropertyChangedFires_WhenNameChanges()
+    {
+        var vm = new BatchStagingTrayViewModel();
+        vm.Cards.Add(new CardViewModel { Title = "Alpha" });
+        var changes = new List<string?>();
+        vm.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+
+        vm.Name = "New Name";
+
+        changes.Should().Contain(nameof(BatchStagingTrayViewModel.IsVisible));
+        changes.Should().Contain(nameof(BatchStagingTrayViewModel.Count));
+        changes.Should().Contain(nameof(BatchStagingTrayViewModel.CreateLabel));
+        changes.Should().Contain(nameof(BatchStagingTrayViewModel.CanCreate));
+    }
+
+    [Fact]
+    public void AllDerivedProperties_PropertyChangedFires_OnReset()
+    {
+        var vm = new BatchStagingTrayViewModel { Name = "n" };
+        vm.Cards.Add(new CardViewModel { Title = "Alpha" });
+        var changes = new List<string?>();
+        vm.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+
+        vm.Reset();
+
+        changes.Should().Contain(nameof(BatchStagingTrayViewModel.IsVisible));
+        changes.Should().Contain(nameof(BatchStagingTrayViewModel.Count));
+        changes.Should().Contain(nameof(BatchStagingTrayViewModel.CreateLabel));
+        changes.Should().Contain(nameof(BatchStagingTrayViewModel.CanCreate));
+    }
+
     [Theory]
     [InlineData("Plain", "bishop/plain")]
     [InlineData("With Spaces", "bishop/with-spaces")]

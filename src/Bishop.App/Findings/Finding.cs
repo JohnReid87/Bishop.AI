@@ -1,6 +1,6 @@
 namespace Bishop.App.Findings;
 
-public sealed record Finding(
+internal sealed record Finding(
     string Title,
     string Body,
     string Outcome,

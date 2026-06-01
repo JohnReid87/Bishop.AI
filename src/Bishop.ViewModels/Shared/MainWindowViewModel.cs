@@ -1,9 +1,10 @@
 using Bishop.App.Batches.ReconcileOrphanedBatches;
 using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
-using Bishop.App.Workspaces.DeleteWorkspace;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
+using Bishop.App.Workspaces.PurgeWorkspace;
+using Bishop.App.Workspaces.RemoveWorkspace;
 using Bishop.App.Workspaces.ReorderWorkspaces;
 using Bishop.App.Workspaces.UpdateWorkspace;
 using Bishop.ViewModels.Errors;
@@ -145,7 +146,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     public async Task DeleteWorkspaceAsync(WorkspaceItemViewModel item)
     {
-        await _mediator.Send(new DeleteWorkspaceCommand(item.Id));
+        await _mediator.Send(new RemoveWorkspaceCommand(item.Id));
+        await _mediator.Send(new PurgeWorkspaceCommand(item.Id));
         Workspaces.Remove(item);
         if (SelectedWorkspace == item)
             SelectedWorkspace = null;

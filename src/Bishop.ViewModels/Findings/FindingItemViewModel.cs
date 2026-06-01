@@ -99,8 +99,6 @@ public sealed partial class FindingItemViewModel : ObservableObject
     public bool IsConvertToCardVisible =>
         LinkedCardId is null && Status != "dismissed" && Status != "resolved";
 
-    public bool IsConvertToCardEnabled => IsConvertToCardVisible;
-
     public bool IsDismissEnabled =>
         Status != "dismissed" && Status != "resolved" && LinkedCardId is null;
 
@@ -108,7 +106,7 @@ public sealed partial class FindingItemViewModel : ObservableObject
     private async Task ConvertToCardAsync(object? xamlRoot)
     {
         if (xamlRoot is null) return;
-        if (!IsConvertToCardEnabled) return;
+        if (!IsConvertToCardVisible) return;
 
         var tag = SkillTagMap.GetTag(_skillName);
         var description = BuildDescription();
@@ -192,7 +190,6 @@ public sealed partial class FindingItemViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(StatusLabel));
         OnPropertyChanged(nameof(IsConvertToCardVisible));
-        OnPropertyChanged(nameof(IsConvertToCardEnabled));
         OnPropertyChanged(nameof(IsDismissEnabled));
         OnPropertyChanged(nameof(IsResolved));
         OnPropertyChanged(nameof(IsDismissed));
