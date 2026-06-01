@@ -380,29 +380,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
             await Board.ToggleCardClosedAsync(card.Id, card.IsClosed);
 
-            var lane = Board.Lanes.FirstOrDefault(l => string.Equals(l.Name, card.LaneName, StringComparison.OrdinalIgnoreCase));
-            if (lane is null) return;
-            var idx = lane.Cards.IndexOf(card);
-            if (idx < 0) return;
-            lane.Cards[idx] = new CardViewModel
-            {
-                Id = card.Id,
-                Number = card.Number,
-                Title = card.Title,
-                Description = card.Description,
-                LaneName = card.LaneName,
-                TagName = card.TagName,
-                TagColour = card.TagColour,
-                IsClosed = !card.IsClosed,
-                GitHubIssueNumber = card.GitHubIssueNumber,
-                GitHubPushedAt = card.GitHubPushedAt,
-                LastAutoRunFailedAt = card.LastAutoRunFailedAt,
-                LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
-                IsSkillsButtonVisible = Board.IsCardSkillsButtonVisible,
-                BatchId = card.BatchId,
-                BatchName = card.BatchName,
-                BatchCreatedAt = card.BatchCreatedAt,
-            };
+            card.IsClosed = !card.IsClosed;
             Board.RefreshLaneItems();
         });
 

@@ -12,7 +12,11 @@ public sealed partial class CardViewModel : ObservableObject
     public string LaneName { get; init; } = string.Empty;
     public string? TagName { get; init; }
     public string? TagColour { get; init; }
-    public bool IsClosed { get; init; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CardOpacity))]
+    [NotifyPropertyChangedFor(nameof(CloseReopenGlyph))]
+    [NotifyPropertyChangedFor(nameof(CloseReopenTooltip))]
+    private bool _isClosed;
     public int? GitHubIssueNumber { get; init; }
     public Guid? BatchId { get; init; }
     public string? BatchName { get; init; }

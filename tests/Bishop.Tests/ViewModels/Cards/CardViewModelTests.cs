@@ -359,4 +359,70 @@ public class CardViewModelTests
 
         vm.AutoRunSucceededTooltip.Should().BeEmpty();
     }
+
+    [Fact]
+    public void IsClosed_DefaultsFalse()
+    {
+        var vm = new CardViewModel();
+
+        vm.IsClosed.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsClosed_CanBeSetToTrue()
+    {
+        var vm = new CardViewModel();
+
+        vm.IsClosed = true;
+
+        vm.IsClosed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsClosed_RaisesPropertyChangedNotification()
+    {
+        var vm = new CardViewModel();
+        var changed = new List<string?>();
+        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.IsClosed = true;
+
+        changed.Should().Contain(nameof(CardViewModel.IsClosed));
+    }
+
+    [Fact]
+    public void IsClosed_RaisesPropertyChangedForCardOpacity()
+    {
+        var vm = new CardViewModel();
+        var changed = new List<string?>();
+        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.IsClosed = true;
+
+        changed.Should().Contain(nameof(CardViewModel.CardOpacity));
+    }
+
+    [Fact]
+    public void IsClosed_RaisesPropertyChangedForCloseReopenGlyph()
+    {
+        var vm = new CardViewModel();
+        var changed = new List<string?>();
+        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.IsClosed = true;
+
+        changed.Should().Contain(nameof(CardViewModel.CloseReopenGlyph));
+    }
+
+    [Fact]
+    public void IsClosed_RaisesPropertyChangedForCloseReopenTooltip()
+    {
+        var vm = new CardViewModel();
+        var changed = new List<string?>();
+        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.IsClosed = true;
+
+        changed.Should().Contain(nameof(CardViewModel.CloseReopenTooltip));
+    }
 }
