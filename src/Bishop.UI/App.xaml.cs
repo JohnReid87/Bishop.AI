@@ -60,7 +60,15 @@ public partial class App : Application
                     sp.GetRequiredService<ILogger<DbChangeWatcher>>(),
                     sp.GetRequiredService<ISafeAsyncRunner>()));
                 services.AddSingleton<IUiDispatcher>(_ => new WinUiDispatcher(dispatcherQueue));
-                services.AddSingleton<IErrorBus, ErrorBus>();
+                services.AddSingleton<IErrorBus>(sp => new ErrorBus(
+                    sp.GetRequiredService<IUiDispatcher>(),
+                    sp.GetRequiredService<TimeProvider>(),
+                    ex =>
+                    {
+                        var root = MainWindow?.Content?.XamlRoot;
+                        if (root is not null)
+                            _ = ErrorDialog.ShowAsync(root, ex);
+                    }));
                 services.AddSingleton<ISafeAsyncRunner>(sp => new SafeAsyncRunner(
                     sp.GetRequiredService<ILogger<SafeAsyncRunner>>(),
                     onException: ex =>
@@ -88,14 +96,6 @@ public partial class App : Application
         _host.Start();
         Services = _host.Services;
         _timeProvider = Services.GetRequiredService<TimeProvider>();
-
-        var errorBus = Services.GetRequiredService<IErrorBus>();
-        errorBus.ShowDetailsHandler = ex =>
-        {
-            var root = MainWindow?.Content?.XamlRoot;
-            if (root is not null)
-                _ = ErrorDialog.ShowAsync(root, ex);
-        };
 
         UnhandledException += OnAppUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;

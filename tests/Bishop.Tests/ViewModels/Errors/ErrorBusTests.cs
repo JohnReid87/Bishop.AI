@@ -65,9 +65,8 @@ public class ErrorBusTests
     public void ShowDetails_CallsShowDetailsHandler()
     {
         var dispatcher = new SynchronousDispatcher();
-        var bus = new ErrorBus(dispatcher, TimeProvider.System);
         Exception? received = null;
-        bus.ShowDetailsHandler = ex => received = ex;
+        var bus = new ErrorBus(dispatcher, TimeProvider.System, ex => received = ex);
 
         var thrown = new InvalidOperationException("details");
         bus.Report(thrown);
@@ -80,8 +79,7 @@ public class ErrorBusTests
     public void ShowDetails_WithNullHandler_DoesNotThrow()
     {
         var dispatcher = new SynchronousDispatcher();
-        var bus = new ErrorBus(dispatcher, TimeProvider.System);
-        bus.ShowDetailsHandler = null;
+        var bus = new ErrorBus(dispatcher, TimeProvider.System, showDetailsAction: null);
         bus.Report(new InvalidOperationException("x"));
 
         var act = () => bus.Notifications[0].ShowDetailsCommand.Execute(null);
