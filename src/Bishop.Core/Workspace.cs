@@ -14,4 +14,19 @@ public sealed class Workspace : IAuditable
     public DateTimeOffset UpdatedAt { get; set; }
 
     public ICollection<Card> Cards { get; set; } = [];
+
+    public Workspace With(string? path = null) => new()
+    {
+        Id = Id,
+        Name = Name,
+        Path = path ?? Path,
+        Position = Position,
+        NextCardNumber = NextCardNumber,
+        GitHubRepo = GitHubRepo,
+        IsRemoved = IsRemoved,
+        RemovedAt = RemovedAt,
+        CreatedAt = CreatedAt,
+        UpdatedAt = UpdatedAt,
+        Cards = Cards,
+    };
 }
