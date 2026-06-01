@@ -4,7 +4,6 @@ using Bishop.UI.Views.Controls;
 using Bishop.UI.Views.Skills;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
-using Bishop.ViewModels.GitHub;
 using Bishop.ViewModels.Shared;
 using Bishop.ViewModels.Skills;
 using Bishop.ViewModels.Workspaces;
@@ -30,7 +29,6 @@ public sealed partial class WorkspaceDetailPage : Page
     private readonly DbChangeWatcher _dbWatcher;
     private readonly IDialogService _dialogService;
     private readonly ILogger<WorkspaceDetailPage> _logger;
-    private readonly TimeProvider _timeProvider;
     private readonly ISafeAsyncRunner _safeAsync;
     private readonly IUiDispatcher _uiDispatcher;
     private WorkspaceItemViewModel? _item;
@@ -43,12 +41,13 @@ public sealed partial class WorkspaceDetailPage : Page
     private DispatcherTimer? _autoScrollTimer;
     private ScrollViewer? _autoScrollTarget;
     private double _autoScrollVelocity;
-
+    private Flyout? _commitsFlyout;
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
     public WorkspaceMonitoringViewModel Monitoring { get; }
     public WorkspaceBatchesViewModel Batches { get; }
+    public CommitsFlyoutViewModel Commits { get; }
 
     public WorkspaceDetailPage()
     {
@@ -56,13 +55,31 @@ public sealed partial class WorkspaceDetailPage : Page
         Notes = App.Services.GetRequiredService<WorkspaceNotesViewModel>();
         Monitoring = App.Services.GetRequiredService<WorkspaceMonitoringViewModel>();
         Batches = App.Services.GetRequiredService<WorkspaceBatchesViewModel>();
+        Commits = App.Services.GetRequiredService<CommitsFlyoutViewModel>();
         _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         _dialogService = App.Services.GetRequiredService<IDialogService>();
         _logger = App.Services.GetRequiredService<ILogger<WorkspaceDetailPage>>();
-        _timeProvider = App.Services.GetRequiredService<TimeProvider>();
         _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         _uiDispatcher = App.Services.GetRequiredService<IUiDispatcher>();
         InitializeComponent();
+        _commitsFlyout = new Flyout
+        {
+            Content = new CommitsFlyoutControl(Commits),
+            Placement = FlyoutPlacementMode.Bottom,
+        };
+        Commits.CommitActivated += row => _safeAsync.RunAsync(async () =>
+        {
+            _commitsFlyout.Hide();
+            if (row.GitHubRepo is not null)
+                await Launcher.LaunchUriAsync(new Uri($"https://github.com/{row.GitHubRepo}/commit/{row.FullHash}"));
+            else
+            {
+                var pkg = new DataPackage();
+                pkg.SetText(row.FullHash);
+                Clipboard.SetContent(pkg);
+                await ShowCopiedToastAsync();
+            }
+        });
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
         Board.StagingTray.Cards.CollectionChanged += OnStagingTrayCardsChanged;
@@ -258,141 +275,10 @@ public sealed partial class WorkspaceDetailPage : Page
     private async void CommitsButton_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>
         {
-        if (_item is null) return;
-        var workspacePath = _item.Path;
-        var gitHubRepo = _item.GitHubRepo;
-        var result = await Board.GetRecentCommitsAsync(workspacePath);
-
-        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4), Width = 420 };
-
-        switch (result)
-        {
-            case RecentCommitsResult.Success { Commits: var commits, UpstreamRef: var upstreamRef, UpstreamIsTracked: var upstreamIsTracked, UnpushedCount: var unpushedCount }:
-                var commitsContainer = new StackPanel { Spacing = 2 };
-
-                var errorBlock = new TextBlock
-                {
-                    FontSize = 11,
-                    Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xE5, 0x57, 0x4B)),
-                    TextWrapping = TextWrapping.Wrap,
-                    Visibility = Visibility.Collapsed,
-                    Margin = new Thickness(4, 4, 4, 0),
-                };
-
-                var pushButton = new Button
-                {
-                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    Padding = new Thickness(4, 4, 4, 4),
-                    Margin = new Thickness(0, 4, 0, 0),
-                };
-
-                RenderCommitsInto(commitsContainer, flyout, commits, upstreamRef, gitHubRepo);
-                var needsSetUpstream = UpdatePushButton(pushButton, upstreamRef, upstreamIsTracked, unpushedCount);
-
-                pushButton.Click += (_, _) => _safeAsync.RunAsync(async () =>
-                {
-                    errorBlock.Visibility = Visibility.Collapsed;
-                    var previousContent = pushButton.Content;
-                    pushButton.IsEnabled = false;
-                    pushButton.Content = new ProgressRing { IsActive = true, Width = 16, Height = 16 };
-
-                    var pushResult = await Board.PushAsync(workspacePath, setUpstream: needsSetUpstream);
-                    if (pushResult.Success)
-                    {
-                        var refreshed = await Board.GetRecentCommitsAsync(workspacePath);
-                        if (refreshed is RecentCommitsResult.Success { Commits: var refreshedCommits, UpstreamRef: var refreshedUpstream, UpstreamIsTracked: var refreshedIsTracked, UnpushedCount: var refreshedUnpushedCount })
-                        {
-                            RenderCommitsInto(commitsContainer, flyout, refreshedCommits, refreshedUpstream, gitHubRepo);
-                            needsSetUpstream = UpdatePushButton(pushButton, refreshedUpstream, refreshedIsTracked, refreshedUnpushedCount);
-                        }
-                        else
-                        {
-                            pushButton.Content = previousContent;
-                            pushButton.IsEnabled = true;
-                        }
-                    }
-                    else
-                    {
-                        errorBlock.Text = string.IsNullOrWhiteSpace(pushResult.Message) ? "Push failed" : $"Push failed: {pushResult.Message}";
-                        errorBlock.Visibility = Visibility.Visible;
-                        pushButton.Content = previousContent;
-                        pushButton.IsEnabled = true;
-                    }
-                });
-
-                panel.Children.Add(new ScrollViewer { MaxHeight = 400, Content = commitsContainer });
-                panel.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 4, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
-                panel.Children.Add(errorBlock);
-                panel.Children.Add(pushButton);
-                break;
-            case RecentCommitsResult.NotAGitRepo:
-                panel.Children.Add(new TextBlock { Text = "Not a git repository", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
-                break;
-            case RecentCommitsResult.GitNotFound:
-                panel.Children.Add(new TextBlock { Text = "Git not installed or not on PATH", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
-                break;
-            case RecentCommitsResult.NoCommits:
-                panel.Children.Add(new TextBlock { Text = "No commits yet", FontSize = 12, Padding = new Thickness(4, 6, 4, 6) });
-                break;
-        }
-
-        flyout.Content = panel;
-        flyout.ShowAt((FrameworkElement)sender);
+            if (_item is null) return;
+            await Commits.LoadAsync(_item.Path, _item.GitHubRepo);
+            _commitsFlyout!.ShowAt((FrameworkElement)sender);
         });
-
-    private void RenderCommitsInto(StackPanel container, Flyout flyout, IReadOnlyList<CommitItem> commits, string? upstreamRef, string? gitHubRepo)
-    {
-        container.Children.Clear();
-        for (var i = 0; i < commits.Count; i++)
-        {
-            var commit = commits[i];
-            container.Children.Add(MakeCommitRow(commit, upstreamRef, async () =>
-            {
-                flyout.Hide();
-                if (gitHubRepo is not null)
-                {
-                    await Launcher.LaunchUriAsync(new Uri($"https://github.com/{gitHubRepo}/commit/{commit.FullHash}"));
-                }
-                else
-                {
-                    var pkg = new DataPackage();
-                    pkg.SetText(commit.FullHash);
-                    Clipboard.SetContent(pkg);
-                    await ShowCopiedToastAsync();
-                }
-            }));
-            if (i < commits.Count - 1)
-                container.Children.Add(new Border { Height = 1, Margin = new Thickness(0, 2, 0, 2), Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128)) });
-        }
-    }
-
-    private static bool UpdatePushButton(Button pushButton, string? upstreamRef, bool upstreamIsTracked, int unpushedCount)
-    {
-        string label;
-        bool enabled;
-        if (upstreamRef is null)
-        {
-            label = "No remote branch — push with -u to publish";
-            enabled = false;
-        }
-        else if (unpushedCount == 0)
-        {
-            label = "Up to date";
-            enabled = false;
-        }
-        else
-        {
-            label = upstreamIsTracked
-                ? $"Push {unpushedCount} commit{(unpushedCount == 1 ? "" : "s")}"
-                : $"Push {unpushedCount} commit{(unpushedCount == 1 ? "" : "s")} (will set upstream)";
-            enabled = true;
-        }
-        pushButton.Content = new TextBlock { Text = label, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center };
-        pushButton.IsEnabled = enabled;
-        return !upstreamIsTracked;
-    }
 
     private async Task ShowCopiedToastAsync()
     {
@@ -403,101 +289,7 @@ public sealed partial class WorkspaceDetailPage : Page
         UpdateNotificationPanel();
     }
 
-    private FrameworkElement MakeCommitRow(CommitItem commit, string? upstreamRef, Func<Task> onClick)
-    {
-        var secondaryBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppTextSecondaryBrush"];
 
-        var hashBlock = new TextBlock
-        {
-            Text = commit.ShortHash,
-            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Consolas, Courier New"),
-            FontSize = 11,
-            VerticalAlignment = VerticalAlignment.Center,
-            Width = 56,
-            Foreground = secondaryBrush,
-        };
-
-        var subjectBlock = new TextBlock
-        {
-            Text = commit.Subject,
-            FontSize = 12,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        };
-
-        var timeBlock = new TextBlock
-        {
-            Text = GetRelativeTime(commit.Timestamp),
-            FontSize = 11,
-            VerticalAlignment = VerticalAlignment.Center,
-            MinWidth = 56,
-            TextAlignment = TextAlignment.Right,
-            Margin = new Thickness(0, 0, 4, 0),
-            Foreground = secondaryBrush,
-        };
-
-        var grid = new Grid { ColumnSpacing = 8 };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });          // hash
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // subject
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });          // time
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });          // iconHost
-        Grid.SetColumn(hashBlock, 0);
-        Grid.SetColumn(subjectBlock, 1);
-        Grid.SetColumn(timeBlock, 2);
-        grid.Children.Add(hashBlock);
-        grid.Children.Add(subjectBlock);
-        grid.Children.Add(timeBlock);
-
-        var accentBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppAccentBrush"];
-        var cloudUpData = (string)Application.Current.Resources["IconCloudUpData"];
-        var icon = (Microsoft.UI.Xaml.Shapes.Path)Microsoft.UI.Xaml.Markup.XamlReader.Load(
-            $"<Path xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
-            $"Data='{cloudUpData}' StrokeThickness='1.5' StrokeStartLineCap='Round' StrokeEndLineCap='Round' StrokeLineJoin='Round' " +
-            $"Width='12' Height='12' Stretch='Uniform' VerticalAlignment='Center'/>");
-        icon.Stroke = commit.IsPushed && upstreamRef is not null ? accentBrush : secondaryBrush;
-        string iconTooltip;
-        if (upstreamRef is null)
-            iconTooltip = "No remote branch";
-        else if (commit.IsPushed)
-            iconTooltip = "Pushed";
-        else
-            iconTooltip = "Not yet pushed";
-        var iconHost = new Border
-        {
-            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0)),
-            Padding = new Thickness(2),
-            Child = icon,
-        };
-        ToolTipService.SetToolTip(iconHost, iconTooltip);
-        Grid.SetColumn(iconHost, 3);
-        grid.Children.Add(iconHost);
-
-        var btn = new Button
-        {
-            Content = grid,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(4, 4, 4, 4),
-        };
-        btn.Click += (_, _) => _safeAsync.RunAsync(onClick);
-
-        var tooltipText = string.IsNullOrEmpty(commit.Body) ? commit.Subject : $"{commit.Subject}\n\n{commit.Body}";
-        if (commit.IsPushed && upstreamRef is not null)
-            tooltipText += $"\n\nPushed to {upstreamRef}";
-        ToolTipService.SetToolTip(btn, new TextBlock { Text = tooltipText, TextWrapping = TextWrapping.Wrap, MaxWidth = 600 });
-
-        return btn;
-    }
-
-    private string GetRelativeTime(DateTimeOffset timestamp)
-    {
-        var elapsed = _timeProvider.GetUtcNow() - timestamp.ToUniversalTime();
-        if (elapsed.TotalSeconds < 60) return "just now";
-        if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes}m ago";
-        if (elapsed.TotalHours < 24) return $"{(int)elapsed.TotalHours}h ago";
-        if (elapsed.TotalDays < 30) return $"{(int)elapsed.TotalDays}d ago";
-        return $"{(int)(elapsed.TotalDays / 30)}mo ago";
-    }
 
     private async void CardTitle_Tapped(object sender, TappedRoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>
