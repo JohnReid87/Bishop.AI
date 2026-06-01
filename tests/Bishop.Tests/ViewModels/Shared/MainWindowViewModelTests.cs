@@ -1,7 +1,6 @@
 using Bishop.App.Batches.ReconcileOrphanedBatches;
 using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
-using Bishop.App.Workspaces.DeleteWorkspace;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.ReorderWorkspaces;

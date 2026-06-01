@@ -16,6 +16,10 @@ internal sealed class DeleteWorkspaceCommandHandler : IRequestHandler<DeleteWork
         var workspace = await db.Workspaces.FindAsync([request.Id], cancellationToken)
             ?? throw new InvalidOperationException($"Workspace {request.Id} not found.");
 
+        if (!workspace.IsRemoved)
+            throw new InvalidOperationException(
+                $"Workspace '{workspace.Name}' is active. Call RemoveWorkspace first.");
+
         db.Workspaces.Remove(workspace);
         await db.SaveChangesAsync(cancellationToken);
     }

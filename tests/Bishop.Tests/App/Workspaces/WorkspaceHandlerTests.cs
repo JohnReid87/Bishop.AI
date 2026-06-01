@@ -163,18 +163,33 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task DeleteWorkspace_RemovesFromDatabase()
+    public async Task DeleteWorkspace_AfterRemove_DeletesFromDatabase()
     {
         var name = U("ToDelete");
         var created = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
+            .Handle(new RemoveWorkspaceCommand(created.Id), default);
 
         await new DeleteWorkspaceCommandHandler(_factory)
             .Handle(new DeleteWorkspaceCommand(created.Id), default);
 
         var remaining = await new ListWorkspacesQueryHandler(_factory)
-            .Handle(new ListWorkspacesQuery(), default);
+            .Handle(new ListWorkspacesQuery(IncludeRemoved: true), default);
         remaining.Should().NotContain(w => w.Id == created.Id);
+    }
+
+    [Fact]
+    public async Task DeleteWorkspace_ActiveWorkspace_Throws()
+    {
+        var name = U("ActiveDel");
+        var created = await new CreateWorkspaceCommandHandler(_factory)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+
+        var act = () => new DeleteWorkspaceCommandHandler(_factory)
+            .Handle(new DeleteWorkspaceCommand(created.Id), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*active*");
     }
 
     [Fact]
@@ -836,13 +851,15 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task DeleteWorkspace_CascadesAssociatedCards()
+    public async Task DeleteWorkspace_AfterRemove_CascadesAssociatedCards()
     {
         var name = U("DelCascade");
         var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Cascade test card"), default);
+        await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
+            .Handle(new RemoveWorkspaceCommand(workspace.Id), default);
 
         await new DeleteWorkspaceCommandHandler(_factory)
             .Handle(new DeleteWorkspaceCommand(workspace.Id), default);
