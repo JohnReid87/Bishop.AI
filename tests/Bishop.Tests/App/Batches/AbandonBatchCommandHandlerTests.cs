@@ -73,18 +73,8 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
         return batch;
     }
 
-    private ISender CreateSender()
-    {
-        var ghCli = Substitute.For<IGhCli>();
-        var sender = Substitute.For<ISender>();
-        sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new MoveCardCommandHandler(_factory, ghCli, NullLogger<MoveCardCommandHandler>.Instance)
-                .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
-        return sender;
-    }
-
-    private AbandonBatchCommandHandler CreateHandler(IGitCli? git = null, ISender? sender = null) =>
-        new(git ?? Substitute.For<IGitCli>(), sender ?? CreateSender(), _factory, TimeProvider.System);
+    private AbandonBatchCommandHandler CreateHandler(IGitCli? git = null) =>
+        new(git ?? Substitute.For<IGitCli>(), _factory, TimeProvider.System);
 
     // ── status validation ──────────────────────────────────────────────────────
 
@@ -221,11 +211,10 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
         var card = await AddCardAsync(workspace.Id);
         var batch = await CreateBatchAsync(card.Id);
 
-        var sender = CreateSender();
         await new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
             .Handle(new MoveCardCommand(card.Id, SystemLaneNames.Done, 1, KeepOpen: false), default);
 
-        await CreateHandler(sender: sender).Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
+        await CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
         saved.LaneName.Should().Be(SystemLaneNames.ToDo);
