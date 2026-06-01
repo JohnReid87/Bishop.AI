@@ -32,6 +32,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private readonly ILogger<WorkspaceDetailPage> _logger;
     private readonly TimeProvider _timeProvider;
     private readonly ISafeAsyncRunner _safeAsync;
+    private readonly IUiDispatcher _uiDispatcher;
     private WorkspaceItemViewModel? _item;
     private CardViewModel? _draggedCard;
     private LaneViewModel? _dragSourceLane;
@@ -60,6 +61,7 @@ public sealed partial class WorkspaceDetailPage : Page
         _logger = App.Services.GetRequiredService<ILogger<WorkspaceDetailPage>>();
         _timeProvider = App.Services.GetRequiredService<TimeProvider>();
         _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
+        _uiDispatcher = App.Services.GetRequiredService<IUiDispatcher>();
         InitializeComponent();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
         Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
@@ -89,7 +91,7 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             _item = navArgs.Workspace;
             _item.PropertyChanged += OnItemPropertyChanged;
-            UpdateView(navArgs.Workspace);
+            _ = _safeAsync.RunAsync(() => UpdateViewAsync(navArgs.Workspace));
             if (navArgs.InitialTab.HasValue)
                 MainTabView.SelectedIndex = (int)navArgs.InitialTab.Value;
         }
@@ -97,7 +99,7 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             _item = vm;
             _item.PropertyChanged += OnItemPropertyChanged;
-            UpdateView(vm);
+            _ = _safeAsync.RunAsync(() => UpdateViewAsync(vm));
         }
     }
 
@@ -130,7 +132,7 @@ public sealed partial class WorkspaceDetailPage : Page
 
     private void OnDatabaseChanged(object? sender, EventArgs e)
     {
-        DispatcherQueue.TryEnqueue(async () => await _safeAsync.RunAsync(async () =>
+        _uiDispatcher.TryEnqueue(() => _safeAsync.RunAsync(async () =>
         {
             await Task.WhenAll(
                 Board.RefreshCommand.ExecuteAsync(null),
@@ -142,7 +144,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private void OnWindowActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == Microsoft.UI.Xaml.WindowActivationState.Deactivated) return;
-        DispatcherQueue.TryEnqueue(async () => await _safeAsync.RunAsync(async () =>
+        _uiDispatcher.TryEnqueue(() => _safeAsync.RunAsync(async () =>
         {
             await Task.WhenAll(
                 Board.RefreshCommand.ExecuteAsync(null),
@@ -162,22 +164,21 @@ public sealed partial class WorkspaceDetailPage : Page
         }
     }
 
-    private async void UpdateView(WorkspaceItemViewModel vm)
-        => await _safeAsync.RunAsync(async () =>
-        {
-            WorkspaceNameText.Text = vm.Name;
-            WorkspacePathText.Text = vm.Path;
-            ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
-            Board.WorkspacePath = vm.Path;
-            UpdatePathStatus();
-            ApplyGitHubRepoToBacklogLane();
-            ApplyGitHubRepoToDoneLane();
-            await LoadSkillsAsync();
-            _ = _safeAsync.RunAsync(() => Board.LoadAsync(vm.Id));
-            _ = _safeAsync.RunAsync(() => Notes.LoadAsync(vm.Id, vm.Path));
-            _ = _safeAsync.RunAsync(() => Monitoring.LoadAsync(vm.Id, vm.Path, vm.GitHubRepo));
-            _ = _safeAsync.RunAsync(() => Batches.LoadAsync(vm.Id, vm.Path));
-        });
+    private async Task UpdateViewAsync(WorkspaceItemViewModel vm)
+    {
+        WorkspaceNameText.Text = vm.Name;
+        WorkspacePathText.Text = vm.Path;
+        ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
+        Board.WorkspacePath = vm.Path;
+        UpdatePathStatus();
+        ApplyGitHubRepoToBacklogLane();
+        ApplyGitHubRepoToDoneLane();
+        await LoadSkillsAsync();
+        _ = _safeAsync.RunAsync(() => Board.LoadAsync(vm.Id));
+        _ = _safeAsync.RunAsync(() => Notes.LoadAsync(vm.Id, vm.Path));
+        _ = _safeAsync.RunAsync(() => Monitoring.LoadAsync(vm.Id, vm.Path, vm.GitHubRepo));
+        _ = _safeAsync.RunAsync(() => Batches.LoadAsync(vm.Id, vm.Path));
+    }
 
     private async Task LoadSkillsAsync()
     {
