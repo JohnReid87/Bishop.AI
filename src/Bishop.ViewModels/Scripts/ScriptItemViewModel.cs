@@ -33,7 +33,26 @@ public sealed partial class ScriptItemViewModel : ObservableObject
     [RelayCommand]
     private void Edit()
     {
-        _processLauncher(new ProcessStartInfo(Path) { UseShellExecute = true });
+        var editor = ResolveEditor();
+        var psi = new ProcessStartInfo
+        {
+            FileName = editor,
+            UseShellExecute = false
+        };
+        psi.ArgumentList.Add(Path);
+        _processLauncher(psi);
+    }
+
+    private static string ResolveEditor()
+    {
+        var pathVar = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        foreach (var dir in pathVar.Split(System.IO.Path.PathSeparator))
+        {
+            var codePath = System.IO.Path.Combine(dir, "code.exe");
+            if (File.Exists(codePath))
+                return codePath;
+        }
+        return "notepad.exe";
     }
 
     [RelayCommand]

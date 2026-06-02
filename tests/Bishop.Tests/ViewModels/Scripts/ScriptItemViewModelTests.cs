@@ -93,17 +93,6 @@ public class ScriptItemViewModelTests
     }
 
     [Fact]
-    public void EditCommand_ThrowsWin32Exception_WhenFileNotFound()
-    {
-        var nonExistentPath = System.IO.Path.Combine(@"C:\", Guid.NewGuid().ToString("N"), "test.txt");
-        var vm = new ScriptItemViewModel("s", nonExistentPath);
-
-        Action act = () => vm.EditCommand.Execute(null);
-
-        act.Should().Throw<Win32Exception>();
-    }
-
-    [Fact]
     public void EditCommand_LaunchesProcess_WithCorrectPath()
     {
         ProcessStartInfo? captured = null;
@@ -113,8 +102,24 @@ public class ScriptItemViewModelTests
         vm.EditCommand.Execute(null);
 
         captured.Should().NotBeNull();
-        captured!.FileName.Should().Be(path);
-        captured.UseShellExecute.Should().BeTrue();
+        captured!.UseShellExecute.Should().BeFalse();
+        captured.FileName.Should().NotBe(path, "the script must not be the launched executable");
+        captured.ArgumentList.Should().Contain(path);
+    }
+
+    [Fact]
+    public void EditCommand_PassesScriptAsArgument_NotExecutable()
+    {
+        ProcessStartInfo? captured = null;
+        var path = @"C:\scripts\dangerous.cmd";
+        var vm = new ScriptItemViewModel("s", path, processLauncher: psi => captured = psi);
+
+        vm.EditCommand.Execute(null);
+
+        captured.Should().NotBeNull();
+        captured!.UseShellExecute.Should().BeFalse("shell execute would run .cmd files instead of opening them in an editor");
+        captured.ArgumentList.Should().Contain(path);
+        captured.FileName.Should().NotBe(path);
     }
 
     [Fact]
