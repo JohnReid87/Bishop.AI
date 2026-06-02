@@ -106,10 +106,13 @@ public sealed partial class FindingsViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(FilterText)) return true;
         var q = FilterText.Trim();
-        return item.Title.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || (item.Body?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (item.File?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (item.Symbol?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (item.Severity?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
+        return ContainsOic(item.Title, q)
+            || ContainsOic(item.Body, q)
+            || ContainsOic(item.File, q)
+            || ContainsOic(item.Symbol, q)
+            || ContainsOic(item.Severity, q);
     }
+
+    private static bool ContainsOic(string? source, string query) =>
+        source?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false;
 }
