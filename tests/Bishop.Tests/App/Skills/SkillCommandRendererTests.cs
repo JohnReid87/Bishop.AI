@@ -137,4 +137,29 @@ public sealed class SkillCommandRendererTests
 
         result.Should().Be(@"C:\repos\my&project");
     }
+
+    // ── Direct Sanitize coverage ──────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("--flag & calc.exe", "--flag  calc.exe")]
+    [InlineData("--flag | bad", "--flag  bad")]
+    [InlineData("value <input", "value input")]
+    [InlineData("> output", " output")]
+    [InlineData("foo^bar", "foobar")]
+    public void Sanitize_ShellMetacharsAreStripped(string input, string expected)
+    {
+        SkillCommandRenderer.Sanitize(input).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Sanitize_NewlineReplacedWithSpace()
+    {
+        SkillCommandRenderer.Sanitize("line1\nline2").Should().Be("line1 line2");
+    }
+
+    [Fact]
+    public void Sanitize_PlainTextUnchanged()
+    {
+        SkillCommandRenderer.Sanitize("--verbose --output file.txt").Should().Be("--verbose --output file.txt");
+    }
 }

@@ -1,4 +1,5 @@
 using Bishop.App.Services.Terminal;
+using Bishop.App.Skills;
 using MediatR;
 
 namespace Bishop.App.Scripts.LaunchScript;
@@ -49,7 +50,8 @@ internal sealed class LaunchScriptCommandHandler : IRequestHandler<LaunchScriptC
             {
                 if (current.Length > 0)
                 {
-                    tokens.Add(current.ToString());
+                    var token = SkillCommandRenderer.Sanitize(current.ToString());
+                    if (token.Length > 0) tokens.Add(token);
                     current.Clear();
                 }
             }
@@ -60,7 +62,10 @@ internal sealed class LaunchScriptCommandHandler : IRequestHandler<LaunchScriptC
         }
 
         if (current.Length > 0)
-            tokens.Add(current.ToString());
+        {
+            var last = SkillCommandRenderer.Sanitize(current.ToString());
+            if (last.Length > 0) tokens.Add(last);
+        }
 
         return tokens;
     }

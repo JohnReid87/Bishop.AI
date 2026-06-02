@@ -1,5 +1,6 @@
 using Bishop.App.Services.Settings;
 using Bishop.App.Services.Terminal;
+using Bishop.App.Skills;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
 using Bishop.Core.Skills;
@@ -36,9 +37,10 @@ public sealed partial class BishopSettingsViewModel : ObservableObject
 
     public async Task LaunchAsync(SkillLaunchItem item, string? stagedText, TerminalSnap snap, string modelId)
     {
-        var command = string.IsNullOrWhiteSpace(stagedText)
+        var sanitized = string.IsNullOrWhiteSpace(stagedText) ? null : SkillCommandRenderer.Sanitize(stagedText);
+        var command = string.IsNullOrWhiteSpace(sanitized)
             ? item.RenderedCommand
-            : $"{item.RenderedCommand} {stagedText}";
+            : $"{item.RenderedCommand} {sanitized}";
         await _mediator.Send(new LaunchSkillCommand(ResolveWorkspacePath(), command, snap, modelId));
     }
 

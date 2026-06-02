@@ -214,6 +214,38 @@ public sealed class LaunchScriptCommandHandlerTests
             null);
     }
 
+    // ── CWE-78: SplitArgs metachar sanitization ──────────────────────────────
+    // Typing `; & calc.exe` or similar into the Scripts args field must not inject shell commands.
+    // The bare `&` token becomes empty after Sanitize and is dropped; calc.exe survives only as
+    // a harmless positional arg to pwsh.exe, not as a cmd.exe command separator.
+
+    [Theory]
+    [InlineData("; & calc.exe", new[] { "-File", @"C:\scripts\deploy.ps1", ";", "calc.exe" })]
+    [InlineData("--flag | badcmd", new[] { "-File", @"C:\scripts\deploy.ps1", "--flag", "badcmd" })]
+    [InlineData("value >output", new[] { "-File", @"C:\scripts\deploy.ps1", "value", "output" })]
+    [InlineData("x^y", new[] { "-File", @"C:\scripts\deploy.ps1", "xy" })]
+    public async Task Handle_ArgsWithShellMetachars_MetacharsStrippedBeforePassingToLauncher(
+        string rawArgs, string[] expectedTokens)
+    {
+        // Arrange
+        var launcher = Substitute.For<ITerminalLauncher>();
+        launcher.LaunchCommand(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string[]>(), Arg.Any<TerminalSnap?>())
+            .Returns(true);
+        var handler = new LaunchScriptCommandHandler(launcher);
+
+        // Act
+        await handler.Handle(
+            new LaunchScriptCommand(@"C:\scripts\deploy.ps1", rawArgs),
+            CancellationToken.None);
+
+        // Assert — tokens reaching the launcher must not contain cmd.exe metacharacters
+        launcher.Received(1).LaunchCommand(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Is<string[]>(a => a.SequenceEqual(expectedTokens)),
+            Arg.Any<TerminalSnap?>());
+    }
+
     [Fact]
     public async Task Handle_ScriptAtRootPath_UsesUserProfileAsWorkingDirectory()
     {

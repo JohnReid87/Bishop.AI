@@ -49,9 +49,10 @@ internal sealed class BoardSkillsCoordinator
 
     public async Task LaunchAsync(SkillLaunchItem item, string? stagedText, TerminalSnap snap, string modelId)
     {
-        var command = string.IsNullOrWhiteSpace(stagedText)
+        var sanitized = string.IsNullOrWhiteSpace(stagedText) ? null : SkillCommandRenderer.Sanitize(stagedText);
+        var command = string.IsNullOrWhiteSpace(sanitized)
             ? item.RenderedCommand
-            : $"{item.RenderedCommand} {stagedText}";
+            : $"{item.RenderedCommand} {sanitized}";
         await _mediator.Send(new LaunchSkillCommand(_getWorkspacePath(), command, snap, modelId));
     }
 
