@@ -66,8 +66,6 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
         psi.ArgumentList.Add("--output-format");
         psi.ArgumentList.Add("stream-json");
         psi.ArgumentList.Add("--verbose");
-        psi.ArgumentList.Add("--permission-mode");
-        psi.ArgumentList.Add("bypassPermissions");
         psi.ArgumentList.Add("--model");
         psi.ArgumentList.Add(model);
 
