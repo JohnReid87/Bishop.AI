@@ -9,7 +9,6 @@ public sealed record ContextPack(
 public sealed record WorkspaceBlock(
     string Name,
     string Path,
-    string? GitHubRepo,
     IReadOnlyList<string> Lanes,
     IReadOnlyList<string> Tags,
     string? ContextMd,

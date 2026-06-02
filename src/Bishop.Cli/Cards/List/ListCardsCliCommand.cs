@@ -45,8 +45,6 @@ internal sealed class ListCardsCliCommand : Command
                     laneName = c.LaneName,
                     position = c.Position,
                     isClosed = c.IsClosed,
-                    gitHubIssueNumber = c.GitHubIssueNumber,
-                    gitHubPushedAt = c.GitHubPushedAt,
                     lastAutoRunFailedAt = c.LastAutoRunFailedAt,
                     lastAutoRunSucceededAt = c.LastAutoRunSucceededAt,
                     tag = c.TagName

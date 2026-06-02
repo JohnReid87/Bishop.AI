@@ -102,16 +102,6 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
             worktreeWorkspace = ws.With(path: batch.WorktreePath);
         }
 
-        if (!request.AllowExternalContent)
-        {
-            var externalNumbers = pendingCards
-                .Where(c => c.GitHubIssueNumber is not null)
-                .Select(c => c.Number)
-                .ToList();
-            if (externalNumbers.Count > 0)
-                return new RunBatchResult(0, null, RunBatchStopReason.ExternalContentBlocked, ExternalContentCardNumbers: externalNumbers);
-        }
-
         var lockPath = LockFilePath(batch.WorktreePath, batch.Id);
         try
         {

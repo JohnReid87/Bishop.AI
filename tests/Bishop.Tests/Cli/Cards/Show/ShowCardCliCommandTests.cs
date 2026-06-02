@@ -212,9 +212,9 @@ public sealed class ShowCardCliCommandTests
     }
 
     [Fact]
-    public async Task InvokeAsync_JsonFlag_FoundCommitWithNullGitHubRepo_CommitUrlIsNull()
+    public async Task InvokeAsync_JsonFlag_FoundCommit_PopulatesCommitObject()
     {
-        var ws = DefaultWorkspace(); // GitHubRepo is null
+        var ws = DefaultWorkspace();
         var card = new Card
         {
             Id = Guid.NewGuid(), WorkspaceId = ws.Id,
@@ -246,32 +246,7 @@ public sealed class ShowCardCliCommandTests
         using var doc = JsonDocument.Parse(output.ToString());
         var commitProp = doc.RootElement.GetProperty("commit");
         commitProp.ValueKind.Should().NotBe(JsonValueKind.Null);
-        commitProp.GetProperty("url").ValueKind.Should().Be(JsonValueKind.Null);
-    }
-
-    [Fact]
-    public async Task InvokeAsync_JsonFlag_FoundCommitWithGitHubRepo_CommitUrlIsPopulated()
-    {
-        var ws = new Workspace { Id = Guid.NewGuid(), Name = "test-ws", Path = @"C:\test", GitHubRepo = "testowner/testrepo" };
-        var card = new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 1, Title = "Test Card", LaneName = "To Do" };
-        var fullHash = "abc1234def5678901234567890abcdef";
-        var commitResult = new GetCardCommitResult.Found(
-            new CommitInfo("abc1234", fullHash, "Fix bug", "", DateTimeOffset.UtcNow, false));
-        var (_, cmd) = Build(ws, card, commitResult);
-
-        var output = new StringWriter();
-        var originalOut = Console.Out;
-        Console.SetOut(output);
-        int exitCode;
-        try { exitCode = await cmd.InvokeAsync(["#1", "--workspace", "test-ws", "--json"]); }
-        finally { Console.SetOut(originalOut); }
-
-        exitCode.Should().Be(0);
-        using var doc = JsonDocument.Parse(output.ToString());
-        var commitProp = doc.RootElement.GetProperty("commit");
-        commitProp.ValueKind.Should().NotBe(JsonValueKind.Null);
-        commitProp.GetProperty("url").GetString()
-            .Should().Be($"https://github.com/testowner/testrepo/commit/{fullHash}");
+        commitProp.GetProperty("shortHash").GetString().Should().Be("abc1234");
     }
 
     [Fact]

@@ -48,7 +48,6 @@ internal sealed class BootstrapSkillCliCommand : Command
                 {
                     workspaceName = info.WorkspaceName,
                     workspacePath = info.WorkspacePath,
-                    gitHubRepo = info.GitHubRepo,
                     tags = info.Tags.Select(t => new { name = t.Name, colour = t.Colour }),
                     lanes = info.Lanes.Select(l => new { name = l.Name, position = l.Position })
                 }, s_jsonOpts));
@@ -57,8 +56,6 @@ internal sealed class BootstrapSkillCliCommand : Command
             {
                 Console.WriteLine($"Workspace: {info.WorkspaceName}");
                 Console.WriteLine($"Path:      {info.WorkspacePath}");
-                if (!string.IsNullOrEmpty(info.GitHubRepo))
-                    Console.WriteLine($"GitHub:    {info.GitHubRepo}");
                 Console.WriteLine($"Tags:      {string.Join(", ", info.Tags.Select(t => t.Name))}");
                 Console.WriteLine($"Lanes:     {string.Join(", ", info.Lanes.OrderBy(l => l.Position).Select(l => l.Name))}");
             }

@@ -19,7 +19,6 @@ public sealed partial class FindingItemViewModel : ObservableObject
     private readonly ICardDetailDialogService _dialogService;
     private readonly Guid _workspaceId;
     private readonly string _workspacePath;
-    private readonly string? _gitHubRepo;
     private readonly string _skillName;
 
     public Guid Id { get; }
@@ -47,7 +46,6 @@ public sealed partial class FindingItemViewModel : ObservableObject
         string skillName,
         Guid workspaceId,
         string workspacePath,
-        string? gitHubRepo,
         ISender mediator,
         ICardDetailDialogService dialogService)
     {
@@ -65,7 +63,6 @@ public sealed partial class FindingItemViewModel : ObservableObject
         _skillName = skillName;
         _workspaceId = workspaceId;
         _workspacePath = workspacePath;
-        _gitHubRepo = gitHubRepo;
         _mediator = mediator;
         _dialogService = dialogService;
     }
@@ -120,7 +117,7 @@ public sealed partial class FindingItemViewModel : ObservableObject
             IsClosed = card.IsClosed,
         };
 
-        var saved = await _dialogService.ShowAsync(cardVm, _workspacePath, _workspaceId, _gitHubRepo, xamlRoot);
+        var saved = await _dialogService.ShowAsync(cardVm, _workspacePath, _workspaceId, xamlRoot);
         if (!saved)
         {
             await _mediator.Send(new RemoveCardCommand(card.Id));
@@ -158,7 +155,7 @@ public sealed partial class FindingItemViewModel : ObservableObject
             IsClosed = card.IsClosed,
         };
 
-        await _dialogService.ShowAsync(cardVm, _workspacePath, _workspaceId, _gitHubRepo, xamlRoot);
+        await _dialogService.ShowAsync(cardVm, _workspacePath, _workspaceId, xamlRoot);
     }
 
     [RelayCommand]

@@ -1179,46 +1179,6 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         savedCard.LaneName.Should().Be(SystemLaneNames.Done);
     }
 
-    // ── external content guard ─────────────────────────────────────────────────
-
-    [Fact]
-    public async Task GitHubImportedCard_WithoutFlag_BlocksRun()
-    {
-        var (workspace, lanes) = await CreateWorkspaceAsync();
-        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
-
-        var savedCard = await _db.Cards.SingleAsync(c => c.Id == card.Id);
-        savedCard.GitHubIssueNumber = 42;
-        await _db.SaveChangesAsync();
-
-        var batch = await CreateBatchAsync(card.Id);
-        var result = await CreateHandler()
-            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
-
-        result.StopReason.Should().Be(RunBatchStopReason.ExternalContentBlocked);
-        result.ExternalContentCardNumbers.Should().ContainSingle().Which.Should().Be(card.Number);
-    }
-
-    [Fact]
-    public async Task GitHubImportedCard_WithFlag_AllowsRun()
-    {
-        var (workspace, lanes) = await CreateWorkspaceAsync();
-        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
-
-        var savedCard = await _db.Cards.SingleAsync(c => c.Id == card.Id);
-        savedCard.GitHubIssueNumber = 99;
-        await _db.SaveChangesAsync();
-
-        var batch = await CreateBatchAsync(card.Id);
-
-        var result = await CreateHandler()
-            .Handle(new RunBatchCommand(batch.Name, Resume: false, AllowExternalContent: true), default);
-
-        result.StopReason.Should().Be(RunBatchStopReason.Finished);
-        result.Succeeded.Should().Be(1);
-        result.ExternalContentCardNumbers.Should().BeNull();
-    }
-
     // ── fresh run processes all cards including Done ────────────────────────────
 
     [Fact]

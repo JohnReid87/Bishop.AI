@@ -9,13 +9,11 @@ public sealed class CommitRowViewModel
     public bool IsIconHighlighted { get; }
     public string IconTooltip { get; }
     public string Tooltip { get; }
-    public string? GitHubRepo { get; }
     public bool ShowSeparator { get; }
 
     public CommitRowViewModel(
         Git.CommitItem commit,
         string? upstreamRef,
-        string? gitHubRepo,
         TimeProvider timeProvider,
         bool showSeparator)
     {
@@ -24,7 +22,6 @@ public sealed class CommitRowViewModel
         Subject = commit.Subject;
         RelativeTime = FormatRelativeTime(commit.Timestamp, timeProvider);
         IsIconHighlighted = commit.IsPushed && upstreamRef is not null;
-        GitHubRepo = gitHubRepo;
         ShowSeparator = showSeparator;
 
         IconTooltip = upstreamRef is null ? "No remote branch"

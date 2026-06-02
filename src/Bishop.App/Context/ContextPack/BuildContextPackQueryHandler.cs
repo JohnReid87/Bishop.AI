@@ -54,7 +54,6 @@ internal sealed class BuildContextPackQueryHandler : IRequestHandler<BuildContex
         return new WorkspaceBlock(
             workspace.Name,
             workspace.Path,
-            workspace.GitHubRepo,
             lanes.OrderBy(l => l.Position).Select(l => l.Name).ToList(),
             tags.Select(t => t.Name).ToList(),
             contextMd,

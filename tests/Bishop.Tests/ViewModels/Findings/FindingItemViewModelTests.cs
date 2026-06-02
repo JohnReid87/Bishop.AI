@@ -48,7 +48,6 @@ public class FindingItemViewModelTests
             SkillName,
             WorkspaceId,
             WorkspacePath,
-            null,
             mediator ?? Substitute.For<ISender>(),
             dialogService ?? Substitute.For<ICardDetailDialogService>());
 
@@ -330,7 +329,7 @@ public class FindingItemViewModelTests
         };
         mediator.Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>())
             .Returns(card);
-        dialogService.ShowAsync(Arg.Any<CardViewModel>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<object>())
+        dialogService.ShowAsync(Arg.Any<CardViewModel>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<object>())
             .Returns(true);
 
         var vm = MakeVm(MakeRecord(status: "pending"), mediator: mediator, dialogService: dialogService);
@@ -354,7 +353,7 @@ public class FindingItemViewModelTests
         var cardId = Guid.NewGuid();
         var card = new Card { Id = cardId, Number = 10, Title = "Test finding", Description = "", LaneName = "To Do" };
         mediator.Send(Arg.Any<AddCardCommand>(), Arg.Any<CancellationToken>()).Returns(card);
-        dialogService.ShowAsync(Arg.Any<CardViewModel>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<object>())
+        dialogService.ShowAsync(Arg.Any<CardViewModel>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<object>())
             .Returns(false);
 
         var vm = MakeVm(MakeRecord(status: "pending"), mediator: mediator, dialogService: dialogService);
@@ -408,7 +407,7 @@ public class FindingItemViewModelTests
         await vm.OpenLinkedCardCommand.ExecuteAsync(root);
 
         await dialogService.Received(1).ShowAsync(
-            Arg.Any<CardViewModel>(), WorkspacePath, WorkspaceId, null, root);
+            Arg.Any<CardViewModel>(), WorkspacePath, WorkspaceId, root);
     }
 
     [Fact]

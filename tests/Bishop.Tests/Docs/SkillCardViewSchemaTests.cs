@@ -116,7 +116,6 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
     private static string SerializeSampleCardViewPayload(Card card)
     {
         var commit = new CommitInfo("abc1234", "abc1234567890abcdef", "feat: seed", "", DateTimeOffset.UtcNow, false);
-        var gitHubRepo = "Owner/Repo";
 
         var payload = new
         {
@@ -127,8 +126,6 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
             laneName = card.LaneName,
             position = card.Position,
             isClosed = card.IsClosed,
-            gitHubIssueNumber = card.GitHubIssueNumber,
-            gitHubPushedAt = card.GitHubPushedAt,
             createdAt = card.CreatedAt,
             updatedAt = card.UpdatedAt,
             totalInputTokens = card.TotalInputTokens,
@@ -142,7 +139,6 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
                 hash = commit.FullHash,
                 shortHash = commit.ShortHash,
                 isPushed = commit.IsPushed,
-                url = $"https://github.com/{gitHubRepo}/commit/{commit.FullHash}",
             },
         };
         return JsonSerializer.Serialize(payload, s_camelCaseOpts);

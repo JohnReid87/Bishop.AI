@@ -22,7 +22,6 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
 
     public Guid WorkspaceId { get; }
     public string WorkspacePath { get; }
-    public string? GitHubRepo { get; }
 
     public bool CanViewFindings => FindingsCount is > 0;
     public bool CanViewReport => ReportFilePath is not null;
@@ -51,7 +50,7 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
     {
         if (!CanViewFindings) return;
         ViewFindingsRequested?.Invoke(new FindingsPageNavArgs(
-            WorkspaceId, WorkspacePath, GitHubRepo, SkillName, ProjectName));
+            WorkspaceId, WorkspacePath, SkillName, ProjectName));
     }
 
     [RelayCommand]
@@ -70,14 +69,12 @@ public sealed partial class SkillRunRowViewModel : ObservableObject
         int? findingsCount = null,
         TimeProvider? timeProvider = null,
         string? projectName = null,
-        Guid workspaceId = default,
-        string? gitHubRepo = null)
+        Guid workspaceId = default)
     {
         SkillName = skillName;
         ProjectName = projectName;
         WorkspaceId = workspaceId;
         WorkspacePath = workspacePath;
-        GitHubRepo = gitHubRepo;
         ReportFilePath = ResolveReportFilePath(skillName, workspacePath);
         FindingsCount = findingsCount;
         LastRunText = lastRun is null ? "Never" : RelativeTimeFormatter.Format(lastRun.Value, timeProvider ?? TimeProvider.System);

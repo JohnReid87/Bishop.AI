@@ -40,14 +40,6 @@ public sealed class GetSkillBootstrapInfoQueryHandlerTests : IClassFixture<DbFix
         var path = $@"C:\code\{name}";
         var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, path), default);
-        // Set GitHubRepo directly on the Workspace entity (CLI/MediatR commands for it
-        // were removed with card #973, but the column remains until the schema is dropped.)
-        await using (var db = await _factory.CreateDbContextAsync())
-        {
-            var w = await db.Workspaces.FindAsync(workspace.Id);
-            w!.GitHubRepo = "octocat/Hello-World";
-            await db.SaveChangesAsync();
-        }
 
         var tags = new[] { new TagInfo("bug", "#ff0000"), new TagInfo("feature", "#00ff00") };
         var lanes = new[] { new LaneInfo("Backlog", 1), new LaneInfo("To Do", 2), new LaneInfo("Doing", 3), new LaneInfo("Done", 4) };
@@ -60,27 +52,8 @@ public sealed class GetSkillBootstrapInfoQueryHandlerTests : IClassFixture<DbFix
         // Assert
         result.WorkspaceName.Should().Be(name);
         result.WorkspacePath.Should().Be(path);
-        result.GitHubRepo.Should().Be("octocat/Hello-World");
         result.Tags.Should().BeEquivalentTo(tags);
         result.Lanes.Should().BeEquivalentTo(lanes);
-    }
-
-    [Fact]
-    public async Task Handle_OmitsGitHubRepoWhenWorkspaceHasNone()
-    {
-        // Arrange
-        var name = U("NoGh");
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
-            .Handle(new CreateWorkspaceCommand(name, $@"C:\code\{name}"), default);
-
-        var mediator = MediatorWith(Array.Empty<TagInfo>(), Array.Empty<LaneInfo>());
-        var handler = new GetSkillBootstrapInfoQueryHandler(_factory, mediator);
-
-        // Act
-        var result = await handler.Handle(new GetSkillBootstrapInfoQuery(workspace.Id), default);
-
-        // Assert
-        result.GitHubRepo.Should().BeNull();
     }
 
     [Fact]

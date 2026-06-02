@@ -14,7 +14,6 @@ public sealed partial class FindingsViewModel : ObservableObject
 
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
-    private string? _gitHubRepo;
 
     private string _sortKey = "severity";
     private bool _sortAsc = true;
@@ -53,14 +52,12 @@ public sealed partial class FindingsViewModel : ObservableObject
     public async Task LoadAsync(
         Guid workspaceId,
         string workspacePath,
-        string? gitHubRepo,
         string skillName,
         string? projectName,
         CancellationToken cancellationToken = default)
     {
         _workspaceId = workspaceId;
         _workspacePath = workspacePath;
-        _gitHubRepo = gitHubRepo;
         SkillName = skillName;
         ProjectName = projectName;
 
@@ -73,7 +70,7 @@ public sealed partial class FindingsViewModel : ObservableObject
         foreach (var r in records)
         {
             var vm = new FindingItemViewModel(
-                r, skillName, workspaceId, workspacePath, gitHubRepo,
+                r, skillName, workspaceId, workspacePath,
                 _mediator, _dialogService);
             if (r.Status == "resolved")
                 ResolvedFindings.Add(vm);

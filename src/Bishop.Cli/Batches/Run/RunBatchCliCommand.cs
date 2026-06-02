@@ -11,16 +11,14 @@ internal sealed class RunBatchCliCommand : Command
         var nameArg = new Argument<string>("name", "Batch name");
         var resumeOpt = new Option<bool>("--resume", "Re-acquire the lock and continue from the next undone card");
         var modelOpt = new Option<string?>("--model", "Override the model persisted on the batch (defaults to the batch's model)");
-        var allowExternalOpt = new Option<bool>("--allow-external-content", "Allow cards imported from GitHub to run under bypassPermissions");
 
         AddArgument(nameArg);
         AddOption(resumeOpt);
         AddOption(modelOpt);
-        AddOption(allowExternalOpt);
 
-        this.SetHandler(async (string name, bool resume, string? model, bool allowExternal) =>
+        this.SetHandler(async (string name, bool resume, string? model) =>
         {
-            var result = await mediator.Send(new RunBatchCommand(name, resume, model, allowExternal));
+            var result = await mediator.Send(new RunBatchCommand(name, resume, model));
 
             var failedNumbers = result.FailedCardNumbers ?? Array.Empty<int>();
             var stamp = timeProvider.GetLocalNow().ToString("HH:mm:ss");
@@ -55,14 +53,6 @@ internal sealed class RunBatchCliCommand : Command
                     Console.Error.WriteLine("'git' executable not found on PATH.");
                     Environment.ExitCode = 1;
                     break;
-                case RunBatchStopReason.ExternalContentBlocked:
-                    Console.Error.WriteLine(
-                        $"Batch blocked: {result.ExternalContentCardNumbers?.Count ?? 0} card(s) imported from GitHub cannot run under bypassPermissions.");
-                    foreach (var n in result.ExternalContentCardNumbers ?? Array.Empty<int>())
-                        Console.Error.WriteLine($"  Card #{n}");
-                    Console.Error.WriteLine("Pass --allow-external-content to proceed.");
-                    Environment.ExitCode = 1;
-                    break;
             }
 
             if (failedNumbers.Count > 0)
@@ -71,6 +61,6 @@ internal sealed class RunBatchCliCommand : Command
                     Console.Error.WriteLine($"Card #{n} left in 'Doing'.");
                 Environment.ExitCode = 1;
             }
-        }, nameArg, resumeOpt, modelOpt, allowExternalOpt);
+        }, nameArg, resumeOpt, modelOpt);
     }
 }

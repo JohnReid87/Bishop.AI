@@ -22,7 +22,7 @@ public sealed class PrintContextPackCliCommandTests
     };
 
     private readonly ContextPack _contextPack = new(
-        new WorkspaceBlock("test-ws", Directory.GetCurrentDirectory(), null, ["To Do"], ["test"], null, false),
+        new WorkspaceBlock("test-ws", Directory.GetCurrentDirectory(), ["To Do"], ["test"], null, false),
         new GitBlock("main", []),
         null,
         new Dictionary<string, string>());

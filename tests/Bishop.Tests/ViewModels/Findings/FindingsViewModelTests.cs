@@ -57,7 +57,7 @@ public class FindingsViewModelTests
 
         var vm = MakeVm(mediator);
 
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
 
         vm.Header.Should().Be("bish-arch — findings");
     }
@@ -71,7 +71,7 @@ public class FindingsViewModelTests
 
         var vm = MakeVm(mediator);
 
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, "Bishop.App");
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, "Bishop.App");
 
         vm.Header.Should().Be("bish-arch · Bishop.App — findings");
     }
@@ -92,7 +92,7 @@ public class FindingsViewModelTests
             .Returns(new[] { MakeRecord() });
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
 
         vm.IsEmpty.Should().BeFalse();
     }
@@ -111,7 +111,7 @@ public class FindingsViewModelTests
             .Returns(new[] { MakeRecord(status: "resolved") });
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
 
         vm.HasResolved.Should().BeTrue();
         vm.Findings.Should().BeEmpty();
@@ -128,7 +128,7 @@ public class FindingsViewModelTests
             .Returns(Array.Empty<FindingRecord>());
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, "my-repo", SkillName, "Bishop.App");
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, "Bishop.App");
 
         vm.SkillName.Should().Be(SkillName);
         vm.ProjectName.Should().Be("Bishop.App");
@@ -149,7 +149,7 @@ public class FindingsViewModelTests
             .Returns(records);
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
 
         vm.Findings.Should().HaveCount(2);
         vm.ResolvedFindings.Should().HaveCount(2);
@@ -163,10 +163,10 @@ public class FindingsViewModelTests
             .Returns(new[] { MakeRecord() }, Array.Empty<FindingRecord>());
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
         vm.Findings.Should().HaveCount(1);
 
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
         vm.Findings.Should().BeEmpty();
     }
 
@@ -178,7 +178,7 @@ public class FindingsViewModelTests
             .Returns(Array.Empty<FindingRecord>());
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, "Bishop.App");
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, "Bishop.App");
 
         await mediator.Received(1).Send(
             Arg.Is<GetFindingsBySkillAndProjectQuery>(q =>
@@ -197,7 +197,7 @@ public class FindingsViewModelTests
         var item = MakeVm().Findings.Count == 0 ? null : vm.Findings[0];
         var record = MakeRecord(title: "Foo");
         var finding = new FindingItemViewModel(
-            record, SkillName, WorkspaceId, WorkspacePath, null,
+            record, SkillName, WorkspaceId, WorkspacePath,
             Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>());
 
         vm.FilterText = string.Empty;
@@ -224,7 +224,7 @@ public class FindingsViewModelTests
 
         var record = MakeRecord(title: title, severity: severity, file: file, symbol: symbol);
         var finding = new FindingItemViewModel(
-            record, SkillName, WorkspaceId, WorkspacePath, null,
+            record, SkillName, WorkspaceId, WorkspacePath,
             Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>());
 
         vm.Matches(finding).Should().Be(expected);
@@ -238,7 +238,7 @@ public class FindingsViewModelTests
 
         var record = MakeRecord(severity: "high");
         var finding = new FindingItemViewModel(
-            record, SkillName, WorkspaceId, WorkspacePath, null,
+            record, SkillName, WorkspaceId, WorkspacePath,
             Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>());
 
         vm.Matches(finding).Should().BeTrue();
@@ -261,7 +261,7 @@ public class FindingsViewModelTests
             .Returns(records);
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
 
         vm.VisibleFindings.Should().HaveCount(3);
         vm.VisibleFindings[0].Title.Should().Be("Critical one");
@@ -281,7 +281,7 @@ public class FindingsViewModelTests
             });
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
 
         vm.VisibleFindings[0].Title.Should().Be("B");
 
@@ -303,7 +303,7 @@ public class FindingsViewModelTests
             });
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
 
         vm.ToggleSort("title");
 
@@ -323,7 +323,7 @@ public class FindingsViewModelTests
             });
 
         var vm = MakeVm(mediator);
-        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, SkillName, null);
 
         vm.VisibleFindings.Should().HaveCount(2);
 
@@ -341,7 +341,7 @@ public class FindingsViewModelTests
 
         var record = MakeRecord();
         var finding = new FindingItemViewModel(
-            record, SkillName, WorkspaceId, WorkspacePath, null,
+            record, SkillName, WorkspaceId, WorkspacePath,
             Substitute.For<ISender>(), Substitute.For<ICardDetailDialogService>());
 
         vm.Matches(finding).Should().BeTrue();

@@ -32,7 +32,6 @@ internal sealed class GetSkillBootstrapInfoQueryHandler : IRequestHandler<GetSki
         return new SkillBootstrapInfo(
             workspace.Name,
             workspace.Path,
-            workspace.GitHubRepo,
             tags,
             lanes);
     }

@@ -24,14 +24,12 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
     private static Workspace MakeWorkspace(
         string name = "demo",
-        string path = @"C:\demo",
-        string? gitHubRepo = null) =>
+        string path = @"C:\demo") =>
         new()
         {
             Id = Guid.NewGuid(),
             Name = name,
             Path = path,
-            GitHubRepo = gitHubRepo,
         };
 
     // ── BuildBishopContext ─────────────────────────────────────────────────────
@@ -73,26 +71,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
         foreach (var tag in BrandTagPalette.DefaultColours.Keys)
             output.Should().Contain($"- `{tag}`");
-    }
-
-    [Fact]
-    public void BuildBishopContext_IncludesGitHubLine_WhenRepoSet()
-    {
-        var workspace = MakeWorkspace(gitHubRepo: "owner/repo");
-
-        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
-
-        output.Should().Contain("- **GitHub:** `owner/repo`");
-    }
-
-    [Fact]
-    public void BuildBishopContext_OmitsGitHubLine_WhenRepoNotSet()
-    {
-        var workspace = MakeWorkspace(gitHubRepo: null);
-
-        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
-
-        output.Should().NotContain("**GitHub:**");
     }
 
     [Fact]

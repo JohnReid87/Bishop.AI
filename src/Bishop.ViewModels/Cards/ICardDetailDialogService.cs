@@ -14,7 +14,6 @@ public interface ICardDetailDialogService
         CardViewModel card,
         string workspacePath,
         Guid workspaceId,
-        string? gitHubRepo,
         object xamlRoot);
 
     Task ShowNotFoundAsync(int cardNumber, object xamlRoot);

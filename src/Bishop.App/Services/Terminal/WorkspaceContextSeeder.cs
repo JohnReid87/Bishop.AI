@@ -130,8 +130,6 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         sb.AppendLine();
         sb.AppendLine($"- **Name:** {workspace.Name}");
         sb.AppendLine($"- **Path:** `{workspace.Path}`");
-        if (!string.IsNullOrWhiteSpace(workspace.GitHubRepo))
-            sb.AppendLine($"- **GitHub:** `{workspace.GitHubRepo}`");
         sb.AppendLine();
 
         sb.AppendLine("### Lanes");

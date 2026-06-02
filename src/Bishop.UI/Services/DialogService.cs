@@ -20,13 +20,13 @@ public sealed class DialogService : IDialogService
 
     public async Task<CardDetailDialogViewModel> ShowCardDetailDialogAsync(
         CardViewModel card, SkillMenuItem[] cardSkills, string workspacePath,
-        Guid workspaceId, string? gitHubRepo, XamlRoot xamlRoot)
+        Guid workspaceId, XamlRoot xamlRoot)
     {
         var mediator = _services.GetRequiredService<ISender>();
         var appSettings = _services.GetRequiredService<IAppSettings>();
         var logger = _services.GetRequiredService<ILogger<CardDetailDialogViewModel>>();
         var errorBus = _services.GetRequiredService<IErrorBus>();
-        var vm = new CardDetailDialogViewModel(card, cardSkills, workspaceId, gitHubRepo, mediator, appSettings, workspacePath, logger, errorBus);
+        var vm = new CardDetailDialogViewModel(card, cardSkills, workspaceId, mediator, appSettings, workspacePath, logger, errorBus);
         var dialog = new CardDetailDialog(vm) { XamlRoot = xamlRoot };
         await dialog.ShowAsync();
         return vm;

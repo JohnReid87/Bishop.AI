@@ -13,7 +13,6 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Windows.System;
 using Windows.UI.Core;
-using Launcher = Windows.System.Launcher;
 
 namespace Bishop.UI.Views.Cards;
 
@@ -109,13 +108,6 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
-
-    private async void CommitButton_Click(object sender, RoutedEventArgs e)
-        => await _safeAsync.RunAsync(async () =>
-        {
-            if (ViewModel.CommitUrl is { } url)
-                await Launcher.LaunchUriAsync(new Uri(url));
-        });
 
     // ── Title editing ─────────────────────────────────────────────────────────
 

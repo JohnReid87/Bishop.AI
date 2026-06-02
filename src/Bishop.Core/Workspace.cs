@@ -7,7 +7,6 @@ public sealed class Workspace : IAuditable
     public string Path { get; set; } = string.Empty;
     public int Position { get; set; }
     public int NextCardNumber { get; set; } = 1;
-    public string? GitHubRepo { get; set; }
     public bool IsRemoved { get; set; }
     public DateTimeOffset? RemovedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -22,7 +21,6 @@ public sealed class Workspace : IAuditable
         Path = path ?? Path,
         Position = Position,
         NextCardNumber = NextCardNumber,
-        GitHubRepo = GitHubRepo,
         IsRemoved = IsRemoved,
         RemovedAt = RemovedAt,
         CreatedAt = CreatedAt,

@@ -68,15 +68,10 @@ public sealed partial class WorkspaceDetailPage : Page
         Commits.CommitActivated += row => _safeAsync.RunAsync(async () =>
         {
             _commitsFlyout.Hide();
-            if (row.GitHubRepo is not null)
-                await Launcher.LaunchUriAsync(new Uri($"https://github.com/{row.GitHubRepo}/commit/{row.FullHash}"));
-            else
-            {
-                var pkg = new DataPackage();
-                pkg.SetText(row.FullHash);
-                Clipboard.SetContent(pkg);
-                await ShowCopiedToastAsync();
-            }
+            var pkg = new DataPackage();
+            pkg.SetText(row.FullHash);
+            Clipboard.SetContent(pkg);
+            await ShowCopiedToastAsync();
         });
         Board.StagingTray.Cards.CollectionChanged += OnStagingTrayCardsChanged;
         Monitoring.ViewFindingsRequested += OnViewFindingsRequested;
@@ -159,7 +154,7 @@ public sealed partial class WorkspaceDetailPage : Page
         await LoadSkillsAsync();
         _ = _safeAsync.RunAsync(() => Board.LoadAsync(vm.Id));
         _ = _safeAsync.RunAsync(() => Notes.LoadAsync(vm.Id, vm.Path));
-        _ = _safeAsync.RunAsync(() => Monitoring.LoadAsync(vm.Id, vm.Path, vm.GitHubRepo));
+        _ = _safeAsync.RunAsync(() => Monitoring.LoadAsync(vm.Id, vm.Path));
         _ = _safeAsync.RunAsync(() => Batches.LoadAsync(vm.Id, vm.Path));
     }
 
@@ -226,7 +221,7 @@ public sealed partial class WorkspaceDetailPage : Page
         => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
-            await Commits.LoadAsync(_item.Path, _item.GitHubRepo);
+            await Commits.LoadAsync(_item.Path);
             _commitsFlyout!.ShowAt((FrameworkElement)sender);
         });
 
@@ -253,7 +248,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 return;
             }
 
-            var vm = await _dialogService.ShowCardDetailDialogAsync(card, Board.CardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty, _item?.GitHubRepo, XamlRoot);
+            var vm = await _dialogService.ShowCardDetailDialogAsync(card, Board.CardSkills, _item?.Path ?? string.Empty, _item?.Id ?? Guid.Empty, XamlRoot);
             if (vm.Deleted || vm.Updated)
                 await Board.RefreshCommand.ExecuteAsync(null);
         });

@@ -28,7 +28,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     private readonly ILogger<CardDetailDialogViewModel> _logger;
     private readonly IErrorBus _errorBus;
     private readonly Guid _workspaceId;
-    private readonly string? _workspaceGitHubRepo;
     private readonly string _workspacePath;
     private readonly CardLinkRenderer _linkRenderer = new();
     private readonly CardExtrasLoader _extrasLoader;
@@ -104,24 +103,11 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsCommitVisible))]
     public partial string? CommitShortHash { get; private set; }
 
-    [ObservableProperty]
-    public partial string? CommitUrl { get; private set; }
-
-    [ObservableProperty]
-    public partial bool IsCommitLinkVisible { get; private set; }
-
-    [ObservableProperty]
-    public partial bool IsCommitTextVisible { get; private set; }
-
     public bool IsCommitVisible => !string.IsNullOrEmpty(CommitShortHash);
 
     public void SetCommit(CommitInfo commit)
     {
-        var state = CardCommitState.From(commit, _workspaceGitHubRepo);
-        CommitShortHash = state.ShortHash;
-        CommitUrl = state.Url;
-        IsCommitLinkVisible = state.IsLinkVisible;
-        IsCommitTextVisible = state.IsTextVisible;
+        CommitShortHash = CardCommitState.From(commit).ShortHash;
     }
 
     public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
@@ -135,14 +121,13 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     [ObservableProperty]
     public partial bool Deleted { get; set; }
 
-    public CardDetailDialogViewModel(CardViewModel card, SkillMenuItem[] cardSkills, Guid workspaceId, string? gitHubRepo, ISender mediator, IAppSettings appSettings, string workspacePath, ILogger<CardDetailDialogViewModel> logger, IErrorBus errorBus)
+    public CardDetailDialogViewModel(CardViewModel card, SkillMenuItem[] cardSkills, Guid workspaceId, ISender mediator, IAppSettings appSettings, string workspacePath, ILogger<CardDetailDialogViewModel> logger, IErrorBus errorBus)
     {
         _mediator = mediator;
         _appSettings = appSettings;
         _logger = logger;
         _errorBus = errorBus;
         _workspaceId = workspaceId;
-        _workspaceGitHubRepo = gitHubRepo;
         _workspacePath = workspacePath;
         _extrasLoader = new CardExtrasLoader(mediator, logger, errorBus);
         _cardId = card.Id;
@@ -178,9 +163,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         ShowDeleteConfirm = false;
         EditError = null;
         CommitShortHash = null;
-        CommitUrl = null;
-        IsCommitLinkVisible = false;
-        IsCommitTextVisible = false;
         ClaudeTotalsText = null;
         LastFailedRunTranscriptPath = null;
         CanGoBack = canGoBack;

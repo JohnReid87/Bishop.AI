@@ -8,7 +8,7 @@ public interface IDialogService
 {
     Task<CardDetailDialogViewModel> ShowCardDetailDialogAsync(
         CardViewModel card, SkillMenuItem[] cardSkills, string workspacePath,
-        Guid workspaceId, string? gitHubRepo, XamlRoot xamlRoot);
+        Guid workspaceId, XamlRoot xamlRoot);
 
     Task ShowSettingsDialogAsync(XamlRoot xamlRoot);
 }

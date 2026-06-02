@@ -24,7 +24,6 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
     private readonly TimeProvider _timeProvider;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
-    private string? _gitHubRepo;
 
     public event Action<FindingsPageNavArgs>? ViewFindingsRequested;
     public event Action<Uri>? ViewReportRequested;
@@ -52,11 +51,10 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
         _timeProvider = timeProvider;
     }
 
-    public async Task LoadAsync(Guid workspaceId, string workspacePath, string? gitHubRepo = null)
+    public async Task LoadAsync(Guid workspaceId, string workspacePath)
     {
         _workspaceId = workspaceId;
         _workspacePath = workspacePath;
-        _gitHubRepo = gitHubRepo;
         await RefreshAsync();
     }
 
@@ -111,8 +109,7 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             run?.FindingsCount,
             _timeProvider,
             run?.ProjectName,
-            _workspaceId,
-            _gitHubRepo);
+            _workspaceId);
         row.ViewFindingsRequested += args => ViewFindingsRequested?.Invoke(args);
         row.ViewReportRequested += uri => ViewReportRequested?.Invoke(uri);
         return row;

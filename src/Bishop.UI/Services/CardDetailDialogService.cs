@@ -20,7 +20,6 @@ public sealed class CardDetailDialogService : ICardDetailDialogService
         CardViewModel card,
         string workspacePath,
         Guid workspaceId,
-        string? gitHubRepo,
         object xamlRoot)
     {
         if (xamlRoot is not XamlRoot root)
@@ -32,7 +31,7 @@ public sealed class CardDetailDialogService : ICardDetailDialogService
         var errorBus = _services.GetRequiredService<IErrorBus>();
 
         var vm = new CardDetailDialogViewModel(
-            card, cardSkills: [], workspaceId, gitHubRepo, mediator, appSettings, workspacePath, logger, errorBus);
+            card, cardSkills: [], workspaceId, mediator, appSettings, workspacePath, logger, errorBus);
         var dialog = new CardDetailDialog(vm) { XamlRoot = root };
         var result = await dialog.ShowAsync();
         return result == ContentDialogResult.Primary;

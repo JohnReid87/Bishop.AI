@@ -45,9 +45,6 @@ internal sealed class ShowCardCliCommand : Command
                         hash = found.Commit.FullHash,
                         shortHash = found.Commit.ShortHash,
                         isPushed = found.Commit.IsPushed,
-                        url = ws.GitHubRepo is not null
-                            ? $"https://github.com/{ws.GitHubRepo}/commit/{found.Commit.FullHash}"
-                            : (string?)null
                     }
                     : null;
 
@@ -60,8 +57,6 @@ internal sealed class ShowCardCliCommand : Command
                     laneName = card.LaneName,
                     position = card.Position,
                     isClosed = card.IsClosed,
-                    gitHubIssueNumber = card.GitHubIssueNumber,
-                    gitHubPushedAt = card.GitHubPushedAt,
                     createdAt = card.CreatedAt,
                     updatedAt = card.UpdatedAt,
                     totalInputTokens = card.TotalInputTokens,

@@ -16,7 +16,6 @@ public sealed class WorkspaceTests
             Path = @"C:\original",
             Position = 7,
             NextCardNumber = 42,
-            GitHubRepo = "owner/repo",
             IsRemoved = true,
             RemovedAt = new DateTimeOffset(2026, 5, 1, 12, 0, 0, TimeSpan.Zero),
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),

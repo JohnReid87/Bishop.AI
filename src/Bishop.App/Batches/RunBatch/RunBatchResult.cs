@@ -9,12 +9,10 @@ public enum RunBatchStopReason
     NotAGitRepo,
     GitNotFound,
     StopRequested,
-    ExternalContentBlocked,
 }
 
 public sealed record RunBatchResult(
     int Succeeded,
     IReadOnlyList<int>? FailedCardNumbers,
     RunBatchStopReason StopReason,
-    IReadOnlyList<string>? DirtyPaths = null,
-    IReadOnlyList<int>? ExternalContentCardNumbers = null);
+    IReadOnlyList<string>? DirtyPaths = null);

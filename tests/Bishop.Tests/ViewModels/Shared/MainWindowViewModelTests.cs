@@ -112,8 +112,8 @@ public class MainWindowViewModelTests
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Workspace>
             {
-                new() { Id = id1, Name = "alpha", Path = "C:/a", Position = 1, GitHubRepo = "owner/repo" },
-                new() { Id = id2, Name = "beta", Path = "C:/b", Position = 2, GitHubRepo = null },
+                new() { Id = id1, Name = "alpha", Path = "C:/a", Position = 1 },
+                new() { Id = id2, Name = "beta", Path = "C:/b", Position = 2 },
             });
 
         var vm = NewVm(mediator: mediator);
@@ -128,14 +128,12 @@ public class MainWindowViewModelTests
         first.Name.Should().Be("alpha");
         first.Path.Should().Be("C:/a");
         first.Position.Should().Be(1);
-        first.GitHubRepo.Should().Be("owner/repo");
 
         var second = vm.Workspaces[1];
         second.Id.Should().Be(id2);
         second.Name.Should().Be("beta");
         second.Path.Should().Be("C:/b");
         second.Position.Should().Be(2);
-        second.GitHubRepo.Should().BeNull();
     }
 
     [Fact]
@@ -431,7 +429,7 @@ public class MainWindowViewModelTests
         mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
             .Returns(new InitWorkspaceResult(
                 new Workspace { Id = Guid.NewGuid(), Name = "New", Path = @"C:\new", Position = 1 },
-                Created: true, GitHubLinked: false));
+                Created: true));
         var vm = NewVm(mediator: mediator);
         var dialog = new AddWorkspaceDialogViewModel
         {
@@ -455,7 +453,7 @@ public class MainWindowViewModelTests
         mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
             .Returns(new InitWorkspaceResult(
                 new Workspace { Id = newId, Name = "New", Path = @"C:\new", Position = 1 },
-                Created: true, GitHubLinked: false));
+                Created: true));
         var vm = NewVm(mediator: mediator);
         var dialog = new AddWorkspaceDialogViewModel { Name = "New", FolderPath = @"C:\new" };
 
@@ -473,7 +471,7 @@ public class MainWindowViewModelTests
         mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
             .Returns(new InitWorkspaceResult(
                 new Workspace { Id = Guid.NewGuid(), Name = "New", Path = @"C:\new", Position = 1 },
-                Created: true, GitHubLinked: false));
+                Created: true));
         var vm = NewVm(mediator: mediator);
         var dialog = new AddWorkspaceDialogViewModel { Name = "New", FolderPath = @"C:\new" };
 
@@ -674,7 +672,7 @@ public class MainWindowViewModelTests
         mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
             .Returns(new InitWorkspaceResult(
                 new Workspace { Id = newId, Name = "New", Path = @"C:\new", Position = 1 },
-                Created: true, GitHubLinked: false));
+                Created: true));
         mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<Workspace>
             {

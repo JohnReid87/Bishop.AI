@@ -33,7 +33,6 @@ public sealed partial class FindingsPage : Page
             _ = _safeAsync.RunAsync(() => ViewModel.LoadAsync(
                 args.WorkspaceId,
                 args.WorkspacePath,
-                args.GitHubRepo,
                 args.SkillName,
                 args.ProjectName));
         }

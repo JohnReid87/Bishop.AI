@@ -231,8 +231,7 @@ public class SkillRunRowViewModelTests
             workspacePath: @"C:\repo",
             findingsCount: 2,
             projectName: "Bishop.App",
-            workspaceId: wsId,
-            gitHubRepo: "owner/repo");
+            workspaceId: wsId);
 
         Bishop.ViewModels.Findings.FindingsPageNavArgs? captured = null;
         row.ViewFindingsRequested += a => captured = a;
@@ -242,7 +241,6 @@ public class SkillRunRowViewModelTests
         captured.Should().NotBeNull();
         captured!.WorkspaceId.Should().Be(wsId);
         captured.WorkspacePath.Should().Be(@"C:\repo");
-        captured.GitHubRepo.Should().Be("owner/repo");
         captured.SkillName.Should().Be("bish-tests");
         captured.ProjectName.Should().Be("Bishop.App");
     }

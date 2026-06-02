@@ -147,5 +147,5 @@ Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are instal
 Recorded so future-me doesn't drift into them:
 - **Cross-platform** (Mac / Linux). Windows-only by design.
 - **Multi-user / cloud sync.** Single-user local app. No accounts, no servers.
-- **GitHub Issues / Projects sync.** Removed in card #973 for security (prompt-injection surface via imported issue bodies) and disuse. The CLI surface, MediatR handlers, UI dialogs, and `gh` integration are gone; `Workspace.GitHubRepo`, `Card.GitHubIssueNumber`, and `Card.GitHubPushedAt` columns remain temporarily and are dropped in the follow-up schema card.
+- **GitHub Issues / Projects sync.** Removed in cards #973 and #974 for security (prompt-injection surface via imported issue bodies) and disuse. The CLI surface, MediatR handlers, UI dialogs, `gh` integration, and the `Workspace.GitHubRepo` / `Card.GitHubIssueNumber` / `Card.GitHubPushedAt` columns are all gone.
 - **Plugin system.** Future tabs ship as in-tree code, not external plugins.

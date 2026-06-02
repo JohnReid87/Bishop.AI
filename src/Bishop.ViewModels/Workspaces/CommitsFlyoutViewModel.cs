@@ -11,7 +11,6 @@ public sealed partial class CommitsFlyoutViewModel : ObservableObject
     private readonly BoardGitCoordinator _git;
     private readonly TimeProvider _timeProvider;
     private string _workspacePath = string.Empty;
-    private string? _gitHubRepo;
     private bool _needsSetUpstream;
 
     public ObservableCollection<CommitRowViewModel> Commits { get; } = [];
@@ -47,10 +46,9 @@ public sealed partial class CommitsFlyoutViewModel : ObservableObject
         _timeProvider = timeProvider;
     }
 
-    public async Task LoadAsync(string workspacePath, string? gitHubRepo)
+    public async Task LoadAsync(string workspacePath)
     {
         _workspacePath = workspacePath;
-        _gitHubRepo = gitHubRepo;
         await RefreshAsync();
     }
 
@@ -95,7 +93,7 @@ public sealed partial class CommitsFlyoutViewModel : ObservableObject
             case RecentCommitsResult.Success s:
                 var commits = s.Commits;
                 for (var i = 0; i < commits.Count; i++)
-                    Commits.Add(new CommitRowViewModel(commits[i], s.UpstreamRef, _gitHubRepo, _timeProvider, showSeparator: i < commits.Count - 1));
+                    Commits.Add(new CommitRowViewModel(commits[i], s.UpstreamRef, _timeProvider, showSeparator: i < commits.Count - 1));
                 HasCommits = true;
                 ApplyPushState(s.UpstreamRef, s.UpstreamIsTracked, s.UnpushedCount);
                 break;

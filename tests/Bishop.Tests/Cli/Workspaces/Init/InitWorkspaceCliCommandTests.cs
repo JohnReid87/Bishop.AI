@@ -11,12 +11,11 @@ namespace Bishop.Tests.Cli.Workspaces.Init;
 [Collection("EnvVar")]
 public sealed class InitWorkspaceCliCommandTests
 {
-    private static Workspace MakeWorkspace(string name = "test-ws", string path = @"C:\test", string? gitHubRepo = null) => new()
+    private static Workspace MakeWorkspace(string name = "test-ws", string path = @"C:\test") => new()
     {
         Id = Guid.NewGuid(),
         Name = name,
         Path = path,
-        GitHubRepo = gitHubRepo
     };
 
     [Fact]
@@ -25,7 +24,7 @@ public sealed class InitWorkspaceCliCommandTests
         var ws = MakeWorkspace();
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: true, GitHubLinked: false));
+            .Returns(new InitWorkspaceResult(ws, Created: true));
 
         var cmd = new InitWorkspaceCliCommand(mediator);
         var exitCode = await cmd.InvokeAsync(["--path", @"C:\test", "--name", "test-ws"]);
@@ -40,7 +39,7 @@ public sealed class InitWorkspaceCliCommandTests
         var ws = MakeWorkspace();
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: false, GitHubLinked: false));
+            .Returns(new InitWorkspaceResult(ws, Created: false));
 
         var cmd = new InitWorkspaceCliCommand(mediator);
         var output = new StringWriter();
@@ -64,7 +63,7 @@ public sealed class InitWorkspaceCliCommandTests
         var ws = MakeWorkspace();
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: false, GitHubLinked: false, Restored: true));
+            .Returns(new InitWorkspaceResult(ws, Created: false, Restored: true));
 
         var cmd = new InitWorkspaceCliCommand(mediator);
         var output = new StringWriter();
@@ -83,46 +82,6 @@ public sealed class InitWorkspaceCliCommandTests
     }
 
     [Fact]
-    public async Task InvokeAsync_GitHubLinked_PrintsGitHubLine()
-    {
-        var ws = MakeWorkspace(gitHubRepo: "owner/repo");
-        var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: true, GitHubLinked: true));
-
-        var cmd = new InitWorkspaceCliCommand(mediator);
-        var output = new StringWriter();
-        var originalOut = Console.Out;
-        Console.SetOut(output);
-        try
-        {
-            await cmd.InvokeAsync(["--path", @"C:\test"]);
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
-
-        output.ToString().Should().Contain("GitHub: owner/repo");
-    }
-
-    [Fact]
-    public async Task InvokeAsync_NoGitHubDetectFlag_SendsDetectGitHubFalse()
-    {
-        var ws = MakeWorkspace();
-        var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<InitWorkspaceCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: true, GitHubLinked: false));
-
-        var cmd = new InitWorkspaceCliCommand(mediator);
-        await cmd.InvokeAsync(["--path", @"C:\test", "--no-github-detect"]);
-
-        await mediator.Received(1).Send(
-            Arg.Is<InitWorkspaceCommand>(c => c.DetectGitHub == false),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
     public async Task InvokeAsync_NeedsArchivedAction_Restore_SendsRestoreAction()
     {
         var ws = MakeWorkspace();
@@ -130,11 +89,11 @@ public sealed class InitWorkspaceCliCommandTests
         mediator.Send(
                 Arg.Is<InitWorkspaceCommand>(c => c.ArchivedAction == null),
                 Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: false, GitHubLinked: false, NeedsArchivedAction: true));
+            .Returns(new InitWorkspaceResult(ws, Created: false, NeedsArchivedAction: true));
         mediator.Send(
                 Arg.Is<InitWorkspaceCommand>(c => c.ArchivedAction == InitWorkspaceArchivedAction.Restore),
                 Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: false, GitHubLinked: false, Restored: true));
+            .Returns(new InitWorkspaceResult(ws, Created: false, Restored: true));
 
         var cmd = new InitWorkspaceCliCommand(mediator);
         var originalIn = Console.In;
@@ -161,11 +120,11 @@ public sealed class InitWorkspaceCliCommandTests
         mediator.Send(
                 Arg.Is<InitWorkspaceCommand>(c => c.ArchivedAction == null),
                 Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: false, GitHubLinked: false, NeedsArchivedAction: true));
+            .Returns(new InitWorkspaceResult(ws, Created: false, NeedsArchivedAction: true));
         mediator.Send(
                 Arg.Is<InitWorkspaceCommand>(c => c.ArchivedAction == InitWorkspaceArchivedAction.Fresh),
                 Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: true, GitHubLinked: false));
+            .Returns(new InitWorkspaceResult(ws, Created: true));
 
         var cmd = new InitWorkspaceCliCommand(mediator);
         var originalIn = Console.In;
@@ -192,7 +151,7 @@ public sealed class InitWorkspaceCliCommandTests
         mediator.Send(
                 Arg.Is<InitWorkspaceCommand>(c => c.ArchivedAction == null),
                 Arg.Any<CancellationToken>())
-            .Returns(new InitWorkspaceResult(ws, Created: false, GitHubLinked: false, NeedsArchivedAction: true));
+            .Returns(new InitWorkspaceResult(ws, Created: false, NeedsArchivedAction: true));
 
         var cmd = new InitWorkspaceCliCommand(mediator);
         var originalIn = Console.In;

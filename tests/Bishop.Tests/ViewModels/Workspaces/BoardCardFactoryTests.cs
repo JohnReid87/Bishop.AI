@@ -28,7 +28,6 @@ public class BoardCardFactoryTests
     public void Build_MapsAllScalarFields()
     {
         var card = MakeCard();
-        card.GitHubIssueNumber = 7;
         card.BatchId = Guid.NewGuid();
 
         var vm = BoardCardFactory.Build(card, "To Do", EmptyColours, isSkillsButtonVisible: true);

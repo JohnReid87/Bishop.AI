@@ -203,14 +203,9 @@
                         <TextBlock Text="commit"
                                    Foreground="{StaticResource AppTextTertiaryBrush}"
                                    VerticalAlignment="Center" FontSize="12"/>
-                        <HyperlinkButton Content="{x:Bind ViewModel.CommitShortHash, Mode=OneWay}"
-                                         Click="CommitButton_Click"
-                                         Visibility="{x:Bind ViewModel.IsCommitLinkVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                         Padding="0" VerticalAlignment="Center" FontSize="12"/>
                         <TextBlock Text="{x:Bind ViewModel.CommitShortHash, Mode=OneWay}"
                                    FontFamily="Cascadia Mono"
-                                   VerticalAlignment="Center" FontSize="12"
-                                   Visibility="{x:Bind ViewModel.IsCommitTextVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                   VerticalAlignment="Center" FontSize="12"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="6"

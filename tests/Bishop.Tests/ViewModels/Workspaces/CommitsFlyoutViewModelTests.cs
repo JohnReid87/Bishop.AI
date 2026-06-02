@@ -41,7 +41,7 @@ public class CommitsFlyoutViewModelTests
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main"));
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.Commits.Should().HaveCount(1);
         _vm.Commits[0].ShortHash.Should().Be("abc1234");
@@ -59,7 +59,7 @@ public class CommitsFlyoutViewModelTests
         };
         SetupCommitsResult(new GetRecentCommitsResult.Success(commits, UpstreamRef: "origin/main"));
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.Commits.Should().HaveCount(2);
         _vm.Commits[0].ShowSeparator.Should().BeTrue();
@@ -71,7 +71,7 @@ public class CommitsFlyoutViewModelTests
     {
         SetupCommitsResult(new GetRecentCommitsResult.NotAGitRepo());
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.HasCommits.Should().BeFalse();
         _vm.StatusMessage.Should().Be("Not a git repository");
@@ -83,7 +83,7 @@ public class CommitsFlyoutViewModelTests
     {
         SetupCommitsResult(new GetRecentCommitsResult.GitNotFound());
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.HasCommits.Should().BeFalse();
         _vm.StatusMessage.Should().Be("Git not installed or not on PATH");
@@ -94,7 +94,7 @@ public class CommitsFlyoutViewModelTests
     {
         SetupCommitsResult(new GetRecentCommitsResult.NoCommits());
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.HasCommits.Should().BeFalse();
         _vm.StatusMessage.Should().Be("No commits yet");
@@ -105,7 +105,7 @@ public class CommitsFlyoutViewModelTests
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: null));
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.IsPushEnabled.Should().BeFalse();
         _vm.PushLabel.Should().Be("No remote branch — push with -u to publish");
@@ -116,7 +116,7 @@ public class CommitsFlyoutViewModelTests
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main", UnpushedCount: 0));
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.IsPushEnabled.Should().BeFalse();
         _vm.PushLabel.Should().Be("Up to date");
@@ -127,7 +127,7 @@ public class CommitsFlyoutViewModelTests
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main", UpstreamIsTracked: true, UnpushedCount: 1));
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.IsPushEnabled.Should().BeTrue();
         _vm.PushLabel.Should().Be("Push 1 commit");
@@ -138,7 +138,7 @@ public class CommitsFlyoutViewModelTests
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main", UpstreamIsTracked: true, UnpushedCount: 3));
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.PushLabel.Should().Be("Push 3 commits");
     }
@@ -148,7 +148,7 @@ public class CommitsFlyoutViewModelTests
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main", UpstreamIsTracked: false, UnpushedCount: 2));
 
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         _vm.PushLabel.Should().Be("Push 2 commits (will set upstream)");
         _vm.IsPushEnabled.Should().BeTrue();
@@ -158,7 +158,7 @@ public class CommitsFlyoutViewModelTests
     public async Task PushAsync_Success_RefreshesCommits()
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main", UpstreamIsTracked: true, UnpushedCount: 1));
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main", UnpushedCount: 0));
         SetupPushResult(new PushResult(Success: true, Message: null));
@@ -174,7 +174,7 @@ public class CommitsFlyoutViewModelTests
     public async Task PushAsync_Failure_SetsPushError()
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main", UpstreamIsTracked: true, UnpushedCount: 1));
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         SetupPushResult(new PushResult(Success: false, Message: "rejected"));
 
@@ -188,7 +188,7 @@ public class CommitsFlyoutViewModelTests
     public async Task PushAsync_FailureWithNoMessage_SetsGenericError()
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main", UpstreamIsTracked: true, UnpushedCount: 1));
-        await _vm.LoadAsync(@"C:\repo", null);
+        await _vm.LoadAsync(@"C:\repo");
 
         SetupPushResult(new PushResult(Success: false, Message: null));
 
@@ -201,7 +201,7 @@ public class CommitsFlyoutViewModelTests
     public async Task RaiseCommitActivated_FiresEvent()
     {
         SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main"));
-        await _vm.LoadAsync(@"C:\repo", "owner/repo");
+        await _vm.LoadAsync(@"C:\repo");
 
         CommitRowViewModel? activated = null;
         _vm.CommitActivated += row => activated = row;
@@ -209,15 +209,5 @@ public class CommitsFlyoutViewModelTests
         _vm.RaiseCommitActivated(_vm.Commits[0]);
 
         activated.Should().BeSameAs(_vm.Commits[0]);
-    }
-
-    [Fact]
-    public async Task LoadAsync_PassesGitHubRepoToCommitRows()
-    {
-        SetupCommitsResult(new GetRecentCommitsResult.Success([SampleCommit], UpstreamRef: "origin/main"));
-
-        await _vm.LoadAsync(@"C:\repo", "owner/repo");
-
-        _vm.Commits[0].GitHubRepo.Should().Be("owner/repo");
     }
 }

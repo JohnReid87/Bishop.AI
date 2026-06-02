@@ -112,7 +112,7 @@ public class CardDetailDialogViewModelTests
     }
 
     [Fact]
-    public void SetCommit_WithUnpushedCommit_ShowsTextNotLink()
+    public void SetCommit_PopulatesCommitShortHash()
     {
         var vm = NewVm();
         vm.IsCommitVisible.Should().BeFalse();
@@ -121,20 +121,6 @@ public class CardDetailDialogViewModelTests
 
         vm.CommitShortHash.Should().Be("abc1234");
         vm.IsCommitVisible.Should().BeTrue();
-        vm.IsCommitTextVisible.Should().BeTrue();
-        vm.IsCommitLinkVisible.Should().BeFalse();
-    }
-
-    [Fact]
-    public void SetCommit_WithPushedCommitAndGitHubRepo_ExposesLink()
-    {
-        var vm = NewVm(gitHubRepo: "owner/repo");
-
-        vm.SetCommit(new CommitInfo("abc1234", "abc1234def56789", "feat: Something", "", DateTimeOffset.UtcNow, IsPushed: true));
-
-        vm.CommitUrl.Should().Be("https://github.com/owner/repo/commit/abc1234def56789");
-        vm.IsCommitLinkVisible.Should().BeTrue();
-        vm.IsCommitTextVisible.Should().BeFalse();
     }
 
     [Fact]
@@ -603,7 +589,7 @@ public class CardDetailDialogViewModelTests
         var workspaceId = Guid.NewGuid();
         IReadOnlyList<Card> cards = [new Card { Id = Guid.NewGuid(), Number = 7, LaneName = "To Do" }];
         mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>()).Returns(cards);
-        var vm = new CardDetailDialogViewModel(NewCard(description: "#7"), [], workspaceId, null, mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+        var vm = new CardDetailDialogViewModel(NewCard(description: "#7"), [], workspaceId, mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
         var changedProperties = new List<string?>();
         vm.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName);
 
@@ -697,7 +683,7 @@ public class CardDetailDialogViewModelTests
         IReadOnlyList<TagInfo> tags = [];
         mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(tags);
-        var vm = new CardDetailDialogViewModel(NewCard(), [], workspaceId, null, mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+        var vm = new CardDetailDialogViewModel(NewCard(), [], workspaceId, mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
         var result = await vm.GetWorkspaceTagsAsync();
 
@@ -711,7 +697,7 @@ public class CardDetailDialogViewModelTests
         var mediator = Substitute.For<IMediator>();
         mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IReadOnlyList<TagInfo>>(new InvalidOperationException("DB error")));
-        var vm = new CardDetailDialogViewModel(NewCard(), [], Guid.NewGuid(), null, mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+        var vm = new CardDetailDialogViewModel(NewCard(), [], Guid.NewGuid(), mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
         var result = await vm.GetWorkspaceTagsAsync();
 
@@ -730,12 +716,10 @@ public class CardDetailDialogViewModelTests
     private static CardDetailDialogViewModel NewVm(
         CardViewModel? card = null,
         SkillMenuItem[]? cardSkills = null,
-        string? gitHubRepo = null,
         IMediator? mediator = null) =>
         new(card ?? NewCard(),
             cardSkills ?? [],
             workspaceId: Guid.NewGuid(),
-            gitHubRepo: gitHubRepo,
             mediator: mediator ?? Substitute.For<IMediator>(),
             appSettings: Substitute.For<Bishop.App.Services.Settings.IAppSettings>(),
             workspacePath: string.Empty,
@@ -762,7 +746,7 @@ public class CardDetailDialogViewModelTests
         var cardId = Guid.NewGuid();
         var card = new CardViewModel { Id = cardId, Title = "T", Description = "", LaneName = "To Do" };
         var vm = new CardDetailDialogViewModel(
-            card, [], Guid.NewGuid(), null, mediator,
+            card, [], Guid.NewGuid(), mediator,
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
             NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
         var domainCard = new Bishop.Core.Card { Id = cardId, TotalInputTokens = 100, TotalOutputTokens = 50 };
@@ -784,7 +768,7 @@ public class CardDetailDialogViewModelTests
         var mediator = Substitute.For<IMediator>();
         var workspaceId = Guid.NewGuid();
         var vm = new CardDetailDialogViewModel(
-            NewCard(), [], workspaceId, null, mediator,
+            NewCard(), [], workspaceId, mediator,
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty,
             NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
         var domainCard = new Bishop.Core.Card
@@ -808,7 +792,7 @@ public class CardDetailDialogViewModelTests
     {
         var mediator = Substitute.For<IMediator>();
         var vm = new CardDetailDialogViewModel(
-            NewCard(), [], Guid.NewGuid(), null, mediator,
+            NewCard(), [], Guid.NewGuid(), mediator,
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), string.Empty,
             NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
         mediator.Send(Arg.Any<Bishop.App.Cards.GetCardByNumber.GetCardByNumberQuery>(), Arg.Any<CancellationToken>())
@@ -832,7 +816,7 @@ public class CardDetailDialogViewModelTests
 
         var card = new CardViewModel { Id = Guid.NewGuid(), Number = 42, Title = "T", Description = "D", LaneName = "Doing" };
         var vm = new CardDetailDialogViewModel(
-            card, [menuItem], Guid.NewGuid(), null, Substitute.For<IMediator>(),
+            card, [menuItem], Guid.NewGuid(), Substitute.For<IMediator>(),
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
             NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
@@ -854,7 +838,7 @@ public class CardDetailDialogViewModelTests
         appSettings.GetAsync("skill.bish-arch.last_model", Arg.Any<CancellationToken>())
             .Returns("claude-opus-4-7");
         var vm = new CardDetailDialogViewModel(
-            NewCard(), [menuItem], Guid.NewGuid(), null, Substitute.For<IMediator>(), appSettings,
+            NewCard(), [menuItem], Guid.NewGuid(), Substitute.For<IMediator>(), appSettings,
             string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
         var items = await vm.BuildSkillLaunchItemsAsync();
@@ -872,7 +856,7 @@ public class CardDetailDialogViewModelTests
                 Stage: true, StagePrompt: "Name?"));
 
         var vm = new CardDetailDialogViewModel(
-            NewCard(), [menuItem], Guid.NewGuid(), null, Substitute.For<IMediator>(),
+            NewCard(), [menuItem], Guid.NewGuid(), Substitute.For<IMediator>(),
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
             NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
@@ -888,7 +872,7 @@ public class CardDetailDialogViewModelTests
         mediator.Send(Arg.Any<Bishop.App.Skills.LaunchSkill.LaunchSkillCommand>(), Arg.Any<CancellationToken>())
             .Returns(true);
         var vm = new CardDetailDialogViewModel(
-            NewCard(), [], Guid.NewGuid(), null, mediator,
+            NewCard(), [], Guid.NewGuid(), mediator,
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
             NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
@@ -909,7 +893,7 @@ public class CardDetailDialogViewModelTests
     {
         var mediator = Substitute.For<IMediator>();
         var appSettings = Substitute.For<Bishop.App.Services.Settings.IAppSettings>();
-        var vm = new CardDetailDialogViewModel(NewCard(), [], Guid.NewGuid(), null, mediator, appSettings, string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
+        var vm = new CardDetailDialogViewModel(NewCard(), [], Guid.NewGuid(), mediator, appSettings, string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
         await vm.SetSkillModelAsync("bish-arch", "claude-opus-4-7");
 
@@ -937,7 +921,7 @@ public class CardDetailDialogViewModelTests
         mediator.Send(Arg.Any<Bishop.App.Cards.GetCard.GetCardQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<Bishop.Core.Card?>(exception));
         var vm = new CardDetailDialogViewModel(
-            NewCard(), [], Guid.NewGuid(), null, mediator,
+            NewCard(), [], Guid.NewGuid(), mediator,
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
             NullLogger<CardDetailDialogViewModel>.Instance, errorBus);
 
@@ -953,7 +937,7 @@ public class CardDetailDialogViewModelTests
         mediator.Send(Arg.Any<Bishop.App.Cards.GetCard.GetCardQuery>(), Arg.Any<CancellationToken>())
             .Returns((Bishop.Core.Card?)null);
         var vm = new CardDetailDialogViewModel(
-            NewCard(), [], Guid.NewGuid(), null, mediator,
+            NewCard(), [], Guid.NewGuid(), mediator,
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
             NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
@@ -973,7 +957,7 @@ public class CardDetailDialogViewModelTests
         appSettings.GetAsync("skill.bish-arch.last_model", Arg.Any<CancellationToken>())
             .Returns((string?)null);
         var vm = new CardDetailDialogViewModel(
-            NewCard(), [menuItem], Guid.NewGuid(), null, Substitute.For<IMediator>(), appSettings,
+            NewCard(), [menuItem], Guid.NewGuid(), Substitute.For<IMediator>(), appSettings,
             string.Empty, NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
 
         var items = await vm.BuildSkillLaunchItemsAsync();
@@ -1010,7 +994,7 @@ public class CardDetailDialogViewModelTests
             var mediator = Substitute.For<IMediator>();
             var card = new CardViewModel { Id = Guid.NewGuid(), Number = 1, Title = "T", Description = "", LaneName = "To Do" };
             var vm = new CardDetailDialogViewModel(
-                card, [], Guid.NewGuid(), null, mediator,
+                card, [], Guid.NewGuid(), mediator,
                 Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), tempDir,
                 NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
             var domainCard = new Bishop.Core.Card { Id = card.Id, LastAutoRunFailedAt = DateTimeOffset.UtcNow };
@@ -1036,7 +1020,7 @@ public class CardDetailDialogViewModelTests
         var mediator = Substitute.For<IMediator>();
         var card = new CardViewModel { Id = Guid.NewGuid(), Number = 1, Title = "T", Description = "", LaneName = "To Do" };
         var vm = new CardDetailDialogViewModel(
-            card, [], Guid.NewGuid(), null, mediator,
+            card, [], Guid.NewGuid(), mediator,
             Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), @"C:\repo",
             NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
         var domainCard = new Bishop.Core.Card { Id = card.Id, LastAutoRunFailedAt = null };
@@ -1061,7 +1045,7 @@ public class CardDetailDialogViewModelTests
             var mediator = Substitute.For<IMediator>();
             var card = new CardViewModel { Id = Guid.NewGuid(), Number = 99, Title = "T", Description = "", LaneName = "To Do" };
             var vm = new CardDetailDialogViewModel(
-                card, [], Guid.NewGuid(), null, mediator,
+                card, [], Guid.NewGuid(), mediator,
                 Substitute.For<Bishop.App.Services.Settings.IAppSettings>(), tempDir,
                 NullLogger<CardDetailDialogViewModel>.Instance, Substitute.For<IErrorBus>());
             var domainCard = new Bishop.Core.Card { Id = card.Id, LastAutoRunFailedAt = DateTimeOffset.UtcNow };
