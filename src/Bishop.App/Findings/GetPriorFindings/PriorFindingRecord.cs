@@ -1,6 +1,6 @@
 namespace Bishop.App.Findings.GetPriorFindings;
 
-public sealed record PriorFindingRecord(
+internal sealed record PriorFindingRecord(
     string IdentityHash,
     string? ProjectName,
     string? File,

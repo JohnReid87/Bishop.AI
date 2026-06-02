@@ -39,7 +39,7 @@ public sealed partial class FindingItemViewModel : ObservableObject
     [ObservableProperty]
     private string? _rebuttalText;
 
-    public FindingItemViewModel(
+    internal FindingItemViewModel(
         FindingRecord record,
         string skillName,
         Guid workspaceId,

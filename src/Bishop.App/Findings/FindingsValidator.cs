@@ -114,7 +114,7 @@ internal static partial class FindingsValidator
     }
 }
 
-public sealed class FindingsValidationException : Exception
+internal sealed class FindingsValidationException : Exception
 {
     public FindingsValidationException(string message) : base(message) { }
     public FindingsValidationException(string message, Exception inner) : base(message, inner) { }

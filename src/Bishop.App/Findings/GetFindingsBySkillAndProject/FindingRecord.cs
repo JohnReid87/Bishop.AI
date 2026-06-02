@@ -1,6 +1,6 @@
 namespace Bishop.App.Findings.GetFindingsBySkillAndProject;
 
-public sealed record FindingRecord(
+internal sealed record FindingRecord(
     Guid Id,
     string Title,
     string Body,
