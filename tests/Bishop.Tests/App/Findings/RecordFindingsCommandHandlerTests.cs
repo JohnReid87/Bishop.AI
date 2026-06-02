@@ -516,21 +516,168 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public void FindingIdentity_StructuredInputs_MatchSpec()
+    public void FindingIdentity_FilePresent_DiffersFromTitleOnlyBranch()
     {
-        var hash = FindingIdentity.Compute("bish-dead-code", null, "src/Foo.cs", "DEAD001", "Foo.Bar", "ignored title");
-        var legacy = FindingIdentity.Compute("bish-dead-code", null, null, null, null, "ignored title");
-        hash.Should().NotBe(legacy);
+        var hash = FindingIdentity.Compute("bish-dead-code", null, "src/Foo.cs", "title");
+        var titleOnly = FindingIdentity.Compute("bish-dead-code", null, null, "title");
+        hash.Should().NotBe(titleOnly);
         hash.Should().MatchRegex("^[0-9a-f]{40}$");
-        legacy.Should().MatchRegex("^[0-9a-f]{40}$");
+        titleOnly.Should().MatchRegex("^[0-9a-f]{40}$");
     }
 
     [Fact]
-    public void FindingIdentity_PartialStructuredInputs_FallsBackToLegacyFormula()
+    public void FindingIdentity_FileNullAndEmpty_AreEquivalent()
     {
-        var legacy = FindingIdentity.Compute("s", "p", null, null, null, "title");
-        var partial = FindingIdentity.Compute("s", "p", "file", null, "symbol", "title");
-        partial.Should().Be(legacy, "missing any of file/rule/symbol must fall back to the legacy formula");
+        // Rows imported with no File should hash identically whether stored as null or empty.
+        FindingIdentity.Compute("s", "p", null, "title")
+            .Should().Be(FindingIdentity.Compute("s", "p", string.Empty, "title"));
+    }
+
+    [Fact]
+    public void FindingIdentity_StableAcrossRuleSymbolChange()
+    {
+        // Rule and Symbol no longer participate in the hash — only skill, project, file, title.
+        // This is verified by the signature itself; this test pins the inputs that DO matter.
+        var first = FindingIdentity.Compute("bish-arch", "Bishop.App", "src/Foo.cs", "BreakoutEngine below threshold");
+        var second = FindingIdentity.Compute("bish-arch", "Bishop.App", "src/Foo.cs", "BreakoutEngine below threshold");
+        first.Should().Be(second);
+    }
+
+    [Fact]
+    public async Task Handle_StaleHashRowExists_MergesByFileTitleAndPreservesManualOutcome()
+    {
+        // Simulate the pre-#959 state: a row stored under an IdentityHash that included
+        // an LLM-emitted Rule/Symbol, with the user's manual `dismissed` outcome on it.
+        // The next skill run emits a different Rule for the same (File, Title) finding;
+        // the handler must merge into the existing row rather than create a duplicate,
+        // and the `dismissed` status must be carried forward.
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        await using (var seed = await _factory.CreateDbContextAsync())
+        {
+            var run = new WorkspaceSkillRun
+            {
+                Id = Guid.NewGuid(),
+                WorkspaceId = ws.Id,
+                SkillName = "bish-arch",
+                ProjectName = null,
+                GitSha = "old-sha",
+                RecordedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                FindingsCount = 1,
+            };
+            seed.WorkspaceSkillRuns.Add(run);
+            seed.Findings.Add(new Bishop.Core.Finding
+            {
+                Id = Guid.NewGuid(),
+                WorkspaceSkillRunId = run.Id,
+                IdentityHash = "stale-pre-959-hash",
+                Status = "dismissed",
+                File = "src/Foo.cs",
+                Symbol = "Foo.Bar",
+                Rule = "old-rule",
+                Title = "BreakoutEngine below threshold",
+                Body = "old body",
+                FirstSeenAt = DateTimeOffset.UtcNow.AddDays(-1),
+                LastSeenAt = DateTimeOffset.UtcNow.AddDays(-1),
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        const string newJson = """
+            {
+              "findings": [
+                {
+                  "title": "BreakoutEngine below threshold",
+                  "body": "new body",
+                  "file": "src/Foo.cs",
+                  "symbol": "Foo.Bar",
+                  "rule": "new-rule",
+                  "outcome": "parked"
+                }
+              ]
+            }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", newJson, "new-sha"), default);
+
+        var findings = await _db.Findings.AsNoTracking()
+            .Where(f => f.Title == "BreakoutEngine below threshold")
+            .ToListAsync();
+        findings.Should().HaveCount(1, "stale-hash row and incoming row must collapse into one");
+        findings[0].Status.Should().Be("dismissed", "manual outcome wins over skill-emitted parked");
+        findings[0].Rule.Should().Be("new-rule");
+        findings[0].Body.Should().Be("new body");
+    }
+
+    [Fact]
+    public async Task Handle_MultipleStaleHashRows_MergeIntoSingleWinnerByStatusPriority()
+    {
+        // Two duplicate rows for the same (File, Title): one carded with a linked card,
+        // one resolved. Next run must keep the carded row's LinkedCardId.
+        var ws = await CreateWorkspaceAsync();
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        await using (var seed = await _factory.CreateDbContextAsync())
+        {
+            var run = new WorkspaceSkillRun
+            {
+                Id = Guid.NewGuid(),
+                WorkspaceId = ws.Id,
+                SkillName = "bish-arch",
+                ProjectName = null,
+                GitSha = "old",
+                RecordedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                FindingsCount = 0,
+            };
+            seed.WorkspaceSkillRuns.Add(run);
+            seed.Findings.Add(new Bishop.Core.Finding
+            {
+                Id = Guid.NewGuid(),
+                WorkspaceSkillRunId = run.Id,
+                IdentityHash = "hash-a",
+                Status = "carded",
+                LinkedCardId = 42,
+                File = "src/Bar.cs",
+                Title = "Tangled dependency",
+                Body = "b",
+                FirstSeenAt = DateTimeOffset.UtcNow.AddDays(-2),
+                LastSeenAt = DateTimeOffset.UtcNow.AddDays(-2),
+            });
+            seed.Findings.Add(new Bishop.Core.Finding
+            {
+                Id = Guid.NewGuid(),
+                WorkspaceSkillRunId = run.Id,
+                IdentityHash = "hash-b",
+                Status = "resolved",
+                File = "src/Bar.cs",
+                Title = "Tangled dependency",
+                Body = "b2",
+                FirstSeenAt = DateTimeOffset.UtcNow.AddDays(-1),
+                LastSeenAt = DateTimeOffset.UtcNow.AddDays(-1),
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        const string newJson = """
+            {
+              "findings": [
+                {
+                  "title": "Tangled dependency",
+                  "body": "fresh",
+                  "file": "src/Bar.cs",
+                  "outcome": "parked"
+                }
+              ]
+            }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-arch", newJson, "new"), default);
+
+        var findings = await _db.Findings.AsNoTracking()
+            .Where(f => f.Title == "Tangled dependency")
+            .ToListAsync();
+        findings.Should().HaveCount(1);
+        findings[0].Status.Should().Be("carded");
+        findings[0].LinkedCardId.Should().Be(42);
     }
 
     [Fact]
