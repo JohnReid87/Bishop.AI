@@ -12,6 +12,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Bishop.UI.Services;
 
@@ -61,5 +62,36 @@ public sealed class DialogService : IDialogService
         var vm = _services.GetRequiredService<SettingsDialogViewModel>();
         var dialog = new SettingsDialog(vm) { XamlRoot = xamlRoot };
         await dialog.ShowAsync();
+    }
+
+    public async Task<string?> ShowWorkspaceSettingsDialogAsync(string? currentRepo, XamlRoot xamlRoot)
+    {
+        var repoBox = new TextBox
+        {
+            PlaceholderText = "owner/repo  (clear to unlink)",
+            Text = currentRepo ?? string.Empty,
+            Width = 300,
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Workspace Settings",
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock { Text = "GitHub repository" },
+                    repoBox,
+                }
+            },
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = xamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return null;
+        return repoBox.Text.Trim();
     }
 }

@@ -19,6 +19,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
 using System.Collections.ObjectModel;
+using System.IO;
 
 namespace Bishop.ViewModels.Workspaces;
 
@@ -170,10 +171,45 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
         return renamed.Name;
     }
 
+    public async Task CommitBatchNameAsync(BatchItemViewModel batch, string proposedName)
+    {
+        var trimmed = proposedName.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed == batch.Name)
+        {
+            batch.IsNameEditing = false;
+            return;
+        }
+        batch.Name = await RenameAsync(batch.Name, trimmed);
+        batch.IsNameEditing = false;
+    }
+
     public async Task CreateAsync(Guid workspaceId, string workspacePath, string name,
         string branchName, string worktreePath, int[] cardNumbers, string model = SkillModelOptions.DefaultModelId)
         => await _mediator.Send(new CreateBatchCommand(
             workspaceId, workspacePath, name, branchName, null, worktreePath, cardNumbers, null, null, model));
+
+    public async Task<bool> CreateFromTrayAsync(
+        Guid workspaceId,
+        string workspacePath,
+        string trayName,
+        string? trayBranch,
+        string trayModel,
+        int[] cardNumbers)
+    {
+        if (cardNumbers.Length == 0) return false;
+        var name = trayName.Trim();
+        if (string.IsNullOrEmpty(name)) return false;
+
+        var slug = BatchStagingTrayViewModel.Slugify(name);
+        var branchName = string.IsNullOrWhiteSpace(trayBranch) ? $"bishop/{slug}" : trayBranch.Trim();
+        var normalizedPath = workspacePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var repoName = Path.GetFileName(normalizedPath);
+        var parentDir = Path.GetDirectoryName(normalizedPath)!;
+        var worktreePath = Path.Combine(parentDir, $"{repoName}-bishop-worktrees", slug);
+
+        await CreateAsync(workspaceId, workspacePath, name, branchName, worktreePath, cardNumbers, trayModel);
+        return true;
+    }
 
     public async Task LaunchBatch(string workspacePath, string batchName, string model, TerminalSnap snap)
         => await _mediator.Send(new LaunchBatchTerminalCommand(workspacePath, batchName, model, Resume: false, snap));

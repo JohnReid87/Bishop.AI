@@ -19,4 +19,8 @@ public interface IDialogService
         Guid workspaceId, string laneName, IReadOnlyList<CardViewModel> cards, XamlRoot xamlRoot);
 
     Task ShowSettingsDialogAsync(XamlRoot xamlRoot);
+
+    // Returns the trimmed repo string the user entered (empty string = unlink),
+    // or null if the dialog was cancelled.
+    Task<string?> ShowWorkspaceSettingsDialogAsync(string? currentRepo, XamlRoot xamlRoot);
 }

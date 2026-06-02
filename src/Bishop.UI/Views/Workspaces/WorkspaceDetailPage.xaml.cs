@@ -32,16 +32,10 @@ public sealed partial class WorkspaceDetailPage : Page
     private readonly ILogger<WorkspaceDetailPage> _logger;
     private readonly ISafeAsyncRunner _safeAsync;
     private readonly IUiDispatcher _uiDispatcher;
+    private readonly SkillLauncher _skillLauncher;
     private WorkspaceItemViewModel? _item;
-    private CardViewModel? _draggedCard;
-    private LaneViewModel? _dragSourceLane;
-    private LaneViewModel? _currentDropTargetLane;
-    private bool _isDraggingNotes;
-    private double _dragStartPageY;
-    private double _dragStartNoteHeight;
-    private DispatcherTimer? _autoScrollTimer;
-    private ScrollViewer? _autoScrollTarget;
-    private double _autoScrollVelocity;
+    private BoardDragDropController? _dragDrop;
+    private NotesSplitterDragHandler? _notesSplitter;
     private Flyout? _commitsFlyout;
 
     public WorkspaceBoardViewModel Board { get; }
@@ -62,7 +56,10 @@ public sealed partial class WorkspaceDetailPage : Page
         _logger = App.Services.GetRequiredService<ILogger<WorkspaceDetailPage>>();
         _safeAsync = App.Services.GetRequiredService<ISafeAsyncRunner>();
         _uiDispatcher = App.Services.GetRequiredService<IUiDispatcher>();
+        _skillLauncher = new SkillLauncher(Board);
         InitializeComponent();
+        _dragDrop = new BoardDragDropController(Board, _safeAsync, LanesListView);
+        _notesSplitter = new NotesSplitterDragHandler(Notes, this);
         _commitsFlyout = new Flyout
         {
             Content = new CommitsFlyoutControl(Commits),
@@ -148,28 +145,19 @@ public sealed partial class WorkspaceDetailPage : Page
         doneLane.HasGitHubRepo = !string.IsNullOrEmpty(_item?.GitHubRepo);
     }
 
-    private void OnDatabaseChanged(object? sender, EventArgs e)
-    {
-        _uiDispatcher.TryEnqueue(() => _safeAsync.RunAsync(async () =>
-        {
-            await Task.WhenAll(
-                Board.RefreshCommand.ExecuteAsync(null),
-                Monitoring.RefreshCommand.ExecuteAsync(null),
-                Batches.RefreshCommand.ExecuteAsync(null));
-        }));
-    }
+    private void OnDatabaseChanged(object? sender, EventArgs e) => RefreshAllOnUiThread();
 
     private void OnWindowActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == Microsoft.UI.Xaml.WindowActivationState.Deactivated) return;
-        _uiDispatcher.TryEnqueue(() => _safeAsync.RunAsync(async () =>
-        {
-            await Task.WhenAll(
-                Board.RefreshCommand.ExecuteAsync(null),
-                Monitoring.RefreshCommand.ExecuteAsync(null),
-                Batches.RefreshCommand.ExecuteAsync(null));
-        }));
+        RefreshAllOnUiThread();
     }
+
+    private void RefreshAllOnUiThread() =>
+        _uiDispatcher.TryEnqueue(() => _safeAsync.RunAsync(() => Task.WhenAll(
+            Board.RefreshCommand.ExecuteAsync(null),
+            Monitoring.RefreshCommand.ExecuteAsync(null),
+            Batches.RefreshCommand.ExecuteAsync(null))));
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -248,6 +236,15 @@ public sealed partial class WorkspaceDetailPage : Page
             ShowSkillFlyout((FrameworkElement)sender, items);
         });
 
+    private void ShowSkillFlyout(FrameworkElement anchor, IReadOnlyList<SkillLaunchItem> items) =>
+        SkillFlyoutFactory.Show(anchor, items,
+            onLaunch: async (captured, chosenModel) =>
+            {
+                await Board.SetSkillModelAsync(captured.Name, chosenModel);
+                await _skillLauncher.LaunchAsync(captured, chosenModel, XamlRoot);
+            },
+            onView: captured => App.MarkdownViewer!.ShowContent(captured.Name, captured.MarkdownBody));
+
     private async void CommitsButton_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>
         {
@@ -302,26 +299,10 @@ public sealed partial class WorkspaceDetailPage : Page
         {
             if (_item is null) return;
             var tray = Board.StagingTray;
-            var selectedCards = tray.Cards.ToList();
-            if (selectedCards.Count == 0) return;
-
-            var name = tray.Name.Trim();
-            if (string.IsNullOrEmpty(name)) return;
-
-            var slug = BatchStagingTrayViewModel.Slugify(name);
-            var branchName = string.IsNullOrWhiteSpace(tray.Branch)
-                ? $"bishop/{slug}"
-                : tray.Branch.Trim();
-
-            var workspacePath = _item.Path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var repoName = Path.GetFileName(workspacePath);
-            var parentDir = Path.GetDirectoryName(workspacePath)!;
-            var worktreePath = Path.Combine(parentDir, $"{repoName}-bishop-worktrees", slug);
-
-            await Batches.CreateAsync(
-                _item.Id, _item.Path, name, branchName, worktreePath,
-                selectedCards.Select(c => c.Number).ToArray(),
-                tray.Model);
+            var cardNumbers = tray.Cards.Select(c => c.Number).ToArray();
+            var created = await Batches.CreateFromTrayAsync(
+                _item.Id, _item.Path, tray.Name, tray.Branch, tray.Model, cardNumbers);
+            if (!created) return;
 
             Board.ClearSelection();
             await Board.RefreshCommand.ExecuteAsync(null);
@@ -343,36 +324,6 @@ public sealed partial class WorkspaceDetailPage : Page
             var items = await Board.BuildCardSkillLaunchItemsAsync(card);
             ShowSkillFlyout((FrameworkElement)sender, items);
         });
-
-    private void ShowSkillFlyout(FrameworkElement anchor, IReadOnlyList<SkillLaunchItem> items)
-    {
-        var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-        var panel = new StackPanel { Spacing = 2, Padding = new Thickness(4) };
-
-        foreach (var item in items)
-        {
-            if (item.GroupHeader is not null)
-                panel.Children.Add(MakeCategoryHeader(item.GroupHeader));
-
-            var captured = item;
-            panel.Children.Add(SkillRowFactory.MakeRow(captured.Name, captured.SavedModelId,
-                onLaunch: async chosenModel =>
-                {
-                    await Board.SetSkillModelAsync(captured.Name, chosenModel);
-                    flyout.Hide();
-                    await LaunchSkillAsync(captured, chosenModel);
-                },
-                onView: () =>
-                {
-                    flyout.Hide();
-                    App.MarkdownViewer!.ShowContent(captured.Name, captured.MarkdownBody);
-                    return Task.CompletedTask;
-                }));
-        }
-
-        flyout.Content = panel;
-        flyout.ShowAt(anchor);
-    }
 
     private async void CardCloseButton_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>
@@ -422,25 +373,6 @@ public sealed partial class WorkspaceDetailPage : Page
         flyout.ShowAt(anchor);
     }
 
-    private async Task LaunchSkillAsync(SkillLaunchItem item, string modelId)
-    {
-        string? stagedText = null;
-        if (item.RequiresStage)
-        {
-            var dialog = new SkillStageDialog(
-                item.Name,
-                item.StagePrompt,
-                item.StagePrefill,
-                item.StageProjects,
-                item.StageFilePicker,
-                Board.WorkspacePath) { XamlRoot = XamlRoot };
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-            stagedText = dialog.InputText?.Trim();
-        }
-
-        await Board.LaunchAsync(item, stagedText, SnapHelper.ComputeSnap(), modelId);
-    }
-
     private async void RunNowSkillButton_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>
         {
@@ -448,19 +380,8 @@ public sealed partial class WorkspaceDetailPage : Page
             if ((sender as FrameworkElement)?.DataContext is not SkillRunRowViewModel row) return;
             var item = await Board.BuildWorkspaceSkillLaunchItemAsync(row.SkillName);
             if (item is null) return;
-            await LaunchSkillAsync(item, row.SelectedModelId);
+            await _skillLauncher.LaunchAsync(item, row.SelectedModelId, XamlRoot);
         });
-
-    private static FrameworkElement MakeCategoryHeader(string text) =>
-        new TextBlock
-        {
-            Text = text,
-            FontSize = 10,
-            Opacity = 0.5,
-            Margin = new Thickness(4, 6, 4, 2),
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            CharacterSpacing = 75,
-        };
 
     private static BatchItemViewModel? GetBatchFromSender(object sender) =>
         (sender as FrameworkElement)?.DataContext as BatchItemViewModel;
@@ -535,31 +456,7 @@ public sealed partial class WorkspaceDetailPage : Page
                 await Batches.RefreshCommand.ExecuteAsync(null);
             }
             if (result is { Success: false })
-            {
-                var flyout = new Flyout { Placement = FlyoutPlacementMode.Bottom };
-                var panel = new StackPanel { Spacing = 4, Padding = new Thickness(8) };
-                if (result.ConflictFiles.Count > 0)
-                {
-                    panel.Children.Add(new TextBlock
-                    {
-                        Text = "Merge conflicts — resolve and re-run:",
-                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
-                    });
-                    foreach (var file in result.ConflictFiles)
-                        panel.Children.Add(new TextBlock { Text = file, FontSize = 12 });
-                }
-                else
-                {
-                    panel.Children.Add(new TextBlock
-                    {
-                        Text = result.ErrorMessage ?? "Merge failed.",
-                        TextWrapping = TextWrapping.Wrap,
-                        MaxWidth = 400
-                    });
-                }
-                flyout.Content = panel;
-                flyout.ShowAt((FrameworkElement)sender);
-            }
+                BatchMergeFailureFlyout.Show((FrameworkElement)sender, result);
         });
 
     private async void BatchCleanUp_Click(object sender, RoutedEventArgs e)
@@ -616,38 +513,10 @@ public sealed partial class WorkspaceDetailPage : Page
             var closed = Batches.Batches.Where(b => b.CanRemove).ToList();
             if (closed.Count == 0) return;
             var message = $"Remove {closed.Count} closed {(closed.Count == 1 ? "batch" : "batches")}? Cards stay on the board.";
-            if (!await ConfirmFlyoutAsync((FrameworkElement)sender, message, "Remove")) return;
+            if (!await ConfirmFlyout.ShowAsync((FrameworkElement)sender, message, "Remove")) return;
             await Batches.RemoveAllClosedAsync(closed);
             await Batches.RefreshCommand.ExecuteAsync(null);
         });
-
-    private static Task<bool> ConfirmFlyoutAsync(FrameworkElement anchor, string message, string verb)
-    {
-        var tcs = new TaskCompletionSource<bool>();
-
-        var panel = new StackPanel { Spacing = 8, Padding = new Thickness(4, 0, 4, 4) };
-        panel.Children.Add(new TextBlock
-        {
-            Text = message,
-            TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 260,
-            FontSize = 13,
-        });
-        var buttonRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var confirmBtn = new Button { Content = verb };
-        var cancelBtn = new Button { Content = "Cancel" };
-        buttonRow.Children.Add(confirmBtn);
-        buttonRow.Children.Add(cancelBtn);
-        panel.Children.Add(buttonRow);
-
-        var flyout = new Flyout { Content = panel };
-        confirmBtn.Click += (_, _) => { flyout.Hide(); tcs.TrySetResult(true); };
-        cancelBtn.Click += (_, _) => { flyout.Hide(); tcs.TrySetResult(false); };
-        flyout.Closed += (_, _) => tcs.TrySetResult(false);
-        flyout.ShowAt(anchor);
-
-        return tcs.Task;
-    }
 
     private void BatchNameTextBlock_Tapped(object sender, TappedRoutedEventArgs e)
     {
@@ -669,7 +538,7 @@ public sealed partial class WorkspaceDetailPage : Page
             if (e.Key == VirtualKey.Enter)
             {
                 e.Handled = true;
-                await CommitBatchNameAsync(textBox, batch);
+                await Batches.CommitBatchNameAsync(batch, textBox.Text);
             }
             else if (e.Key == VirtualKey.Escape)
             {
@@ -684,54 +553,15 @@ public sealed partial class WorkspaceDetailPage : Page
             if (sender is not TextBox textBox) return;
             if (textBox.DataContext is not BatchItemViewModel batch) return;
             if (batch.IsNameEditing)
-                await CommitBatchNameAsync(textBox, batch);
+                await Batches.CommitBatchNameAsync(batch, textBox.Text);
         });
-
-    private async Task CommitBatchNameAsync(TextBox textBox, BatchItemViewModel batch)
-    {
-        var trimmed = textBox.Text.Trim();
-        if (string.IsNullOrEmpty(trimmed) || trimmed == batch.Name)
-        {
-            batch.IsNameEditing = false;
-            return;
-        }
-        batch.Name = await Batches.RenameAsync(batch.Name, trimmed);
-        batch.IsNameEditing = false;
-    }
 
     private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
-
-            var repoBox = new TextBox
-            {
-                PlaceholderText = "owner/repo  (clear to unlink)",
-                Text = _item.GitHubRepo ?? string.Empty,
-                Width = 300,
-            };
-
-            var dialog = new ContentDialog
-            {
-                Title = "Workspace Settings",
-                Content = new StackPanel
-                {
-                    Spacing = 8,
-                    Children =
-                    {
-                        new TextBlock { Text = "GitHub repository" },
-                        repoBox,
-                    }
-                },
-                PrimaryButtonText = "Save",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = XamlRoot,
-            };
-
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-
-            var repo = repoBox.Text.Trim();
+            var repo = await _dialogService.ShowWorkspaceSettingsDialogAsync(_item.GitHubRepo, XamlRoot);
+            if (repo is null) return;
             if (string.IsNullOrEmpty(repo))
             {
                 await Board.UnsetGitHubRepoAsync(_item.Id);
@@ -744,148 +574,14 @@ public sealed partial class WorkspaceDetailPage : Page
             }
         });
 
-    private void ClearAllDropTargets()
-    {
-        if (_currentDropTargetLane is not null)
-        {
-            _currentDropTargetLane.IsDropTarget = false;
-            _currentDropTargetLane = null;
-        }
-    }
-
     private void CardRoot_Loaded(object sender, RoutedEventArgs e)
         => Animations.EntranceAnimation.ApplyCardEntrance(sender as FrameworkElement);
 
-    private void Card_DragStarting(UIElement sender, DragStartingEventArgs e)
-    {
-        _draggedCard = GetCardFromSender(sender);
-        if (_draggedCard is null) return;
-        _dragSourceLane = Board.Lanes.FirstOrDefault(l => string.Equals(l.Name, _draggedCard.LaneName, StringComparison.OrdinalIgnoreCase));
-        e.Data.RequestedOperation = DataPackageOperation.Move;
-        e.Data.SetText(_draggedCard.Id.ToString());
-        LanesListView.CanReorderItems = false;
-    }
-
-    private void Card_DropCompleted(UIElement sender, DropCompletedEventArgs e)
-    {
-        ClearAllDropTargets();
-        StopAutoScroll();
-        LanesListView.CanReorderItems = true;
-    }
-
-    private void Cards_DragOver(object sender, DragEventArgs e)
-    {
-        if (_draggedCard is null) return;
-        e.AcceptedOperation = DataPackageOperation.Move;
-        e.DragUIOverride.IsGlyphVisible = false;
-        e.DragUIOverride.Caption = string.Empty;
-        if ((sender as FrameworkElement)?.DataContext is LaneViewModel lane && lane != _currentDropTargetLane)
-        {
-            ClearAllDropTargets();
-            lane.IsDropTarget = true;
-            _currentDropTargetLane = lane;
-        }
-
-        var scrollViewer = FindVisualChild<ScrollViewer>(sender as DependencyObject);
-        if (scrollViewer is not null)
-        {
-            var pos = e.GetPosition(scrollViewer);
-            var velocity = DragDropComputer.ComputeScrollVelocity(pos.Y, scrollViewer.ViewportHeight);
-            if (velocity != 0)
-            {
-                _autoScrollTarget = scrollViewer;
-                _autoScrollVelocity = velocity;
-                if (_autoScrollTimer is null)
-                {
-                    _autoScrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-                    _autoScrollTimer.Tick += AutoScrollTimer_Tick;
-                }
-                if (!_autoScrollTimer.IsEnabled)
-                    _autoScrollTimer.Start();
-            }
-            else
-            {
-                StopAutoScroll();
-            }
-        }
-    }
-
-    private void Cards_DragLeave(object sender, DragEventArgs e)
-    {
-        ClearAllDropTargets();
-        StopAutoScroll();
-    }
-
-    private void AutoScrollTimer_Tick(object? sender, object e)
-    {
-        if (_autoScrollTarget is null) { StopAutoScroll(); return; }
-        var newOffset = _autoScrollTarget.VerticalOffset + _autoScrollVelocity;
-        _autoScrollTarget.ChangeView(null, newOffset, null, true);
-    }
-
-    private void StopAutoScroll()
-    {
-        _autoScrollTimer?.Stop();
-        _autoScrollTarget = null;
-        _autoScrollVelocity = 0;
-    }
-
-    private async void Cards_Drop(object sender, DragEventArgs e)
-        => await _safeAsync.RunAsync(async () =>
-        {
-            if (_draggedCard is null || _dragSourceLane is null) return;
-            var targetLane = (sender as FrameworkElement)?.DataContext as LaneViewModel;
-            if (targetLane is null) return;
-
-            ClearAllDropTargets();
-            StopAutoScroll();
-
-            var position = GetDropIndex(FindVisualChild<ItemsRepeater>(sender as DependencyObject), e, targetLane);
-            var card = _draggedCard;
-            var targetLaneName = targetLane.Name;
-
-            _draggedCard = null;
-            _dragSourceLane = null;
-
-            await Board.MoveCardAsync(card.Id, targetLaneName, position);
-            await Board.RefreshCommand.ExecuteAsync(null);
-        });
-
-    private static int GetDropIndex(ItemsRepeater? repeater, DragEventArgs e, LaneViewModel targetLane)
-    {
-        if (repeater is null) return targetLane.FilteredCards.Count + 1;
-
-        var dropPoint = e.GetPosition(repeater);
-        var cardOffset = 0;
-        for (var i = 0; i < targetLane.LaneItems.Count; i++)
-        {
-            var cardsInItem = targetLane.LaneItems[i] is BatchGroupViewModel bg ? bg.Cards.Count : 1;
-            if (repeater.TryGetElement(i) is not FrameworkElement item)
-            {
-                cardOffset += cardsInItem;
-                continue;
-            }
-            var itemTop = item.TransformToVisual(repeater).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
-            if (dropPoint.Y < itemTop + item.ActualHeight / 2)
-                return cardOffset + 1;
-            cardOffset += cardsInItem;
-        }
-        return targetLane.FilteredCards.Count + 1;
-    }
-
-    private static T? FindVisualChild<T>(DependencyObject? parent) where T : DependencyObject
-    {
-        if (parent is null) return null;
-        var count = VisualTreeHelper.GetChildrenCount(parent);
-        for (var i = 0; i < count; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is T match) return match;
-            var found = FindVisualChild<T>(child);
-            if (found is not null) return found;
-        }
-        return null;
-    }
+    private void Card_DragStarting(UIElement sender, DragStartingEventArgs e) => _dragDrop!.OnDragStarting(sender, e);
+    private void Card_DropCompleted(UIElement sender, DropCompletedEventArgs e) => _dragDrop!.OnDropCompleted();
+    private void Cards_DragOver(object sender, DragEventArgs e) => _dragDrop!.OnDragOver(sender, e);
+    private void Cards_DragLeave(object sender, DragEventArgs e) => _dragDrop!.OnDragLeave();
+    private void Cards_Drop(object sender, DragEventArgs e) => _dragDrop!.OnDrop(sender, e);
 
     private static CardViewModel? GetCardFromSender(object sender)
     {
@@ -919,34 +615,10 @@ public sealed partial class WorkspaceDetailPage : Page
                 await Board.RefreshCommand.ExecuteAsync(null);
         });
 
-    private void NotesSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        _isDraggingNotes = true;
-        _dragStartPageY = e.GetCurrentPoint(this).Position.Y;
-        _dragStartNoteHeight = Notes.PanelHeight;
-        ((UIElement)sender).CapturePointer(e.Pointer);
-        e.Handled = true;
-    }
-
-    private void NotesSplitter_PointerMoved(object sender, PointerRoutedEventArgs e)
-    {
-        if (!_isDraggingNotes) return;
-        var delta = _dragStartPageY - e.GetCurrentPoint(this).Position.Y;
-        Notes.PanelHeight = Math.Max(80, Math.Min(600, _dragStartNoteHeight + delta));
-        e.Handled = true;
-    }
-
-    private void NotesSplitter_PointerReleased(object sender, PointerRoutedEventArgs e)
-    {
-        _isDraggingNotes = false;
-        ((UIElement)sender).ReleasePointerCapture(e.Pointer);
-        e.Handled = true;
-    }
-
-    private void NotesSplitter_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
-    {
-        _isDraggingNotes = false;
-    }
+    private void NotesSplitter_PointerPressed(object sender, PointerRoutedEventArgs e) => _notesSplitter!.OnPointerPressed(sender, e);
+    private void NotesSplitter_PointerMoved(object sender, PointerRoutedEventArgs e) => _notesSplitter!.OnPointerMoved(sender, e);
+    private void NotesSplitter_PointerReleased(object sender, PointerRoutedEventArgs e) => _notesSplitter!.OnPointerReleased(sender, e);
+    private void NotesSplitter_PointerCaptureLost(object sender, PointerRoutedEventArgs e) => _notesSplitter!.OnPointerCaptureLost(sender, e);
 
     private void BeginAddCard_Click(object sender, RoutedEventArgs e)
     {

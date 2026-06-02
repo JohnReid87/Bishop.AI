@@ -1,3 +1,4 @@
+using Bishop.App.Batches.CreateBatch;
 using Bishop.App.Batches.LaunchBatchTerminal;
 using Bishop.App.Batches.ListBatches;
 using Bishop.App.Batches.RemoveCardFromBatch;
@@ -462,6 +463,102 @@ public class WorkspaceBatchesViewModelTests
                 c.BatchName == "my-batch"
                 && c.WorkspacePath == @"C:\repo"
                 && c.Resume == true),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CommitBatchNameAsync_EmptyName_ClearsEditingFlag_DoesNotRename()
+    {
+        var (vm, mediator) = MakeVm();
+        var batch = new BatchItemViewModel { Name = "my-batch", IsNameEditing = true };
+
+        await vm.CommitBatchNameAsync(batch, "   ");
+
+        batch.IsNameEditing.Should().BeFalse();
+        batch.Name.Should().Be("my-batch");
+        await mediator.DidNotReceive().Send(
+            Arg.Any<Bishop.App.Batches.RenameBatch.RenameBatchCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CommitBatchNameAsync_SameName_ClearsEditingFlag_DoesNotRename()
+    {
+        var (vm, mediator) = MakeVm();
+        var batch = new BatchItemViewModel { Name = "my-batch", IsNameEditing = true };
+
+        await vm.CommitBatchNameAsync(batch, "  my-batch  ");
+
+        batch.IsNameEditing.Should().BeFalse();
+        await mediator.DidNotReceive().Send(
+            Arg.Any<Bishop.App.Batches.RenameBatch.RenameBatchCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CommitBatchNameAsync_NewName_SendsRename_UpdatesBatchAndClearsFlag()
+    {
+        var (vm, mediator) = MakeVm();
+        mediator.Send(Arg.Any<Bishop.App.Batches.RenameBatch.RenameBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new Bishop.Core.Batch { Name = "renamed" });
+        var batch = new BatchItemViewModel { Name = "old-name", IsNameEditing = true };
+
+        await vm.CommitBatchNameAsync(batch, "renamed");
+
+        batch.Name.Should().Be("renamed");
+        batch.IsNameEditing.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateFromTrayAsync_NoCards_ReturnsFalse_DoesNotSendCommand()
+    {
+        var (vm, mediator) = MakeVm();
+
+        var result = await vm.CreateFromTrayAsync(Guid.NewGuid(), @"C:\repo", "my batch", null, "m", []);
+
+        result.Should().BeFalse();
+        await mediator.DidNotReceive().Send(Arg.Any<CreateBatchCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateFromTrayAsync_BlankName_ReturnsFalse_DoesNotSendCommand()
+    {
+        var (vm, mediator) = MakeVm();
+
+        var result = await vm.CreateFromTrayAsync(Guid.NewGuid(), @"C:\repo", "   ", null, "m", [1]);
+
+        result.Should().BeFalse();
+        await mediator.DidNotReceive().Send(Arg.Any<CreateBatchCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateFromTrayAsync_BlankBranch_DerivesBranchFromSlug()
+    {
+        var (vm, mediator) = MakeVm();
+        var workspaceId = Guid.NewGuid();
+
+        var result = await vm.CreateFromTrayAsync(
+            workspaceId, @"C:\repos\MyApp", "Hello World", null, "claude-sonnet-4-6", [1, 2]);
+
+        result.Should().BeTrue();
+        await mediator.Received(1).Send(
+            Arg.Is<CreateBatchCommand>(c =>
+                c.WorkspaceId == workspaceId
+                && c.Name == "Hello World"
+                && c.BranchName == "bishop/hello-world"
+                && c.WorktreePath == @"C:\repos\MyApp-bishop-worktrees\hello-world"
+                && c.CardNumbers.SequenceEqual(new[] { 1, 2 })
+                && c.Model == "claude-sonnet-4-6"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateFromTrayAsync_ExplicitBranch_UsesItTrimmed()
+    {
+        var (vm, mediator) = MakeVm();
+
+        await vm.CreateFromTrayAsync(Guid.NewGuid(), @"C:\repos\App", "feat", "  feat/x  ", "m", [1]);
+
+        await mediator.Received(1).Send(
+            Arg.Is<CreateBatchCommand>(c => c.BranchName == "feat/x"),
             Arg.Any<CancellationToken>());
     }
 
