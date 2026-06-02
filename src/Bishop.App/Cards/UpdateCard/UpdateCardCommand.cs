@@ -10,5 +10,4 @@ public sealed record UpdateCardCommand(
     bool UpdateTag,
     string? TagName,
     string? AppendDescription = null,
-    string? ToLaneName = null,
-    bool KeepOpen = false) : IRequest<Card>;
+    string? ToLaneName = null) : IRequest<Card>;

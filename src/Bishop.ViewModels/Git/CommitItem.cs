@@ -1,4 +1,4 @@
-namespace Bishop.ViewModels.GitHub;
+namespace Bishop.ViewModels.Git;
 
 public sealed record CommitItem(
     string ShortHash,

@@ -192,28 +192,11 @@
                 Visibility="{x:Bind ViewModel.HasEditError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
             <Grid>
-                <!-- Left: Close/Reopen + GitHub + delete confirmation -->
+                <!-- Left: Close/Reopen + delete confirmation -->
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
                     <Button Content="{x:Bind ViewModel.CloseReopenText, Mode=OneWay}"
                             Command="{x:Bind ViewModel.ToggleClosedCommand}"
                             Padding="8,4" FontSize="12"/>
-
-                    <StackPanel Orientation="Horizontal" Spacing="6"
-                                Visibility="{x:Bind ViewModel.IsPushSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <Button Content="Push to GitHub"
-                                Command="{x:Bind ViewModel.PushToGitHubCommand}"
-                                IsEnabled="{x:Bind ViewModel.CanPushToGitHub, Mode=OneWay}"
-                                Visibility="{x:Bind ViewModel.IsPushButtonVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                Padding="8,4" FontSize="12"/>
-                        <TextBlock Text="{x:Bind ViewModel.PushError, Mode=OneWay}"
-                                   Foreground="{StaticResource BrushError}"
-                                   VerticalAlignment="Center"
-                                   Visibility="{x:Bind ViewModel.HasPushError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                        <HyperlinkButton Content="{x:Bind ViewModel.GitHubIssueUrl, Mode=OneWay}"
-                                         Click="GitHubIssueButton_Click"
-                                         Visibility="{x:Bind ViewModel.IsGitHubLinkVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                         Padding="0" VerticalAlignment="Center"/>
-                    </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="4"
                                 Visibility="{x:Bind ViewModel.IsCommitVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">

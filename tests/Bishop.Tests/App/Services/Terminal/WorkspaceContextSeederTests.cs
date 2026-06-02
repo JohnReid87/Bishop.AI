@@ -167,18 +167,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public void BuildBishopContext_DescribesCardPushFlow()
-    {
-        var workspace = MakeWorkspace();
-
-        var output = WorkspaceContextSeeder.BuildBishopContext(workspace);
-
-        output.Should().Contain("## Publishing cards to GitHub");
-        output.Should().Contain("bishop card push <number>");
-        output.Should().Contain("on-demand");
-    }
-
-    [Fact]
     public void BuildBishopContext_DocumentsCommitReferenceConvention()
     {
         var workspace = MakeWorkspace();

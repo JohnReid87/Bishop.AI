@@ -5,7 +5,6 @@ using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
 using Bishop.App.Services.Claude;
 using Bishop.App.Git;
-using Bishop.App.Services.GitHub;
 using Bishop.App.Ping;
 using Bishop.App.Services.Settings;
 using Bishop.App.Services.Terminal;
@@ -31,7 +30,6 @@ public static class ServiceCollectionExtensions
             dbConnectionString));
         services.AddHostedService<WorkspaceSkillRunCleanup>();
         services.AddSingleton<IGitCli, GitCli>();
-        services.AddSingleton<IGhCli, GhCli>();
         services.AddSingleton<IClaudeCliRunner, ClaudeCliRunner>();
         services.AddSingleton<IAppSettings, AppSettingsService>();
 #pragma warning disable CA1416 // Bishop.AI is Windows-only; TerminalLauncher requires Windows APIs

@@ -1,7 +1,6 @@
 using System.IO;
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.ListCardsByWorkspace;
-using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
@@ -12,7 +11,6 @@ using Bishop.Core;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
-using Bishop.ViewModels.GitHub;
 using Bishop.ViewModels.Scripts;
 using Bishop.ViewModels.Settings;
 using Bishop.ViewModels.Shared;
@@ -38,7 +36,6 @@ public class CardDetailDialogViewModelTests
             Description = "D",
             LaneName = "Doing",
             IsClosed = false,
-            GitHubIssueNumber = null,
             TagName = "feature",
             TagColour = "#22ff44",
         };
@@ -62,30 +59,6 @@ public class CardDetailDialogViewModelTests
     {
         NewVm(cardSkills: []).IsSkillsButtonVisible.Should().BeFalse();
         NewVm(cardSkills: [Stub.Skill()]).IsSkillsButtonVisible.Should().BeTrue();
-    }
-
-    [Fact]
-    public void IsPushSectionVisible_ReflectsRepoLink()
-    {
-        NewVm(gitHubRepo: null).IsPushSectionVisible.Should().BeFalse();
-        NewVm(gitHubRepo: "owner/repo").IsPushSectionVisible.Should().BeTrue();
-    }
-
-    [Fact]
-    public void CanPushToGitHub_RequiresLinkAndNoExistingIssue()
-    {
-        var card = NewCard(gitHubIssueNumber: null);
-
-        var withRepo = NewVm(card, gitHubRepo: "owner/repo");
-        withRepo.CanPushToGitHub.Should().BeTrue();
-        withRepo.IsPushButtonVisible.Should().BeTrue();
-        withRepo.IsGitHubLinkVisible.Should().BeFalse();
-
-        withRepo.GitHubIssueNumber = 7;
-        withRepo.CanPushToGitHub.Should().BeFalse();
-        withRepo.IsPushButtonVisible.Should().BeFalse();
-        withRepo.IsGitHubLinkVisible.Should().BeTrue();
-        withRepo.GitHubIssueUrl.Should().Be("https://github.com/owner/repo/issues/7");
     }
 
     [Fact]
@@ -495,54 +468,6 @@ public class CardDetailDialogViewModelTests
     }
 
     [Fact]
-    public async Task PushToGitHubAsync_SetsGitHubIssueNumberOnSuccess()
-    {
-        var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<PushCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do", GitHubIssueNumber = 42 });
-        var vm = NewVm(mediator: mediator, gitHubRepo: "owner/repo");
-
-        await vm.PushToGitHubCommand.ExecuteAsync(null);
-
-        vm.GitHubIssueNumber.Should().Be(42);
-        vm.Updated.Should().BeTrue();
-        vm.PushError.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task PushToGitHubAsync_PopulatesPushErrorOnFailure()
-    {
-        var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<PushCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<Card>(new Exception("Push failed")));
-        var vm = NewVm(mediator: mediator, gitHubRepo: "owner/repo");
-
-        await vm.PushToGitHubCommand.ExecuteAsync(null);
-
-        vm.GitHubIssueNumber.Should().BeNull();
-        vm.Updated.Should().BeFalse();
-        vm.PushError.Should().Be("Push failed");
-    }
-
-    [Fact]
-    public async Task PushToGitHubAsync_ClearsPushErrorBeforeRetry()
-    {
-        var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<PushCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<Card>(new Exception("Push failed")));
-        var vm = NewVm(mediator: mediator, gitHubRepo: "owner/repo");
-        await vm.PushToGitHubCommand.ExecuteAsync(null);
-        vm.PushError.Should().Be("Push failed");
-
-        mediator.Send(Arg.Any<PushCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new Card { Id = Guid.NewGuid(), LaneName = "To Do", GitHubIssueNumber = 5 });
-
-        await vm.PushToGitHubCommand.ExecuteAsync(null);
-
-        vm.PushError.Should().BeNull();
-    }
-
-    [Fact]
     public async Task ConfirmDeleteAsync_SetsDeletedAndSendsRemoveCommand()
     {
         var mediator = Substitute.For<IMediator>();
@@ -718,7 +643,6 @@ public class CardDetailDialogViewModelTests
         vm.StartDescriptionEdit();
         vm.RequestDeleteCommand.Execute(null);
         vm.EditError = "old error";
-        vm.PushError = "old push error";
         vm.SetCommit(new CommitInfo("abc", "abcdef", "msg", "", DateTimeOffset.UtcNow, IsPushed: false));
         vm.SetClaudeTotals(100, 50, 1);
 
@@ -733,7 +657,6 @@ public class CardDetailDialogViewModelTests
             TagName = "bug",
             TagColour = "#ff0000",
             IsClosed = true,
-            GitHubIssueNumber = 5,
         };
 
         vm.NavigateTo(target, canGoBack: true);
@@ -746,12 +669,10 @@ public class CardDetailDialogViewModelTests
         vm.TagName.Should().Be("bug");
         vm.TagColour.Should().Be("#ff0000");
         vm.IsClosed.Should().BeTrue();
-        vm.GitHubIssueNumber.Should().Be(5);
         vm.IsTitleEditing.Should().BeFalse();
         vm.IsDescriptionEditing.Should().BeFalse();
         vm.ShowDeleteConfirm.Should().BeFalse();
         vm.EditError.Should().BeNull();
-        vm.PushError.Should().BeNull();
         vm.CommitShortHash.Should().BeNull();
         vm.ClaudeTotalsText.Should().BeNull();
         vm.CanGoBack.Should().BeTrue();
@@ -797,14 +718,13 @@ public class CardDetailDialogViewModelTests
         result.Should().BeEmpty();
     }
 
-    private static CardViewModel NewCard(string? description = "D", int? gitHubIssueNumber = null) => new()
+    private static CardViewModel NewCard(string? description = "D") => new()
     {
         Id = Guid.NewGuid(),
         Number = 1,
         Title = "T",
         Description = description ?? string.Empty,
         LaneName = "To Do",
-        GitHubIssueNumber = gitHubIssueNumber,
     };
 
     private static CardDetailDialogViewModel NewVm(

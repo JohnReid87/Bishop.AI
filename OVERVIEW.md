@@ -19,7 +19,7 @@ If you've ever:
 
 The shape, in four nouns:
 
-**Workspaces** — local directories you've registered with Bishop. Each one bound to a folder on disk; optionally linked to a GitHub repo. The left-hand nav of the UI.
+**Workspaces** — local directories you've registered with Bishop. Each one bound to a folder on disk. The left-hand nav of the UI.
 
 **Kanban** — every workspace owns four fixed lanes (Backlog, To Do, Doing, Done). Cards belong to a workspace; tags are workspace-scoped; lanes are not user-mutable. The kanban is the **work-state source of truth** — not the agent chat, not git history. Closing the terminal loses nothing, because the card captures intent and progress.
 
@@ -71,7 +71,7 @@ bishop batch run my-batch
 bishop batch complete my-batch
 ```
 
-The CLI merges the batch branch into local `main` with `--no-ff`, closes the Done cards (and their linked GitHub issues, if any), and marks the batch closed. It never pushes and never calls `gh`. You push when you're ready.
+The CLI merges the batch branch into local `main` with `--no-ff`, closes the Done cards, and marks the batch closed. It never pushes. You push when you're ready.
 
 ### Review the codebase
 
@@ -92,7 +92,7 @@ No metrics, no KPIs — qualitative measures of "did this stay in the loop":
 - A solo dev can grill a design, plan, work, and merge a card end-to-end without leaving the Bishop + Claude + terminal loop.
 - The board reflects current state. If it's not on a card, it's not happening; and the dev trusts the board enough to use it for "what's next?" decisions.
 - Context loss between Claude sessions is absorbed by the cards. A fresh agent picks up `bishop card show 42` and produces something close to what the original conversation would have, without re-asking the same clarifying questions.
-- Registering a new workspace and getting it productive (path, GitHub link, skills installed) takes minutes, not hours.
+- Registering a new workspace and getting it productive (path, skills installed) takes minutes, not hours.
 - The morning loop is: open Bishop, see what's in `Doing`, pick the next card from `To Do`, get to work — no context-loading from a tool other than Bishop.
 
 ## Where the parts live
@@ -119,4 +119,4 @@ A short list — the canonical version with rationale lives in [DIRECTION.md →
 - **Not multi-user.** No accounts, no servers, no sync.
 - **Not a full editor.** VS Code + Claude extension is the editor layer; Bishop sits above it.
 - **Not a plugin host.** Future tabs ship in-tree if they ship at all.
-- **Not a full GitHub Issues / Projects mirror.** Basic push is shipped; bidirectional sync is not.
+- **Not a GitHub Issues / Projects mirror.** Removed in card #973 (prompt-injection surface + disuse); not coming back.

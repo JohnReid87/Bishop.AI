@@ -17,7 +17,6 @@ internal sealed class EditCardCliCommand : Command
         var editAppendDescFileOpt = new Option<string?>("--append-description-file", "Append to description from file (use - for stdin); mutually exclusive with --description and --description-file");
         var editTagOpt = new Option<string?>("--tag", "Set tag (use empty string to clear)");
         var editToLaneOpt = new Option<string?>("--to-lane", "Move card to this lane after editing");
-        var editNoCloseOpt = new Option<bool>("--no-close", "Skip auto-close when moving into the Done lane");
 
         AddArgument(cardEditIdArg);
         AddOption(CommonOptions.WorkspaceOption);
@@ -27,7 +26,6 @@ internal sealed class EditCardCliCommand : Command
         AddOption(editAppendDescFileOpt);
         AddOption(editTagOpt);
         AddOption(editToLaneOpt);
-        AddOption(editNoCloseOpt);
 
         this.SetHandler(async (InvocationContext ctx) =>
         {
@@ -39,7 +37,6 @@ internal sealed class EditCardCliCommand : Command
             var appendDescFile = ctx.ParseResult.GetValueForOption(editAppendDescFileOpt);
             var tag = ctx.ParseResult.GetValueForOption(editTagOpt);
             var toLane = ctx.ParseResult.GetValueForOption(editToLaneOpt);
-            var noClose = ctx.ParseResult.GetValueForOption(editNoCloseOpt);
 
             var descOptionCount = new[] { description is not null, descFile is not null, appendDescFile is not null }.Count(x => x);
             if (descOptionCount > 1)
@@ -69,7 +66,7 @@ internal sealed class EditCardCliCommand : Command
             }
 
             var updateTag = tag is not null;
-            var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTag, tag, appendDesc, toLane, noClose));
+            var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTag, tag, appendDesc, toLane));
             Console.WriteLine($"Updated card #{card.Number} — '{card.Title}'");
         });
     }

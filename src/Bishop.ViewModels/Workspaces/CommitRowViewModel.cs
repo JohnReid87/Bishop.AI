@@ -13,7 +13,7 @@ public sealed class CommitRowViewModel
     public bool ShowSeparator { get; }
 
     public CommitRowViewModel(
-        GitHub.CommitItem commit,
+        Git.CommitItem commit,
         string? upstreamRef,
         string? gitHubRepo,
         TimeProvider timeProvider,

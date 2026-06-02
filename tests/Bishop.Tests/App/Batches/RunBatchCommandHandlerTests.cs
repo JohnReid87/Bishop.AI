@@ -12,7 +12,6 @@ using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Services.Claude;
-using Bishop.App.Services.GitHub;
 using Bishop.App.Skills;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.GetWorkspace;
@@ -118,7 +117,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         {
             _contextPackException = contextPackException;
             _recordCardSuccessException = recordCardSuccessException;
-            _moveCard = new(factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance);
+            _moveCard = new(factory);
             _recordClaudeRun = new(factory);
             _recordAutoRunFailure = new(factory, TimeProvider.System);
             _recordAutoRunSuccess = new(factory, TimeProvider.System);
@@ -733,8 +732,8 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         await txDb4.SaveChangesAsync();
 
         // Manually move c1 to Done to simulate a previously completed card
-        await new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
-            .Handle(new MoveCardCommand(c1.Id, SystemLaneNames.Done, 0, KeepOpen: true), default);
+        await new MoveCardCommandHandler(_factory)
+            .Handle(new MoveCardCommand(c1.Id, SystemLaneNames.Done, 0), default);
 
         string? capturedPrompt = null;
         var claude = Substitute.For<IClaudeCliRunner>();
@@ -772,8 +771,8 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var b5 = await txDb5.Batches.FindAsync(batch.Id);
         b5!.TransitionToWorking();
         await txDb5.SaveChangesAsync();
-        await new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
-            .Handle(new MoveCardCommand(card.Id, SystemLaneNames.Done, 0, KeepOpen: true), default);
+        await new MoveCardCommandHandler(_factory)
+            .Handle(new MoveCardCommand(card.Id, SystemLaneNames.Done, 0), default);
 
         var result = await CreateHandler()
             .Handle(new RunBatchCommand(batch.Name, Resume: true), default);

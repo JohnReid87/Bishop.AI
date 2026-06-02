@@ -1,7 +1,7 @@
 using Bishop.App.Git.GetCurrentBranch;
 using Bishop.App.Git.GetRecentCommits;
 using Bishop.App.Git.Push;
-using Bishop.ViewModels.GitHub;
+using Bishop.ViewModels.Git;
 using MediatR;
 
 namespace Bishop.ViewModels.Workspaces;

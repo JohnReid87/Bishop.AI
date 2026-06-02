@@ -7,7 +7,6 @@ using Bishop.Core.Skills;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
-using Bishop.ViewModels.GitHub;
 using Bishop.ViewModels.Scripts;
 using Bishop.ViewModels.Settings;
 using Bishop.ViewModels.Shared;

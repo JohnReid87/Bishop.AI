@@ -1,7 +1,6 @@
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.GetCardByNumber;
 using Bishop.App.Cards.ListCardsByWorkspace;
-using Bishop.App.Cards.PushCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
 using Bishop.App.Cards.UpdateCard;
@@ -37,7 +36,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
 
     public Guid CardId => _cardId;
     public bool IsSkillsButtonVisible { get; }
-    public bool IsPushSectionVisible => _workspaceGitHubRepo is not null;
     public SkillMenuItem[] CardSkills { get; private set; } = [];
     public string WorkspacePath => _workspacePath;
     public bool Updated { get; private set; }
@@ -84,20 +82,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public partial bool IsClosed { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsPushButtonVisible), nameof(IsGitHubLinkVisible))]
-    public partial int? GitHubIssueNumber { get; set; }
-
-    [ObservableProperty]
-    public partial string? GitHubIssueUrl { get; private set; }
-
-    [ObservableProperty]
-    public partial bool CanPushToGitHub { get; private set; }
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPushError))]
-    public partial string? PushError { get; set; }
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasClaudeTotals))]
     public partial string? ClaudeTotalsText { get; set; }
 
@@ -115,10 +99,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public string NumberDisplay => $"#{Number}";
 
     public string CloseReopenText => IsClosed ? "Reopen" : "Close";
-
-    public bool IsPushButtonVisible => GitHubIssueNumber is null;
-    public bool IsGitHubLinkVisible => GitHubIssueNumber is not null;
-    public bool HasPushError => !string.IsNullOrEmpty(PushError);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCommitVisible))]
@@ -171,19 +151,10 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         Title = card.Title;
         Description = card.Description;
         IsClosed = card.IsClosed;
-        GitHubIssueNumber = card.GitHubIssueNumber;
-        OnGitHubIssueNumberChanged(card.GitHubIssueNumber);
         TagName = card.TagName;
         TagColour = card.TagColour;
         CardSkills = cardSkills;
         IsSkillsButtonVisible = cardSkills.Length > 0;
-    }
-
-    partial void OnGitHubIssueNumberChanged(int? value)
-    {
-        var state = CardGitHubUrlState.For(value, _workspaceGitHubRepo);
-        GitHubIssueUrl = state.IssueUrl;
-        CanPushToGitHub = state.CanPush;
     }
 
     public async Task LoadCardNumbersAsync()
@@ -200,14 +171,12 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         Title = card.Title;
         Description = card.Description;
         IsClosed = card.IsClosed;
-        GitHubIssueNumber = card.GitHubIssueNumber;
         TagName = card.TagName;
         TagColour = card.TagColour;
         IsTitleEditing = false;
         IsDescriptionEditing = false;
         ShowDeleteConfirm = false;
         EditError = null;
-        PushError = null;
         CommitShortHash = null;
         CommitUrl = null;
         IsCommitLinkVisible = false;
@@ -353,22 +322,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task PushToGitHubAsync(CancellationToken cancellationToken)
-    {
-        PushError = null;
-        try
-        {
-            var card = await _mediator.Send(new PushCardCommand(CardId), cancellationToken);
-            GitHubIssueNumber = card.GitHubIssueNumber;
-            Updated = true;
-        }
-        catch (Exception ex)
-        {
-            PushError = ex.Message;
-        }
-    }
-
-    [RelayCommand]
     private void RequestDelete() => ShowDeleteConfirm = true;
 
     [RelayCommand]
@@ -410,8 +363,6 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
             TagName = card.TagName,
             TagColour = tagColour,
             IsClosed = card.IsClosed,
-            GitHubIssueNumber = card.GitHubIssueNumber,
-            GitHubPushedAt = card.GitHubPushedAt,
             LastAutoRunFailedAt = card.LastAutoRunFailedAt,
             LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
             IsSkillsButtonVisible = isSkillsButtonVisible,

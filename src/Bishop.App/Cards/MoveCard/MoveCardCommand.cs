@@ -7,5 +7,4 @@ public sealed record MoveCardCommand(
     Guid CardId,
     string ToLaneName,
     int ToPosition,
-    bool KeepOpen = false,
     string? ExpectedSourceLaneName = null) : IRequest<Card>;

@@ -118,7 +118,6 @@ public sealed partial class FindingItemViewModel : ObservableObject
             LaneName = card.LaneName,
             TagName = card.TagName,
             IsClosed = card.IsClosed,
-            GitHubIssueNumber = card.GitHubIssueNumber,
         };
 
         var saved = await _dialogService.ShowAsync(cardVm, _workspacePath, _workspaceId, _gitHubRepo, xamlRoot);
@@ -157,7 +156,6 @@ public sealed partial class FindingItemViewModel : ObservableObject
             LaneName = card.LaneName,
             TagName = card.TagName,
             IsClosed = card.IsClosed,
-            GitHubIssueNumber = card.GitHubIssueNumber,
         };
 
         await _dialogService.ShowAsync(cardVm, _workspacePath, _workspaceId, _gitHubRepo, xamlRoot);

@@ -79,18 +79,15 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop workspace list [--json]`
 - `bishop workspace current [--json]` — resolves the workspace from the current working directory by ancestor match
 - `bishop workspace init [--path <dir>] [--name <name>]` — register a directory (defaults to cwd) as a workspace and seed the default lanes; idempotent (no-op when fully seeded, fills gaps when partial)
-- `bishop workspace set-github <owner/repo> [-w]` — link this workspace to a GitHub repo (used by `bishop card push`)
-- `bishop workspace unset-github [-w]` — remove the GitHub repo link
 - `bishop card create --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>] [--bottom] [-w <workspace>]` — inserts at the top of the lane by default; `--bottom` appends to the end
 - `bishop card list [-w] [--json]`
 - `bishop card show <card-id> [-w] [--json]`
-- `bishop card move <card-id> --to-lane <name> --to-position <int> [-w]` — moving a card into the system `Done` lane auto-closes it (and its linked GitHub issue, if any); moving out of `Done` auto-reopens
-- `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path> | --append-description-file <path>] [--tag <name>] [--to-lane <name>] [--no-close] [-w]` — updates only the supplied fields; pass `--tag ""` to clear the tag; `--to-lane` moves the card after editing (auto-closes on move into `Done` unless `--no-close` is set)
+- `bishop card move <card-id> --to-lane <name> --to-position <int> [-w]` — moving a card into the system `Done` lane auto-closes it; moving out of `Done` auto-reopens
+- `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path> | --append-description-file <path>] [--tag <name>] [--to-lane <name>] [-w]` — updates only the supplied fields; pass `--tag ""` to clear the tag; `--to-lane` moves the card after editing (auto-closes on move into `Done`)
 - `bishop card claim [--lane <name>] [--tag <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; `--tag` restricts the pick to the first card carrying that tag; exits non-zero if no matching card exists
 - `bishop card remove <card-id> [-w]`
-- `bishop card push [<card-id>] [--lane <name>] [--dry-run] [-w]` — push a single card by ID, or all unlinked cards in a lane; `--lane` and card-id are mutually exclusive; `--dry-run` previews without calling gh
-- `bishop card close <card-id> [-w]` — mark a card as closed; also closes the linked GitHub issue via `gh` if the card has been pushed
-- `bishop card reopen <card-id> [-w]` — reopen a closed card; also reopens the linked GitHub issue via `gh` if the card has been pushed
+- `bishop card close <card-id> [-w]` — mark a card as closed
+- `bishop card reopen <card-id> [-w]` — reopen a closed card
 - `bishop lane list [-w]` — lanes are fixed (Backlog / To Do / Doing / Done); no user-mutable lane CRUD
 - `bishop tag list [-w]` — list all tags defined in the workspace
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
@@ -150,5 +147,5 @@ Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are instal
 Recorded so future-me doesn't drift into them:
 - **Cross-platform** (Mac / Linux). Windows-only by design.
 - **Multi-user / cloud sync.** Single-user local app. No accounts, no servers.
-- **Full GitHub Issues / Projects sync.** Basic integration is shipped (`bishop workspace set-github`, `bishop card push`); bidirectional sync and a broader issue-backlog ingestion flow remain the boundary.
+- **GitHub Issues / Projects sync.** Removed in card #973 for security (prompt-injection surface via imported issue bodies) and disuse. The CLI surface, MediatR handlers, UI dialogs, and `gh` integration are gone; `Workspace.GitHubRepo`, `Card.GitHubIssueNumber`, and `Card.GitHubPushedAt` columns remain temporarily and are dropped in the follow-up schema card.
 - **Plugin system.** Future tabs ship as in-tree code, not external plugins.

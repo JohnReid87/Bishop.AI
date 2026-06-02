@@ -17,14 +17,12 @@ public sealed partial class CardViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CloseReopenGlyph))]
     [NotifyPropertyChangedFor(nameof(CloseReopenTooltip))]
     private bool _isClosed;
-    public int? GitHubIssueNumber { get; init; }
     public Guid? BatchId { get; init; }
     public string? BatchName { get; init; }
     public DateTimeOffset? BatchCreatedAt { get; init; }
 
     [ObservableProperty]
     private bool _isSelected;
-    public DateTimeOffset? GitHubPushedAt { get; init; }
     public DateTimeOffset? LastAutoRunFailedAt { get; init; }
     public DateTimeOffset? LastAutoRunSucceededAt { get; init; }
 

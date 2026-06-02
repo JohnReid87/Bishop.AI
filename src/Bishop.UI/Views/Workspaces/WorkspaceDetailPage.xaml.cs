@@ -78,8 +78,6 @@ public sealed partial class WorkspaceDetailPage : Page
                 await ShowCopiedToastAsync();
             }
         });
-        Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToBacklogLane();
-        Board.Lanes.CollectionChanged += (_, _) => ApplyGitHubRepoToDoneLane();
         Board.StagingTray.Cards.CollectionChanged += OnStagingTrayCardsChanged;
         Monitoring.ViewFindingsRequested += OnViewFindingsRequested;
         Monitoring.ViewReportRequested += OnViewReportRequested;
@@ -131,20 +129,6 @@ public sealed partial class WorkspaceDetailPage : Page
         Notes.Dispose();
     }
 
-    private void ApplyGitHubRepoToBacklogLane()
-    {
-        var backlogLane = Board.Lanes.FirstOrDefault(l => l.IsBacklogLane);
-        if (backlogLane is null) return;
-        backlogLane.HasGitHubRepo = !string.IsNullOrEmpty(_item?.GitHubRepo);
-    }
-
-    private void ApplyGitHubRepoToDoneLane()
-    {
-        var doneLane = Board.Lanes.FirstOrDefault(l => l.IsDoneLane);
-        if (doneLane is null) return;
-        doneLane.HasGitHubRepo = !string.IsNullOrEmpty(_item?.GitHubRepo);
-    }
-
     private void OnDatabaseChanged(object? sender, EventArgs e) => RefreshAllOnUiThread();
 
     private void OnWindowActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
@@ -163,11 +147,6 @@ public sealed partial class WorkspaceDetailPage : Page
     {
         if (e.PropertyName is nameof(WorkspaceItemViewModel.IsPathMissing))
             UpdatePathStatus();
-        if (e.PropertyName is nameof(WorkspaceItemViewModel.GitHubRepo))
-        {
-            ApplyGitHubRepoToBacklogLane();
-            ApplyGitHubRepoToDoneLane();
-        }
     }
 
     private async Task UpdateViewAsync(WorkspaceItemViewModel vm)
@@ -177,8 +156,6 @@ public sealed partial class WorkspaceDetailPage : Page
         ToolTipService.SetToolTip(WorkspacePathText, vm.Path);
         Board.WorkspacePath = vm.Path;
         UpdatePathStatus();
-        ApplyGitHubRepoToBacklogLane();
-        ApplyGitHubRepoToDoneLane();
         await LoadSkillsAsync();
         _ = _safeAsync.RunAsync(() => Board.LoadAsync(vm.Id));
         _ = _safeAsync.RunAsync(() => Notes.LoadAsync(vm.Id, vm.Path));
@@ -556,24 +533,6 @@ public sealed partial class WorkspaceDetailPage : Page
                 await Batches.CommitBatchNameAsync(batch, textBox.Text);
         });
 
-    private async void WorkspaceSettingsButton_Click(object sender, RoutedEventArgs e)
-        => await _safeAsync.RunAsync(async () =>
-        {
-            if (_item is null) return;
-            var repo = await _dialogService.ShowWorkspaceSettingsDialogAsync(_item.GitHubRepo, XamlRoot);
-            if (repo is null) return;
-            if (string.IsNullOrEmpty(repo))
-            {
-                await Board.UnsetGitHubRepoAsync(_item.Id);
-                _item.GitHubRepo = null;
-            }
-            else
-            {
-                await Board.SetGitHubRepoAsync(_item.Id, repo);
-                _item.GitHubRepo = repo;
-            }
-        });
-
     private void CardRoot_Loaded(object sender, RoutedEventArgs e)
         => Animations.EntranceAnimation.ApplyCardEntrance(sender as FrameworkElement);
 
@@ -594,26 +553,6 @@ public sealed partial class WorkspaceDetailPage : Page
         }
         return null;
     }
-
-    private async void ImportFromGitHub_Click(object sender, RoutedEventArgs e)
-        => await _safeAsync.RunAsync(async () =>
-        {
-            if (_item?.GitHubRepo is not { } repo) return;
-            var vm = await _dialogService.ShowImportFromGitHubDialogAsync(_item.Id, repo, XamlRoot);
-            if (vm.WasImported)
-                await Board.RefreshCommand.ExecuteAsync(null);
-        });
-
-    private async void PushToGitHub_Click(object sender, RoutedEventArgs e)
-        => await _safeAsync.RunAsync(async () =>
-        {
-            if (_item?.GitHubRepo is null) return;
-            var doneLane = Board.Lanes.FirstOrDefault(l => l.IsDoneLane);
-            if (doneLane is null) return;
-            var vm = await _dialogService.ShowPushLaneToGitHubDialogAsync(_item.Id, doneLane.Name, doneLane.Cards.ToList(), XamlRoot);
-            if (vm.WasPushed)
-                await Board.RefreshCommand.ExecuteAsync(null);
-        });
 
     private void NotesSplitter_PointerPressed(object sender, PointerRoutedEventArgs e) => _notesSplitter!.OnPointerPressed(sender, e);
     private void NotesSplitter_PointerMoved(object sender, PointerRoutedEventArgs e) => _notesSplitter!.OnPointerMoved(sender, e);

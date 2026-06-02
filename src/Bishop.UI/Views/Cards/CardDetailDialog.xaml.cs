@@ -97,7 +97,6 @@ public sealed partial class CardDetailDialog : ContentDialog
         TagName = ViewModel.TagName,
         TagColour = ViewModel.TagColour,
         IsClosed = ViewModel.IsClosed,
-        GitHubIssueNumber = ViewModel.GitHubIssueNumber,
         IsSkillsButtonVisible = ViewModel.IsSkillsButtonVisible,
     };
 
@@ -110,13 +109,6 @@ public sealed partial class CardDetailDialog : ContentDialog
     }
 
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
-
-    private async void GitHubIssueButton_Click(object sender, RoutedEventArgs e)
-        => await _safeAsync.RunAsync(async () =>
-        {
-            if (ViewModel.GitHubIssueUrl is { } url)
-                await Launcher.LaunchUriAsync(new Uri(url));
-        });
 
     private async void CommitButton_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>

@@ -5,7 +5,6 @@ using Bishop.App.Cards.ListCardsByWorkspace;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.UpdateCard;
-using Bishop.App.Services.GitHub;
 using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
@@ -35,7 +34,7 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
     private static string U(string prefix = "ws") => $"{prefix}-{Guid.NewGuid():N}"[..20];
 
     private MoveCardCommandHandler MoveHandler() =>
-        new(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance);
+        new(_factory);
 
     private async Task<(Workspace workspace, IReadOnlyList<LaneInfo> lanes)> CreateWorkspaceWithLanesAsync()
     {
@@ -562,34 +561,11 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         persisted.IsClosed.Should().BeTrue();
     }
 
-    [Fact]
-    public async Task EditCard_ToLaneWithKeepOpen_MovesCardWithoutClosing()
-    {
-        // Arrange
-        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
-        var doneLane = lanes.Single(l => l.Name == "Done");
-        var card = await new AddCardCommandHandler(_factory)
-            .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Task", "Existing"), default);
-        var handler = new UpdateCardCommandHandler(_factory, CreateSender());
-
-        // Act
-        var result = await handler.Handle(
-            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: false, TagName: null,
-                AppendDescription: "### Agent notes\nDone.", ToLaneName: doneLane.Name, KeepOpen: true),
-            default);
-
-        // Assert — card moved to Done but IsClosed remains false
-        var persisted = await _db.Cards.FindAsync(card.Id);
-        persisted!.LaneName.Should().Be(doneLane.Name);
-        persisted.IsClosed.Should().BeFalse();
-    }
-
     private ISender CreateSender()
     {
-        var ghCli = Substitute.For<IGhCli>();
         var sender = Substitute.For<ISender>();
         sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new MoveCardCommandHandler(_factory, ghCli, NullLogger<MoveCardCommandHandler>.Instance)
+            .Returns(call => new MoveCardCommandHandler(_factory)
                 .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
         return sender;
     }

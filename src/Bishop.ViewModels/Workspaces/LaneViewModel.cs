@@ -30,12 +30,6 @@ public sealed partial class LaneViewModel : ObservableObject
     public bool IsDoneLane => Name == SystemLaneNames.Done;
 
     [ObservableProperty]
-    public partial bool HasGitHubRepo { get; set; }
-
-    public bool IsImportVisible => IsBacklogLane && HasGitHubRepo;
-    public bool IsPushToGitHubVisible => IsDoneLane && HasGitHubRepo;
-
-    [ObservableProperty]
     public partial bool IsDropTarget { get; set; }
 
     [ObservableProperty]
@@ -89,12 +83,6 @@ public sealed partial class LaneViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(DisplayName));
         RebuildFilteredCards();
-    }
-
-    partial void OnHasGitHubRepoChanged(bool value)
-    {
-        OnPropertyChanged(nameof(IsImportVisible));
-        OnPropertyChanged(nameof(IsPushToGitHubVisible));
     }
 
     private void OnFilteredCardsChanged(object? sender, NotifyCollectionChangedEventArgs e)

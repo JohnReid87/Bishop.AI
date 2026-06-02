@@ -3,7 +3,6 @@ using Bishop.App.Batches.CleanUpBatch;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.CloseCard;
 using Bishop.App.Git;
-using Bishop.App.Services.GitHub;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
@@ -80,10 +79,9 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
         return git;
     }
 
-    private CleanUpBatchCommandHandler CreateHandler(IGitCli? git = null, IGhCli? ghCli = null, ILogger<CleanUpBatchCommandHandler>? logger = null)
+    private CleanUpBatchCommandHandler CreateHandler(IGitCli? git = null, ILogger<CleanUpBatchCommandHandler>? logger = null)
     {
-        var gh = ghCli ?? Substitute.For<IGhCli>();
-        ISender sender = new CleanUpBatchTestSender(_factory, gh);
+        ISender sender = new CleanUpBatchTestSender(_factory);
         return new(_factory, sender,
                    git ?? GitMergedNoBranchNoWorktree(),
                    logger ?? NullLogger<CleanUpBatchCommandHandler>.Instance,
@@ -105,8 +103,8 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
     {
         private readonly CloseCardCommandHandler _closeCard;
 
-        public CleanUpBatchTestSender(IDbContextFactory<BishopDbContext> factory, IGhCli ghCli)
-            => _closeCard = new(factory, ghCli);
+        public CleanUpBatchTestSender(IDbContextFactory<BishopDbContext> factory)
+            => _closeCard = new(factory);
 
         public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default)
         {
@@ -293,27 +291,7 @@ public sealed class CleanUpBatchCommandHandlerTests : IClassFixture<DbFixture>
         savedDoing.IsClosed.Should().BeFalse();
     }
 
-    [Fact]
-    public async Task DoneCard_WithGhIssue_CallsGhCli()
-    {
-        var batch = await CreateWorkingBatchAsync();
-        var card = await AddCardAsync(SystemLaneNames.Done);
-        await AssignCardToBatchAsync(batch, card);
-
-        await _db.Cards
-            .Where(c => c.Id == card.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(c => c.GitHubIssueNumber, 99));
-        await _db.Workspaces
-            .Where(w => w.Id == _wsId)
-            .ExecuteUpdateAsync(s => s.SetProperty(w => w.GitHubRepo, "owner/repo"));
-
-        var ghCli = Substitute.For<IGhCli>();
-        await CreateHandler(ghCli: ghCli).Handle(new CleanUpBatchCommand(batch.Name, WorkspacePath), default);
-
-        await ghCli.Received(1).RunAsync(
-            Arg.Is<string[]>(args => args.Contains("close") && args.Contains("99")),
-            Arg.Any<CancellationToken>());
-    }
+    // (Removed: GitHub-issue close side-effect was deleted with card #973.)
 
     // ── transcript cleanup ─────────────────────────────────────────────────────
 

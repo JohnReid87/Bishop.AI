@@ -1,4 +1,4 @@
-namespace Bishop.ViewModels.GitHub;
+namespace Bishop.ViewModels.Git;
 
 public abstract record RecentCommitsResult
 {

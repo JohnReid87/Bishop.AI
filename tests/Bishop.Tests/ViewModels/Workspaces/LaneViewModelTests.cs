@@ -3,7 +3,6 @@ using Bishop.Core;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
-using Bishop.ViewModels.GitHub;
 using Bishop.ViewModels.Scripts;
 using Bishop.ViewModels.Settings;
 using Bishop.ViewModels.Shared;
@@ -53,28 +52,6 @@ public class LaneViewModelTests
 
         vm.FilteredCards.Should().HaveCount(1);
         vm.DisplayName.Should().Be("To Do (2)");
-    }
-
-    [Fact]
-    public void IsImportVisible_TrueForBacklogWithGitHubRepo()
-    {
-        var vm = NewVm(name: "Backlog");
-        vm.IsImportVisible.Should().BeFalse();
-
-        vm.HasGitHubRepo = true;
-
-        vm.IsImportVisible.Should().BeTrue();
-    }
-
-    [Fact]
-    public void IsPushToGitHubVisible_TrueForDoneLaneWithGitHubRepo()
-    {
-        var vm = NewVm(name: "Done");
-        vm.IsPushToGitHubVisible.Should().BeFalse();
-
-        vm.HasGitHubRepo = true;
-
-        vm.IsPushToGitHubVisible.Should().BeTrue();
     }
 
     [Fact]
@@ -480,30 +457,6 @@ public class LaneViewModelTests
         vm.RebuildLaneItems(new Dictionary<Guid, BatchStats>());
 
         originalGroup.Cards.Should().HaveCount(2);
-    }
-
-    [Fact]
-    public void HasGitHubRepo_Changed_RaisesPropertyChangedForIsImportVisible()
-    {
-        var vm = NewVm(name: "Backlog");
-        var changed = new List<string?>();
-        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
-
-        vm.HasGitHubRepo = true;
-
-        changed.Should().Contain(nameof(LaneViewModel.IsImportVisible));
-    }
-
-    [Fact]
-    public void HasGitHubRepo_Changed_RaisesPropertyChangedForIsPushToGitHubVisible()
-    {
-        var vm = NewVm(name: "Done");
-        var changed = new List<string?>();
-        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
-
-        vm.HasGitHubRepo = true;
-
-        changed.Should().Contain(nameof(LaneViewModel.IsPushToGitHubVisible));
     }
 
     private static LaneViewModel NewVm(

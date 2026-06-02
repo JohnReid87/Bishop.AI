@@ -39,7 +39,6 @@ public class BoardCardFactoryTests
         vm.Description.Should().Be(card.Description);
         vm.LaneName.Should().Be("To Do");
         vm.IsClosed.Should().BeFalse();
-        vm.GitHubIssueNumber.Should().Be(7);
         vm.BatchId.Should().Be(card.BatchId);
         vm.IsSkillsButtonVisible.Should().BeTrue();
     }

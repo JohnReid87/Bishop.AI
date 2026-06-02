@@ -1,4 +1,4 @@
-using Bishop.ViewModels.GitHub;
+using Bishop.ViewModels.Git;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;

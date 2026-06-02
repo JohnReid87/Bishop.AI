@@ -15,14 +15,12 @@ using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Tags.ListTags;
 using Bishop.App.Workspaces.LaunchPlainTerminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
-using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
-using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
 using Bishop.Core;
 using Bishop.Core.Skills;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
-using Bishop.ViewModels.GitHub;
+using Bishop.ViewModels.Git;
 using Bishop.ViewModels.Scripts;
 using Bishop.ViewModels.Settings;
 using Bishop.ViewModels.Shared;
@@ -1080,57 +1078,6 @@ public class WorkspaceBoardViewModelTests
     }
 
     [Fact]
-    public async Task Matches_GitHubIssueNumberChanged_CardIsReplaced()
-    {
-        var workspaceId = Guid.NewGuid();
-        var cardId = Guid.NewGuid();
-        var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new List<LaneInfo> { new("To Do", 1) });
-        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
-        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new List<TagInfo>());
-
-        var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
-        await vm.LoadAsync(workspaceId);
-        var originalCardVm = vm.Lanes[0].Cards[0];
-
-        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "", GitHubIssueNumber = 42 } });
-        await vm.RefreshCommand.ExecuteAsync(null);
-
-        vm.Lanes[0].Cards[0].Should().NotBeSameAs(originalCardVm);
-        vm.Lanes[0].Cards[0].GitHubIssueNumber.Should().Be(42);
-    }
-
-    [Fact]
-    public async Task Matches_GitHubPushedAtChanged_CardIsReplaced()
-    {
-        var workspaceId = Guid.NewGuid();
-        var cardId = Guid.NewGuid();
-        var pushedAt = new DateTimeOffset(2024, 6, 1, 12, 0, 0, TimeSpan.Zero);
-        var mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<ListLanesByWorkspaceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new List<LaneInfo> { new("To Do", 1) });
-        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "" } });
-        mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new List<TagInfo>());
-
-        var vm = new WorkspaceBoardViewModel(mediator, Substitute.For<Bishop.App.Services.Settings.IAppSettings>());
-        await vm.LoadAsync(workspaceId);
-        var originalCardVm = vm.Lanes[0].Cards[0];
-
-        mediator.Send(Arg.Any<ListCardsByWorkspaceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Card> { new() { Id = cardId, Number = 1, Title = "Alpha", LaneName = "To Do", Description = "", GitHubPushedAt = pushedAt } });
-        await vm.RefreshCommand.ExecuteAsync(null);
-
-        vm.Lanes[0].Cards[0].Should().NotBeSameAs(originalCardVm);
-        vm.Lanes[0].Cards[0].GitHubPushedAt.Should().Be(pushedAt);
-    }
-
-    [Fact]
     public async Task Matches_LastAutoRunFailedAtChanged_CardIsReplaced()
     {
         var workspaceId = Guid.NewGuid();
@@ -1526,34 +1473,6 @@ public class WorkspaceBoardViewModelTests
 
         await mediator.Received(1).Send(
             Arg.Is<UpdateCardCommand>(c => c.CardId == cardId && c.TagName == "feature"),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task SetGitHubRepoAsync_SendsSetWorkspaceGitHubRepoCommand()
-    {
-        var (vm, mediator, _) = MakeVm();
-        var workspaceId = Guid.NewGuid();
-        mediator.Send(Arg.Any<SetWorkspaceGitHubRepoCommand>(), Arg.Any<CancellationToken>()).Returns(new Bishop.Core.Workspace());
-
-        await vm.SetGitHubRepoAsync(workspaceId, "owner/repo");
-
-        await mediator.Received(1).Send(
-            Arg.Is<SetWorkspaceGitHubRepoCommand>(c => c.WorkspaceId == workspaceId && c.Repo == "owner/repo"),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task UnsetGitHubRepoAsync_SendsUnsetWorkspaceGitHubRepoCommand()
-    {
-        var (vm, mediator, _) = MakeVm();
-        var workspaceId = Guid.NewGuid();
-        mediator.Send(Arg.Any<UnsetWorkspaceGitHubRepoCommand>(), Arg.Any<CancellationToken>()).Returns(new Bishop.Core.Workspace());
-
-        await vm.UnsetGitHubRepoAsync(workspaceId);
-
-        await mediator.Received(1).Send(
-            Arg.Is<UnsetWorkspaceGitHubRepoCommand>(c => c.WorkspaceId == workspaceId),
             Arg.Any<CancellationToken>());
     }
 

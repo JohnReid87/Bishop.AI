@@ -2,7 +2,6 @@ using Bishop.App.Lanes.ListLanesByWorkspace;
 using Bishop.App.Skills.GetSkillBootstrapInfo;
 using Bishop.App.Tags.ListTags;
 using Bishop.App.Workspaces.CreateWorkspace;
-using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
 using Bishop.Core;
 using Bishop.Data;
 using FluentAssertions;
@@ -41,8 +40,14 @@ public sealed class GetSkillBootstrapInfoQueryHandlerTests : IClassFixture<DbFix
         var path = $@"C:\code\{name}";
         var workspace = await new CreateWorkspaceCommandHandler(_factory)
             .Handle(new CreateWorkspaceCommand(name, path), default);
-        await new SetWorkspaceGitHubRepoCommandHandler(_factory)
-            .Handle(new SetWorkspaceGitHubRepoCommand(workspace.Id, "octocat/Hello-World"), default);
+        // Set GitHubRepo directly on the Workspace entity (CLI/MediatR commands for it
+        // were removed with card #973, but the column remains until the schema is dropped.)
+        await using (var db = await _factory.CreateDbContextAsync())
+        {
+            var w = await db.Workspaces.FindAsync(workspace.Id);
+            w!.GitHubRepo = "octocat/Hello-World";
+            await db.SaveChangesAsync();
+        }
 
         var tags = new[] { new TagInfo("bug", "#ff0000"), new TagInfo("feature", "#00ff00") };
         var lanes = new[] { new LaneInfo("Backlog", 1), new LaneInfo("To Do", 2), new LaneInfo("Doing", 3), new LaneInfo("Done", 4) };

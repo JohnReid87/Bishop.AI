@@ -20,8 +20,6 @@ internal static class BoardCardFactory
             TagName = card.TagName,
             TagColour = ResolveTagColour(card.TagName, tagColourByName),
             IsClosed = card.IsClosed,
-            GitHubIssueNumber = card.GitHubIssueNumber,
-            GitHubPushedAt = card.GitHubPushedAt,
             LastAutoRunFailedAt = card.LastAutoRunFailedAt,
             LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
             BatchId = card.BatchId,
@@ -44,10 +42,8 @@ internal static class BoardCardFactory
     {
         return (vm.Id, vm.Title, vm.Description, vm.IsClosed) ==
                    (card.Id, card.Title, card.Description, card.IsClosed)
-               && (vm.GitHubIssueNumber, vm.GitHubPushedAt,
-                   vm.LastAutoRunFailedAt, vm.LastAutoRunSucceededAt, vm.BatchId) ==
-                   (card.GitHubIssueNumber, card.GitHubPushedAt,
-                    card.LastAutoRunFailedAt, card.LastAutoRunSucceededAt, card.BatchId);
+               && (vm.LastAutoRunFailedAt, vm.LastAutoRunSucceededAt, vm.BatchId) ==
+                   (card.LastAutoRunFailedAt, card.LastAutoRunSucceededAt, card.BatchId);
     }
 
     private static bool TagMatches(

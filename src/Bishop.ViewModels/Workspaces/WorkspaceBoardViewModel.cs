@@ -9,12 +9,10 @@ using Bishop.App.Skills;
 using Bishop.App.Tags.ListTags;
 using Bishop.App.Workspaces.LaunchPlainTerminal;
 using Bishop.App.Workspaces.LaunchWorkspace;
-using Bishop.App.Workspaces.SetWorkspaceGitHubRepo;
-using Bishop.App.Workspaces.UnsetWorkspaceGitHubRepo;
 using Bishop.Core;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
-using Bishop.ViewModels.GitHub;
+using Bishop.ViewModels.Git;
 using Bishop.ViewModels.Shared;
 using Bishop.ViewModels.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -195,12 +193,4 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
 
     public async Task DeleteCardAsync(Guid cardId)
         => await _mediator.Send(new RemoveCardCommand(cardId));
-
-    // ── GitHub settings ──────────────────────────────────────────────────────
-
-    public async Task SetGitHubRepoAsync(Guid workspaceId, string repo)
-        => await _mediator.Send(new SetWorkspaceGitHubRepoCommand(workspaceId, repo));
-
-    public async Task UnsetGitHubRepoAsync(Guid workspaceId)
-        => await _mediator.Send(new UnsetWorkspaceGitHubRepoCommand(workspaceId));
 }

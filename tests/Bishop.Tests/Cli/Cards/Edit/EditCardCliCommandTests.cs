@@ -47,8 +47,7 @@ public sealed class EditCardCliCommandTests
                 c.Description == null &&
                 c.UpdateTag == false &&
                 c.TagName == null &&
-                c.ToLaneName == null &&
-                c.KeepOpen == false),
+                c.ToLaneName == null),
             Arg.Any<CancellationToken>());
     }
 
@@ -110,21 +109,6 @@ public sealed class EditCardCliCommandTests
         exitCode.Should().Be(0);
         await mediator.Received(1).Send(
             Arg.Is<UpdateCardCommand>(c => c.ToLaneName == "Doing"),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task InvokeAsync_WithNoCloseOption_SendsUpdateCardCommandWithKeepOpenTrue()
-    {
-        var ws = DefaultWorkspace();
-        var card = new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 1, Title = "Test Card", LaneName = "To Do" };
-        var (mediator, cmd) = Build(ws, card);
-
-        var exitCode = await cmd.InvokeAsync(["#1", "--no-close", "--workspace", "test-ws"]);
-
-        exitCode.Should().Be(0);
-        await mediator.Received(1).Send(
-            Arg.Is<UpdateCardCommand>(c => c.KeepOpen == true),
             Arg.Any<CancellationToken>());
     }
 

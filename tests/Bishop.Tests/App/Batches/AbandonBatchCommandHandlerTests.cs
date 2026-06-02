@@ -2,7 +2,6 @@ using Bishop.App.Batches.AbandonBatch;
 using Bishop.App.Cards.AddCard;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Git;
-using Bishop.App.Services.GitHub;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.Core;
 using Bishop.Data;
@@ -211,8 +210,8 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
         var card = await AddCardAsync(workspace.Id);
         var batch = await CreateBatchAsync(card.Id);
 
-        await new MoveCardCommandHandler(_factory, Substitute.For<IGhCli>(), NullLogger<MoveCardCommandHandler>.Instance)
-            .Handle(new MoveCardCommand(card.Id, SystemLaneNames.Done, 1, KeepOpen: false), default);
+        await new MoveCardCommandHandler(_factory)
+            .Handle(new MoveCardCommand(card.Id, SystemLaneNames.Done, 1), default);
 
         await CreateHandler().Handle(new AbandonBatchCommand(batch.Name, WorkspacePath), default);
 

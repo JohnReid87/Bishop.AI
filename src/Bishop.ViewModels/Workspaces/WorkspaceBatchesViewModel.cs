@@ -108,8 +108,6 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
                     TagName = card.TagName,
                     TagColour = tagColour,
                     IsClosed = card.IsClosed,
-                    GitHubIssueNumber = card.GitHubIssueNumber,
-                    GitHubPushedAt = card.GitHubPushedAt,
                     LastAutoRunFailedAt = card.LastAutoRunFailedAt,
                     LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
                     BatchId = card.BatchId,

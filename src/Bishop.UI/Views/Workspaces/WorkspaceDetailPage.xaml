@@ -301,12 +301,6 @@
                         <TextBlock Text="Claude" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
-                <Button x:Name="WorkspaceSettingsButton"
-                        ToolTipService.ToolTip="Workspace settings"
-                        Style="{StaticResource SubtleIconButtonStyle}"
-                        Click="WorkspaceSettingsButton_Click">
-                    <FontIcon Glyph="&#xE713;" FontSize="14" Foreground="{StaticResource AppTextPrimaryBrush}"/>
-                </Button>
             </StackPanel>
         </Grid>
 
@@ -411,20 +405,6 @@
                                                Style="{StaticResource BodyStrongTextBlockStyle}"
                                                Padding="12,10,12,8"/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                Click="ImportFromGitHub_Click"
-                                                Visibility="{x:Bind IsImportVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                ToolTipService.ToolTip="Import from GitHub"
-                                                Margin="0,0,4,0">
-                                            <FontIcon Glyph="&#xE70D;" FontSize="12"/>
-                                        </Button>
-                                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                                Click="PushToGitHub_Click"
-                                                Visibility="{x:Bind IsPushToGitHubVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                ToolTipService.ToolTip="Push to GitHub"
-                                                Margin="0,0,4,0">
-                                            <FontIcon Glyph="&#xE70E;" FontSize="12"/>
-                                        </Button>
                                         <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                 Command="{x:Bind BeginAddCardCommand}"
                                                 Click="BeginAddCard_Click"
