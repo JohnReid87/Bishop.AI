@@ -28,7 +28,7 @@ internal sealed class GhCli : IGhCli
         var stderr = await proc.StandardError.ReadToEndAsync(cancellationToken);
         await proc.WaitForExitAsync(cancellationToken);
         if (proc.ExitCode != 0)
-            throw new InvalidOperationException($"gh exited {proc.ExitCode}: {stderr.Trim()}");
+            throw new GhCliException(proc.ExitCode, stderr.Trim());
         return stdout.Trim();
     }
 }

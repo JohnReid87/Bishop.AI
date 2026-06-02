@@ -387,7 +387,7 @@ public sealed class TerminalLauncherTests
 
         // Assert
         _started.Single().FileName.Should().Be("powershell.exe");
-        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "bishop", "batch", "run", "--max", "10");
+        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "& 'bishop' 'batch' 'run' '--max' '10'");
         _started.Single().WorkingDirectory.Should().Be(@"C:\Repo");
     }
 
@@ -398,7 +398,7 @@ public sealed class TerminalLauncherTests
 
         sut.LaunchCommand(@"C:\Repo", "bishop", [], null);
 
-        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "bishop");
+        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "& 'bishop'");
     }
 
     [Fact]
@@ -449,7 +449,7 @@ public sealed class TerminalLauncherTests
 
         var psi = _started.Single();
         psi.FileName.Should().Be("powershell.exe");
-        psi.ArgumentList.Should().Equal("-NoExit", "-Command", "bishop", "batch", "run");
+        psi.ArgumentList.Should().Equal("-NoExit", "-Command", "& 'bishop' 'batch' 'run'");
         psi.WorkingDirectory.Should().Be(@"C:\Repo");
     }
 
@@ -465,23 +465,46 @@ public sealed class TerminalLauncherTests
     }
 
     [Fact]
-    public void LaunchCommand_ArgWithAmpersand_PassedLiterallyInArgumentList()
+    public void LaunchCommand_ArgWithAmpersand_InjectionSafeInCommandString()
     {
         var sut = CreateSut(wtExists: false);
 
         sut.LaunchCommand(@"C:\Repo", "bishop", ["--tag", "tag&bad"], null);
 
-        _started.Single().ArgumentList.Should().Contain("tag&bad");
+        // & must be inside single-quotes so PowerShell does not re-parse it as an operator.
+        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "& 'bishop' '--tag' 'tag&bad'");
     }
 
     [Fact]
-    public void LaunchCommand_ArgWithSpace_PassedLiterallyInArgumentList()
+    public void LaunchCommand_ArgWithSpace_QuotedInCommandString()
     {
         var sut = CreateSut(wtExists: false);
 
         sut.LaunchCommand(@"C:\Repo", "bishop", ["--tag", "my tag"], null);
 
-        _started.Single().ArgumentList.Should().Contain("my tag");
+        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "& 'bishop' '--tag' 'my tag'");
+    }
+
+    [Fact]
+    public void LaunchCommand_ArgWithSemicolonInjectionAttempt_ContainedInSingleToken()
+    {
+        // CWE-78: `;Start-Process calc` must not become a second PowerShell statement.
+        var sut = CreateSut(wtExists: false);
+
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["batch", "run", ";Start-Process calc"], null);
+
+        _started.Single().ArgumentList.Should().Equal(
+            "-NoExit", "-Command", "& 'bishop' 'batch' 'run' ';Start-Process calc'");
+    }
+
+    [Fact]
+    public void LaunchCommand_ArgWithEmbeddedSingleQuote_DoubledForPowerShellEscaping()
+    {
+        var sut = CreateSut(wtExists: false);
+
+        sut.LaunchCommand(@"C:\Repo", "bishop", ["it's"], null);
+
+        _started.Single().ArgumentList.Should().Equal("-NoExit", "-Command", "& 'bishop' 'it''s'");
     }
 
     // ── ArgumentException catch branches ─────────────────────────────────────

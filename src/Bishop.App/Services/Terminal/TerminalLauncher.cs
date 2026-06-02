@@ -68,11 +68,20 @@ internal sealed class TerminalLauncher : ITerminalLauncher
             fallbackShell: "powershell.exe",
             fallbackArgs: psi =>
             {
+                // Build a single -Command string so PowerShell does not re-parse individual
+                // argv elements as expressions (CWE-78). Single-quoting prevents variable
+                // and operator expansion; embedded single-quotes are doubled to escape them.
                 psi.ArgumentList.Add("-NoExit");
                 psi.ArgumentList.Add("-Command");
-                psi.ArgumentList.Add(command);
-                foreach (var a in args) psi.ArgumentList.Add(a);
+                psi.ArgumentList.Add(BuildPowerShellCommandString(command, args));
             });
+    }
+
+    private static string BuildPowerShellCommandString(string command, string[] args)
+    {
+        static string Quote(string s) => "'" + s.Replace("'", "''") + "'";
+        var parts = new[] { Quote(command) }.Concat(args.Select(Quote));
+        return "& " + string.Join(" ", parts);
     }
 
     public bool LaunchPlain(string workingDirectory, TerminalSnap? snap)

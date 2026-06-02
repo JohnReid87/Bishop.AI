@@ -94,4 +94,47 @@ public sealed class SkillCommandRendererTests
 
         result.Should().Be("claude --version");
     }
+
+    [Theory]
+    [InlineData("&", "repro  calc.exe")]
+    [InlineData("|", "repro  calc.exe")]
+    [InlineData("<", "repro  calc.exe")]
+    [InlineData(">", "repro  calc.exe")]
+    [InlineData("^", "repro  calc.exe")]
+    public void Render_CardTitleWithShellMetachar_MetacharStripped(string metaChar, string expected)
+    {
+        var result = SkillCommandRenderer.Render("{{card_title}}", null, $"repro {metaChar} calc.exe", null, string.Empty);
+
+        result.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Render_CardTitleWithNewline_NewlineReplacedWithSpace()
+    {
+        var result = SkillCommandRenderer.Render("{{card_title}}", null, "line1\nline2", null, string.Empty);
+
+        result.Should().Be("line1 line2");
+    }
+
+    [Theory]
+    [InlineData("&")]
+    [InlineData("|")]
+    [InlineData("<")]
+    [InlineData(">")]
+    [InlineData("^")]
+    public void Render_CardDescriptionWithShellMetachar_MetacharStripped(string metaChar)
+    {
+        var result = SkillCommandRenderer.Render("{{card_description}}", null, null, $"desc {metaChar} attack", string.Empty);
+
+        result.Should().Be("desc  attack");
+    }
+
+    [Fact]
+    public void Render_WorkspacePathMetacharsAreNotSanitized()
+    {
+        // workspace_path is a trusted internal value; metacharacters in directory names must survive.
+        var result = SkillCommandRenderer.Render("{{workspace_path}}", null, null, null, @"C:\repos\my&project");
+
+        result.Should().Be(@"C:\repos\my&project");
+    }
 }

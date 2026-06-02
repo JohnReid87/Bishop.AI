@@ -551,6 +551,116 @@ public sealed class ClaudeCliRunnerTests
         }
     }
 
+    [Fact]
+    public void PruneTranscripts_DeletesOldFiles_WhenAboveRetentionCount()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            for (var i = 0; i < 12; i++)
+                File.WriteAllText(Path.Combine(tempDir, $"5-2024010{i:D2}T120000Z.jsonl"), "{}");
+
+            ClaudeCliRunner.PruneTranscripts(tempDir, cardNumber: 5, retentionCount: 10);
+
+            Directory.GetFiles(tempDir, "5-*Z.jsonl").Should().HaveCount(9);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void PruneTranscripts_DoesNothing_WhenBelowRetentionCount()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            for (var i = 0; i < 5; i++)
+                File.WriteAllText(Path.Combine(tempDir, $"3-2024010{i:D2}T120000Z.jsonl"), "{}");
+
+            ClaudeCliRunner.PruneTranscripts(tempDir, cardNumber: 3, retentionCount: 10);
+
+            Directory.GetFiles(tempDir, "3-*Z.jsonl").Should().HaveCount(5);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void PruneTranscripts_OnlyPrunesMatchingCard()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            for (var i = 0; i < 12; i++)
+                File.WriteAllText(Path.Combine(tempDir, $"7-2024010{i:D2}T120000Z.jsonl"), "{}");
+            File.WriteAllText(Path.Combine(tempDir, "8-20240101T120000Z.jsonl"), "{}");
+
+            ClaudeCliRunner.PruneTranscripts(tempDir, cardNumber: 7, retentionCount: 10);
+
+            Directory.GetFiles(tempDir, "7-*Z.jsonl").Should().HaveCount(9);
+            Directory.GetFiles(tempDir, "8-*Z.jsonl").Should().HaveCount(1);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void TrimDenialsIfNeeded_TrimsToMaxLines_WhenOverLimit()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var filePath = Path.Combine(tempDir, "denials.jsonl");
+            var lines = Enumerable.Range(0, ClaudeCliRunner.DenialsMaxLines + 50)
+                .Select(i => $"{{\"index\":{i}}}");
+            File.WriteAllText(filePath, string.Join("\n", lines) + "\n");
+
+            ClaudeCliRunner.TrimDenialsIfNeeded(filePath);
+
+            var result = File.ReadAllLines(filePath)
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .ToArray();
+            result.Should().HaveCount(ClaudeCliRunner.DenialsMaxLines);
+            // newest entries (highest index) are kept
+            result[^1].Should().Contain($"\"index\":{ClaudeCliRunner.DenialsMaxLines + 49}");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void TrimDenialsIfNeeded_DoesNothing_WhenBelowLimit()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var filePath = Path.Combine(tempDir, "denials.jsonl");
+            var content = "{\"a\":1}\n{\"b\":2}\n";
+            File.WriteAllText(filePath, content);
+
+            ClaudeCliRunner.TrimDenialsIfNeeded(filePath);
+
+            File.ReadAllText(filePath).Should().Be(content);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
     private static Process CmdProcess(string arguments) =>
         Process.Start(new ProcessStartInfo("cmd.exe")
         {

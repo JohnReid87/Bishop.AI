@@ -712,6 +712,87 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         }
     }
 
+    // ── IsShallowOrSensitivePath ──────────────────────────────────────────────
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForDriveRoot()
+    {
+        var root = Path.TrimEndingDirectorySeparator(
+            Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!);
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(root).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForUserProfile()
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(userProfile).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForWindowsDirectory()
+    {
+        var winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(winDir).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsFalse_ForNormalProjectPath()
+    {
+        var projectPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "source", "repos", "MyProject");
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(projectPath).Should().BeFalse();
+    }
+
+    // ── SeedAsync — shallow / sensitive path guard ────────────────────────────
+
+    [Fact]
+    public async Task SeedAsync_DoesNothing_WhenWorkspacePathIsDriveRoot()
+    {
+        var driveRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!;
+        await SeedRegisteredWorkspaceAsync(driveRoot, name: U("DriveRoot"));
+        var sut = new WorkspaceContextSeeder(_factory);
+
+        await sut.SeedAsync(driveRoot);
+
+        File.Exists(Path.Combine(driveRoot, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(driveRoot, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(driveRoot, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SeedAsync_DoesNothing_WhenWorkspacePathIsUserProfileRoot()
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        await SeedRegisteredWorkspaceAsync(userProfile, name: U("UserProfile"));
+        var sut = new WorkspaceContextSeeder(_factory);
+
+        await sut.SeedAsync(userProfile);
+
+        File.Exists(Path.Combine(userProfile, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(userProfile, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(userProfile, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SeedAsync_DoesNothing_WhenWorkspacePathIsWindowsDirectory()
+    {
+        var winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        await SeedRegisteredWorkspaceAsync(winDir, name: U("WinDir"));
+        var sut = new WorkspaceContextSeeder(_factory);
+
+        await sut.SeedAsync(winDir);
+
+        File.Exists(Path.Combine(winDir, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(winDir, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(winDir, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
+    }
+
     // ── SeedAsync — path normalisation (ResolveWorkspaceAsync) ───────────────
 
     [Fact]
@@ -1291,6 +1372,102 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         _db.Workspaces.Add(workspace);
         await _db.SaveChangesAsync();
         return workspace;
+    }
+
+    // ── EnsureGitIgnoreEntries ─────────────────────────────────────────────────
+
+    [Fact]
+    public void EnsureGitIgnoreEntries_ReturnsDefaultContent_WhenExistingIsNull()
+    {
+        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(null);
+
+        result.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
+        result.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
+    }
+
+    [Fact]
+    public void EnsureGitIgnoreEntries_DoesNotModify_WhenEntriesAlreadyPresent()
+    {
+        var existing = $".env\n{WorkspaceContextSeeder.RunsIgnoreEntry}\n{WorkspaceContextSeeder.DenialsIgnoreEntry}\n";
+
+        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(existing);
+
+        result.Should().Be(existing);
+    }
+
+    [Fact]
+    public void EnsureGitIgnoreEntries_AddsEntries_WhenMissing()
+    {
+        var existing = ".env\nnode_modules/\n";
+
+        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(existing);
+
+        result.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
+        result.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
+        result.Should().Contain(".env");
+    }
+
+    [Fact]
+    public void EnsureGitIgnoreEntries_AddsMissingEntry_WhenOneAlreadyPresent()
+    {
+        var existing = $".env\n{WorkspaceContextSeeder.RunsIgnoreEntry}\n";
+
+        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(existing);
+
+        result.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
+        result.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
+    }
+
+    [Fact]
+    public async Task SeedAsync_CreatesGitIgnoreWithBishopEntries_InFreshWorkspace()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            var ws = MakeWorkspace(name: "gi-test", path: dir);
+            _db.Workspaces.Add(ws);
+            await _db.SaveChangesAsync();
+
+            var seeder = new WorkspaceContextSeeder(_factory);
+            await seeder.SeedAsync(dir);
+
+            var gitIgnorePath = Path.Combine(dir, WorkspaceContextSeeder.GitIgnoreFileName);
+            File.Exists(gitIgnorePath).Should().BeTrue();
+            var content = await File.ReadAllTextAsync(gitIgnorePath);
+            content.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
+            content.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
+        }
+        finally
+        {
+            CleanupTempDir(dir);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_DoesNotDuplicate_WhenGitIgnoreAlreadyHasBishopEntries()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            var ws = MakeWorkspace(name: "gi-dedup", path: dir);
+            _db.Workspaces.Add(ws);
+            await _db.SaveChangesAsync();
+
+            var gitIgnorePath = Path.Combine(dir, WorkspaceContextSeeder.GitIgnoreFileName);
+            await File.WriteAllTextAsync(gitIgnorePath,
+                $"{WorkspaceContextSeeder.RunsIgnoreEntry}\n{WorkspaceContextSeeder.DenialsIgnoreEntry}\n");
+            var before = await File.ReadAllTextAsync(gitIgnorePath);
+
+            var seeder = new WorkspaceContextSeeder(_factory);
+            await seeder.SeedAsync(dir);
+
+            var after = await File.ReadAllTextAsync(gitIgnorePath);
+            after.Should().Be(before);
+        }
+        finally
+        {
+            CleanupTempDir(dir);
+        }
     }
 
     private static string CreateTempDir()

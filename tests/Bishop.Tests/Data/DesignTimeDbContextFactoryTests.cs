@@ -7,7 +7,7 @@ namespace Bishop.Tests.Data;
 public sealed class DesignTimeDbContextFactoryTests
 {
     [Fact]
-    public void CreateDbContext_ReturnsContextConfiguredWithDesignTimeConnectionString()
+    public void CreateDbContext_ReturnsContextWithAbsoluteTempPathDataSource()
     {
         // Arrange
         var factory = new DesignTimeDbContextFactory();
@@ -16,7 +16,14 @@ public sealed class DesignTimeDbContextFactoryTests
         using var context = factory.CreateDbContext([]);
 
         // Assert
-        context.Should().NotBeNull();
-        context.Database.GetDbConnection().ConnectionString.Should().Be("Data Source=bishop-design.db");
+        var connectionString = context.Database.GetDbConnection().ConnectionString;
+        var dataSource = connectionString
+            .Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => p.Trim())
+            .First(p => p.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+            .Substring("Data Source=".Length);
+
+        Path.IsPathRooted(dataSource).Should().BeTrue("design-time DB must use an absolute path to avoid creating files in the working directory");
+        dataSource.Should().StartWith(Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar), "design-time DB must live under the system temp directory");
     }
 }
