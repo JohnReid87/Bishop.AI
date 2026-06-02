@@ -71,17 +71,33 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         var segments = relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length < 2) return true;
 
-        var sensitiveDirectories = new[]
+        // UserProfile is exact-match only: registering C:\Users\<user> itself is
+        // blocked, but subdirs like source\repos\... are legitimate workspaces.
+        var exactRoots = new[]
         {
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        };
+
+        if (exactRoots
+            .Where(d => !string.IsNullOrEmpty(d))
+            .Any(d => string.Equals(fullPath, d, StringComparison.OrdinalIgnoreCase)))
+            return true;
+
+        // Subtree guard: block the root and every path below these system roots.
+        // LocalApplicationData is intentionally excluded — Path.GetTempPath() resolves
+        // under AppData\Local\Temp, which is a legitimate operational path.
+        var subtreeRoots = new[]
+        {
             Environment.GetFolderPath(Environment.SpecialFolder.Windows),
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         };
 
-        return sensitiveDirectories
+        return subtreeRoots
             .Where(d => !string.IsNullOrEmpty(d))
-            .Any(d => string.Equals(fullPath, d, StringComparison.OrdinalIgnoreCase));
+            .Any(d => string.Equals(fullPath, d, StringComparison.OrdinalIgnoreCase)
+                   || fullPath.StartsWith(d + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
     }
 
     internal static void MigrateLegacyFiles(string fullPath, string bishopDir)

@@ -715,6 +715,44 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         WorkspaceContextSeeder.IsShallowOrSensitivePath(projectPath).Should().BeFalse();
     }
 
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForWindowsSubdirectory()
+    {
+        var winSubDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+            "System32", "drivers");
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(winSubDir).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForProgramFilesSubdirectory()
+    {
+        var pfSubDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            "SomeApp");
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(pfSubDir).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForAppDataRoamingRoot()
+    {
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(appData).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForAppDataRoamingSubdirectory()
+    {
+        var appDataSubDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "SomeApp");
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(appDataSubDir).Should().BeTrue();
+    }
+
     // ── SeedAsync — shallow / sensitive path guard ────────────────────────────
 
     [Fact]
