@@ -313,18 +313,50 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-            <!-- Board + Monitoring tabs -->
-            <TabView x:Name="MainTabView"
-                     Grid.Row="0"
-                     IsAddTabButtonVisible="False"
-                     CanDragTabs="False"
-                     CanReorderTabs="False"
-                     HorizontalAlignment="Stretch"
-                     VerticalAlignment="Stretch">
-
-                <TabViewItem Header="Board" IsClosable="False">
-                    <TabViewItem.Content>
-                        <Grid>
+            <!-- Board / Monitoring / Batches sections -->
+            <Grid Grid.Row="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0"
+                            Orientation="Horizontal"
+                            Spacing="6"
+                            Margin="16,10,16,6">
+                    <RadioButton x:Name="BoardRadio"
+                                 Style="{StaticResource SegmentedRadioButtonStyle}"
+                                 GroupName="MainSection"
+                                 Tag="Board"
+                                 IsChecked="True"
+                                 Checked="MainSectionRadio_Checked">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xF0E2;" FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Board" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="MonitoringRadio"
+                                 Style="{StaticResource SegmentedRadioButtonStyle}"
+                                 GroupName="MainSection"
+                                 Tag="Monitoring"
+                                 Checked="MainSectionRadio_Checked">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE9D9;" FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Monitoring" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="BatchesRadio"
+                                 Style="{StaticResource SegmentedRadioButtonStyle}"
+                                 GroupName="MainSection"
+                                 Tag="Batches"
+                                 Checked="MainSectionRadio_Checked">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE8FD;" FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Batches" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+                <Grid Grid.Row="1">
+                    <Grid x:Name="BoardContent">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
@@ -598,29 +630,7 @@
                 </Border>
 
                         </Grid>
-                    </TabViewItem.Content>
-                </TabViewItem>
-
-                <TabViewItem IsClosable="False">
-                    <TabViewItem.Header>
-                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="Monitoring" VerticalAlignment="Center"/>
-                            <Grid MinWidth="16" MinHeight="16"
-                                  Visibility="{x:Bind Monitoring.BadgeIsVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                  ToolTipService.ToolTip="{x:Bind Monitoring.BadgeTooltip, Mode=OneWay}">
-                                <Rectangle RadiusX="8" RadiusY="8"
-                                           Fill="{x:Bind Monitoring.BadgeColor, Mode=OneWay, Converter={StaticResource HexColorToBrushConverter}}"/>
-                                <TextBlock Text="{x:Bind Monitoring.BadgeCount, Mode=OneWay}"
-                                           Foreground="{x:Bind Monitoring.BadgeColor, Mode=OneWay, Converter={StaticResource HexColorToContrastForegroundConverter}}"
-                                           FontSize="11"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Margin="6,1"/>
-                            </Grid>
-                        </StackPanel>
-                    </TabViewItem.Header>
-                    <TabViewItem.Content>
-                        <Grid>
+                    <Grid x:Name="MonitoringContent" Visibility="Collapsed">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
@@ -761,37 +771,7 @@
                             </ListView>
 
                         </Grid>
-                    </TabViewItem.Content>
-                </TabViewItem>
-
-                <TabViewItem IsClosable="False">
-                    <TabViewItem.Header>
-                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="Batches" VerticalAlignment="Center"/>
-                            <Grid MinWidth="16" MinHeight="16"
-                                  Visibility="{x:Bind Batches.BadgeIsVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                  ToolTipService.ToolTip="{x:Bind Batches.BadgeTooltip, Mode=OneWay}">
-                                <Rectangle RadiusX="8" RadiusY="8"
-                                           Fill="{x:Bind Batches.BadgeColor, Mode=OneWay, Converter={StaticResource HexColorToBrushConverter}}"/>
-                                <TextBlock Text="{x:Bind Batches.BadgeCount, Mode=OneWay}"
-                                           Foreground="{x:Bind Batches.BadgeColor, Mode=OneWay, Converter={StaticResource HexColorToContrastForegroundConverter}}"
-                                           FontSize="11"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Margin="6,1"/>
-                            </Grid>
-                            <Button x:Name="ClearClosedBatchesButton"
-                                    Padding="6,2"
-                                    FontSize="11"
-                                    Click="ClearClosedBatches_Click"
-                                    Visibility="{x:Bind Batches.HasClosedBatches, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                    ToolTipService.ToolTip="Remove all closed batch records; cards stay on the board">
-                                <TextBlock Text="Clear closed batches" VerticalAlignment="Center"/>
-                            </Button>
-                        </StackPanel>
-                    </TabViewItem.Header>
-                    <TabViewItem.Content>
-                        <Grid>
+                    <Grid x:Name="BatchesContent" Visibility="Collapsed">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
@@ -821,6 +801,17 @@
                                 <TextBlock Grid.Column="3" Text="Cards"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
+                                <Button Grid.Column="4"
+                                        x:Name="ClearClosedBatchesButton"
+                                        Padding="6,2"
+                                        FontSize="11"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        Click="ClearClosedBatches_Click"
+                                        Visibility="{x:Bind Batches.HasClosedBatches, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        ToolTipService.ToolTip="Remove all closed batch records; cards stay on the board">
+                                    <TextBlock Text="Clear closed batches" VerticalAlignment="Center"/>
+                                </Button>
                             </Grid>
 
                             <!-- Batch rows -->
@@ -1013,9 +1004,8 @@
                                 </ListView>
                             </Grid>
                         </Grid>
-                    </TabViewItem.Content>
-                </TabViewItem>
-            </TabView>
+                </Grid>
+            </Grid>
 
             <!-- Notes panel -->
             <Expander Grid.Row="1"

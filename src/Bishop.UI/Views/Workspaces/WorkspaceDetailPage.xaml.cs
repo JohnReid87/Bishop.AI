@@ -83,6 +83,26 @@ public sealed partial class WorkspaceDetailPage : Page
         Monitoring.ViewReportRequested += OnViewReportRequested;
     }
 
+    private void SelectTab(WorkspaceTab tab)
+    {
+        var radio = tab switch
+        {
+            WorkspaceTab.Monitoring => MonitoringRadio,
+            WorkspaceTab.Batches => BatchesRadio,
+            _ => BoardRadio,
+        };
+        radio.IsChecked = true;
+    }
+
+    private void MainSectionRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not string tag) return;
+        if (BoardContent is null) return;
+        BoardContent.Visibility = tag == "Board" ? Visibility.Visible : Visibility.Collapsed;
+        MonitoringContent.Visibility = tag == "Monitoring" ? Visibility.Visible : Visibility.Collapsed;
+        BatchesContent.Visibility = tag == "Batches" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void OnViewFindingsRequested(Bishop.ViewModels.Findings.FindingsPageNavArgs args)
         => Frame?.Navigate(typeof(Bishop.UI.Views.Findings.FindingsPage),
             args with { Workspace = _item, SourceTab = Bishop.ViewModels.Workspaces.WorkspaceTab.Monitoring });
@@ -106,7 +126,7 @@ public sealed partial class WorkspaceDetailPage : Page
             _item.PropertyChanged += OnItemPropertyChanged;
             _ = _safeAsync.RunAsync(() => UpdateViewAsync(navArgs.Workspace));
             if (navArgs.InitialTab.HasValue)
-                MainTabView.SelectedIndex = (int)navArgs.InitialTab.Value;
+                SelectTab(navArgs.InitialTab.Value);
         }
         else if (e.Parameter is WorkspaceItemViewModel vm)
         {

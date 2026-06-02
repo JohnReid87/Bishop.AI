@@ -69,6 +69,15 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private void CloseDialog_Click(object sender, RoutedEventArgs e) => Hide();
 
+    private void SettingsSectionRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not string tag) return;
+        if (GeneralContent is null) return;
+        GeneralContent.Visibility = tag == "General" ? Visibility.Visible : Visibility.Collapsed;
+        WorkspacesContent.Visibility = tag == "Workspaces" ? Visibility.Visible : Visibility.Collapsed;
+        SkillsContent.Visibility = tag == "Skills" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private async void CopyDbPathButton_Click(object sender, RoutedEventArgs e)
     {
         var pkg = new DataPackage();
