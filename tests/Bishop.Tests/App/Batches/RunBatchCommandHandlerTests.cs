@@ -5,7 +5,6 @@ using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordCardFailure;
 using Bishop.App.Cards.RecordCardSuccess;
-using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Cards.SetCardCommit;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git;
@@ -98,7 +97,6 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     private sealed class BatchTestSender : ISender
     {
         private readonly MoveCardCommandHandler _moveCard;
-        private readonly RecordClaudeRunCommandHandler _recordClaudeRun;
         private readonly RecordAutoRunFailureCommandHandler _recordAutoRunFailure;
         private readonly RecordCardSuccessCommandHandler _recordCardSuccess;
         private readonly RecordCardFailureCommandHandler _recordCardFailure;
@@ -116,7 +114,6 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
             _contextPackException = contextPackException;
             _recordCardSuccessException = recordCardSuccessException;
             _moveCard = new(factory);
-            _recordClaudeRun = new(factory);
             _recordAutoRunFailure = new(factory, TimeProvider.System);
             _recordCardSuccess = new(factory, TimeProvider.System);
             _recordCardFailure = new(factory, TimeProvider.System);
@@ -153,9 +150,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         public async Task Send<TRequest>(TRequest request, CancellationToken ct = default)
             where TRequest : IRequest
         {
-            if (request is RecordClaudeRunCommand cmd1)
-                await _recordClaudeRun.Handle(cmd1, ct);
-            else if (request is RecordAutoRunFailureCommand cmd2)
+            if (request is RecordAutoRunFailureCommand cmd2)
                 await _recordAutoRunFailure.Handle(cmd2, ct);
             else if (request is RecordCardSuccessCommand cmd4)
             {

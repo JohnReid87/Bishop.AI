@@ -4,7 +4,6 @@ using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RecordAutoRunFailure;
 using Bishop.App.Cards.RecordCardFailure;
 using Bishop.App.Cards.RecordCardSuccess;
-using Bishop.App.Cards.RecordClaudeRun;
 using Bishop.App.Cards.SetCardCommit;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Git;
@@ -93,9 +92,6 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
         sender.Send(Arg.Any<MoveCardCommand>(), Arg.Any<CancellationToken>())
             .Returns(call => new MoveCardCommandHandler(_factory)
                 .Handle(call.ArgAt<MoveCardCommand>(0), call.ArgAt<CancellationToken>(1)));
-        sender.Send(Arg.Any<RecordClaudeRunCommand>(), Arg.Any<CancellationToken>())
-            .Returns(call => new RecordClaudeRunCommandHandler(_factory)
-                .Handle(call.ArgAt<RecordClaudeRunCommand>(0), call.ArgAt<CancellationToken>(1)));
         sender.Send(Arg.Any<RecordAutoRunFailureCommand>(), Arg.Any<CancellationToken>())
             .Returns(call => new RecordAutoRunFailureCommandHandler(_factory, TimeProvider.System)
                 .Handle(call.ArgAt<RecordAutoRunFailureCommand>(0), call.ArgAt<CancellationToken>(1)));
