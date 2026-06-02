@@ -687,6 +687,18 @@ public sealed class StreamJsonFormatterTests
     }
 
     [Fact]
+    public void OnStatus_TokenSuffix_IncludesCacheTokens_WhenUsageHasCacheFields()
+    {
+        var statuses = new List<string>();
+        var sut = new StreamJsonFormatter(statuses.Add);
+
+        sut.Format("""{"type":"assistant","message":{"usage":{"input_tokens":1234,"output_tokens":340,"cache_creation_input_tokens":200,"cache_read_input_tokens":5000},"content":[{"type":"text","text":"hi"}]}}""");
+
+        var expectedSuffix = RunFormatting.FormatTokenSuffix(1234, 340, 5200)!;
+        statuses.Should().ContainSingle().Which.Should().Be($"hi — {expectedSuffix}");
+    }
+
+    [Fact]
     public void OnStatus_TokenSuffix_AccumulatesAcrossEvents()
     {
         var statuses = new List<string>();

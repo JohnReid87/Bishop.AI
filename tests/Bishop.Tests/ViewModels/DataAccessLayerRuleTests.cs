@@ -1,5 +1,5 @@
 using System.Reflection;
-using Bishop.App.Ping;
+using Bishop.App.Workspaces.GetWorkspace;
 using Bishop.Data;
 using FluentAssertions;
 using MediatR;
@@ -13,7 +13,7 @@ namespace Bishop.Tests.ViewModels;
 public class DataAccessLayerRuleTests
 {
     private static readonly Assembly DataAssembly = typeof(BishopDbContext).Assembly;
-    private static readonly Assembly AppAssembly = typeof(PingQueryHandler).Assembly;
+    private static readonly Assembly AppAssembly = typeof(GetWorkspaceQueryHandler).Assembly;
 
     [Fact]
     public void BishopData_ContainsNoRepositoryTypes()
