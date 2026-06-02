@@ -26,6 +26,9 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
             return;
 
         var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(workspacePath));
+        if (IsShallowOrSensitivePath(fullPath))
+            return;
+
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var workspace = await ResolveWorkspaceAsync(db, fullPath, cancellationToken).ConfigureAwait(false);
         if (workspace is null) return;
@@ -52,6 +55,28 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         var mergedClaude = EnsureClaudeMd(existingClaude, workspace);
         if (!string.Equals(existingClaude, mergedClaude, StringComparison.Ordinal))
             await File.WriteAllTextAsync(claudeFile, mergedClaude, cancellationToken).ConfigureAwait(false);
+    }
+
+    internal static bool IsShallowOrSensitivePath(string fullPath)
+    {
+        var root = Path.GetPathRoot(fullPath);
+        if (root == null) return false;
+
+        var relative = fullPath[root.Length..];
+        var segments = relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 2) return true;
+
+        var sensitiveDirectories = new[]
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+        };
+
+        return sensitiveDirectories
+            .Where(d => !string.IsNullOrEmpty(d))
+            .Any(d => string.Equals(fullPath, d, StringComparison.OrdinalIgnoreCase));
     }
 
     internal static void MigrateLegacyFiles(string fullPath, string bishopDir)

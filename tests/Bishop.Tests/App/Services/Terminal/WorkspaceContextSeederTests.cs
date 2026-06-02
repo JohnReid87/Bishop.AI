@@ -712,6 +712,87 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         }
     }
 
+    // ── IsShallowOrSensitivePath ──────────────────────────────────────────────
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForDriveRoot()
+    {
+        var root = Path.TrimEndingDirectorySeparator(
+            Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!);
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(root).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForUserProfile()
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(userProfile).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsTrue_ForWindowsDirectory()
+    {
+        var winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(winDir).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsShallowOrSensitivePath_ReturnsFalse_ForNormalProjectPath()
+    {
+        var projectPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "source", "repos", "MyProject");
+
+        WorkspaceContextSeeder.IsShallowOrSensitivePath(projectPath).Should().BeFalse();
+    }
+
+    // ── SeedAsync — shallow / sensitive path guard ────────────────────────────
+
+    [Fact]
+    public async Task SeedAsync_DoesNothing_WhenWorkspacePathIsDriveRoot()
+    {
+        var driveRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!;
+        await SeedRegisteredWorkspaceAsync(driveRoot, name: U("DriveRoot"));
+        var sut = new WorkspaceContextSeeder(_factory);
+
+        await sut.SeedAsync(driveRoot);
+
+        File.Exists(Path.Combine(driveRoot, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(driveRoot, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(driveRoot, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SeedAsync_DoesNothing_WhenWorkspacePathIsUserProfileRoot()
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        await SeedRegisteredWorkspaceAsync(userProfile, name: U("UserProfile"));
+        var sut = new WorkspaceContextSeeder(_factory);
+
+        await sut.SeedAsync(userProfile);
+
+        File.Exists(Path.Combine(userProfile, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(userProfile, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(userProfile, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SeedAsync_DoesNothing_WhenWorkspacePathIsWindowsDirectory()
+    {
+        var winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        await SeedRegisteredWorkspaceAsync(winDir, name: U("WinDir"));
+        var sut = new WorkspaceContextSeeder(_factory);
+
+        await sut.SeedAsync(winDir);
+
+        File.Exists(Path.Combine(winDir, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(winDir, WorkspaceContextSeeder.ContextFileName)).Should().BeFalse();
+        File.Exists(Path.Combine(winDir, WorkspaceContextSeeder.ClaudeMdFileName)).Should().BeFalse();
+    }
+
     // ── SeedAsync — path normalisation (ResolveWorkspaceAsync) ───────────────
 
     [Fact]
