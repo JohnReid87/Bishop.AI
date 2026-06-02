@@ -40,7 +40,7 @@
             <TextBlock Grid.Row="1" Grid.Column="0" Text="Branch"
                        FontSize="12" VerticalAlignment="Center"
                        Foreground="{StaticResource AppTextSecondaryBrush}"/>
-            <TextBlock Grid.Row="1" Grid.Column="1"
+            <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
                        Text="{x:Bind ViewModel.Branch, Mode=OneWay}"
                        FontSize="12" VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"
@@ -49,34 +49,22 @@
                     <TextBlock Text="{x:Bind ViewModel.Branch, Mode=OneWay}" TextWrapping="Wrap" MaxWidth="600"/>
                 </ToolTipService.ToolTip>
             </TextBlock>
-            <Button Grid.Row="1" Grid.Column="2"
-                    x:Name="CopyBranchButton"
-                    Padding="6,2"
-                    Click="CopyBranch_Click">
-                <FontIcon Glyph="&#xE8C8;" FontSize="12"/>
-            </Button>
 
             <!-- Status -->
             <TextBlock Grid.Row="2" Grid.Column="0" Text="Status"
                        FontSize="12" VerticalAlignment="Center"
                        Foreground="{StaticResource AppTextSecondaryBrush}"/>
-            <TextBlock Grid.Row="2" Grid.Column="1"
+            <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
                        Text="{x:Bind ViewModel.Status, Mode=OneWay}"
                        FontSize="12" VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"
                        TextWrapping="NoWrap"/>
-            <Button Grid.Row="2" Grid.Column="2"
-                    x:Name="CopyStatusButton"
-                    Padding="6,2"
-                    Click="CopyStatus_Click">
-                <FontIcon Glyph="&#xE8C8;" FontSize="12"/>
-            </Button>
 
             <!-- Identity -->
             <TextBlock Grid.Row="3" Grid.Column="0" Text="Identity"
                        FontSize="12" VerticalAlignment="Center"
                        Foreground="{StaticResource AppTextSecondaryBrush}"/>
-            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="6"
+            <StackPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6"
                         VerticalAlignment="Center">
                 <TextBlock Text="{x:Bind ViewModel.Identity, Mode=OneWay}"
                            FontSize="12"
@@ -88,12 +76,6 @@
                            VerticalAlignment="Center"
                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
             </StackPanel>
-            <Button Grid.Row="3" Grid.Column="2"
-                    x:Name="CopyIdentityButton"
-                    Padding="6,2"
-                    Click="CopyIdentity_Click">
-                <FontIcon Glyph="&#xE8C8;" FontSize="12"/>
-            </Button>
         </Grid>
     </StackPanel>
 </UserControl>

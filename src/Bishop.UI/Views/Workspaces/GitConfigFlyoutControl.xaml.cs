@@ -18,16 +18,6 @@ public sealed partial class GitConfigFlyoutControl : UserControl
     }
 
     private void CopyRemote_Click(object sender, RoutedEventArgs e) => Copy(ViewModel.Remote);
-    private void CopyBranch_Click(object sender, RoutedEventArgs e) => Copy(ViewModel.Branch);
-    private void CopyStatus_Click(object sender, RoutedEventArgs e) => Copy(ViewModel.Status);
-
-    private void CopyIdentity_Click(object sender, RoutedEventArgs e)
-    {
-        var value = string.IsNullOrEmpty(ViewModel.IdentityScope)
-            ? ViewModel.Identity
-            : $"{ViewModel.Identity} {ViewModel.IdentityScope}";
-        Copy(value);
-    }
 
     private void Copy(string value)
     {
