@@ -1,3 +1,4 @@
+using Bishop.App.Batches;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
@@ -16,6 +17,7 @@ internal sealed class RenameBatchCommandHandler : IRequestHandler<RenameBatchCom
         var trimmed = request.NewName.Trim();
         if (string.IsNullOrEmpty(trimmed))
             throw new ArgumentException("Batch name cannot be empty.");
+        BatchNameValidator.Validate(trimmed);
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 

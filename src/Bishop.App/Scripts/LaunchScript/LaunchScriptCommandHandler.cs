@@ -1,4 +1,5 @@
 using Bishop.App.Services.Terminal;
+using Bishop.App.Skills;
 using MediatR;
 
 namespace Bishop.App.Scripts.LaunchScript;
@@ -12,6 +13,7 @@ internal sealed class LaunchScriptCommandHandler : IRequestHandler<LaunchScriptC
     public Task<bool> Handle(LaunchScriptCommand request, CancellationToken cancellationToken)
     {
         var canonicalScriptPath = Path.GetFullPath(request.ScriptPath);
+        AssertWithinScriptsFolder(canonicalScriptPath);
         var scriptDir = Path.GetDirectoryName(canonicalScriptPath)
             ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
@@ -20,6 +22,16 @@ internal sealed class LaunchScriptCommandHandler : IRequestHandler<LaunchScriptC
             args.AddRange(SplitArgs(request.Args));
 
         return Task.FromResult(_launcher.LaunchCommand(scriptDir, "pwsh.exe", [.. args], null));
+    }
+
+    private static void AssertWithinScriptsFolder(string resolvedPath)
+    {
+        var scriptsRoot = BishopScriptsFolderPath.Resolve();
+        var prefix = scriptsRoot + Path.DirectorySeparatorChar;
+        if (!resolvedPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException(
+                $"Script path '{resolvedPath}' is outside the allowed scripts folder '{scriptsRoot}'.",
+                "ScriptPath");
     }
 
     // Splits a raw argument string into tokens, respecting single- and double-quoted spans so
@@ -49,7 +61,8 @@ internal sealed class LaunchScriptCommandHandler : IRequestHandler<LaunchScriptC
             {
                 if (current.Length > 0)
                 {
-                    tokens.Add(current.ToString());
+                    var token = SkillCommandRenderer.Sanitize(current.ToString());
+                    if (token.Length > 0) tokens.Add(token);
                     current.Clear();
                 }
             }
@@ -60,7 +73,10 @@ internal sealed class LaunchScriptCommandHandler : IRequestHandler<LaunchScriptC
         }
 
         if (current.Length > 0)
-            tokens.Add(current.ToString());
+        {
+            var last = SkillCommandRenderer.Sanitize(current.ToString());
+            if (last.Length > 0) tokens.Add(last);
+        }
 
         return tokens;
     }

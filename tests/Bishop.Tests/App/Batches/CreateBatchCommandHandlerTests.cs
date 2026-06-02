@@ -36,6 +36,45 @@ public sealed class CreateBatchCommandHandlerTests : IClassFixture<DbFixture>
     private CreateBatchCommandHandler MakeHandler() =>
         new(_git, _factory, TimeProvider.System);
 
+    // ── validation ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_EmptyName_Throws()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var cmd = new CreateBatchCommand(ws.Id, ws.Path, "   ", "bishop/branch", null,
+            @"C:\worktrees\branch", [], null, null);
+
+        var act = () => MakeHandler().Handle(cmd, default);
+
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*empty*");
+    }
+
+    [Theory]
+    [InlineData("foo & calc.exe")]
+    [InlineData("name|cmd")]
+    [InlineData("name<file")]
+    [InlineData("name>file")]
+    [InlineData("name^escape")]
+    [InlineData("name(paren")]
+    [InlineData("name;semi")]
+    [InlineData("name\"quote")]
+    [InlineData("name'apos")]
+    public async Task Handle_MetacharInName_Throws(string name)
+    {
+        var ws = await CreateWorkspaceAsync();
+        var cmd = new CreateBatchCommand(ws.Id, ws.Path, name, "bishop/branch", null,
+            @"C:\worktrees\branch", [], null, null);
+
+        var act = () => MakeHandler().Handle(cmd, default);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        await _git.DidNotReceive().CreateWorktreeAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    // ── happy path ──────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task Handle_NoCards_CreatesBatchWithWorktree()
     {

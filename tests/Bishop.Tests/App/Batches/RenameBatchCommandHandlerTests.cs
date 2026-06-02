@@ -63,6 +63,25 @@ public sealed class RenameBatchCommandHandlerTests : IClassFixture<DbFixture>
         await act.Should().ThrowAsync<ArgumentException>().WithMessage("*empty*");
     }
 
+    [Theory]
+    [InlineData("foo & calc.exe")]
+    [InlineData("name|cmd")]
+    [InlineData("name<file")]
+    [InlineData("name>file")]
+    [InlineData("name^escape")]
+    [InlineData("name(paren")]
+    [InlineData("name;semi")]
+    [InlineData("name\"quote")]
+    [InlineData("name'apos")]
+    public async Task MetacharInNewName_Throws(string newName)
+    {
+        var batch = await CreateBatchAsync();
+
+        Func<Task> act = () => CreateHandler().Handle(new RenameBatchCommand(batch.Name, newName), default);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
     [Fact]
     public async Task NewNameConflictsWithActiveBatch_Throws()
     {

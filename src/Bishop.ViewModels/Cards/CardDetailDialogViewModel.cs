@@ -363,9 +363,10 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
 
     public async Task LaunchAsync(SkillLaunchItem item, string? stagedText, TerminalSnap snap, string modelId)
     {
-        var command = string.IsNullOrWhiteSpace(stagedText)
+        var sanitized = string.IsNullOrWhiteSpace(stagedText) ? null : SkillCommandRenderer.Sanitize(stagedText);
+        var command = string.IsNullOrWhiteSpace(sanitized)
             ? item.RenderedCommand
-            : $"{item.RenderedCommand} {stagedText}";
+            : $"{item.RenderedCommand} {sanitized}";
         await _mediator.Send(new LaunchSkillCommand(_workspacePath, command, snap, modelId));
     }
 

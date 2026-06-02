@@ -47,6 +47,14 @@ The bundled skills are vendored under `skills/` in the Bishop.AI repo, and `bish
 - **Setup-Execute:** `bish-auto-card`, `bish-onboard`, `bish-work-on-card`
 - **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code
 
+### Automated Claude runs use the settings.json allowlist, not bypassPermissions
+
+`ClaudeCliRunner` (used by `bishop batch run`) does **not** pass `--permission-mode bypassPermissions` to the Claude subprocess. Automated runs rely on the explicit `allow`/`deny` lists in `.claude/settings.json` instead.
+
+**Threat-model rationale:** `bypassPermissions` removes the only confirmation gate in the tool-call loop. The prompt embedded in automated runs contains `CONTEXT.md` content and git commit subjects — either could carry injected instructions from a collaborator or external PR. If the model acts on injected instructions, an explicit `deny` list in settings.json is the last line of defence; `bypassPermissions` silently overrides it. The `.claude/settings.json` allowlist already covers every operation `bish-auto-card` legitimately needs (`bishop:*`, safe git subcommands, `dotnet build/test/restore/tool run`, Read/Edit/Write/Glob/Grep/Agent), and the deny list blocks dangerous surface area (`git push`, `gh`, `curl`, `rm`, etc.). Relying on the allowlist is narrower and auditable; the bypass is not.
+
+The `BISHOP_AUTO_CARD=1` env var still activates `bishop hook check-path`, which blocks file writes outside the workspace root as an independent containment layer.
+
 ### CLI surface is unversioned and additive-only
 No `bishop v1 ...` prefix. Commands and flags are not renamed or removed once shipped — additive changes only, in the style of `gh`. Stated here explicitly so a future quietly-renamed flag doesn't silently break the skills.
 
