@@ -35,8 +35,6 @@ internal sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFindi
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
-        await LegacyFindingsImporter.ImportIfPresentAsync(db, request, recordedAt, cancellationToken);
-
         var run = await db.WorkspaceSkillRuns
             .Include(r => r.Findings)
             .FirstOrDefaultAsync(
