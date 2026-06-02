@@ -697,7 +697,7 @@
                                                 <ColumnDefinition Width="160"/>
                                                 <ColumnDefinition Width="130"/>
                                                 <ColumnDefinition Width="90"/>
-                                                <ColumnDefinition Width="70"/>
+                                                <ColumnDefinition Width="150"/>
                                                 <ColumnDefinition Width="50"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
