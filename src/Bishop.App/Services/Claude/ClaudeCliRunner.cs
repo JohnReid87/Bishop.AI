@@ -68,6 +68,8 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
         psi.ArgumentList.Add("--verbose");
         psi.ArgumentList.Add("--model");
         psi.ArgumentList.Add(model);
+        psi.ArgumentList.Add("--permission-mode");
+        psi.ArgumentList.Add("bypassPermissions");
 
         Process? proc;
         try
