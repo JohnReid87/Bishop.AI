@@ -1,4 +1,5 @@
 using System.Data;
+using Bishop.App.Batches;
 using Bishop.App.Git;
 using Bishop.Core;
 using Bishop.Data;
@@ -22,6 +23,11 @@ internal sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchCom
 
     public async Task<CreateBatchResult> Handle(CreateBatchCommand request, CancellationToken cancellationToken)
     {
+        var trimmedName = request.Name.Trim();
+        if (string.IsNullOrEmpty(trimmedName))
+            throw new ArgumentException("Batch name cannot be empty.");
+        BatchNameValidator.Validate(trimmedName);
+
         var cardIds = await ResolveCardIdsAsync(request, cancellationToken);
 
         var baseBranch = request.BaseBranch
@@ -34,7 +40,7 @@ internal sealed class CreateBatchCommandHandler : IRequestHandler<CreateBatchCom
         {
             Id = Guid.NewGuid(),
             WorkspaceId = request.WorkspaceId,
-            Name = request.Name,
+            Name = trimmedName,
             BranchName = request.BranchName,
             BaseBranch = baseBranch,
             WorktreePath = request.WorktreePath,
