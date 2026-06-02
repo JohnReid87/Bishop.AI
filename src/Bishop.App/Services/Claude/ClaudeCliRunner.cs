@@ -10,6 +10,8 @@ namespace Bishop.App.Services.Claude;
 internal sealed class ClaudeCliRunner : IClaudeCliRunner
 {
     private const string InstallUrl = "https://docs.claude.com/en/docs/claude-code/setup";
+    internal const int TranscriptRetentionCount = 10;
+    internal const int DenialsMaxLines = 500;
 
     private static readonly string[] DefaultPathExt = [".COM", ".EXE", ".BAT", ".CMD"];
 
@@ -89,6 +91,7 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
             var stamp = _timeProvider.GetUtcNow().ToString("yyyyMMddTHHmmss");
             var runsDir = Path.Combine(transcriptBasePath ?? workspacePath, ".bishop", "runs");
             Directory.CreateDirectory(runsDir);
+            PruneTranscripts(runsDir, cardNumber.Value);
             transcriptPath = Path.Combine(runsDir, $"{cardNumber}-{stamp}Z.jsonl");
         }
 
@@ -225,7 +228,27 @@ internal sealed class ClaudeCliRunner : IClaudeCliRunner
         lock (DenialFileGate)
         {
             File.AppendAllText(filePath, json + "\n");
+            TrimDenialsIfNeeded(filePath);
         }
+    }
+
+    internal static void TrimDenialsIfNeeded(string filePath)
+    {
+        var lines = File.ReadAllLines(filePath)
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .ToArray();
+        if (lines.Length <= DenialsMaxLines) return;
+        File.WriteAllText(filePath, string.Join("\n", lines[^DenialsMaxLines..]) + "\n");
+    }
+
+    internal static void PruneTranscripts(string runsDir, int cardNumber, int retentionCount = TranscriptRetentionCount)
+    {
+        var toDelete = Directory.GetFiles(runsDir, $"{cardNumber}-*Z.jsonl")
+            .OrderByDescending(f => f, StringComparer.OrdinalIgnoreCase)
+            .Skip(retentionCount - 1)
+            .ToList();
+        foreach (var file in toDelete)
+            File.Delete(file);
     }
 
     internal void WriteTranscriptLine(string filePath, string line)

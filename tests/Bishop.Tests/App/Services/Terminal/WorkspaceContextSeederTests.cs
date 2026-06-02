@@ -1374,6 +1374,102 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         return workspace;
     }
 
+    // ── EnsureGitIgnoreEntries ─────────────────────────────────────────────────
+
+    [Fact]
+    public void EnsureGitIgnoreEntries_ReturnsDefaultContent_WhenExistingIsNull()
+    {
+        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(null);
+
+        result.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
+        result.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
+    }
+
+    [Fact]
+    public void EnsureGitIgnoreEntries_DoesNotModify_WhenEntriesAlreadyPresent()
+    {
+        var existing = $".env\n{WorkspaceContextSeeder.RunsIgnoreEntry}\n{WorkspaceContextSeeder.DenialsIgnoreEntry}\n";
+
+        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(existing);
+
+        result.Should().Be(existing);
+    }
+
+    [Fact]
+    public void EnsureGitIgnoreEntries_AddsEntries_WhenMissing()
+    {
+        var existing = ".env\nnode_modules/\n";
+
+        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(existing);
+
+        result.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
+        result.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
+        result.Should().Contain(".env");
+    }
+
+    [Fact]
+    public void EnsureGitIgnoreEntries_AddsMissingEntry_WhenOneAlreadyPresent()
+    {
+        var existing = $".env\n{WorkspaceContextSeeder.RunsIgnoreEntry}\n";
+
+        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(existing);
+
+        result.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
+        result.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
+    }
+
+    [Fact]
+    public async Task SeedAsync_CreatesGitIgnoreWithBishopEntries_InFreshWorkspace()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            var ws = MakeWorkspace(name: "gi-test", path: dir);
+            _db.Workspaces.Add(ws);
+            await _db.SaveChangesAsync();
+
+            var seeder = new WorkspaceContextSeeder(_factory);
+            await seeder.SeedAsync(dir);
+
+            var gitIgnorePath = Path.Combine(dir, WorkspaceContextSeeder.GitIgnoreFileName);
+            File.Exists(gitIgnorePath).Should().BeTrue();
+            var content = await File.ReadAllTextAsync(gitIgnorePath);
+            content.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
+            content.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
+        }
+        finally
+        {
+            CleanupTempDir(dir);
+        }
+    }
+
+    [Fact]
+    public async Task SeedAsync_DoesNotDuplicate_WhenGitIgnoreAlreadyHasBishopEntries()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            var ws = MakeWorkspace(name: "gi-dedup", path: dir);
+            _db.Workspaces.Add(ws);
+            await _db.SaveChangesAsync();
+
+            var gitIgnorePath = Path.Combine(dir, WorkspaceContextSeeder.GitIgnoreFileName);
+            await File.WriteAllTextAsync(gitIgnorePath,
+                $"{WorkspaceContextSeeder.RunsIgnoreEntry}\n{WorkspaceContextSeeder.DenialsIgnoreEntry}\n");
+            var before = await File.ReadAllTextAsync(gitIgnorePath);
+
+            var seeder = new WorkspaceContextSeeder(_factory);
+            await seeder.SeedAsync(dir);
+
+            var after = await File.ReadAllTextAsync(gitIgnorePath);
+            after.Should().Be(before);
+        }
+        finally
+        {
+            CleanupTempDir(dir);
+        }
+    }
+
     private static string CreateTempDir()
     {
         var dir = Path.Combine(Path.GetTempPath(), "bishop-ctx-" + Guid.NewGuid().ToString("N"));
