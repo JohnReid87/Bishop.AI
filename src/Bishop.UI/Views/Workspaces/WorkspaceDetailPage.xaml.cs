@@ -37,12 +37,15 @@ public sealed partial class WorkspaceDetailPage : Page
     private BoardDragDropController? _dragDrop;
     private NotesSplitterDragHandler? _notesSplitter;
     private Flyout? _commitsFlyout;
+    private Flyout? _gitFlyout;
+    private GitConfigFlyoutControl? _gitFlyoutContent;
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
     public WorkspaceMonitoringViewModel Monitoring { get; }
     public WorkspaceBatchesViewModel Batches { get; }
     public CommitsFlyoutViewModel Commits { get; }
+    public GitConfigViewModel Git { get; }
 
     public WorkspaceDetailPage()
     {
@@ -51,6 +54,7 @@ public sealed partial class WorkspaceDetailPage : Page
         Monitoring = App.Services.GetRequiredService<WorkspaceMonitoringViewModel>();
         Batches = App.Services.GetRequiredService<WorkspaceBatchesViewModel>();
         Commits = App.Services.GetRequiredService<CommitsFlyoutViewModel>();
+        Git = App.Services.GetRequiredService<GitConfigViewModel>();
         _dbWatcher = App.Services.GetRequiredService<DbChangeWatcher>();
         _dialogService = App.Services.GetRequiredService<IDialogService>();
         _logger = App.Services.GetRequiredService<ILogger<WorkspaceDetailPage>>();
@@ -73,6 +77,13 @@ public sealed partial class WorkspaceDetailPage : Page
             Clipboard.SetContent(pkg);
             await ShowCopiedToastAsync();
         });
+        _gitFlyoutContent = new GitConfigFlyoutControl(Git);
+        _gitFlyoutContent.RowCopied += () => _safeAsync.RunAsync(ShowCopiedToastAsync);
+        _gitFlyout = new Flyout
+        {
+            Content = _gitFlyoutContent,
+            Placement = FlyoutPlacementMode.Bottom,
+        };
         Board.StagingTray.Cards.CollectionChanged += OnStagingTrayCardsChanged;
         Monitoring.ViewFindingsRequested += OnViewFindingsRequested;
         Monitoring.ViewReportRequested += OnViewReportRequested;
@@ -156,6 +167,7 @@ public sealed partial class WorkspaceDetailPage : Page
         _ = _safeAsync.RunAsync(() => Notes.LoadAsync(vm.Id, vm.Path));
         _ = _safeAsync.RunAsync(() => Monitoring.LoadAsync(vm.Id, vm.Path));
         _ = _safeAsync.RunAsync(() => Batches.LoadAsync(vm.Id, vm.Path));
+        _ = _safeAsync.RunAsync(() => Git.ProbeAsync(vm.Path));
     }
 
     private async Task LoadSkillsAsync()
@@ -223,6 +235,14 @@ public sealed partial class WorkspaceDetailPage : Page
             if (_item is null) return;
             await Commits.LoadAsync(_item.Path);
             _commitsFlyout!.ShowAt((FrameworkElement)sender);
+        });
+
+    private async void GitButton_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            await Git.RefreshAsync();
+            _gitFlyout!.ShowAt((FrameworkElement)sender);
         });
 
     private async Task ShowCopiedToastAsync()

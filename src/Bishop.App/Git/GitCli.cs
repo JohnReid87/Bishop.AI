@@ -1,4 +1,5 @@
 using Bishop.App.Git.GetCardCommit;
+using Bishop.App.Git.GetGitConfig;
 using Bishop.App.Git.GetRecentCommits;
 using Bishop.App.Git.Push;
 using System.ComponentModel;
@@ -526,6 +527,180 @@ internal sealed class GitCli : IGitCli
             return paths.Count == 0
                 ? new GetWorkingTreeStatusResult.Clean()
                 : new GetWorkingTreeStatusResult.Dirty(paths);
+        }
+    }
+
+    public async Task<GetGitConfigResult> GetGitConfigAsync(
+        string workspacePath, CancellationToken cancellationToken = default)
+    {
+        // Probe with git status — same exit-128 / "not a git repository" detection as elsewhere.
+        var statusPsi = CreateGitProcessStartInfo(workspacePath);
+        statusPsi.ArgumentList.Add("status");
+        statusPsi.ArgumentList.Add("--porcelain");
+
+        Process? statusProc;
+        try
+        {
+            statusProc = Process.Start(statusPsi);
+        }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+        {
+            return new GetGitConfigResult.GitNotFound();
+        }
+
+        if (statusProc is null)
+            return new GetGitConfigResult.GitNotFound();
+
+        int stagedCount;
+        int unstagedCount;
+        using (statusProc)
+        {
+            var stdout = await statusProc.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderr = await statusProc.StandardError.ReadToEndAsync(cancellationToken);
+            await statusProc.WaitForExitAsync(cancellationToken);
+
+            if (statusProc.ExitCode == 128 &&
+                stderr.Contains("not a git repository", StringComparison.OrdinalIgnoreCase))
+            {
+                return new GetGitConfigResult.NotAGitRepo();
+            }
+
+            if (statusProc.ExitCode != 0)
+                throw new InvalidOperationException($"git exited {statusProc.ExitCode}: {stderr.Trim()}");
+
+            (stagedCount, unstagedCount) = ParsePorcelainCounts(stdout);
+        }
+
+        // Branch (may be "HEAD" when detached).
+        var branchPsi = CreateGitProcessStartInfo(workspacePath);
+        branchPsi.ArgumentList.Add("rev-parse");
+        branchPsi.ArgumentList.Add("--abbrev-ref");
+        branchPsi.ArgumentList.Add("HEAD");
+
+        var branch = "HEAD";
+        var branchProc = Process.Start(branchPsi);
+        if (branchProc is not null)
+        {
+            using (branchProc)
+            {
+                var stdout = await branchProc.StandardOutput.ReadToEndAsync(cancellationToken);
+                await branchProc.WaitForExitAsync(cancellationToken);
+                if (branchProc.ExitCode == 0)
+                {
+                    var t = stdout.Trim();
+                    if (!string.IsNullOrEmpty(t)) branch = t;
+                }
+            }
+        }
+
+        var originUrl = await GetOriginUrlAsync(workspacePath, cancellationToken);
+        if (string.IsNullOrWhiteSpace(originUrl))
+            originUrl = null;
+
+        var (upstreamRef, upstreamIsTracked) = await GetUpstreamRefAsync(workspacePath, cancellationToken);
+        var ahead = 0;
+        var behind = 0;
+        if (upstreamRef is not null)
+            (ahead, behind) = await GetAheadBehindAsync(workspacePath, upstreamRef, cancellationToken);
+
+        var (name, email, scope) = await ReadIdentityAsync(workspacePath, cancellationToken);
+
+        return new GetGitConfigResult.Success(
+            OriginUrl: originUrl,
+            Branch: branch,
+            UpstreamRef: upstreamRef,
+            UpstreamIsTracked: upstreamIsTracked,
+            Ahead: ahead,
+            Behind: behind,
+            StagedCount: stagedCount,
+            UnstagedCount: unstagedCount,
+            Name: name,
+            Email: email,
+            IdentityScope: scope);
+    }
+
+    private static (int Staged, int Unstaged) ParsePorcelainCounts(string stdout)
+    {
+        var staged = 0;
+        var unstaged = 0;
+        foreach (var raw in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var line = raw.TrimEnd('\r');
+            if (line.Length < 2) continue;
+            var x = line[0]; // index status
+            var y = line[1]; // worktree status
+            if (x == '?' && y == '?') { unstaged++; continue; }
+            if (x != ' ' && x != '?') staged++;
+            if (y != ' ' && y != '?') unstaged++;
+        }
+        return (staged, unstaged);
+    }
+
+    private async Task<(int Ahead, int Behind)> GetAheadBehindAsync(
+        string workspacePath, string upstreamRef, CancellationToken cancellationToken)
+    {
+        var psi = CreateGitProcessStartInfo(workspacePath);
+        psi.ArgumentList.Add("rev-list");
+        psi.ArgumentList.Add("--left-right");
+        psi.ArgumentList.Add("--count");
+        psi.ArgumentList.Add($"{upstreamRef}...HEAD");
+
+        Process? proc;
+        try { proc = Process.Start(psi); }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return (0, 0); }
+        if (proc is null) return (0, 0);
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+            if (proc.ExitCode != 0) return (0, 0);
+
+            var parts = stdout.Trim().Split('\t', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2) return (0, 0);
+            // Left side = upstreamRef (behind), right side = HEAD (ahead).
+            int.TryParse(parts[0], out var behind);
+            int.TryParse(parts[1], out var ahead);
+            return (ahead, behind);
+        }
+    }
+
+    private async Task<(string? Name, string? Email, GitIdentityScope Scope)> ReadIdentityAsync(
+        string workspacePath, CancellationToken cancellationToken)
+    {
+        var localName = await ReadConfigAsync(workspacePath, "--local", "user.name", cancellationToken);
+        var localEmail = await ReadConfigAsync(workspacePath, "--local", "user.email", cancellationToken);
+        if (localName is not null || localEmail is not null)
+            return (localName, localEmail, GitIdentityScope.Repo);
+
+        var globalName = await ReadConfigAsync(workspacePath, "--global", "user.name", cancellationToken);
+        var globalEmail = await ReadConfigAsync(workspacePath, "--global", "user.email", cancellationToken);
+        if (globalName is not null || globalEmail is not null)
+            return (globalName, globalEmail, GitIdentityScope.Global);
+
+        return (null, null, GitIdentityScope.Unset);
+    }
+
+    private static async Task<string?> ReadConfigAsync(
+        string workspacePath, string scopeFlag, string key, CancellationToken cancellationToken)
+    {
+        var psi = CreateGitProcessStartInfo(workspacePath);
+        psi.ArgumentList.Add("config");
+        psi.ArgumentList.Add(scopeFlag);
+        psi.ArgumentList.Add(key);
+
+        Process? proc;
+        try { proc = Process.Start(psi); }
+        catch (Exception ex) when (ex is Win32Exception or FileNotFoundException) { return null; }
+        if (proc is null) return null;
+
+        using (proc)
+        {
+            var stdout = await proc.StandardOutput.ReadToEndAsync(cancellationToken);
+            await proc.WaitForExitAsync(cancellationToken);
+            if (proc.ExitCode != 0) return null;
+            var value = stdout.Trim();
+            return string.IsNullOrEmpty(value) ? null : value;
         }
     }
 

@@ -83,6 +83,7 @@ public partial class App : Application
                 services.AddTransient<MainWindowViewModel>();
                 services.AddTransient<WorkspaceBoardViewModel>();
                 services.AddTransient<CommitsFlyoutViewModel>();
+                services.AddTransient<GitConfigViewModel>();
                 // Transient + IDisposable: WorkspaceDetailPage.OnNavigatedFrom owns disposal.
                 services.AddTransient<WorkspaceNotesViewModel>();
                 services.AddTransient<WorkspaceMonitoringViewModel>();

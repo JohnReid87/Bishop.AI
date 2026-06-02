@@ -285,6 +285,15 @@
                         <TextBlock Text="Commits" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
+                <Button x:Name="GitButton"
+                        Padding="8,4"
+                        Visibility="{x:Bind Git.IsGitRepo, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                        Click="GitButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE71D;" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="Git" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <Button x:Name="TerminalButton"
                         Padding="8,4"
                         Click="TerminalButton_Click">

@@ -1,4 +1,5 @@
 using Bishop.App.Git.GetCardCommit;
+using Bishop.App.Git.GetGitConfig;
 using Bishop.App.Git.GetRecentCommits;
 using Bishop.App.Git.Push;
 
@@ -9,6 +10,8 @@ public interface IGitCli
     Task<GetRecentCommitsResult> GetRecentCommitsAsync(string workspacePath, CancellationToken cancellationToken = default);
 
     Task<GetWorkingTreeStatusResult> GetWorkingTreeStatusAsync(string workspacePath, CancellationToken cancellationToken = default);
+
+    Task<GetGitConfigResult> GetGitConfigAsync(string workspacePath, CancellationToken cancellationToken = default);
 
     Task<GetCardCommitResult> GetCardCommitAsync(int cardNumber, string workspacePath, CancellationToken cancellationToken = default);
 
