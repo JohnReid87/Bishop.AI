@@ -16,6 +16,9 @@ public sealed partial class FindingsViewModel : ObservableObject
     private string _workspacePath = string.Empty;
     private string? _gitHubRepo;
 
+    private string _sortKey = "severity";
+    private bool _sortAsc = true;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Header))]
     private string _skillName = string.Empty;
@@ -29,6 +32,8 @@ public sealed partial class FindingsViewModel : ObservableObject
         : $"{SkillName} · {ProjectName} — findings";
 
     public ObservableCollection<FindingItemViewModel> Findings { get; } = [];
+
+    public ObservableCollection<FindingItemViewModel> VisibleFindings { get; } = [];
 
     public ObservableCollection<FindingItemViewModel> ResolvedFindings { get; } = [];
 
@@ -63,44 +68,71 @@ public sealed partial class FindingsViewModel : ObservableObject
             new GetFindingsBySkillAndProjectQuery(workspaceId, skillName, projectName),
             cancellationToken);
 
-        var active = new List<FindingItemViewModel>();
-        var resolved = new List<FindingItemViewModel>();
+        Findings.Clear();
+        ResolvedFindings.Clear();
         foreach (var r in records)
         {
             var vm = new FindingItemViewModel(
                 r, skillName, workspaceId, workspacePath, gitHubRepo,
                 _mediator, _dialogService);
             if (r.Status == "resolved")
-                resolved.Add(vm);
+                ResolvedFindings.Add(vm);
             else
-                active.Add(vm);
+                Findings.Add(vm);
         }
 
-        Findings.Clear();
-        foreach (var vm in active
-            .OrderBy(SeverityRank)
-            .ThenBy(f => f.Title, StringComparer.OrdinalIgnoreCase))
-            Findings.Add(vm);
+        // Resolved list never re-sorts at runtime — sort once here.
+        SortInPlace(ResolvedFindings);
 
-        ResolvedFindings.Clear();
-        foreach (var vm in resolved
-            .OrderBy(SeverityRank)
-            .ThenBy(f => f.Title, StringComparer.OrdinalIgnoreCase))
-            ResolvedFindings.Add(vm);
+        ApplyView();
 
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(HasResolved));
     }
 
-    private static int SeverityRank(FindingItemViewModel f) => (f.Severity ?? string.Empty).ToLowerInvariant() switch
+    public void ToggleSort(string key)
     {
-        "critical" => 0,
-        "high" => 1,
-        "medium" or "med" => 2,
-        "low" => 3,
-        "info" => 4,
-        _ => 5,
-    };
+        if (_sortKey == key) _sortAsc = !_sortAsc;
+        else { _sortKey = key; _sortAsc = true; }
+        ApplyView();
+    }
+
+    partial void OnFilterTextChanged(string value) => ApplyView();
+
+    private void ApplyView()
+    {
+        IEnumerable<FindingItemViewModel> items = Findings;
+        if (!string.IsNullOrWhiteSpace(FilterText))
+            items = items.Where(Matches);
+
+        items = _sortKey switch
+        {
+            "severity" => _sortAsc
+                ? items.OrderBy(FindingSeverityRanker.Rank).ThenBy(i => i.Title)
+                : items.OrderByDescending(FindingSeverityRanker.Rank).ThenBy(i => i.Title),
+            "location" => _sortAsc
+                ? items.OrderBy(i => i.Location, StringComparer.OrdinalIgnoreCase)
+                : items.OrderByDescending(i => i.Location, StringComparer.OrdinalIgnoreCase),
+            _ => _sortAsc
+                ? items.OrderBy(i => i.Title, StringComparer.OrdinalIgnoreCase)
+                : items.OrderByDescending(i => i.Title, StringComparer.OrdinalIgnoreCase),
+        };
+
+        VisibleFindings.Clear();
+        foreach (var item in items)
+            VisibleFindings.Add(item);
+    }
+
+    private static void SortInPlace(ObservableCollection<FindingItemViewModel> list)
+    {
+        var sorted = list
+            .OrderBy(FindingSeverityRanker.Rank)
+            .ThenBy(f => f.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        list.Clear();
+        foreach (var item in sorted)
+            list.Add(item);
+    }
 
     public bool Matches(FindingItemViewModel item)
     {

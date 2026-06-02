@@ -244,6 +244,95 @@ public class FindingsViewModelTests
         vm.Matches(finding).Should().BeTrue();
     }
 
+    // --- VisibleFindings / ApplyView ---
+
+    [Fact]
+    public async Task VisibleFindings_AfterLoad_ContainsAllActiveAndSortedBySeverity()
+    {
+        var mediator = Substitute.For<ISender>();
+        var records = new[]
+        {
+            MakeRecord(title: "Low one", severity: "low"),
+            MakeRecord(title: "Critical one", severity: "critical"),
+            MakeRecord(title: "Medium one", severity: "medium"),
+            MakeRecord(status: "resolved", title: "Resolved one", severity: "high"),
+        };
+        mediator.Send(Arg.Any<GetFindingsBySkillAndProjectQuery>(), Arg.Any<CancellationToken>())
+            .Returns(records);
+
+        var vm = MakeVm(mediator);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+
+        vm.VisibleFindings.Should().HaveCount(3);
+        vm.VisibleFindings[0].Title.Should().Be("Critical one");
+        vm.VisibleFindings[1].Title.Should().Be("Medium one");
+        vm.VisibleFindings[2].Title.Should().Be("Low one");
+    }
+
+    [Fact]
+    public async Task ToggleSort_SameKey_FlipsDirection()
+    {
+        var mediator = Substitute.For<ISender>();
+        mediator.Send(Arg.Any<GetFindingsBySkillAndProjectQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                MakeRecord(title: "A", severity: "low"),
+                MakeRecord(title: "B", severity: "critical"),
+            });
+
+        var vm = MakeVm(mediator);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+
+        vm.VisibleFindings[0].Title.Should().Be("B");
+
+        vm.ToggleSort("severity");
+
+        vm.VisibleFindings[0].Title.Should().Be("A");
+        vm.VisibleFindings[1].Title.Should().Be("B");
+    }
+
+    [Fact]
+    public async Task ToggleSort_NewKey_ResetsToAscending()
+    {
+        var mediator = Substitute.For<ISender>();
+        mediator.Send(Arg.Any<GetFindingsBySkillAndProjectQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                MakeRecord(title: "Beta"),
+                MakeRecord(title: "Alpha"),
+            });
+
+        var vm = MakeVm(mediator);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+
+        vm.ToggleSort("title");
+
+        vm.VisibleFindings[0].Title.Should().Be("Alpha");
+        vm.VisibleFindings[1].Title.Should().Be("Beta");
+    }
+
+    [Fact]
+    public async Task FilterText_Change_ReappliesView()
+    {
+        var mediator = Substitute.For<ISender>();
+        mediator.Send(Arg.Any<GetFindingsBySkillAndProjectQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                MakeRecord(title: "needle"),
+                MakeRecord(title: "haystack"),
+            });
+
+        var vm = MakeVm(mediator);
+        await vm.LoadAsync(WorkspaceId, WorkspacePath, null, SkillName, null);
+
+        vm.VisibleFindings.Should().HaveCount(2);
+
+        vm.FilterText = "needle";
+
+        vm.VisibleFindings.Should().ContainSingle()
+            .Which.Title.Should().Be("needle");
+    }
+
     [Fact]
     public void Matches_WhitespaceOnlyFilterText_ReturnsTrue()
     {

@@ -39,6 +39,9 @@ public sealed partial class FindingItemViewModel : ObservableObject
     [ObservableProperty]
     private string? _rebuttalText;
 
+    [ObservableProperty]
+    private string _rebuttalDraft = string.Empty;
+
     internal FindingItemViewModel(
         FindingRecord record,
         string skillName,

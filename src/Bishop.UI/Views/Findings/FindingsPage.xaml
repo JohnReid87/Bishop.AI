@@ -4,13 +4,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:Bishop.ViewModels.Findings">
 
-    <Page.Resources>
-        <CollectionViewSource x:Name="FindingsView"
-                              x:Key="FindingsView"
-                              Source="{x:Bind ViewModel.Findings, Mode=OneWay}"
-                              IsSourceGrouped="False"/>
-    </Page.Resources>
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -104,7 +97,7 @@
         <ScrollViewer Grid.Row="3">
             <StackPanel>
                 <ListView x:Name="FindingsList"
-                          ItemsSource="{Binding Source={StaticResource FindingsView}}"
+                          ItemsSource="{x:Bind ViewModel.VisibleFindings, Mode=OneWay}"
                           SelectionMode="None">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
@@ -215,19 +208,19 @@
                                             Padding="8,4"
                                             IsEnabled="{x:Bind IsDismissEnabled, Mode=OneWay}">
                                         <Button.Flyout>
-                                            <Flyout>
+                                            <Flyout x:Name="DismissFlyout">
                                                 <StackPanel Width="280" Spacing="8">
                                                     <TextBlock Text="Dismiss with reason"
                                                                FontWeight="SemiBold"/>
-                                                    <TextBox x:Name="DismissRebuttalBox"
-                                                             PlaceholderText="Why is this not a real finding?"
+                                                    <TextBox PlaceholderText="Why is this not a real finding?"
                                                              AcceptsReturn="True"
                                                              TextWrapping="Wrap"
-                                                             MinHeight="60"/>
+                                                             MinHeight="60"
+                                                             Text="{x:Bind RebuttalDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                     <Button Content="Dismiss"
                                                             HorizontalAlignment="Right"
                                                             Click="Dismiss_Click"
-                                                            Tag="{x:Bind}"/>
+                                                            Tag="{Binding ElementName=DismissFlyout}"/>
                                                 </StackPanel>
                                             </Flyout>
                                         </Button.Flyout>
