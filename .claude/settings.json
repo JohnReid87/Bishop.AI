@@ -16,7 +16,6 @@
   "permissions": {
     "deny": [
       "Bash(git push:*)",
-      "Bash(rm:*)",
       "Bash(sudo:*)",
       "Bash(curl:*)",
       "Bash(wget:*)",
@@ -31,11 +30,10 @@
     ],
     "allow": [
       "Bash(bishop:*)",
-      "Bash(git status:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
+      "Bash(git:*)",
+      "Bash(rm:*)",
+      "Bash(Remove-Item:*)",
+      "PowerShell(Remove-Item:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet test:*)",
       "Bash(dotnet restore:*)",

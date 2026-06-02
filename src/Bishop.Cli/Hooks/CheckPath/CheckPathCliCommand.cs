@@ -11,8 +11,8 @@ internal sealed class CheckPathCliCommand : Command
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
 
-    public CheckPathCliCommand(TimeProvider timeProvider, string? workspacePathOverride = null)
-        : base("check-path", "PreToolUse hook: block Edit/Write/NotebookEdit targeting paths outside the workspace")
+    public CheckPathCliCommand(TimeProvider timeProvider, string? workspacePathOverride = null, string? tempPathOverride = null)
+        : base("check-path", "PreToolUse hook: block Edit/Write/NotebookEdit targeting paths outside the workspace, OS temp dir, or .bishop/tmp")
     {
         this.SetHandler(async (context) =>
         {
@@ -40,12 +40,22 @@ internal sealed class CheckPathCliCommand : Command
                 return;
 
             var workspacePath = workspacePathOverride ?? Directory.GetCurrentDirectory();
+            var tempPath = tempPathOverride ?? Path.GetTempPath();
             var normalizedTarget = Path.GetFullPath(targetPath);
-            var normalizedWorkspace = Path.GetFullPath(workspacePath);
 
-            if (normalizedTarget.StartsWith(normalizedWorkspace + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-                || normalizedTarget.Equals(normalizedWorkspace, StringComparison.OrdinalIgnoreCase))
-                return;
+            string[] allowedRoots =
+            [
+                Path.GetFullPath(workspacePath),
+                Path.GetFullPath(tempPath),
+                Path.GetFullPath(Path.Combine(workspacePath, ".bishop", "tmp")),
+            ];
+
+            foreach (var root2 in allowedRoots)
+            {
+                if (normalizedTarget.Equals(root2, StringComparison.OrdinalIgnoreCase)
+                    || normalizedTarget.StartsWith(root2 + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
 
             AppendDenial(workspacePath, toolName, targetPath, timeProvider);
             Console.Error.WriteLine($"bishop hook check-path: blocked {toolName} -> {targetPath}");
