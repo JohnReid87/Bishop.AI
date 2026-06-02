@@ -10,7 +10,6 @@ tests/Bishop.Tests/
 │   ├── Cards/          ← CardHandlerTests
 │   ├── Git/            ← GetRecentCommitsTests
 │   ├── Lanes/          ← LaneHandlerTests
-│   ├── Ping/           ← PingQueryHandlerTests
 │   ├── Settings/       ← AppSettingsServiceTests
 │   ├── Skills/         ← DiscoverSkillsQueryHandlerTests
 │   ├── Terminal/       ← TerminalLauncherTests, TerminalSnapTests

@@ -5,8 +5,8 @@ using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
 using Bishop.App.Services.Claude;
 using Bishop.App.Git;
-using Bishop.App.Ping;
 using Bishop.App.Services.Settings;
+using Bishop.App.Workspaces.GetWorkspace;
 using Bishop.App.Services.Terminal;
 using Bishop.Data;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +21,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddBishopApp(this IServiceCollection services, string dbConnectionString)
     {
         services.AddMediatR(cfg =>
-            cfg.RegisterServicesFromAssembly(typeof(PingQueryHandler).Assembly));
+            cfg.RegisterServicesFromAssembly(typeof(GetWorkspaceQueryHandler).Assembly));
         services.AddDbContextFactory<BishopDbContext>(options =>
             options.UseSqlite(dbConnectionString)
                    .AddInterceptors(new SqliteForeignKeyInterceptor()));
