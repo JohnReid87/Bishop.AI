@@ -8,7 +8,7 @@ internal sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<B
     public BishopDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<BishopDbContext>()
-            .UseSqlite("Data Source=bishop-design.db")
+            .UseSqlite($"Data Source={Path.Combine(Path.GetTempPath(), "bishop-design.db")}")
             .Options;
         return new BishopDbContext(options);
     }
