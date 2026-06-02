@@ -799,27 +799,26 @@
 
                             <!-- Table header -->
                             <Grid Grid.Row="0"
-                                  Padding="16,12,16,8"
+                                  Padding="16,12,56,8"
                                   BorderBrush="{StaticResource AppDividerBrush}"
                                   BorderThickness="0,0,0,1">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="28"/>
                                     <ColumnDefinition Width="180"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="70"/>
                                     <ColumnDefinition Width="60"/>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="240"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="1" Text="Name"
+                                <TextBlock Grid.Column="0" Text="Name"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
-                                <TextBlock Grid.Column="2" Text="Branch"
+                                <TextBlock Grid.Column="1" Text="Branch"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
-                                <TextBlock Grid.Column="3" Text="Status"
+                                <TextBlock Grid.Column="2" Text="Status"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
-                                <TextBlock Grid.Column="4" Text="Cards"
+                                <TextBlock Grid.Column="3" Text="Cards"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
                             </Grid>
@@ -861,7 +860,7 @@
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="70"/>
                                                         <ColumnDefinition Width="60"/>
-                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="240"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0"
                                                                x:Name="BatchNameTextBlock"
@@ -936,6 +935,7 @@
                                                     <StackPanel Grid.Column="4"
                                                                 Orientation="Horizontal"
                                                                 Spacing="6"
+                                                                HorizontalAlignment="Right"
                                                                 VerticalAlignment="Center">
                                                         <Button Content="Run"
                                                                 Padding="8,4"
