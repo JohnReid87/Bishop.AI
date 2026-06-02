@@ -1,4 +1,3 @@
-using System.Globalization;
 using Bishop.Data;
 using Microsoft.EntityFrameworkCore;
 using CoreEntities = Bishop.Core;
@@ -49,7 +48,7 @@ internal static class LegacyFindingsImporter
 
         foreach (var f in legacyDoc.Findings)
         {
-            var (status, cardNumber) = ParseOutcome(f.Outcome);
+            var (status, cardNumber) = FindingOutcomeParser.Parse(f.Outcome);
             db.Findings.Add(new CoreEntities.Finding
             {
                 Id = Guid.NewGuid(),
@@ -72,15 +71,5 @@ internal static class LegacyFindingsImporter
 
         await db.SaveChangesAsync(cancellationToken);
         File.Delete(legacyJsonPath);
-    }
-
-    private static (string Status, int? CardNumber) ParseOutcome(string outcome)
-    {
-        if (outcome == "dismissed") return ("dismissed", null);
-        if (outcome.StartsWith("carded:#", StringComparison.Ordinal)
-            && int.TryParse(outcome.AsSpan(8), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)
-            && n > 0)
-            return ("carded", n);
-        return ("pending", null);
     }
 }

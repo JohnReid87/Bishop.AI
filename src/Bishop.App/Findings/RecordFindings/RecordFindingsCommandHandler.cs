@@ -1,4 +1,3 @@
-using System.Globalization;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -77,7 +76,7 @@ internal sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFindi
                 request.SkillName, document.ProjectName, f.File, f.Title);
             incomingHashes.Add(hash);
 
-            var (outcomeStatus, outcomeCardNumber) = ParseOutcome(f.Outcome);
+            var (outcomeStatus, outcomeCardNumber) = FindingOutcomeParser.Parse(f.Outcome);
 
             // Migration window: a row may exist under a stale IdentityHash (computed from
             // the pre-#959 algorithm that included Rule/Symbol). Look it up by (File, Title)
@@ -141,16 +140,5 @@ internal sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFindi
         await db.SaveChangesAsync(cancellationToken);
 
         return new RecordFindingsResult(document.Findings.Count);
-    }
-
-    private static (string Status, int? CardNumber) ParseOutcome(string outcome)
-    {
-        if (outcome == "dismissed") return ("dismissed", null);
-        if (outcome.StartsWith("carded:#", StringComparison.Ordinal)
-            && int.TryParse(outcome.AsSpan(8), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)
-            && n > 0)
-            return ("carded", n);
-        // "parked" and any other validator-accepted value land on pending.
-        return ("pending", null);
     }
 }
