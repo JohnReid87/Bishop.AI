@@ -28,7 +28,6 @@ internal sealed class GetFindingsBySkillAndProjectQueryHandler
             : query.Where(f => f.Run.ProjectName == request.ProjectName);
 
         var findings = await query
-            .OrderBy(f => f.Title)
             .Select(f => new FindingRecord(
                 f.Id,
                 f.Title,

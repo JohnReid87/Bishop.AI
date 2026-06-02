@@ -17,7 +17,7 @@ public sealed partial class FindingsPage : Page
     public FindingsViewModel ViewModel { get; }
 
     private FindingsPageNavArgs? _navArgs;
-    private string _sortKey = "title";
+    private string _sortKey = "severity";
     private bool _sortAsc = true;
 
     public FindingsPage()
@@ -76,10 +76,12 @@ public sealed partial class FindingsPage : Page
 
     private static int SeverityRank(FindingItemViewModel f) => (f.Severity ?? string.Empty).ToLowerInvariant() switch
     {
-        "critical" or "high" => 0,
-        "medium" or "med" => 1,
-        "low" or "info" => 2,
-        _ => 3,
+        "critical" => 0,
+        "high" => 1,
+        "medium" or "med" => 2,
+        "low" => 3,
+        "info" => 4,
+        _ => 5,
     };
 
     private void SortBySeverity_Click(object sender, RoutedEventArgs e) => ToggleSort("severity");

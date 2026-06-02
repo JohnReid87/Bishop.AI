@@ -75,9 +75,28 @@ public sealed partial class FindingsViewModel : ObservableObject
             else
                 Findings.Add(vm);
         }
+
+        var sorted = ResolvedFindings
+            .OrderBy(SeverityRank)
+            .ThenBy(f => f.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        ResolvedFindings.Clear();
+        foreach (var vm in sorted)
+            ResolvedFindings.Add(vm);
+
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(HasResolved));
     }
+
+    private static int SeverityRank(FindingItemViewModel f) => (f.Severity ?? string.Empty).ToLowerInvariant() switch
+    {
+        "critical" => 0,
+        "high" => 1,
+        "medium" or "med" => 2,
+        "low" => 3,
+        "info" => 4,
+        _ => 5,
+    };
 
     public bool Matches(FindingItemViewModel item)
     {
