@@ -63,25 +63,29 @@ public sealed partial class FindingsViewModel : ObservableObject
             new GetFindingsBySkillAndProjectQuery(workspaceId, skillName, projectName),
             cancellationToken);
 
-        Findings.Clear();
-        ResolvedFindings.Clear();
+        var active = new List<FindingItemViewModel>();
+        var resolved = new List<FindingItemViewModel>();
         foreach (var r in records)
         {
             var vm = new FindingItemViewModel(
                 r, skillName, workspaceId, workspacePath, gitHubRepo,
                 _mediator, _dialogService);
             if (r.Status == "resolved")
-                ResolvedFindings.Add(vm);
+                resolved.Add(vm);
             else
-                Findings.Add(vm);
+                active.Add(vm);
         }
 
-        var sorted = ResolvedFindings
+        Findings.Clear();
+        foreach (var vm in active
             .OrderBy(SeverityRank)
-            .ThenBy(f => f.Title, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            .ThenBy(f => f.Title, StringComparer.OrdinalIgnoreCase))
+            Findings.Add(vm);
+
         ResolvedFindings.Clear();
-        foreach (var vm in sorted)
+        foreach (var vm in resolved
+            .OrderBy(SeverityRank)
+            .ThenBy(f => f.Title, StringComparer.OrdinalIgnoreCase))
             ResolvedFindings.Add(vm);
 
         OnPropertyChanged(nameof(IsEmpty));
