@@ -277,14 +277,6 @@
                         <TextBlock Text="Skills" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
-                <Button x:Name="CommitsButton"
-                        Padding="8,4"
-                        Click="CommitsButton_Click">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE81C;" FontSize="12" VerticalAlignment="Center"/>
-                        <TextBlock Text="Commits" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
                 <Button x:Name="GitButton"
                         Padding="8,4"
                         Visibility="{x:Bind Git.IsGitRepo, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"

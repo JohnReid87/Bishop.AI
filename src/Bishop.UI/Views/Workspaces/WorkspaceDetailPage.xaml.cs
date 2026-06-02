@@ -36,9 +36,8 @@ public sealed partial class WorkspaceDetailPage : Page
     private WorkspaceItemViewModel? _item;
     private BoardDragDropController? _dragDrop;
     private NotesSplitterDragHandler? _notesSplitter;
-    private Flyout? _commitsFlyout;
     private Flyout? _gitFlyout;
-    private GitConfigFlyoutControl? _gitFlyoutContent;
+    private GitFlyoutControl? _gitFlyoutContent;
 
     public WorkspaceBoardViewModel Board { get; }
     public WorkspaceNotesViewModel Notes { get; }
@@ -64,26 +63,21 @@ public sealed partial class WorkspaceDetailPage : Page
         InitializeComponent();
         _dragDrop = new BoardDragDropController(Board, _safeAsync, LanesListView);
         _notesSplitter = new NotesSplitterDragHandler(Notes, this);
-        _commitsFlyout = new Flyout
-        {
-            Content = new CommitsFlyoutControl(Commits),
-            Placement = FlyoutPlacementMode.Bottom,
-        };
-        Commits.CommitActivated += row => _safeAsync.RunAsync(async () =>
-        {
-            _commitsFlyout.Hide();
-            var pkg = new DataPackage();
-            pkg.SetText(row.FullHash);
-            Clipboard.SetContent(pkg);
-            await ShowCopiedToastAsync();
-        });
-        _gitFlyoutContent = new GitConfigFlyoutControl(Git);
+        _gitFlyoutContent = new GitFlyoutControl(Git, Commits);
         _gitFlyoutContent.RowCopied += () => _safeAsync.RunAsync(ShowCopiedToastAsync);
         _gitFlyout = new Flyout
         {
             Content = _gitFlyoutContent,
             Placement = FlyoutPlacementMode.Bottom,
         };
+        Commits.CommitActivated += row => _safeAsync.RunAsync(async () =>
+        {
+            _gitFlyout.Hide();
+            var pkg = new DataPackage();
+            pkg.SetText(row.FullHash);
+            Clipboard.SetContent(pkg);
+            await ShowCopiedToastAsync();
+        });
         Board.StagingTray.Cards.CollectionChanged += OnStagingTrayCardsChanged;
         Monitoring.ViewFindingsRequested += OnViewFindingsRequested;
         Monitoring.ViewReportRequested += OnViewReportRequested;
@@ -179,7 +173,7 @@ public sealed partial class WorkspaceDetailPage : Page
     private void UpdatePathStatus()
     {
         var missing = _item?.IsPathMissing ?? false;
-        CommitsButton.IsEnabled = !missing;
+        GitButton.IsEnabled = !missing;
         TerminalButton.IsEnabled = !missing;
         ClaudeButton.IsEnabled = !missing;
         PathWarningBar.IsOpen = missing;
@@ -229,19 +223,11 @@ public sealed partial class WorkspaceDetailPage : Page
             },
             onView: captured => App.MarkdownViewer!.ShowContent(captured.Name, captured.MarkdownBody));
 
-    private async void CommitsButton_Click(object sender, RoutedEventArgs e)
-        => await _safeAsync.RunAsync(async () =>
-        {
-            if (_item is null) return;
-            await Commits.LoadAsync(_item.Path);
-            _commitsFlyout!.ShowAt((FrameworkElement)sender);
-        });
-
     private async void GitButton_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>
         {
             if (_item is null) return;
-            await Git.RefreshAsync();
+            await Task.WhenAll(Git.RefreshAsync(), Commits.LoadAsync(_item.Path));
             _gitFlyout!.ShowAt((FrameworkElement)sender);
         });
 

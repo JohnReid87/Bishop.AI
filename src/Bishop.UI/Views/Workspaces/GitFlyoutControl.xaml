@@ -1,5 +1,5 @@
 <UserControl
-    x:Class="Bishop.UI.Views.Workspaces.CommitsFlyoutControl"
+    x:Class="Bishop.UI.Views.Workspaces.GitFlyoutControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vmWorkspaces="using:Bishop.ViewModels.Workspaces"
@@ -8,18 +8,98 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
     </UserControl.Resources>
-    <StackPanel Spacing="2" Padding="4" Width="420">
+    <StackPanel Spacing="6" Padding="8" Width="420">
+
+        <!-- Static header: Git config -->
+        <Grid ColumnSpacing="8" RowSpacing="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="72"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Remote -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Remote"
+                       FontSize="12" VerticalAlignment="Center"
+                       Foreground="{StaticResource AppTextSecondaryBrush}"/>
+            <TextBlock Grid.Row="0" Grid.Column="1"
+                       Text="{x:Bind Git.Remote, Mode=OneWay}"
+                       FontSize="12" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       TextWrapping="NoWrap">
+                <ToolTipService.ToolTip>
+                    <TextBlock Text="{x:Bind Git.Remote, Mode=OneWay}" TextWrapping="Wrap" MaxWidth="600"/>
+                </ToolTipService.ToolTip>
+            </TextBlock>
+            <Button Grid.Row="0" Grid.Column="2"
+                    x:Name="CopyRemoteButton"
+                    Padding="6,2"
+                    Click="CopyRemote_Click">
+                <FontIcon Glyph="&#xE8C8;" FontSize="12"/>
+            </Button>
+
+            <!-- Branch -->
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Branch"
+                       FontSize="12" VerticalAlignment="Center"
+                       Foreground="{StaticResource AppTextSecondaryBrush}"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                       Text="{x:Bind Git.Branch, Mode=OneWay}"
+                       FontSize="12" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       TextWrapping="NoWrap">
+                <ToolTipService.ToolTip>
+                    <TextBlock Text="{x:Bind Git.Branch, Mode=OneWay}" TextWrapping="Wrap" MaxWidth="600"/>
+                </ToolTipService.ToolTip>
+            </TextBlock>
+
+            <!-- Status -->
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Status"
+                       FontSize="12" VerticalAlignment="Center"
+                       Foreground="{StaticResource AppTextSecondaryBrush}"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                       Text="{x:Bind Git.Status, Mode=OneWay}"
+                       FontSize="12" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       TextWrapping="NoWrap"/>
+
+            <!-- Identity -->
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Identity"
+                       FontSize="12" VerticalAlignment="Center"
+                       Foreground="{StaticResource AppTextSecondaryBrush}"/>
+            <StackPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6"
+                        VerticalAlignment="Center">
+                <TextBlock Text="{x:Bind Git.Identity, Mode=OneWay}"
+                           FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="NoWrap"/>
+                <TextBlock Text="{x:Bind Git.IdentityScope, Mode=OneWay}"
+                           FontSize="11"
+                           FontStyle="Italic"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource AppTextSecondaryBrush}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Divider between static header and commits -->
+        <Border Height="1" Margin="0,4,0,2"
+                Background="{StaticResource AppDividerBrush}"/>
 
         <!-- Status message (not a git repo, git not found, no commits) -->
-        <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+        <TextBlock Text="{x:Bind Commits.StatusMessage, Mode=OneWay}"
                    FontSize="12"
                    Padding="4,6,4,6"
-                   Visibility="{x:Bind ViewModel.HasCommits, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                   Visibility="{x:Bind Commits.HasCommits, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
 
         <!-- Commit rows -->
         <ScrollViewer MaxHeight="400"
-                      Visibility="{x:Bind ViewModel.HasCommits, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-            <ItemsControl ItemsSource="{x:Bind ViewModel.Commits, Mode=OneWay}">
+                      Visibility="{x:Bind Commits.HasCommits, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ItemsControl ItemsSource="{x:Bind Commits.Commits, Mode=OneWay}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vmWorkspaces:CommitRowViewModel">
                         <StackPanel>
@@ -99,31 +179,31 @@
         <!-- Divider above push section -->
         <Border Height="1" Margin="0,4,0,2"
                 Background="{StaticResource AppDividerBrush}"
-                Visibility="{x:Bind ViewModel.HasCommits, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                Visibility="{x:Bind Commits.HasCommits, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
         <!-- Push error -->
-        <TextBlock Text="{x:Bind ViewModel.PushError, Mode=OneWay}"
+        <TextBlock Text="{x:Bind Commits.PushError, Mode=OneWay}"
                    FontSize="11"
                    Foreground="#E5574B"
                    TextWrapping="Wrap"
                    Margin="4,4,4,0"
-                   Visibility="{x:Bind ViewModel.HasPushError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                   Visibility="{x:Bind Commits.HasPushError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
         <!-- Push button -->
-        <Button Command="{x:Bind ViewModel.PushCommand}"
+        <Button Command="{x:Bind Commits.PushCommand}"
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Stretch"
                 Padding="4,4,4,4"
                 Margin="0,4,0,0"
-                Visibility="{x:Bind ViewModel.HasCommits, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                Visibility="{x:Bind Commits.HasCommits, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid>
-                <TextBlock Text="{x:Bind ViewModel.PushLabel, Mode=OneWay}"
+                <TextBlock Text="{x:Bind Commits.PushLabel, Mode=OneWay}"
                            FontSize="12"
                            HorizontalAlignment="Center"
-                           Visibility="{x:Bind ViewModel.IsPushing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                           Visibility="{x:Bind Commits.IsPushing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
                 <ProgressRing Width="16" Height="16"
-                              IsActive="{x:Bind ViewModel.IsPushing, Mode=OneWay}"
-                              Visibility="{x:Bind ViewModel.IsPushing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                              IsActive="{x:Bind Commits.IsPushing, Mode=OneWay}"
+                              Visibility="{x:Bind Commits.IsPushing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
             </Grid>
         </Button>
 
