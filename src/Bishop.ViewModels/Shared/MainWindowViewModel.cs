@@ -1,6 +1,7 @@
 using Bishop.App.Batches.ReconcileOrphanedBatches;
 using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
+using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.PurgeWorkspace;
@@ -134,10 +135,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     public async Task AddWorkspaceAsync(AddWorkspaceDialogViewModel dialogVm)
     {
-        var result = await _mediator.Send(
-            new InitWorkspaceCommand(dialogVm.FolderPath, dialogVm.Name,
-                ArchivedAction: InitWorkspaceArchivedAction.Restore));
-        var vm = ToViewModel(result.Workspace);
+        Bishop.Core.Workspace workspace;
+        if (dialogVm.IsPickExisting)
+        {
+            var result = await _mediator.Send(
+                new InitWorkspaceCommand(dialogVm.FolderPath, dialogVm.Name,
+                    ArchivedAction: InitWorkspaceArchivedAction.Restore));
+            workspace = result.Workspace;
+        }
+        else
+        {
+            workspace = await _mediator.Send(
+                new CreateWorkspaceCommand(dialogVm.Name, dialogVm.EffectivePath, InitGit: true));
+        }
+        var vm = ToViewModel(workspace);
         Workspaces.Add(vm);
         SelectedWorkspace = vm;
         _notifier.NotifyChanged();

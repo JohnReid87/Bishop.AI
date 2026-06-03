@@ -29,7 +29,8 @@
                      Text="{x:Bind ViewModel.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
-        <StackPanel Spacing="4">
+        <StackPanel Spacing="4"
+                    Visibility="{x:Bind ViewModel.IsPickExisting, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
             <TextBlock Text="Folder" Style="{StaticResource CaptionTextBlockStyle}"/>
             <Grid ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
@@ -39,8 +40,30 @@
                 <TextBox Grid.Column="0"
                          PlaceholderText="C:\code\my-project"
                          Text="{x:Bind ViewModel.FolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                <Button Grid.Column="1" Content="Browse…" Click="BrowseButton_Click"/>
+                <Button Grid.Column="1" Content="Browse…" Click="BrowseExistingButton_Click"/>
             </Grid>
+        </StackPanel>
+
+        <StackPanel Spacing="4"
+                    Visibility="{x:Bind ViewModel.IsPickExisting, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+            <TextBlock Text="Parent folder" Style="{StaticResource CaptionTextBlockStyle}"/>
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         PlaceholderText="C:\code"
+                         Text="{x:Bind ViewModel.ParentFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Column="1" Content="Browse…" Click="BrowseParentButton_Click"/>
+            </Grid>
+            <TextBlock Text="New folder name" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,8,0,0"/>
+            <TextBox PlaceholderText="my-project"
+                     Text="{x:Bind ViewModel.NewFolderName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="{x:Bind ViewModel.CollisionError, Mode=OneWay}"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.HasCollision, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
         </StackPanel>
     </StackPanel>
 </ContentDialog>

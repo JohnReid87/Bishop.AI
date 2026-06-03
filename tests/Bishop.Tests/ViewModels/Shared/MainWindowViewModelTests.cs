@@ -1,6 +1,7 @@
 using Bishop.App.Batches.ReconcileOrphanedBatches;
 using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
+using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.ReorderWorkspaces;
@@ -435,7 +436,6 @@ public class MainWindowViewModelTests
         {
             Name = "New",
             FolderPath = @"C:\new",
-            IsPickExisting = false,
         };
 
         await vm.AddWorkspaceAsync(dialog);
@@ -461,6 +461,42 @@ public class MainWindowViewModelTests
 
         vm.Workspaces.Should().HaveCount(1);
         vm.Workspaces[0].Id.Should().Be(newId);
+        vm.SelectedWorkspace.Should().BeSameAs(vm.Workspaces[0]);
+    }
+
+    [Fact]
+    public async Task AddWorkspaceAsync_CreateMode_SendsCreateWorkspaceCommandWithCombinedPathAndInitGit()
+    {
+        var mediator = Substitute.For<IMediator>();
+        CreateWorkspaceCommand? captured = null;
+        mediator.Send(Arg.Any<CreateWorkspaceCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                captured = call.Arg<CreateWorkspaceCommand>();
+                return new Workspace
+                {
+                    Id = Guid.NewGuid(),
+                    Name = captured.Name,
+                    Path = captured.Path,
+                    Position = 1,
+                };
+            });
+        var vm = NewVm(mediator: mediator);
+        var dialog = new AddWorkspaceDialogViewModel
+        {
+            IsPickExisting = false,
+            Name = "New",
+            ParentFolderPath = @"C:\code",
+            NewFolderName = "new",
+        };
+
+        await vm.AddWorkspaceAsync(dialog);
+
+        captured.Should().NotBeNull();
+        captured!.Name.Should().Be("New");
+        captured.Path.Should().Be(System.IO.Path.Combine(@"C:\code", "new"));
+        captured.InitGit.Should().BeTrue();
+        vm.Workspaces.Should().ContainSingle();
         vm.SelectedWorkspace.Should().BeSameAs(vm.Workspaces[0]);
     }
 
