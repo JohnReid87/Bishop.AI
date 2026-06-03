@@ -10,6 +10,7 @@ using Bishop.ViewModels.Skills;
 using Bishop.ViewModels.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.IO;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
@@ -196,9 +197,16 @@ public sealed partial class WorkspaceDetailPage : Page
         GitButton.IsEnabled = !missing;
         TerminalButton.IsEnabled = !missing;
         ClaudeButton.IsEnabled = !missing;
+        OpenFolderButton.IsEnabled = !missing && !string.IsNullOrEmpty(_item?.Path) && Directory.Exists(_item.Path);
         PathWarningBar.IsOpen = missing;
         ToolTipService.SetToolTip(LaunchButtonWrapper, missing ? "The workspace directory is missing." : null);
         UpdateNotificationPanel();
+    }
+
+    private void OpenFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null || string.IsNullOrEmpty(_item.Path)) return;
+        Process.Start(new ProcessStartInfo("explorer.exe", _item.Path) { UseShellExecute = true });
     }
 
     private void UpdateNotificationPanel() =>

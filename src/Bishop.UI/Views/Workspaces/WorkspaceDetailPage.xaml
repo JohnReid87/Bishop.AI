@@ -238,10 +238,23 @@
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
                 <TextBlock x:Name="WorkspaceNameText"
                            Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                <TextBlock x:Name="WorkspacePathText"
-                           Style="{StaticResource CaptionTextBlockStyle}"
-                           Foreground="{StaticResource AppTextSecondaryBrush}"
-                           TextTrimming="CharacterEllipsis"/>
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock x:Name="WorkspacePathText"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{StaticResource AppTextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"/>
+                    <Button x:Name="OpenFolderButton"
+                            Style="{StaticResource SubtleIconButtonStyle}"
+                            Padding="4,2"
+                            MinWidth="0"
+                            MinHeight="0"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="Open folder in File Explorer"
+                            Click="OpenFolderButton_Click">
+                        <FontIcon Glyph="&#xE838;" FontSize="12"/>
+                    </Button>
+                </StackPanel>
             </StackPanel>
 
             <!-- Search box with custom-coloured fake placeholder -->
