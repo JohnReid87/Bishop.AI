@@ -26,7 +26,8 @@ public class FindingItemViewModelTests
         string? symbol = null,
         string? rule = null,
         string? rebuttalText = null,
-        int? linkedCardId = null) =>
+        int? linkedCardId = null,
+        bool? linkedCardIsClosed = null) =>
         new(
             Id: Guid.NewGuid(),
             Title: "Test finding",
@@ -37,7 +38,8 @@ public class FindingItemViewModelTests
             Rule: rule,
             Status: status,
             RebuttalText: rebuttalText,
-            LinkedCardId: linkedCardId);
+            LinkedCardId: linkedCardId,
+            LinkedCardIsClosed: linkedCardIsClosed);
 
     private static FindingItemViewModel MakeVm(
         FindingRecord? record = null,
@@ -138,11 +140,27 @@ public class FindingItemViewModelTests
     }
 
     [Fact]
-    public void StatusLabel_WithLinkedCardId_ReturnsCardRef()
+    public void StatusLabel_WithOpenLinkedCard_ReturnsOpenCardRef()
     {
-        var vm = MakeVm(MakeRecord(status: "carded", linkedCardId: 42));
+        var vm = MakeVm(MakeRecord(status: "carded", linkedCardId: 42, linkedCardIsClosed: false));
 
-        vm.StatusLabel.Should().Be("#42");
+        vm.StatusLabel.Should().Be("open #42");
+    }
+
+    [Fact]
+    public void StatusLabel_WithClosedLinkedCard_ReturnsDoneCardRef()
+    {
+        var vm = MakeVm(MakeRecord(status: "carded", linkedCardId: 42, linkedCardIsClosed: true));
+
+        vm.StatusLabel.Should().Be("done #42");
+    }
+
+    [Fact]
+    public void StatusLabel_LinkedCardMissing_FallsBackToStatus()
+    {
+        var vm = MakeVm(MakeRecord(status: "carded", linkedCardId: 42, linkedCardIsClosed: null));
+
+        vm.StatusLabel.Should().Be("pending");
     }
 
     // --- Boolean computed properties ---
@@ -170,9 +188,11 @@ public class FindingItemViewModelTests
     }
 
     [Fact]
-    public void HasLinkedCard_TrueWhenLinkedCardIdIsSet()
+    public void HasLinkedCard_TrueOnlyWhenLinkResolves()
     {
-        MakeVm(MakeRecord(linkedCardId: 5)).HasLinkedCard.Should().BeTrue();
+        MakeVm(MakeRecord(linkedCardId: 5, linkedCardIsClosed: false)).HasLinkedCard.Should().BeTrue();
+        MakeVm(MakeRecord(linkedCardId: 5, linkedCardIsClosed: true)).HasLinkedCard.Should().BeTrue();
+        MakeVm(MakeRecord(linkedCardId: 5, linkedCardIsClosed: null)).HasLinkedCard.Should().BeFalse();
         MakeVm(MakeRecord(linkedCardId: null)).HasLinkedCard.Should().BeFalse();
     }
 

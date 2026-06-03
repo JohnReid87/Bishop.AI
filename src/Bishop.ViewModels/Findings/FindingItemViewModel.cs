@@ -36,6 +36,9 @@ public sealed partial class FindingItemViewModel : ObservableObject
     private int? _linkedCardId;
 
     [ObservableProperty]
+    private bool? _linkedCardIsClosed;
+
+    [ObservableProperty]
     private string? _rebuttalText;
 
     [ObservableProperty]
@@ -58,6 +61,7 @@ public sealed partial class FindingItemViewModel : ObservableObject
         Rule = record.Rule;
         _status = record.Status;
         _linkedCardId = record.LinkedCardId;
+        _linkedCardIsClosed = record.LinkedCardIsClosed;
         _rebuttalText = record.RebuttalText;
 
         _skillName = skillName;
@@ -75,19 +79,19 @@ public sealed partial class FindingItemViewModel : ObservableObject
 
     public bool HasSeverity => !string.IsNullOrEmpty(Severity);
 
-    public string StatusLabel => FindingStatusState.For(Status, LinkedCardId).StatusLabel;
+    public string StatusLabel => FindingStatusState.For(Status, LinkedCardId, LinkedCardIsClosed).StatusLabel;
 
     public bool IsResolved => Status == "resolved";
     public bool IsDismissed => Status == "dismissed";
     public bool HasRebuttal => !string.IsNullOrWhiteSpace(RebuttalText);
-    public bool HasLinkedCard => LinkedCardId is not null;
+    public bool HasLinkedCard => LinkedCardId is not null && LinkedCardIsClosed is not null;
     public string LinkedCardLabel => LinkedCardId is { } n ? $"Open card #{n}" : string.Empty;
 
     public bool IsConvertToCardVisible =>
-        FindingStatusState.For(Status, LinkedCardId).IsConvertToCardVisible;
+        FindingStatusState.For(Status, LinkedCardId, LinkedCardIsClosed).IsConvertToCardVisible;
 
     public bool IsDismissEnabled =>
-        FindingStatusState.For(Status, LinkedCardId).IsDismissEnabled;
+        FindingStatusState.For(Status, LinkedCardId, LinkedCardIsClosed).IsDismissEnabled;
 
     [RelayCommand]
     private async Task ConvertToCardAsync(object? xamlRoot)
@@ -127,6 +131,7 @@ public sealed partial class FindingItemViewModel : ObservableObject
         await _mediator.Send(new LinkFindingToCardCommand(Id, card.Number));
 
         LinkedCardId = card.Number;
+        LinkedCardIsClosed = card.IsClosed;
         Status = "carded";
         NotifyDerived();
     }

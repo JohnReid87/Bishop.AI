@@ -30,7 +30,8 @@ public class FindingsViewModelTests
             Rule: null,
             Status: status,
             RebuttalText: null,
-            LinkedCardId: null);
+            LinkedCardId: null,
+            LinkedCardIsClosed: null);
 
     private static FindingsViewModel MakeVm(ISender? mediator = null) =>
         new(

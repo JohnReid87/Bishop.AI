@@ -38,7 +38,14 @@ internal sealed class GetFindingsBySkillAndProjectQueryHandler
                 f.Rule,
                 f.Status,
                 f.RebuttalText,
-                f.LinkedCardId))
+                f.LinkedCardId,
+                f.LinkedCardId == null
+                    ? null
+                    : db.Cards
+                        .Where(c => c.WorkspaceId == f.Run.WorkspaceId
+                                 && c.Number == f.LinkedCardId)
+                        .Select(c => (bool?)c.IsClosed)
+                        .FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
         return findings;

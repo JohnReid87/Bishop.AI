@@ -93,6 +93,64 @@ public sealed class GetFindingsBySkillAndProjectQueryHandlerTests : IClassFixtur
     }
 
     [Fact]
+    public async Task LinkedCardIsClosed_IsNullForUnlinkedFindings()
+    {
+        var ws = await CreateWorkspaceAsync();
+        await RecordAsync(ws, "bish-arch", """{ "findings": [ { "title": "Unlinked", "body": "x", "outcome": "parked" } ] }""");
+
+        var sut = new GetFindingsBySkillAndProjectQueryHandler(_factory);
+        var result = await sut.Handle(new GetFindingsBySkillAndProjectQuery(ws.Id, "bish-arch", null), default);
+
+        result.Should().ContainSingle().Which.LinkedCardIsClosed.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LinkedCardIsClosed_ReflectsCardStateForLinkedFinding()
+    {
+        var ws = await CreateWorkspaceAsync();
+        await RecordAsync(ws, "bish-arch", """
+            { "findings": [
+                { "title": "OpenLink", "body": "x", "outcome": "parked" },
+                { "title": "ClosedLink", "body": "y", "outcome": "parked" },
+                { "title": "DanglingLink", "body": "z", "outcome": "parked" }
+            ] }
+            """);
+
+        var openCard = new Card
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = ws.Id,
+            Number = 1,
+            Title = "open",
+            LaneName = "To Do",
+            IsClosed = false,
+        };
+        var doneCard = new Card
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = ws.Id,
+            Number = 2,
+            Title = "done",
+            LaneName = "Done",
+            IsClosed = true,
+        };
+        _db.Cards.AddRange(openCard, doneCard);
+
+        var findings = await _db.Findings.Where(f => f.Run.WorkspaceId == ws.Id).ToListAsync();
+        findings.Single(f => f.Title == "OpenLink").LinkedCardId = 1;
+        findings.Single(f => f.Title == "ClosedLink").LinkedCardId = 2;
+        findings.Single(f => f.Title == "DanglingLink").LinkedCardId = 999;
+        await _db.SaveChangesAsync();
+
+        var sut = new GetFindingsBySkillAndProjectQueryHandler(_factory);
+        var result = await sut.Handle(new GetFindingsBySkillAndProjectQuery(ws.Id, "bish-arch", null), default);
+
+        result.Single(f => f.Title == "OpenLink").LinkedCardIsClosed.Should().BeFalse();
+        result.Single(f => f.Title == "ClosedLink").LinkedCardIsClosed.Should().BeTrue();
+        result.Single(f => f.Title == "DanglingLink").LinkedCardIsClosed.Should().BeNull();
+    }
+
+    [Fact]
     public async Task DoesNotIncludeFindingsFromOtherWorkspaces()
     {
         var ws1 = await CreateWorkspaceAsync();

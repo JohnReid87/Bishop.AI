@@ -32,13 +32,29 @@ public class FindingHelpersTests
     [InlineData("carded", null, "pending")]
     public void StatusState_For_StatusLabel_NoLinkedCard(string status, int? linkedCardId, string expected)
     {
-        FindingStatusState.For(status, linkedCardId).StatusLabel.Should().Be(expected);
+        FindingStatusState.For(status, linkedCardId, null).StatusLabel.Should().Be(expected);
     }
 
     [Fact]
-    public void StatusState_For_StatusLabel_WithLinkedCard_ReturnsCardRef()
+    public void StatusState_For_StatusLabel_WithOpenLinkedCard_ReturnsOpenCardRef()
     {
-        FindingStatusState.For("carded", 42).StatusLabel.Should().Be("#42");
+        FindingStatusState.For("carded", 42, false).StatusLabel.Should().Be("open #42");
+    }
+
+    [Fact]
+    public void StatusState_For_StatusLabel_WithClosedLinkedCard_ReturnsDoneCardRef()
+    {
+        FindingStatusState.For("carded", 42, true).StatusLabel.Should().Be("done #42");
+    }
+
+    [Theory]
+    [InlineData("carded", "pending")]
+    [InlineData("dismissed", "dismissed")]
+    [InlineData("parked", "parked")]
+    [InlineData("resolved", "resolved")]
+    public void StatusState_For_StatusLabel_LinkedCardMissing_FallsBackToStatus(string status, string expected)
+    {
+        FindingStatusState.For(status, 42, null).StatusLabel.Should().Be(expected);
     }
 
     [Theory]
@@ -48,7 +64,7 @@ public class FindingHelpersTests
     [InlineData("pending", 5, false)]
     public void StatusState_For_IsConvertToCardVisible(string status, int? linkedCardId, bool expected)
     {
-        FindingStatusState.For(status, linkedCardId).IsConvertToCardVisible.Should().Be(expected);
+        FindingStatusState.For(status, linkedCardId, null).IsConvertToCardVisible.Should().Be(expected);
     }
 
     [Theory]
@@ -58,6 +74,6 @@ public class FindingHelpersTests
     [InlineData("pending", 3, false)]
     public void StatusState_For_IsDismissEnabled(string status, int? linkedCardId, bool expected)
     {
-        FindingStatusState.For(status, linkedCardId).IsDismissEnabled.Should().Be(expected);
+        FindingStatusState.For(status, linkedCardId, null).IsDismissEnabled.Should().Be(expected);
     }
 }

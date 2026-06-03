@@ -10,4 +10,5 @@ internal sealed record FindingRecord(
     string? Rule,
     string Status,
     string? RebuttalText,
-    int? LinkedCardId);
+    int? LinkedCardId,
+    bool? LinkedCardIsClosed);
