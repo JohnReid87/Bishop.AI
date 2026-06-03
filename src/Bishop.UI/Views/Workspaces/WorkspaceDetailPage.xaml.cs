@@ -197,13 +197,15 @@ public sealed partial class WorkspaceDetailPage : Page
         GitButton.IsEnabled = !missing;
         TerminalButton.IsEnabled = !missing;
         ClaudeButton.IsEnabled = !missing;
-        OpenFolderButton.IsEnabled = !missing && !string.IsNullOrEmpty(_item?.Path) && Directory.Exists(_item.Path);
+        var canOpen = !missing && !string.IsNullOrEmpty(_item?.Path) && Directory.Exists(_item.Path);
+        OpenFolderIcon.Opacity = canOpen ? 1.0 : 0.4;
+        OpenFolderIcon.IsHitTestVisible = canOpen;
         PathWarningBar.IsOpen = missing;
         ToolTipService.SetToolTip(LaunchButtonWrapper, missing ? "The workspace directory is missing." : null);
         UpdateNotificationPanel();
     }
 
-    private void OpenFolderButton_Click(object sender, RoutedEventArgs e)
+    private void OpenFolderIcon_Tapped(object sender, TappedRoutedEventArgs e)
     {
         if (_item is null || string.IsNullOrEmpty(_item.Path)) return;
         Process.Start(new ProcessStartInfo("explorer.exe", _item.Path) { UseShellExecute = true });

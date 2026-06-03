@@ -238,23 +238,26 @@
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
                 <TextBlock x:Name="WorkspaceNameText"
                            Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Grid ColumnSpacing="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <FontIcon x:Name="OpenFolderIcon"
+                              Grid.Column="0"
+                              Glyph="&#xE838;"
+                              FontSize="12"
+                              Foreground="{StaticResource AppTextSecondaryBrush}"
+                              VerticalAlignment="Center"
+                              ToolTipService.ToolTip="Open folder in File Explorer"
+                              Tapped="OpenFolderIcon_Tapped"/>
                     <TextBlock x:Name="WorkspacePathText"
+                               Grid.Column="1"
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{StaticResource AppTextSecondaryBrush}"
                                TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center"/>
-                    <Button x:Name="OpenFolderButton"
-                            Style="{StaticResource SubtleIconButtonStyle}"
-                            Padding="4,2"
-                            MinWidth="0"
-                            MinHeight="0"
-                            VerticalAlignment="Center"
-                            ToolTipService.ToolTip="Open folder in File Explorer"
-                            Click="OpenFolderButton_Click">
-                        <FontIcon Glyph="&#xE838;" FontSize="12"/>
-                    </Button>
-                </StackPanel>
+                </Grid>
             </StackPanel>
 
             <!-- Search box with custom-coloured fake placeholder -->
