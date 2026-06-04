@@ -144,7 +144,15 @@ card was loaded before any move or implementation:
 5. Validate the changes:
    - Run the build (`dotnet build`) and confirm it succeeds.
    - Run the tests (`dotnet test`) and confirm none are broken.
-   - Run `dotnet tool run slopwatch analyze --hook`:
+   - Run slopwatch, gated on availability and relevance:
+     - **Availability gate:** if `.config/dotnet-tools.json` does not exist
+       or does not contain a `slopwatch` package entry, skip slopwatch and
+       print `slopwatch: skipped (not configured in .config/dotnet-tools.json)`,
+       then continue to step 6.
+     - **Relevance gate:** otherwise run `git diff --name-only HEAD`; if no
+       path ends in `.cs`, skip slopwatch and print
+       `slopwatch: skipped (no .cs changes)`, then continue to step 6.
+     - Otherwise run `dotnet tool run slopwatch analyze --hook`:
      - **Exit 0** — no slop introduced; continue to step 6.
      - **Exit 2** — new violation introduced by this session. Surface the
        full slopwatch output, then **skip** steps 6–7 (the Agent-notes draft

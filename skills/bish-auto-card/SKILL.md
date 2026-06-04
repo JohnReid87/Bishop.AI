@@ -1,6 +1,6 @@
 ---
 name: bish-auto-card
-description: Unattended skill invoked by `bishop batch run`. Accepts a single card Number, implements the card, runs build + tests + slopwatch, then writes .bishop/handoff.json for the host to commit and move to Done. No prompts. Exits non-zero on any failure.
+description: Unattended skill invoked by `bishop batch run`. Accepts a single card Number, implements the card, runs build + tests + slopwatch (when configured and `.cs` files changed), then writes .bishop/handoff.json for the host to commit and move to Done. No prompts. Exits non-zero on any failure.
 allowed-tools: Bash(bishop:*), Bash(dotnet:*), Bash(git status:*), Bash(git diff:*), Read, Edit, Write, Glob, Grep, Agent
 bishop.category: execute
 ---
@@ -119,14 +119,22 @@ sequence.
      permitted cleanup.
    - Run `dotnet test`. If any test fails, exit non-zero and surface the
      failure. Do not retry `dotnet test` — test failures are real signals.
-   - Run `dotnet tool run slopwatch analyze --hook`. If it exits with code 2
-     (new violation introduced by this session), surface the full slopwatch
-     output and exit non-zero — do **not** write `handoff.json`. Prefer fixing
-     the violation over suppressing it. Only suppress via
-     `[SlopwatchSuppress("SW00x", "<20+ char reason>")]` when the flagged
-     pattern is genuinely best-effort and the reason is accurate. Any other
-     non-zero exit from slopwatch (e.g. tool not found, config error) is also
-     a hard failure — surface the error and exit non-zero.
+   - Run slopwatch, gated on availability and relevance:
+     - **Availability gate:** if `.config/dotnet-tools.json` does not exist
+       or does not contain a `slopwatch` package entry, skip slopwatch and
+       print `slopwatch: skipped (not configured in .config/dotnet-tools.json)`,
+       then continue to step 5.
+     - **Relevance gate:** otherwise run `git diff --name-only HEAD`; if no
+       path ends in `.cs`, skip slopwatch and print
+       `slopwatch: skipped (no .cs changes)`, then continue to step 5.
+     - Otherwise run `dotnet tool run slopwatch analyze --hook`. If it exits
+       with code 2 (new violation introduced by this session), surface the
+       full slopwatch output and exit non-zero — do **not** write
+       `handoff.json`. Prefer fixing the violation over suppressing it. Only
+       suppress via `[SlopwatchSuppress("SW00x", "<20+ char reason>")]` when
+       the flagged pattern is genuinely best-effort and the reason is accurate.
+       Any other non-zero exit from slopwatch (e.g. tool not found, config
+       error) is also a hard failure — surface the error and exit non-zero.
 
 5. **Draft Agent notes and derive the commit message.** No prompt.
 
