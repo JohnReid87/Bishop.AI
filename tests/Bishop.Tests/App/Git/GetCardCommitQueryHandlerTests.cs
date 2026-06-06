@@ -47,7 +47,7 @@ public sealed class GetCardCommitQueryHandlerTests : IClassFixture<DbFixture>
     public async Task Handle_FallsBackToGitCli_WhenCardHasNoCommitHash()
     {
         // Arrange
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand("ws-no-hash", WorkspacePath), default);
         await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, "To Do", "Some card", "") with { }, default);
@@ -107,7 +107,7 @@ public sealed class GetCardCommitQueryHandlerTests : IClassFixture<DbFixture>
         const string persistedHash = "abcdef1234567890abcdef1234567890abcd1234";
         const string wsPath = @"C:\repos\hash-project";
 
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand("ws-with-hash", wsPath), default);
         var card = await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, "To Do", "Card with hash", ""), default);

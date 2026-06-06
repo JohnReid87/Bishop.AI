@@ -27,7 +27,7 @@ public sealed class ReconcileOrphanedBatchesCommandHandlerTests : IClassFixture<
     private async Task<(Batch batch, Card card)> SetupWorkingBatchWithCardAsync(string cardLaneName = SystemLaneNames.Doing)
     {
         var wsName = U("ws");
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(wsName, $@"C:\{wsName}"), default);
 
         var card = await new AddCardCommandHandler(_factory)

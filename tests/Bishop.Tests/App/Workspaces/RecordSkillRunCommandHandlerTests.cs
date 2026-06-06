@@ -24,7 +24,7 @@ public sealed class RecordSkillRunCommandHandlerTests : IClassFixture<DbFixture>
     private async Task<Workspace> CreateWorkspaceAsync()
     {
         var name = U();
-        return await new CreateWorkspaceCommandHandler(_factory)
+        return await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
     }
 

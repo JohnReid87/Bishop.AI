@@ -27,7 +27,7 @@ public sealed class SetCardCommitCommandHandlerTests : IClassFixture<DbFixture>
     private async Task<Guid> CreateCardAsync()
     {
         var name = U("Test");
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);

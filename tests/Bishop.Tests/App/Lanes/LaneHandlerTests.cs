@@ -18,7 +18,7 @@ public sealed class LaneHandlerTests : IClassFixture<DbFixture>
     public async Task ListLanesByWorkspace_ReturnsFourSystemLanesInOrder()
     {
         var name = U("Seeded");
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
 
         var lanes = await new ListLanesByWorkspaceQueryHandler()

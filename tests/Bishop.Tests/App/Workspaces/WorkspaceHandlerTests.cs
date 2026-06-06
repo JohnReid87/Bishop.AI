@@ -41,7 +41,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task CreateWorkspace_PersistsAndReturnsWorkspace()
     {
         var name = U("MyRepo");
-        var handler = new CreateWorkspaceCommandHandler(_factory);
+        var handler = new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp);
 
         var result = await handler.Handle(new CreateWorkspaceCommand(name, $@"C:\code\{name}"), default);
 
@@ -55,7 +55,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task CreateWorkspace_RelativePath_ThrowsArgumentException()
     {
-        var handler = new CreateWorkspaceCommandHandler(_factory);
+        var handler = new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp);
 
         var act = () => handler.Handle(new CreateWorkspaceCommand("MyRepo", @"code\myrepo"), default);
 
@@ -66,7 +66,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task CreateWorkspace_TraversalPath_ThrowsArgumentException()
     {
-        var handler = new CreateWorkspaceCommandHandler(_factory);
+        var handler = new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp);
 
         var act = () => handler.Handle(new CreateWorkspaceCommand("MyRepo", @"C:\code\..\sensitive"), default);
 
@@ -79,7 +79,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         var betaName = U("Beta");
         var alphaName = U("Alpha");
-        var create = new CreateWorkspaceCommandHandler(_factory);
+        var create = new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp);
         var beta = await create.Handle(new CreateWorkspaceCommand(betaName, $@"C:\{betaName}"), default);
         var alpha = await create.Handle(new CreateWorkspaceCommand(alphaName, $@"C:\{alphaName}"), default);
         var handler = new ListWorkspacesQueryHandler(_factory);
@@ -96,7 +96,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task GetWorkspace_ReturnsCorrectWorkspace()
     {
         var name = U("MyRepo");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\code\{name}"), default);
         var handler = new GetWorkspaceQueryHandler(_factory);
 
@@ -121,7 +121,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     {
         var oldName = U("Old");
         var newName = U("New");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(oldName, $@"C:\{oldName}"), default);
         var handler = new UpdateWorkspaceCommandHandler(_factory);
 
@@ -154,7 +154,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task DeleteWorkspace_AfterRemove_DeletesFromDatabase()
     {
         var name = U("ToDelete");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
             .Handle(new RemoveWorkspaceCommand(created.Id), default);
@@ -171,7 +171,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task DeleteWorkspace_ActiveWorkspace_Throws()
     {
         var name = U("ActiveDel");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
 
         var act = () => new DeleteWorkspaceCommandHandler(_factory)
@@ -360,7 +360,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task ReorderWorkspaces_UpdatesPositionsInOrder()
     {
-        var create = new CreateWorkspaceCommandHandler(_factory);
+        var create = new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp);
         var ws1 = await create.Handle(new CreateWorkspaceCommand(U("First"), $@"C:\{U()}"), default);
         var ws2 = await create.Handle(new CreateWorkspaceCommand(U("Second"), $@"C:\{U()}"), default);
         var handler = new ReorderWorkspacesCommandHandler(_factory);
@@ -376,7 +376,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     [Fact]
     public async Task ReorderWorkspaces_WorkspaceNotInList_KeepsItsPosition()
     {
-        var create = new CreateWorkspaceCommandHandler(_factory);
+        var create = new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp);
         var ws1 = await create.Handle(new CreateWorkspaceCommand(U("Keep"), $@"C:\{U()}"), default);
         var ws2 = await create.Handle(new CreateWorkspaceCommand(U("Move"), $@"C:\{U()}"), default);
         var originalWs1Position = ws1.Position;
@@ -476,7 +476,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task RemoveWorkspace_SetsIsRemovedAndRemovedAt()
     {
         var name = U("ToRemove");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var handler = new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System);
 
@@ -502,7 +502,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task RemoveWorkspace_RemovedWorkspaceExcludedFromList()
     {
         var name = U("Removed2");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
             .Handle(new RemoveWorkspaceCommand(created.Id), default);
@@ -517,7 +517,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task ListWorkspaces_ExcludesRemovedWorkspaces()
     {
         var name = U("Removed");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var ws = await _db.Workspaces.FindAsync(created.Id);
         ws!.IsRemoved = true;
@@ -535,7 +535,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task ListWorkspaces_IncludesNonRemovedWorkspaces()
     {
         var name = U("Active");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var handler = new ListWorkspacesQueryHandler(_factory);
 
@@ -548,7 +548,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task ListWorkspaces_IncludeRemoved_IncludesRemovedWorkspace()
     {
         var name = U("RemovedIncl");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var ws = await _db.Workspaces.FindAsync(created.Id);
         ws!.IsRemoved = true;
@@ -566,7 +566,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task PurgeWorkspace_RemovedWorkspace_DeletesFromDb()
     {
         var name = U("ToPurge");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
             .Handle(new RemoveWorkspaceCommand(created.Id), default);
@@ -582,7 +582,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task PurgeWorkspace_ActiveWorkspace_Throws()
     {
         var name = U("ActivePurge");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var handler = new PurgeWorkspaceCommandHandler(_factory);
 
@@ -607,7 +607,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task PurgeWorkspace_RemovedWorkspace_ExcludedFromListAfterPurge()
     {
         var name = U("PurgeList");
-        var created = await new CreateWorkspaceCommandHandler(_factory)
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         await new RemoveWorkspaceCommandHandler(_factory, TimeProvider.System)
             .Handle(new RemoveWorkspaceCommand(created.Id), default);
@@ -624,7 +624,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task DeleteWorkspace_AfterRemove_CascadesAssociatedCards()
     {
         var name = U("DelCascade");
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Cascade test card"), default);
@@ -659,7 +659,7 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
     public async Task PurgeWorkspace_CascadesAssociatedCards()
     {
         var name = U("PurgeCascade");
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         await new AddCardCommandHandler(_factory)
             .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Cascade test card"), default);

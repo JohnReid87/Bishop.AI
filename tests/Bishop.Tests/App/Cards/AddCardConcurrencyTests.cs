@@ -38,7 +38,7 @@ public sealed class AddCardConcurrencyTests : IDisposable
     {
         // Arrange — real file-backed SQLite; in-memory does not model write serialization.
         var workspaceName = $"ws-{Guid.NewGuid():N}"[..20];
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(workspaceName, $@"C:\{workspaceName}"), default);
         var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);

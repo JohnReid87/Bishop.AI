@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
 #pragma warning disable CA1416 // Bishop.AI is Windows-only; TerminalLauncher requires Windows APIs
         services.AddSingleton<ITerminalLauncher, TerminalLauncher>();
 #pragma warning restore CA1416
+        services.AddSingleton<IWorkspaceBootstrapper, WorkspaceBootstrapper>();
         services.AddSingleton<IWorkspaceContextSeeder, WorkspaceContextSeeder>();
         services.AddSingleton<ICatModeService, CatModeService>();
         services.AddSingleton(TimeProvider.System);

@@ -56,7 +56,7 @@ public sealed class ClaimCardConcurrencyTests : IDisposable
         // Arrange — real file-backed SQLite (EF Core in-memory provider does not
         // simulate SQLite's RESERVED-lock semantics, so the race is invisible there).
         var workspaceName = $"ws-{Guid.NewGuid():N}"[..20];
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(workspaceName, $@"C:\{workspaceName}"), default);
         var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(workspace.Id), default);

@@ -38,7 +38,7 @@ public sealed class GetSkillBootstrapInfoQueryHandlerTests : IClassFixture<DbFix
         // Arrange
         var name = U("MyRepo");
         var path = $@"C:\code\{name}";
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, path), default);
 
         var tags = new[] { new TagInfo("bug", "#ff0000"), new TagInfo("feature", "#00ff00") };

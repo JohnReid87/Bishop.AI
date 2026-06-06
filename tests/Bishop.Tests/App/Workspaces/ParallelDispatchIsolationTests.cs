@@ -22,8 +22,8 @@ public sealed class ParallelDispatchIsolationTests : IClassFixture<DbFixture>
 
         // Arrange
         var tracker = new TrackingDbContextFactory(_fixture.Factory);
-        var handler1 = new CreateWorkspaceCommandHandler(tracker);
-        var handler2 = new CreateWorkspaceCommandHandler(tracker);
+        var handler1 = new CreateWorkspaceCommandHandler(tracker, TestBootstrappers.NoOp);
+        var handler2 = new CreateWorkspaceCommandHandler(tracker, TestBootstrappers.NoOp);
         var name1 = $"par-a-{Guid.NewGuid():N}"[..18];
         var name2 = $"par-b-{Guid.NewGuid():N}"[..18];
 

@@ -29,7 +29,7 @@ public sealed class CreateBatchCommandHandlerTests : IClassFixture<DbFixture>
     private async Task<Workspace> CreateWorkspaceAsync()
     {
         var name = $"batchtest-{Guid.NewGuid():N}"[..20];
-        return await new CreateWorkspaceCommandHandler(_factory)
+        return await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
     }
 

@@ -19,7 +19,7 @@ public sealed class ListCardsByWorkspaceQueryHandlerTests : IClassFixture<DbFixt
     private async Task<(Guid workspaceId, IReadOnlyList<LaneInfo> lanes)> CreateWorkspaceAsync()
     {
         var name = $"ws-{Guid.NewGuid():N}"[..20];
-        var ws = await new CreateWorkspaceCommandHandler(_factory)
+        var ws = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(ws.Id), default);

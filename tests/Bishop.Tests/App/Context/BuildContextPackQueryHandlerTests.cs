@@ -28,7 +28,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     private async Task<Workspace> CreateWorkspaceAsync()
     {
         var name = U("ws");
-        return await new CreateWorkspaceCommandHandler(_factory)
+        return await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, Path.Combine(Path.GetTempPath(), name)), default);
     }
 
@@ -405,7 +405,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         try
         {
             File.WriteAllText(Path.Combine(dir, "CONTEXT.md"), "# My context");
-            var workspace = await new CreateWorkspaceCommandHandler(_factory)
+            var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
                 .Handle(new CreateWorkspaceCommand(name, dir), default);
             var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
 
@@ -435,7 +435,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         {
             var bigContent = new string('x', BuildContextPackQueryHandler.ContextMdMaxBytes + 1);
             File.WriteAllText(Path.Combine(dir, "CONTEXT.md"), bigContent);
-            var workspace = await new CreateWorkspaceCommandHandler(_factory)
+            var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
                 .Handle(new CreateWorkspaceCommand(name, dir), default);
             var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
 
@@ -468,7 +468,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
             ContextPack pack;
             using (var lockStream = new FileStream(contextPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
             {
-                var workspace = await new CreateWorkspaceCommandHandler(_factory)
+                var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
                     .Handle(new CreateWorkspaceCommand(name, dir), default);
                 var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
                 pack = await handler.Handle(
@@ -495,7 +495,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         Directory.CreateDirectory(dir);
         try
         {
-            var workspace = await new CreateWorkspaceCommandHandler(_factory)
+            var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
                 .Handle(new CreateWorkspaceCommand(name, dir), default);
             var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
 
@@ -525,7 +525,7 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         {
             var exactContent = new string('x', BuildContextPackQueryHandler.ContextMdMaxBytes);
             File.WriteAllText(Path.Combine(dir, "CONTEXT.md"), exactContent);
-            var workspace = await new CreateWorkspaceCommandHandler(_factory)
+            var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
                 .Handle(new CreateWorkspaceCommand(name, dir), default);
             var handler = CreateHandler(CreateSender(), StubGitCli(), new WorkOnCardContextProvider());
 

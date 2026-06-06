@@ -34,7 +34,7 @@ public sealed class CardStdinTests : IClassFixture<DbFixture>
     private async Task<(Workspace, LaneInfo)> CreateWorkspaceWithTodoLaneAsync()
     {
         var name = U("Enc");
-        var ws = await new CreateWorkspaceCommandHandler(_factory)
+        var ws = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
         var lanes = await new ListLanesByWorkspaceQueryHandler()
             .Handle(new ListLanesByWorkspaceQuery(ws.Id), default);

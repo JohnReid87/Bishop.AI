@@ -146,7 +146,7 @@ public sealed class SkillCardViewSchemaTests : IClassFixture<DbFixture>
 
     private async Task<Card> BuildSampleCardAsync()
     {
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(
                 $"ws-{Guid.NewGuid():N}"[..18],
                 Path.Combine(Path.GetTempPath(), $"ws-{Guid.NewGuid():N}")), default);

@@ -31,7 +31,7 @@ public sealed class LinkFindingToCardCommandHandlerTests : IClassFixture<DbFixtu
     private async Task<Workspace> CreateWorkspaceAsync()
     {
         var name = "ws-" + Guid.NewGuid().ToString("N")[..8];
-        return await new CreateWorkspaceCommandHandler(_factory)
+        return await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, Path.Combine(_tempRoot, name)), default);
     }
 

@@ -33,7 +33,7 @@ public sealed class AbandonBatchCommandHandlerTests : IClassFixture<DbFixture>
     private async Task<Workspace> CreateWorkspaceAsync()
     {
         var name = U("ws");
-        return await new CreateWorkspaceCommandHandler(_factory)
+        return await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
     }
 

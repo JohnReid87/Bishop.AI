@@ -197,7 +197,7 @@ public sealed class SkillContextPackSchemaTests : IClassFixture<DbFixture>
 
     private async Task<ContextPack> BuildSamplePackAsync(string providerSkillName)
     {
-        var workspace = await new CreateWorkspaceCommandHandler(_factory)
+        var workspace = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
             .Handle(new CreateWorkspaceCommand(
                 $"ws-{Guid.NewGuid():N}"[..18],
                 Path.Combine(Path.GetTempPath(), $"ws-{Guid.NewGuid():N}")), default);

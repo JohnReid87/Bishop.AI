@@ -1,16 +1,23 @@
+using Bishop.App.Services.Terminal;
 using Bishop.Core;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
 
 namespace Bishop.App.Workspaces.CreateWorkspace;
 
 internal sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWorkspaceCommand, Workspace>
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly IWorkspaceBootstrapper _bootstrapper;
 
-    public CreateWorkspaceCommandHandler(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
+    public CreateWorkspaceCommandHandler(
+        IDbContextFactory<BishopDbContext> dbFactory,
+        IWorkspaceBootstrapper bootstrapper)
+    {
+        _dbFactory = dbFactory;
+        _bootstrapper = bootstrapper;
+    }
 
     public async Task<Workspace> Handle(CreateWorkspaceCommand request, CancellationToken cancellationToken)
     {
@@ -23,19 +30,7 @@ internal sealed class CreateWorkspaceCommandHandler : IRequestHandler<CreateWork
         var canonicalPath = Path.GetFullPath(request.Path);
 
         if (request.InitGit)
-        {
-            Directory.CreateDirectory(canonicalPath);
-            var psi = new ProcessStartInfo("git")
-            {
-                WorkingDirectory = canonicalPath,
-                CreateNoWindow = true,
-                UseShellExecute = false,
-            };
-            psi.ArgumentList.Add("init");
-            using var proc = Process.Start(psi);
-            if (proc is not null)
-                await proc.WaitForExitAsync(cancellationToken);
-        }
+            await _bootstrapper.EnsureBootstrappedAsync(canonicalPath, cancellationToken);
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 

@@ -577,7 +577,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var name = U("Alpha");
             await SeedRegisteredWorkspaceAsync(temp, name: name);
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             var bishopContent = File.ReadAllText(Path.Combine(temp, ".bishop", "BISHOP_CONTEXT.md"));
@@ -602,7 +602,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     public async Task SeedAsync_DoesNothing_WhenPathIsWhitespaceOnly()
     {
         const string path = "   ";
-        var sut = new WorkspaceContextSeeder(_factory);
+        var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
 
         await sut.SeedAsync(path);
 
@@ -625,7 +625,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     public async Task SeedAsync_DoesNothing_WhenPathDoesNotExist()
     {
         var path = @"C:\definitely-not-a-real-path-" + Guid.NewGuid().ToString("N");
-        var sut = new WorkspaceContextSeeder(_factory);
+        var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
 
         await sut.SeedAsync(path);
 
@@ -642,7 +642,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         // proceeds to the DB, finds the workspace, and writes files — making the assertions below fail.
         var nonExistentPath = Path.Combine(Path.GetTempPath(), "bishop-ctx-missing-" + Guid.NewGuid().ToString("N"));
         await SeedRegisteredWorkspaceAsync(nonExistentPath, name: U("missing"));
-        var sut = new WorkspaceContextSeeder(_factory);
+        var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
 
         try
         {
@@ -664,7 +664,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         var temp = CreateTempDir();
         try
         {
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
 
             await sut.SeedAsync(temp);
 
@@ -760,7 +760,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     {
         var driveRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!;
         await SeedRegisteredWorkspaceAsync(driveRoot, name: U("DriveRoot"));
-        var sut = new WorkspaceContextSeeder(_factory);
+        var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
 
         await sut.SeedAsync(driveRoot);
 
@@ -774,7 +774,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     {
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         await SeedRegisteredWorkspaceAsync(userProfile, name: U("UserProfile"));
-        var sut = new WorkspaceContextSeeder(_factory);
+        var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
 
         await sut.SeedAsync(userProfile);
 
@@ -788,7 +788,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
     {
         var winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
         await SeedRegisteredWorkspaceAsync(winDir, name: U("WinDir"));
-        var sut = new WorkspaceContextSeeder(_factory);
+        var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
 
         await sut.SeedAsync(winDir);
 
@@ -807,7 +807,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         {
             await SeedRegisteredWorkspaceAsync(temp, name: U("TrailSlash"));
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp + Path.DirectorySeparatorChar);
 
             File.Exists(Path.Combine(temp, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeTrue();
@@ -827,7 +827,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             await SeedRegisteredWorkspaceAsync(temp, name: U("MixedSep"));
             var mixedPath = temp.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(mixedPath);
 
             File.Exists(Path.Combine(temp, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeTrue();
@@ -846,7 +846,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         {
             await SeedRegisteredWorkspaceAsync(temp, name: U("CaseVar"));
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp.ToUpperInvariant());
 
             File.Exists(Path.Combine(temp, WorkspaceContextSeeder.BishopFolder, WorkspaceContextSeeder.BishopContextFileName)).Should().BeTrue();
@@ -870,7 +870,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var bishopFile = Path.Combine(bishopDir, WorkspaceContextSeeder.BishopContextFileName);
             lockStream = File.Open(bishopFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             Func<Task> act = () => sut.SeedAsync(temp);
 
             await act.Should().ThrowAsync<IOException>();
@@ -893,7 +893,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var contextFile = Path.Combine(temp, WorkspaceContextSeeder.ContextFileName);
             lockStream = File.Open(contextFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             Func<Task> act = () => sut.SeedAsync(temp);
 
             await act.Should().ThrowAsync<IOException>();
@@ -916,7 +916,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var claudeFile = Path.Combine(temp, WorkspaceContextSeeder.ClaudeMdFileName);
             lockStream = File.Open(claudeFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             Func<Task> act = () => sut.SeedAsync(temp);
 
             await act.Should().ThrowAsync<IOException>();
@@ -939,7 +939,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var original = "# Zeta Project\r\n\r\nProject-specific Claude Code instructions.\r\n";
             File.WriteAllText(claudePath, original);
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             var updated = File.ReadAllText(claudePath);
@@ -962,7 +962,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             await SeedRegisteredWorkspaceAsync(temp, name: U("Eta"));
             var claudePath = Path.Combine(temp, "CLAUDE.md");
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
             var firstPass = File.ReadAllText(claudePath);
 
@@ -988,7 +988,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var original = "# Beta Project\r\n\r\nHand-written intro about this workspace.\r\n";
             File.WriteAllText(contextPath, original);
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             var updated = File.ReadAllText(contextPath);
@@ -1011,7 +1011,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             await SeedRegisteredWorkspaceAsync(temp, name: U("Gamma"));
             var contextPath = Path.Combine(temp, "CONTEXT.md");
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
             var firstPass = File.ReadAllText(contextPath);
 
@@ -1064,7 +1064,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var legacyFile = Path.Combine(temp, "BISHOP_CONTEXT.md");
             File.WriteAllText(legacyFile, "old content");
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             File.Exists(legacyFile).Should().BeFalse("legacy root file must be removed");
@@ -1086,7 +1086,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var legacyNotes = Path.Combine(temp, "BISHOP_NOTES.md");
             File.WriteAllText(legacyNotes, "my notes");
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             File.Exists(legacyNotes).Should().BeFalse("legacy root notes file must be removed");
@@ -1106,7 +1106,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         try
         {
             await SeedRegisteredWorkspaceAsync(temp, name: U("Idempotent"));
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             await sut.SeedAsync(temp);
@@ -1134,7 +1134,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             Directory.CreateDirectory(bishopDir);
             File.WriteAllText(Path.Combine(bishopDir, WorkspaceContextSeeder.BishopContextFileName), "existing new content");
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             File.Exists(legacyContext).Should().BeTrue("legacy root file must not be moved or deleted when new file already exists");
@@ -1157,7 +1157,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             File.WriteAllText(legacyFile, "old content");
             lockStream = File.Open(legacyFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             Func<Task> act = () => sut.SeedAsync(temp);
 
             await act.Should().ThrowAsync<IOException>();
@@ -1181,7 +1181,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             File.WriteAllText(legacyNotes, "my notes");
             lockStream = File.Open(legacyNotes, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             Func<Task> act = () => sut.SeedAsync(temp);
 
             await act.Should().ThrowAsync<IOException>();
@@ -1203,7 +1203,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var legacyFile = Path.Combine(temp, WorkspaceContextSeeder.BishopContextFileName);
             File.WriteAllText(legacyFile, "old content");
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
 
             using (var lockStream = File.Open(legacyFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
             {
@@ -1233,7 +1233,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var contextPath = Path.Combine(temp, "CONTEXT.md");
             File.WriteAllText(contextPath, $"# Project\r\n\r\n{WorkspaceContextSeeder.LegacyPointerLine}\r\n\r\nBody.\r\n");
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             var updated = File.ReadAllText(contextPath);
@@ -1256,7 +1256,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             var claudePath = Path.Combine(temp, "CLAUDE.md");
             File.WriteAllText(claudePath, $"# Project\r\n\r\n{WorkspaceContextSeeder.LegacyPointerLine}\r\n");
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             var updated = File.ReadAllText(claudePath);
@@ -1275,7 +1275,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         var temp = CreateTempDir();
         try
         {
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
@@ -1319,7 +1319,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
                 .EnableServiceProviderCaching(false)
                 .Options;
 
-            var sut = new WorkspaceContextSeeder(new CancellingInterceptorFactory(factoryOptions));
+            var sut = new WorkspaceContextSeeder(new CancellingInterceptorFactory(factoryOptions), TestBootstrappers.NoOp);
 
             var act = () => sut.SeedAsync(temp);
 
@@ -1344,7 +1344,7 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
             _db.Workspaces.AddRange(workspace1, workspace2);
             await _db.SaveChangesAsync();
 
-            var sut = new WorkspaceContextSeeder(_factory);
+            var sut = new WorkspaceContextSeeder(_factory, TestBootstrappers.NoOp);
             await sut.SeedAsync(temp);
 
             // ResolveWorkspaceAsync uses FirstOrDefault with no ORDER BY — which workspace
@@ -1376,102 +1376,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
         _db.Workspaces.Add(workspace);
         await _db.SaveChangesAsync();
         return workspace;
-    }
-
-    // ── EnsureGitIgnoreEntries ─────────────────────────────────────────────────
-
-    [Fact]
-    public void EnsureGitIgnoreEntries_ReturnsDefaultContent_WhenExistingIsNull()
-    {
-        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(null);
-
-        result.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
-        result.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
-    }
-
-    [Fact]
-    public void EnsureGitIgnoreEntries_DoesNotModify_WhenEntriesAlreadyPresent()
-    {
-        var existing = $".env\n{WorkspaceContextSeeder.RunsIgnoreEntry}\n{WorkspaceContextSeeder.DenialsIgnoreEntry}\n";
-
-        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(existing);
-
-        result.Should().Be(existing);
-    }
-
-    [Fact]
-    public void EnsureGitIgnoreEntries_AddsEntries_WhenMissing()
-    {
-        var existing = ".env\nnode_modules/\n";
-
-        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(existing);
-
-        result.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
-        result.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
-        result.Should().Contain(".env");
-    }
-
-    [Fact]
-    public void EnsureGitIgnoreEntries_AddsMissingEntry_WhenOneAlreadyPresent()
-    {
-        var existing = $".env\n{WorkspaceContextSeeder.RunsIgnoreEntry}\n";
-
-        var result = WorkspaceContextSeeder.EnsureGitIgnoreEntries(existing);
-
-        result.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
-        result.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
-    }
-
-    [Fact]
-    public async Task SeedAsync_CreatesGitIgnoreWithBishopEntries_InFreshWorkspace()
-    {
-        var dir = CreateTempDir();
-        try
-        {
-            var ws = MakeWorkspace(name: "gi-test", path: dir);
-            _db.Workspaces.Add(ws);
-            await _db.SaveChangesAsync();
-
-            var seeder = new WorkspaceContextSeeder(_factory);
-            await seeder.SeedAsync(dir);
-
-            var gitIgnorePath = Path.Combine(dir, WorkspaceContextSeeder.GitIgnoreFileName);
-            File.Exists(gitIgnorePath).Should().BeTrue();
-            var content = await File.ReadAllTextAsync(gitIgnorePath);
-            content.Should().Contain(WorkspaceContextSeeder.RunsIgnoreEntry);
-            content.Should().Contain(WorkspaceContextSeeder.DenialsIgnoreEntry);
-        }
-        finally
-        {
-            CleanupTempDir(dir);
-        }
-    }
-
-    [Fact]
-    public async Task SeedAsync_DoesNotDuplicate_WhenGitIgnoreAlreadyHasBishopEntries()
-    {
-        var dir = CreateTempDir();
-        try
-        {
-            var ws = MakeWorkspace(name: "gi-dedup", path: dir);
-            _db.Workspaces.Add(ws);
-            await _db.SaveChangesAsync();
-
-            var gitIgnorePath = Path.Combine(dir, WorkspaceContextSeeder.GitIgnoreFileName);
-            await File.WriteAllTextAsync(gitIgnorePath,
-                $"{WorkspaceContextSeeder.RunsIgnoreEntry}\n{WorkspaceContextSeeder.DenialsIgnoreEntry}\n");
-            var before = await File.ReadAllTextAsync(gitIgnorePath);
-
-            var seeder = new WorkspaceContextSeeder(_factory);
-            await seeder.SeedAsync(dir);
-
-            var after = await File.ReadAllTextAsync(gitIgnorePath);
-            after.Should().Be(before);
-        }
-        finally
-        {
-            CleanupTempDir(dir);
-        }
     }
 
     private static string CreateTempDir()

@@ -12,16 +12,20 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
     internal const string BishopContextFileName = "BISHOP_CONTEXT.md";
     internal const string ContextFileName = "CONTEXT.md";
     internal const string ClaudeMdFileName = "CLAUDE.md";
-    internal const string GitIgnoreFileName = ".gitignore";
-    internal const string RunsIgnoreEntry = ".bishop/runs/";
-    internal const string DenialsIgnoreEntry = ".bishop/denials.jsonl";
     internal const string PointerLine = "> See [.bishop/BISHOP_CONTEXT.md](./.bishop/BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.";
     internal const string PointerMarker = ".bishop/BISHOP_CONTEXT.md";
     internal const string LegacyPointerLine = "> See [BISHOP_CONTEXT.md](./BISHOP_CONTEXT.md) — Bishop CLI reference and live workspace state for LLM agents.";
 
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
+    private readonly IWorkspaceBootstrapper _bootstrapper;
 
-    public WorkspaceContextSeeder(IDbContextFactory<BishopDbContext> dbFactory) => _dbFactory = dbFactory;
+    public WorkspaceContextSeeder(
+        IDbContextFactory<BishopDbContext> dbFactory,
+        IWorkspaceBootstrapper bootstrapper)
+    {
+        _dbFactory = dbFactory;
+        _bootstrapper = bootstrapper;
+    }
 
     public async Task SeedAsync(string workspacePath, CancellationToken cancellationToken = default)
     {
@@ -40,7 +44,7 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         MigrateLegacyFiles(fullPath, bishopDir);
         Directory.CreateDirectory(bishopDir);
 
-        await EnsureGitIgnoreAsync(fullPath, cancellationToken).ConfigureAwait(false);
+        await _bootstrapper.EnsureBootstrappedAsync(fullPath, cancellationToken).ConfigureAwait(false);
 
         var bishopFile = Path.Combine(bishopDir, BishopContextFileName);
         await File.WriteAllTextAsync(bishopFile, BuildBishopContext(workspace), cancellationToken).ConfigureAwait(false);
@@ -228,38 +232,4 @@ internal sealed class WorkspaceContextSeeder : IWorkspaceContextSeeder
         return sb.ToString();
     }
 
-    private static async Task EnsureGitIgnoreAsync(string workspacePath, CancellationToken cancellationToken)
-    {
-        var path = Path.Combine(workspacePath, GitIgnoreFileName);
-        var existing = File.Exists(path)
-            ? await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false)
-            : null;
-        var merged = EnsureGitIgnoreEntries(existing);
-        if (!string.Equals(existing, merged, StringComparison.Ordinal))
-            await File.WriteAllTextAsync(path, merged, cancellationToken).ConfigureAwait(false);
-    }
-
-    internal static string EnsureGitIgnoreEntries(string? existing)
-    {
-        var required = new[] { RunsIgnoreEntry, DenialsIgnoreEntry };
-
-        if (existing is null)
-            return string.Join(Environment.NewLine, required) + Environment.NewLine;
-
-        var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-        var result = existing;
-
-        foreach (var entry in required)
-        {
-            var lines = result.Split('\n').Select(l => l.TrimEnd('\r'));
-            if (lines.Any(l => string.Equals(l, entry, StringComparison.OrdinalIgnoreCase)))
-                continue;
-
-            if (!result.EndsWith("\n", StringComparison.Ordinal))
-                result += newline;
-            result += entry + newline;
-        }
-
-        return result;
-    }
 }
