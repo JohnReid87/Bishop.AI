@@ -301,7 +301,7 @@ public sealed class WorkspaceBootstrapperTests
 
     // ── MergeClaudeSettings ───────────────────────────────────────────────────
 
-    private static readonly string[] SampleRequired = { "Bash(bishop:*)", "Read(./.bishop/**)" };
+    private static readonly string[] SampleRequired = { "Bash(bishop:*)", "Read(.bishop/**)" };
 
     [Fact]
     public void MergeClaudeSettings_ReturnsFreshJson_WhenInputIsNull()
@@ -352,17 +352,32 @@ public sealed class WorkspaceBootstrapperTests
 
         var result = WorkspaceBootstrapper.MergeClaudeSettings(existing, SampleRequired);
 
-        ReadAllow(result).Should().BeEquivalentTo("Bash(bishop:*)", "WebFetch(*)", "Read(./.bishop/**)");
+        ReadAllow(result).Should().BeEquivalentTo("Bash(bishop:*)", "WebFetch(*)", "Read(.bishop/**)");
     }
 
     [Fact]
     public void MergeClaudeSettings_ReturnsExistingUnchanged_WhenFullOverlap()
     {
-        var existing = """{"permissions":{"allow":["Bash(bishop:*)","Read(./.bishop/**)","Extra(*)"]},"theme":"dark"}""";
+        var existing = """{"permissions":{"allow":["Bash(bishop:*)","Read(.bishop/**)","Extra(*)"]},"theme":"dark"}""";
 
         var result = WorkspaceBootstrapper.MergeClaudeSettings(existing, SampleRequired);
 
         result.Should().Be(existing);
+    }
+
+    [Fact]
+    public void MergeClaudeSettings_StripsLegacyBishopGlobs()
+    {
+        var existing = """{"permissions":{"allow":["Bash(bishop:*)","Write(./.bishop/**)","Read(./.bishop/**)","Extra(*)"]}}""";
+
+        var result = WorkspaceBootstrapper.MergeClaudeSettings(existing, WorkspaceBootstrapper.ClaudeAllowList);
+
+        var allow = ReadAllow(result);
+        allow.Should().NotContain("Write(./.bishop/**)");
+        allow.Should().NotContain("Read(./.bishop/**)");
+        allow.Should().Contain("Write(.bishop/**)");
+        allow.Should().Contain("Read(.bishop/**)");
+        allow.Should().Contain("Extra(*)");
     }
 
     [Fact]

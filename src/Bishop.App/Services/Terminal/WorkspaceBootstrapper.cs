@@ -26,8 +26,8 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
     {
         "Bash(bishop:*)",
         "PowerShell(bishop:*)",
-        "Write(./.bishop/**)",
-        "Read(./.bishop/**)",
+        "Write(.bishop/**)",
+        "Read(.bishop/**)",
         "Bash(dotnet build:*)",
         "Bash(dotnet test:*)",
         "Bash(dotnet tool run slopwatch:*)",
@@ -37,6 +37,12 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
         "Bash(git diff:*)",
         "Bash(git log:*)",
         "Bash(git rev-parse:*)",
+    };
+
+    internal static readonly string[] LegacyClaudeAllowEntries =
+    {
+        "Write(./.bishop/**)",
+        "Read(./.bishop/**)",
     };
 
     public async Task EnsureBootstrappedAsync(string workspacePath, CancellationToken cancellationToken = default)
@@ -126,6 +132,17 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
             perms["allow"] = allow;
         }
 
+        var legacy = new HashSet<string>(LegacyClaudeAllowEntries, StringComparer.Ordinal);
+        var changed = false;
+        for (var i = allow.Count - 1; i >= 0; i--)
+        {
+            if (allow[i] is JsonValue val && val.TryGetValue<string>(out var s) && legacy.Contains(s))
+            {
+                allow.RemoveAt(i);
+                changed = true;
+            }
+        }
+
         var present = new HashSet<string>(StringComparer.Ordinal);
         foreach (var node in allow)
         {
@@ -133,7 +150,6 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
                 present.Add(s);
         }
 
-        var changed = false;
         foreach (var entry in requiredList)
         {
             if (present.Add(entry))
