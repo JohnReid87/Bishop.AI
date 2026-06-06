@@ -46,7 +46,17 @@
       "Agent",
       "Bash(wc:*)",
       "Bash(xargs:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "PowerShell(bishop:*)",
+      "Write(./.bishop/**)",
+      "Read(./.bishop/**)",
+      "Bash(dotnet tool run slopwatch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git rev-parse:*)"
     ]
   }
 }
