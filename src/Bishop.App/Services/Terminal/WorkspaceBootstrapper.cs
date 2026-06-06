@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace Bishop.App.Services.Terminal;
 
@@ -7,6 +8,10 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
     internal const string GitIgnoreFileName = ".gitignore";
     internal const string BishopIgnoreEntry = ".bishop/";
     internal const string SlopwatchIgnoreEntry = ".slopwatch/";
+
+    internal const string SlopwatchPackageId = "slopwatch.cmd";
+    internal const string SlopwatchVersion = "0.4.0";
+    internal const string ToolManifestRelativePath = ".config/dotnet-tools.json";
 
     internal static readonly string[] LegacyGranularEntries =
     {
@@ -23,6 +28,7 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
 
         await EnsureGitInitialisedAsync(workspacePath, cancellationToken).ConfigureAwait(false);
         await EnsureGitIgnoreAsync(workspacePath, cancellationToken).ConfigureAwait(false);
+        await EnsureSlopwatchInstalledAsync(workspacePath, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task EnsureGitInitialisedAsync(string workspacePath, CancellationToken cancellationToken)
@@ -51,6 +57,80 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
         var merged = EnsureGitIgnoreEntries(existing);
         if (!string.Equals(existing, merged, StringComparison.Ordinal))
             await File.WriteAllTextAsync(path, merged, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task EnsureSlopwatchInstalledAsync(string workspacePath, CancellationToken cancellationToken)
+    {
+        if (!IsDotNetWorkspace(workspacePath))
+            return;
+
+        var manifestPath = Path.Combine(workspacePath, ToolManifestRelativePath);
+        if (!File.Exists(manifestPath))
+        {
+            await RunDotnetAsync(workspacePath, cancellationToken, "new", "tool-manifest").ConfigureAwait(false);
+        }
+
+        var manifestJson = File.Exists(manifestPath)
+            ? await File.ReadAllTextAsync(manifestPath, cancellationToken).ConfigureAwait(false)
+            : null;
+
+        if (IsSlopwatchInManifest(manifestJson))
+            return;
+
+        await RunDotnetAsync(
+            workspacePath,
+            cancellationToken,
+            "tool", "install", SlopwatchPackageId, "--local", "--version", SlopwatchVersion).ConfigureAwait(false);
+    }
+
+    internal static bool IsDotNetWorkspace(string workspacePath)
+    {
+        if (!Directory.Exists(workspacePath))
+            return false;
+
+        return Directory.EnumerateFiles(workspacePath, "*.sln", SearchOption.TopDirectoryOnly).Any()
+            || Directory.EnumerateFiles(workspacePath, "*.csproj", SearchOption.TopDirectoryOnly).Any();
+    }
+
+    internal static bool IsSlopwatchInManifest(string? manifestJson)
+    {
+        if (string.IsNullOrWhiteSpace(manifestJson))
+            return false;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(manifestJson);
+            if (!doc.RootElement.TryGetProperty("tools", out var tools) || tools.ValueKind != JsonValueKind.Object)
+                return false;
+
+            foreach (var prop in tools.EnumerateObject())
+            {
+                if (string.Equals(prop.Name, SlopwatchPackageId, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        return false;
+    }
+
+    private static async Task RunDotnetAsync(string workingDirectory, CancellationToken cancellationToken, params string[] arguments)
+    {
+        var psi = new ProcessStartInfo("dotnet")
+        {
+            WorkingDirectory = workingDirectory,
+            CreateNoWindow = true,
+            UseShellExecute = false,
+        };
+        foreach (var arg in arguments)
+            psi.ArgumentList.Add(arg);
+
+        using var proc = Process.Start(psi);
+        if (proc is not null)
+            await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     internal static string EnsureGitIgnoreEntries(string? existing)

@@ -189,6 +189,114 @@ public sealed class WorkspaceBootstrapperTests
         await sut.EnsureBootstrappedAsync("   ");
     }
 
+    // ── IsDotNetWorkspace ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void IsDotNetWorkspace_ReturnsFalse_WhenDirectoryDoesNotExist()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "bishop-missing-" + Guid.NewGuid().ToString("N"));
+
+        WorkspaceBootstrapper.IsDotNetWorkspace(path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsDotNetWorkspace_ReturnsFalse_WhenNoSlnOrCsprojAtRoot()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "README.md"), "x");
+
+            WorkspaceBootstrapper.IsDotNetWorkspace(dir).Should().BeFalse();
+        }
+        finally { CleanupTempDir(dir); }
+    }
+
+    [Fact]
+    public void IsDotNetWorkspace_ReturnsTrue_WhenSlnPresent()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "Foo.sln"), "");
+
+            WorkspaceBootstrapper.IsDotNetWorkspace(dir).Should().BeTrue();
+        }
+        finally { CleanupTempDir(dir); }
+    }
+
+    [Fact]
+    public void IsDotNetWorkspace_ReturnsTrue_WhenCsprojPresent()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "Foo.csproj"), "");
+
+            WorkspaceBootstrapper.IsDotNetWorkspace(dir).Should().BeTrue();
+        }
+        finally { CleanupTempDir(dir); }
+    }
+
+    [Fact]
+    public void IsDotNetWorkspace_DoesNotRecurseIntoSubdirectories()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            var sub = Path.Combine(dir, "nested");
+            Directory.CreateDirectory(sub);
+            File.WriteAllText(Path.Combine(sub, "Foo.csproj"), "");
+
+            WorkspaceBootstrapper.IsDotNetWorkspace(dir).Should().BeFalse();
+        }
+        finally { CleanupTempDir(dir); }
+    }
+
+    // ── IsSlopwatchInManifest ─────────────────────────────────────────────────
+
+    [Fact]
+    public void IsSlopwatchInManifest_ReturnsFalse_WhenNull()
+    {
+        WorkspaceBootstrapper.IsSlopwatchInManifest(null).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsSlopwatchInManifest_ReturnsFalse_WhenEmpty()
+    {
+        WorkspaceBootstrapper.IsSlopwatchInManifest("").Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsSlopwatchInManifest_ReturnsFalse_WhenInvalidJson()
+    {
+        WorkspaceBootstrapper.IsSlopwatchInManifest("{ not json").Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsSlopwatchInManifest_ReturnsFalse_WhenToolsMissing()
+    {
+        WorkspaceBootstrapper.IsSlopwatchInManifest("""{"version":1}""").Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsSlopwatchInManifest_ReturnsFalse_WhenSlopwatchNotListed()
+    {
+        var json = """{"version":1,"isRoot":true,"tools":{"dotnet-stryker":{"version":"4.0.0","commands":["dotnet-stryker"]}}}""";
+
+        WorkspaceBootstrapper.IsSlopwatchInManifest(json).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsSlopwatchInManifest_ReturnsTrue_WhenSlopwatchListed()
+    {
+        var json = "{\"version\":1,\"isRoot\":true,\"tools\":{\""
+            + WorkspaceBootstrapper.SlopwatchPackageId
+            + "\":{\"version\":\"0.4.0\",\"commands\":[\"slopwatch\"]}}}";
+
+        WorkspaceBootstrapper.IsSlopwatchInManifest(json).Should().BeTrue();
+    }
+
     private static string CreateTempDir()
     {
         var dir = Path.Combine(Path.GetTempPath(), "bishop-boot-" + Guid.NewGuid().ToString("N"));
