@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Bishop.App.Services.Terminal;
 
@@ -13,10 +14,29 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
     internal const string SlopwatchVersion = "0.4.0";
     internal const string ToolManifestRelativePath = ".config/dotnet-tools.json";
 
+    internal const string ClaudeSettingsRelativePath = ".claude/settings.json";
+
     internal static readonly string[] LegacyGranularEntries =
     {
         ".bishop/runs/",
         ".bishop/denials.jsonl",
+    };
+
+    internal static readonly string[] ClaudeAllowList =
+    {
+        "Bash(bishop:*)",
+        "PowerShell(bishop:*)",
+        "Write(./.bishop/**)",
+        "Read(./.bishop/**)",
+        "Bash(dotnet build:*)",
+        "Bash(dotnet test:*)",
+        "Bash(dotnet tool run slopwatch:*)",
+        "Bash(git add:*)",
+        "Bash(git commit:*)",
+        "Bash(git status:*)",
+        "Bash(git diff:*)",
+        "Bash(git log:*)",
+        "Bash(git rev-parse:*)",
     };
 
     public async Task EnsureBootstrappedAsync(string workspacePath, CancellationToken cancellationToken = default)
@@ -28,6 +48,7 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
 
         await EnsureGitInitialisedAsync(workspacePath, cancellationToken).ConfigureAwait(false);
         await EnsureGitIgnoreAsync(workspacePath, cancellationToken).ConfigureAwait(false);
+        await EnsureClaudeSettingsAsync(workspacePath, cancellationToken).ConfigureAwait(false);
         await EnsureSlopwatchInstalledAsync(workspacePath, cancellationToken).ConfigureAwait(false);
     }
 
@@ -58,6 +79,87 @@ internal sealed class WorkspaceBootstrapper : IWorkspaceBootstrapper
         if (!string.Equals(existing, merged, StringComparison.Ordinal))
             await File.WriteAllTextAsync(path, merged, cancellationToken).ConfigureAwait(false);
     }
+
+    private static async Task EnsureClaudeSettingsAsync(string workspacePath, CancellationToken cancellationToken)
+    {
+        var path = Path.Combine(workspacePath, ClaudeSettingsRelativePath);
+        var existing = File.Exists(path)
+            ? await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false)
+            : null;
+        var merged = MergeClaudeSettings(existing, ClaudeAllowList);
+        if (string.Equals(existing, merged, StringComparison.Ordinal))
+            return;
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllTextAsync(path, merged, cancellationToken).ConfigureAwait(false);
+    }
+
+    internal static string MergeClaudeSettings(string? existingJson, IEnumerable<string> required)
+    {
+        var requiredList = required.ToList();
+
+        if (string.IsNullOrWhiteSpace(existingJson))
+            return SerializeClaudeSettings(BuildFreshClaudeSettings(requiredList));
+
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(existingJson);
+        }
+        catch (JsonException)
+        {
+            return existingJson;
+        }
+
+        if (root is not JsonObject rootObj)
+            return existingJson;
+
+        if (rootObj["permissions"] is not JsonObject perms)
+        {
+            perms = new JsonObject();
+            rootObj["permissions"] = perms;
+        }
+
+        if (perms["allow"] is not JsonArray allow)
+        {
+            allow = new JsonArray();
+            perms["allow"] = allow;
+        }
+
+        var present = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var node in allow)
+        {
+            if (node is JsonValue val && val.TryGetValue<string>(out var s))
+                present.Add(s);
+        }
+
+        var changed = false;
+        foreach (var entry in requiredList)
+        {
+            if (present.Add(entry))
+            {
+                allow.Add(JsonValue.Create(entry));
+                changed = true;
+            }
+        }
+
+        return changed ? SerializeClaudeSettings(rootObj) : existingJson;
+    }
+
+    private static JsonObject BuildFreshClaudeSettings(IEnumerable<string> required)
+    {
+        var allow = new JsonArray();
+        foreach (var entry in required)
+            allow.Add(JsonValue.Create(entry));
+
+        return new JsonObject
+        {
+            ["permissions"] = new JsonObject { ["allow"] = allow },
+        };
+    }
+
+    private static string SerializeClaudeSettings(JsonNode node)
+        => node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine;
 
     private static async Task EnsureSlopwatchInstalledAsync(string workspacePath, CancellationToken cancellationToken)
     {

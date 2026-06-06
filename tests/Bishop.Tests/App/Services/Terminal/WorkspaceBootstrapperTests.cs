@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Bishop.App.Services.Terminal;
 using FluentAssertions;
 
@@ -296,6 +298,167 @@ public sealed class WorkspaceBootstrapperTests
 
         WorkspaceBootstrapper.IsSlopwatchInManifest(json).Should().BeTrue();
     }
+
+    // ── MergeClaudeSettings ───────────────────────────────────────────────────
+
+    private static readonly string[] SampleRequired = { "Bash(bishop:*)", "Read(./.bishop/**)" };
+
+    [Fact]
+    public void MergeClaudeSettings_ReturnsFreshJson_WhenInputIsNull()
+    {
+        var result = WorkspaceBootstrapper.MergeClaudeSettings(null, SampleRequired);
+
+        var allow = ReadAllow(result);
+        allow.Should().BeEquivalentTo(SampleRequired);
+    }
+
+    [Fact]
+    public void MergeClaudeSettings_ReturnsFreshJson_WhenInputIsEmpty()
+    {
+        var result = WorkspaceBootstrapper.MergeClaudeSettings("   ", SampleRequired);
+
+        var allow = ReadAllow(result);
+        allow.Should().BeEquivalentTo(SampleRequired);
+    }
+
+    [Fact]
+    public void MergeClaudeSettings_AddsPermissionsObject_WhenMissing()
+    {
+        var existing = """{"theme":"dark"}""";
+
+        var result = WorkspaceBootstrapper.MergeClaudeSettings(existing, SampleRequired);
+
+        var root = JsonNode.Parse(result)!.AsObject();
+        root["theme"]!.GetValue<string>().Should().Be("dark");
+        ReadAllow(result).Should().BeEquivalentTo(SampleRequired);
+    }
+
+    [Fact]
+    public void MergeClaudeSettings_AddsAllowArray_WhenMissing()
+    {
+        var existing = """{"permissions":{"deny":["Bash(rm:*)"]}}""";
+
+        var result = WorkspaceBootstrapper.MergeClaudeSettings(existing, SampleRequired);
+
+        var perms = JsonNode.Parse(result)!.AsObject()["permissions"]!.AsObject();
+        perms["deny"]!.AsArray().Select(n => n!.GetValue<string>()).Should().ContainSingle().Which.Should().Be("Bash(rm:*)");
+        ReadAllow(result).Should().BeEquivalentTo(SampleRequired);
+    }
+
+    [Fact]
+    public void MergeClaudeSettings_AddsMissingEntries_WhenPartialOverlap()
+    {
+        var existing = """{"permissions":{"allow":["Bash(bishop:*)","WebFetch(*)"]}}""";
+
+        var result = WorkspaceBootstrapper.MergeClaudeSettings(existing, SampleRequired);
+
+        ReadAllow(result).Should().BeEquivalentTo("Bash(bishop:*)", "WebFetch(*)", "Read(./.bishop/**)");
+    }
+
+    [Fact]
+    public void MergeClaudeSettings_ReturnsExistingUnchanged_WhenFullOverlap()
+    {
+        var existing = """{"permissions":{"allow":["Bash(bishop:*)","Read(./.bishop/**)","Extra(*)"]},"theme":"dark"}""";
+
+        var result = WorkspaceBootstrapper.MergeClaudeSettings(existing, SampleRequired);
+
+        result.Should().Be(existing);
+    }
+
+    [Fact]
+    public void MergeClaudeSettings_PreservesUnrelatedTopLevelKeys()
+    {
+        var existing = """{"theme":"dark","model":"sonnet","permissions":{"deny":["Bash(rm:*)"]}}""";
+
+        var result = WorkspaceBootstrapper.MergeClaudeSettings(existing, SampleRequired);
+
+        var root = JsonNode.Parse(result)!.AsObject();
+        root["theme"]!.GetValue<string>().Should().Be("dark");
+        root["model"]!.GetValue<string>().Should().Be("sonnet");
+        root["permissions"]!.AsObject()["deny"]!.AsArray()
+            .Select(n => n!.GetValue<string>()).Should().ContainSingle().Which.Should().Be("Bash(rm:*)");
+    }
+
+    [Fact]
+    public void MergeClaudeSettings_IsIdempotent()
+    {
+        var first = WorkspaceBootstrapper.MergeClaudeSettings(null, WorkspaceBootstrapper.ClaudeAllowList);
+        var second = WorkspaceBootstrapper.MergeClaudeSettings(first, WorkspaceBootstrapper.ClaudeAllowList);
+
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public async Task EnsureBootstrappedAsync_CreatesClaudeSettings_WhenMissing()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            var sut = new WorkspaceBootstrapper();
+
+            await sut.EnsureBootstrappedAsync(dir);
+
+            var path = Path.Combine(dir, WorkspaceBootstrapper.ClaudeSettingsRelativePath);
+            File.Exists(path).Should().BeTrue();
+            var allow = ReadAllow(await File.ReadAllTextAsync(path));
+            allow.Should().BeEquivalentTo(WorkspaceBootstrapper.ClaudeAllowList);
+        }
+        finally
+        {
+            CleanupTempDir(dir);
+        }
+    }
+
+    [Fact]
+    public async Task EnsureBootstrappedAsync_MergesClaudeSettings_WhenPartiallyPresent()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            var path = Path.Combine(dir, WorkspaceBootstrapper.ClaudeSettingsRelativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllTextAsync(path, """{"theme":"dark","permissions":{"allow":["Bash(bishop:*)","CustomEntry(*)"]}}""");
+            var sut = new WorkspaceBootstrapper();
+
+            await sut.EnsureBootstrappedAsync(dir);
+
+            var content = await File.ReadAllTextAsync(path);
+            var root = JsonNode.Parse(content)!.AsObject();
+            root["theme"]!.GetValue<string>().Should().Be("dark");
+            var allow = ReadAllow(content);
+            allow.Should().Contain("CustomEntry(*)");
+            allow.Should().Contain(WorkspaceBootstrapper.ClaudeAllowList);
+        }
+        finally
+        {
+            CleanupTempDir(dir);
+        }
+    }
+
+    [Fact]
+    public async Task EnsureBootstrappedAsync_DoesNotRewriteClaudeSettings_WhenAllEntriesPresent()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            var sut = new WorkspaceBootstrapper();
+            await sut.EnsureBootstrappedAsync(dir);
+            var path = Path.Combine(dir, WorkspaceBootstrapper.ClaudeSettingsRelativePath);
+            var firstContent = await File.ReadAllTextAsync(path);
+
+            await sut.EnsureBootstrappedAsync(dir);
+
+            (await File.ReadAllTextAsync(path)).Should().Be(firstContent);
+        }
+        finally
+        {
+            CleanupTempDir(dir);
+        }
+    }
+
+    private static List<string> ReadAllow(string json)
+        => JsonNode.Parse(json)!.AsObject()["permissions"]!.AsObject()["allow"]!.AsArray()
+            .Select(n => n!.GetValue<string>()).ToList();
 
     private static string CreateTempDir()
     {
