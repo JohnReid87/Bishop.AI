@@ -29,8 +29,10 @@ using Bishop.Cli.Context.Print;
 using Bishop.Cli.InstallSkills;
 using Bishop.Cli.Lanes.List;
 using Bishop.Cli.Life.Auth;
+using Bishop.Cli.Life.Speak;
 using Bishop.Cli.Bootstrap;
 using Bishop.Cli.Hooks.CheckPath;
+using Bishop.Cli.Hooks.SpeakOnStop;
 using Bishop.Cli.Tags.List;
 using Bishop.Cli.Workspaces.Current;
 using Bishop.Cli.Workspaces.Init;
@@ -154,6 +156,7 @@ if (OperatingSystem.IsWindows())
     var lifeAuthCmd = new Command("auth", "Authorize external integrations for bishop.life");
     lifeAuthCmd.AddCommand(new AuthGoogleCliCommand());
     lifeCmd.AddCommand(lifeAuthCmd);
+    lifeCmd.AddCommand(new SpeakCliCommand());
 }
 root.AddCommand(lifeCmd);
 
@@ -161,6 +164,10 @@ root.AddCommand(lifeCmd);
 
 var hookCmd = new Command("hook", "Claude Code hook utilities");
 hookCmd.AddCommand(new CheckPathCliCommand(timeProvider));
+if (OperatingSystem.IsWindows())
+{
+    hookCmd.AddCommand(new SpeakOnStopCliCommand());
+}
 root.AddCommand(hookCmd);
 
 // ── run ───────────────────────────────────────────────────────────────────────
