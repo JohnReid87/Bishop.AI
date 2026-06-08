@@ -25,7 +25,7 @@ internal sealed class SpeakCliCommand : Command
 
             try
             {
-                await WindowsSpeechSynthesizer.SpeakAsync(text, token);
+                await Speaker.SpeakAsync(text, token);
             }
             catch (Exception ex)
             {

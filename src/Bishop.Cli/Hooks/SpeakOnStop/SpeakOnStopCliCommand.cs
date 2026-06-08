@@ -30,7 +30,7 @@ internal sealed class SpeakOnStopCliCommand : Command
                 if (!StandupTranscriptScanner.TryGetTextToSpeak(transcriptPath, out var text))
                     return;
 
-                await WindowsSpeechSynthesizer.SpeakAsync(text, context.GetCancellationToken());
+                await Speaker.SpeakAsync(text, context.GetCancellationToken());
             }
             catch
             {
