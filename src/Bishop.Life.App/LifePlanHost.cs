@@ -27,6 +27,7 @@ internal sealed class LifePlanHost : IDisposable
     private const string VirtualHost = "bishop.life";
     private const string LandingUrl = "https://bishop.life/index.html";
     private const string StandupCommand = "/bish-life-standup";
+    private const string InitCommand = "/bish-life-init";
 
     // Watcher debounce is 250ms; allow some headroom for the rename + queued
     // event to land before we treat a reload as external again.
@@ -88,7 +89,9 @@ internal sealed class LifePlanHost : IDisposable
 
             if (root.ValueKind == JsonValueKind.String)
             {
-                if (root.GetString() == "standup") LaunchStandup();
+                var s = root.GetString();
+                if (s == "standup") LaunchStandup();
+                else if (s == "init") LaunchInit();
                 return;
             }
 
@@ -99,6 +102,10 @@ internal sealed class LifePlanHost : IDisposable
             if (type == "standup")
             {
                 LaunchStandup();
+            }
+            else if (type == "init")
+            {
+                LaunchInit();
             }
             else if (type == "mutate" && root.TryGetProperty("plan", out var planEl))
             {
@@ -121,6 +128,17 @@ internal sealed class LifePlanHost : IDisposable
 
         _launcher.LaunchClaude(folder, StandupCommand);
         _coordinator.NoteStandupLaunched(); // fires StateChanged → PostState
+    }
+
+    private void LaunchInit()
+    {
+        var folder = Path.GetDirectoryName(_service.FilePath);
+        if (string.IsNullOrEmpty(folder)) return;
+        Directory.CreateDirectory(folder);
+
+        _launcher.LaunchClaude(folder, InitCommand);
+        // Init seeds the file from scratch; the watcher's external-reload event
+        // will refresh the envelope when /bish-life-init finishes writing.
     }
 
     private void ApplyMutation(JsonElement planEl)

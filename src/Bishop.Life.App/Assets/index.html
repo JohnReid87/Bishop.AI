@@ -147,6 +147,7 @@
   <div class="topbar">
     <div class="wordmark"><span class="bars"><span></span><span></span><span></span></span>bishop<span class="suffix">.life</span></div>
     <div class="spacer"></div>
+    <button class="cta" id="initBtn" hidden><span class="tri">&#9655;</span> Initialize Life</button>
     <button class="cta" id="standupBtn" disabled><span class="tri">&#9655;</span> Initiate Stand-Up</button>
   </div>
 
@@ -250,7 +251,7 @@ function render() {
 
   const c = document.getElementById("container");
   if (status === "missing") {
-    c.innerHTML = `<div class="empty" style="margin-top:24px">No bishop.life file at <b>${esc(filePath)}</b>. Run <code>/bish-life-init</code> in a Claude Code session to seed it.</div>`;
+    c.innerHTML = `<div class="empty" style="margin-top:24px">No bishop.life file at <b>${esc(filePath)}</b>. Click <b>Initialize Life</b> above to seed it.</div>`;
     return;
   }
   if (status === "error") {
@@ -403,6 +404,7 @@ function applyEnvelope(env) {
   // Stand-up runs even when no file exists yet (it can seed one), so enable
   // the button on any envelope from the host rather than gating on plan data.
   document.getElementById("standupBtn").disabled = standupInFlight;
+  document.getElementById("initBtn").hidden = status !== "missing" || standupInFlight;
   document.getElementById("standupBanner").hidden = !standupInFlight;
   document.body.classList.toggle("standup-disabled", standupInFlight);
   // Drop any pending edit — its target node is about to be replaced by render().
@@ -476,6 +478,12 @@ document.getElementById("standupBtn").addEventListener("click", () => {
   flushPendingTitleEdit();
   if (window.chrome && window.chrome.webview) {
     window.chrome.webview.postMessage("standup");
+  }
+});
+
+document.getElementById("initBtn").addEventListener("click", () => {
+  if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.postMessage("init");
   }
 });
 
