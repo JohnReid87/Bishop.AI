@@ -53,9 +53,12 @@ If the CLI exits non-zero, surface the stderr message and STOP.
 
 ### Step 2 — Display the surfaced context
 
-Display the pack to the user verbatim — a calm, scannable block. No advice yet. Calendar items are **deliberately omitted** from this summary so they don't pre-empt the brain-dump; they get walked in Step 4. Example shape:
+Display the pack to the user verbatim — a calm, scannable block. No advice yet. Calendar items are **deliberately omitted** from this summary so they don't pre-empt the brain-dump; they get walked in Step 4.
+
+Wrap the entire context block in `<!-- no-speak -->...<!-- /no-speak -->` markers so the TTS hook skips it (the brain-dump prompt in Step 3 is what should be spoken, not the surfaced data). Example shape:
 
 ```
+<!-- no-speak -->
 **Last stand-up:** 2 days ago (2026-06-06)
 **Open actions:** 7
 **Starred (2/3):**
@@ -65,6 +68,7 @@ Display the pack to the user verbatim — a calm, scannable block. No advice yet
 **Inbox (2):**
   • Look into ISA limits
   • Book dentist
+<!-- /no-speak -->
 ```
 
 ### Step 3 — Brain-dump prompt
@@ -115,9 +119,9 @@ Preserve property order to match the seed shape (`schema`, `meta`, `areas`, `inb
 
 Before any write, show the user:
 
-- The drafted **reflection** (the prose, verbatim).
-- The drafted **focusToday** as `area ▸ goal ▸ action title` lines.
-- A short bullet list of **tree mutations** you intend to apply: actions added, actions marked done, stars added/removed, inbox items triaged or dropped, anything else.
+- The drafted **reflection** (the prose, verbatim). This stays spoken — it's the synthesis the user benefits from hearing.
+- The drafted **focusToday** as `area ▸ goal ▸ action title` lines, wrapped in `<!-- no-speak -->...<!-- /no-speak -->` so the TTS hook skips the list.
+- A short bullet list of **tree mutations** you intend to apply, also wrapped in `<!-- no-speak -->...<!-- /no-speak -->`: actions added, actions marked done, stars added/removed, inbox items triaged or dropped, anything else.
 
 Then ask:
 

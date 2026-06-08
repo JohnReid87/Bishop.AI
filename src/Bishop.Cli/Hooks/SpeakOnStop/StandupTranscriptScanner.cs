@@ -12,6 +12,14 @@ internal static class StandupTranscriptScanner
 {
     private const string StandupSkillName = "bish-life-standup";
     private static readonly Regex CommandNameRegex = new(@"<command-name>/?([a-z0-9-]+)</command-name>", RegexOptions.Compiled);
+    private static readonly Regex NoSpeakRegex = new(@"<!--\s*no-speak\s*-->.*?<!--\s*/no-speak\s*-->", RegexOptions.Compiled | RegexOptions.Singleline);
+    private static readonly Regex EmphasisRegex = new(@"(\*\*|\*|_)(.+?)\1", RegexOptions.Compiled | RegexOptions.Singleline);
+    private static readonly Regex BacktickRegex = new(@"`+([^`]*)`+", RegexOptions.Compiled);
+    private static readonly Regex LeadingHeadingRegex = new(@"^[ \t]*#{1,6}[ \t]+", RegexOptions.Compiled | RegexOptions.Multiline);
+    private static readonly Regex LeadingBulletRegex = new(@"^[ \t]*[-*•][ \t]+", RegexOptions.Compiled | RegexOptions.Multiline);
+    private static readonly Regex SeparatorCharRegex = new(@"[▸›]", RegexOptions.Compiled);
+    private static readonly Regex WhitespaceRegex = new(@"[ \t]+", RegexOptions.Compiled);
+    private static readonly Regex BlankLinesRegex = new(@"(\r?\n[ \t]*){2,}", RegexOptions.Compiled);
 
     public static bool TryGetTextToSpeak(string transcriptPath, out string text)
     {
@@ -54,8 +62,27 @@ internal static class StandupTranscriptScanner
         if (activeSkill != StandupSkillName || string.IsNullOrWhiteSpace(lastAssistantText))
             return false;
 
-        text = lastAssistantText;
+        var cleaned = StripForSpeech(lastAssistantText);
+        if (string.IsNullOrWhiteSpace(cleaned))
+            return false;
+
+        text = cleaned;
         return true;
+    }
+
+    internal static string StripForSpeech(string input)
+    {
+        var s = NoSpeakRegex.Replace(input, string.Empty);
+        s = LeadingHeadingRegex.Replace(s, string.Empty);
+        s = LeadingBulletRegex.Replace(s, string.Empty);
+        s = BacktickRegex.Replace(s, "$1");
+        // Apply emphasis twice so **_x_** style nesting is fully unwrapped.
+        s = EmphasisRegex.Replace(s, "$2");
+        s = EmphasisRegex.Replace(s, "$2");
+        s = SeparatorCharRegex.Replace(s, " ");
+        s = WhitespaceRegex.Replace(s, " ");
+        s = BlankLinesRegex.Replace(s, "\n");
+        return s.Trim();
     }
 
     private static string ExtractTextContent(JsonNode? message)
