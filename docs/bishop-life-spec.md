@@ -21,7 +21,7 @@ Design tenets, in priority order:
 
 1. **No shame.** The tool never scores, streaks, or guilts. A missed day is silent.
 2. **Externalised memory.** The user should be able to forget everything between stand-ups; the file is the brain.
-3. **Predictable ritual.** The stand-up is the same shape every day — context pack, brain-dump, reflection, ≤3 focus items.
+3. **Predictable ritual.** The stand-up is the same shape every day — context pack, brain-dump, per-item walk, reflection, ≤3 focus items. The walk is what turns a vent into a board update; without it the ritual collapses into data entry.
 4. **At most three starred actions** at any time. Forcing scarcity is the feature.
 
 ## 2. The daily stand-up
@@ -29,12 +29,13 @@ Design tenets, in priority order:
 The headline interaction. One ritual, run from Claude Code via the `/bish-life-standup` skill (card #1004):
 
 1. Skill reads `bishop.life.json` and assembles a context pack: time since last stand-up, count of open actions, currently-starred actions (with `area ▸ goal` lineage), areas with no activity recently, inbox count.
-2. Single brain-dump prompt to the user.
-3. Skill produces a reflection block, picks 1–3 focus items for today, and rewrites the whole file in one pass.
-4. Pre-write: copy current file to `bishop.life.json.prev` (single-step undo).
-5. Atomic write: temp file + rename, so a kill mid-write can never leave a partial file.
-6. Append the new stand-up to `standups[]`, trim to the last 10 inline.
-7. Any items in `inbox` are triaged into the area/goal tree as part of the same write.
+2. Single open brain-dump prompt to the user (collected in one go, no follow-ups in this step).
+3. Per-item walk: the skill identifies distinct threads in the dump and questions each one in turn — does it belong on the board, is it one action or several, is it done or blocked or actionable, which area/goal, and so on. "Drop / don't record" is an explicit option, not an assumption. Autopilot things stay off the board. One thread per message. Ends with "anything I missed?".
+4. After the walk, the skill produces a reflection block, picks 1–3 focus items for today, and shows the proposed mutations for confirmation before writing.
+5. Pre-write: copy current file to `bishop.life.json.prev` (single-step undo).
+6. Atomic write: temp file + rename, so a kill mid-write can never leave a partial file.
+7. Append the new stand-up to `standups[]`, trim to the last 10 inline.
+8. Any items in `inbox` are triaged into the area/goal tree as part of the same write (resolution happens during the walk; the write just persists it).
 
 The stand-up is also the only path that adds or deletes areas/goals/actions. Inline UI interactions (§7) cover edits, stars, and check-offs only.
 
