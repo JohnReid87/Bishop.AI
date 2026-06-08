@@ -48,6 +48,66 @@ public class LifePlanJsonTests
     }
 
     [Fact]
+    public void Serialize_ActionHorizon_IsCamelCaseString()
+    {
+        var plan = SamplePlan();
+        plan.Areas[0].Goals[0].Actions[0].Horizon = Horizon.ThisWeek;
+
+        var json = LifePlanJson.Serialize(plan);
+
+        json.Should().Contain("\"horizon\": \"thisWeek\"");
+    }
+
+    [Fact]
+    public void RoundTrip_PreservesAllActionHorizonValues()
+    {
+        foreach (var h in Enum.GetValues<Horizon>())
+        {
+            var plan = SamplePlan();
+            plan.Areas[0].Goals[0].Actions[0].Horizon = h;
+
+            var json = LifePlanJson.Serialize(plan);
+            var roundTripped = LifePlanJson.Deserialize(json);
+
+            roundTripped.Areas[0].Goals[0].Actions[0].Horizon.Should().Be(h);
+        }
+    }
+
+    [Fact]
+    public void Deserialize_ActionWithoutHorizon_DefaultsToThisWeek()
+    {
+        const string json = """
+        {
+          "schema": "bishop.life/v1",
+          "meta": { "createdAt": "2026-06-08T08:00:00Z", "lastStandupAt": null },
+          "areas": [
+            {
+              "id": "area-a", "name": "A", "color": "#abcdef",
+              "goals": [
+                {
+                  "id": "g1", "name": "G1", "horizon": null,
+                  "actions": [
+                    {
+                      "id": "act-1", "title": "Legacy action",
+                      "starred": false, "done": false,
+                      "createdAt": "2026-06-01T00:00:00Z", "completedAt": null
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "inbox": [],
+          "standups": []
+        }
+        """;
+
+        var plan = LifePlanJson.Deserialize(json);
+
+        plan.Areas[0].Goals[0].Actions[0].Horizon.Should().Be(Horizon.ThisWeek);
+    }
+
+    [Fact]
     public void Deserialize_NullHorizon_IsAccepted()
     {
         const string json = """
@@ -103,6 +163,7 @@ public class LifePlanJsonTests
                                 Title = "Move £500 to savings",
                                 Starred = true,
                                 Done = false,
+                                Horizon = Horizon.Today,
                                 CreatedAt = new DateTimeOffset(2026, 6, 1, 0, 0, 0, TimeSpan.Zero),
                                 CompletedAt = null,
                             },

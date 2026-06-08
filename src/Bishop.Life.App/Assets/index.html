@@ -113,6 +113,18 @@
   .star { background:none; border:none; font-size:14px; color:var(--ink-faint); transition:.15s; line-height:1; }
   .star.on { color: var(--t-year); }
 
+  /* action-level horizon pill (mirrors .pill, but interactive — click cycles) */
+  .h-pill { font-size: 10px; font-weight: 600; letter-spacing:.3px; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; cursor: pointer; user-select: none; transition: .15s; flex:none; }
+  .h-pill.today    { color: var(--accent);   background: var(--accent-soft); }
+  .h-pill.thisWeek { color: var(--t-month);  background: rgba(95,168,156,.13); }
+  .h-pill.thisMonth{ color: var(--t-year);   background: rgba(196,168,95,.13); }
+  .h-pill.someday  { color: var(--t-beyond); background: rgba(107,140,175,.13); }
+  .h-pill:hover    { filter: brightness(1.15); }
+
+  /* per-horizon section header inside an area */
+  .h-sect { font-size:11px; letter-spacing:.6px; text-transform:uppercase; color:var(--ink-dim); margin:10px 0 4px 3px; padding-left:13px; border-left:1px solid var(--line); }
+  .h-sect.today { color: var(--accent); }
+
   .area-block { margin-bottom: 22px; }
   .area-head { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
   .area-name { font-weight:600; font-size:14.5px; flex:1; }
@@ -195,6 +207,11 @@
    host sets standupInFlight=true and mutations are disabled. */
 
 const HORIZONS = { month:"This month", year:"This year", beyond:"Beyond" };
+// Action-level horizon enum (matches Bishop.Life.Core.Schema.Horizon serialized
+// via JsonStringEnumConverter w/ camelCase). Order is the cycle order on click.
+const ACTION_HORIZONS = { today:"Today", thisWeek:"This week", thisMonth:"This month", someday:"Someday" };
+const ACTION_HORIZON_KEYS = Object.keys(ACTION_HORIZONS);
+const DEFAULT_ACTION_HORIZON = "thisWeek";
 
 let plan = null;       // nested LifePlan from Bishop.Life.Core
 let status = "waiting";
@@ -338,32 +355,45 @@ function goalMini({ goal, area }) {
   </div>`;
 }
 
+function actionHorizonKey(a) {
+  return ACTION_HORIZONS[a.horizon] ? a.horizon : DEFAULT_ACTION_HORIZON;
+}
+
 function mapView() {
-  let h = `<div class="view"><div class="sect">The map</div><div class="sect-sub">Action under goal, goal under life area. The through-line.</div>`;
+  let h = `<div class="view"><div class="sect">The map</div><div class="sect-sub">Actions grouped by horizon within each life area. The urgency at a glance.</div>`;
   h += (plan.areas || []).map(area => {
     const goals = area.goals || [];
-    const openCount = goals.reduce((n, g) => n + (g.actions || []).filter(a => !a.done).length, 0);
+    const flat = goals.flatMap(g => (g.actions || []).map(a => ({ a, goal: g })));
+    const openCount = flat.filter(x => !x.a.done).length;
     let block = `<div class="area-block"><div class="area-head">
       <span class="dot" style="background:${esc(area.color)}"></span>
       <span class="area-name">${esc(area.name)}</span>
       <span class="area-meta">${goals.length} goal${goals.length !== 1 ? "s" : ""} &middot; ${openCount} open</span>
     </div>`;
-    block += goals.map(goal => {
-      const acts = goal.actions || [];
-      const done = acts.filter(a => a.done).length;
-      const b = bucket(goal.horizon);
-      let g = `<div class="goal-block"><div class="goal-head">
-        <span class="goal-title">${esc(goal.name)}</span>
-        <span class="pill ${b}">${HORIZONS[b]}</span>
-        <span class="progress">${done}/${acts.length}</span>
-      </div>`;
-      g += acts.map(a => `<div class="act ${a.done ? "done" : ""}" ${attr(a.id)}>
-        <div class="check ${a.done ? "on" : ""}"></div>
-        <span class="act-text" contenteditable="true" spellcheck="false">${esc(a.title)}</span>
-        <span class="star ${a.starred ? "on" : ""}">${a.starred ? "&#9733;" : "&#9734;"}</span>
-      </div>`).join("");
-      return g + "</div>";
-    }).join("");
+
+    // Group actions by horizon section; empty sections collapse (not rendered).
+    // Within a section, starred sorts above unstarred so a starred Today action leads its bucket.
+    for (const hkey of ACTION_HORIZON_KEYS) {
+      const items = flat.filter(x => actionHorizonKey(x.a) === hkey);
+      if (!items.length) continue;
+      items.sort((x, y) => Number(!!y.a.starred) - Number(!!x.a.starred));
+      block += `<div class="h-sect ${hkey}">${ACTION_HORIZONS[hkey]} &middot; ${items.length}</div>`;
+      block += items.map(({ a, goal }) => {
+        const hk = actionHorizonKey(a);
+        return `<div class="act ${a.done ? "done" : ""}" ${attr(a.id)}>
+          <div class="check ${a.done ? "on" : ""}"></div>
+          <div style="flex:1">
+            <span class="act-text" contenteditable="true" spellcheck="false">${esc(a.title)}</span>
+            <div class="lineage" style="margin-top:2px">${esc(goal.name)}</div>
+          </div>
+          <span class="h-pill ${hk}" title="Click to cycle horizon">${ACTION_HORIZONS[hk]}</span>
+          <span class="star ${a.starred ? "on" : ""}">${a.starred ? "&#9733;" : "&#9734;"}</span>
+        </div>`;
+      }).join("");
+    }
+    if (!flat.length) {
+      block += `<div class="empty" style="padding:12px;font-size:12px">No actions in this area.</div>`;
+    }
     return block + "</div>";
   }).join("");
   return h + "</div>";
@@ -451,6 +481,13 @@ container.addEventListener("click", e => {
   } else if (e.target.closest(".star")) {
     flushPendingTitleEdit();
     action.starred = !action.starred;
+    postMutation();
+    render();
+  } else if (e.target.closest(".h-pill")) {
+    flushPendingTitleEdit();
+    const cur = ACTION_HORIZONS[action.horizon] ? action.horizon : DEFAULT_ACTION_HORIZON;
+    const idx = ACTION_HORIZON_KEYS.indexOf(cur);
+    action.horizon = ACTION_HORIZON_KEYS[(idx + 1) % ACTION_HORIZON_KEYS.length];
     postMutation();
     render();
   }

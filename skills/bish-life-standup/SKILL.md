@@ -41,7 +41,7 @@ Use the `Read` tool on `$path`. Parse the JSON. The schema is `bishop.life/v1` p
 
 - `schema` — must equal `"bishop.life/v1"`.
 - `meta.createdAt`, `meta.lastStandupAt` — ISO 8601 UTC strings (`lastStandupAt` may be `null` on first stand-up).
-- `areas[]` — `{ id, name, color, goals[] }`. Each goal: `{ id, name, horizon, actions[] }`. Each action: `{ id, title, starred, done, createdAt, completedAt }`.
+- `areas[]` — `{ id, name, color, goals[] }`. Each goal: `{ id, name, horizon, actions[] }`. Each action: `{ id, title, starred, done, horizon, createdAt, completedAt }`. Action `horizon` is one of `"today"`, `"thisWeek"`, `"thisMonth"`, `"someday"` — orthogonal to goal `horizon` (the `YYYY-MM` target month). Defaults to `"thisWeek"` on read for actions written by older clients.
 - `inbox[]` — `{ id, text, capturedAt }`.
 - `standups[]` — `{ id, at, reflection, focusToday[] }`. Capped at 10 entries; oldest dropped on write.
 
@@ -89,6 +89,7 @@ Identify the distinct threads in the brain-dump (each project, money item, life 
 - **Is it actually one action, or several?** A vague "I'm working on X" often dissolves into one concrete next step plus a lot of background. Resist creating multiple actions where there's really one (and resist a fuzzy umbrella action when there are genuinely several concrete next steps).
 - **Is it done, blocked, or actionable now?** Mark done things `done: true` (with `completedAt`). Flag blocked things in the action title so it's obvious at a glance (e.g. "(blocked on X)") and deliberately don't star them — starring blocked work is noise.
 - **Which area and goal does it fit under?** Prefer an existing goal. Create a new goal under an existing area if needed. Only add a new area if the user explicitly asks.
+- **What's the horizon?** For any action you're adding or surfacing, ask whether it's `today`, `thisWeek`, `thisMonth`, or `someday`. Default to the bucket the user's own words imply ("I want to nail this today" → `today`, "in the next few weeks" → `thisWeek`, vague "at some point" → `someday`) and confirm rather than re-asking. Horizon is orthogonal to starring — a starred someday action is a contradiction; flag it.
 - **Standing autopilot things stay off the board.** If the user describes something as "on autopilot" / "happens by itself" / "I'm not actively doing anything about it", don't add a goal for it. The board is for active threads.
 - **Existing goals/actions affected.** If the dump implies an existing action is done, a goal is renamed, or a starred item should be unstarred, raise it during the walk — don't quietly mutate things in Step 7.
 
@@ -107,6 +108,7 @@ From the walk in Step 6 plus the existing state, build a single new whole-file J
 - **Adds/edits/removes of areas, goals, actions** — the stand-up is the only path that mutates the tree. Apply whatever the walk produced: new actions, completed actions (`done: true`, `completedAt` set to now), renamed goals, new goals under existing areas, etc. Adding entire new *areas* is rare but allowed — only if the user explicitly asked. Do not add areas speculatively.
 - **Ids** — for any new entity, mint an id of the form `<prefix>-<short-slug-or-random>`: `act-…` for actions, `goal-…` for goals, `area-…` for areas, `ibx-…` for inbox items (none created here, but the prefix is reserved), `su-…` for the new stand-up entry. Stable existing ids are never renamed.
 - **Timestamps** — capture `$now` as `Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ" -AsUTC` (or equivalent). Set `meta.lastStandupAt = $now`. Set `completedAt = $now` on any action you just marked done. Set `createdAt = $now` on any new action.
+- **Horizon on actions** — for every new action, write the horizon agreed in the walk (default `"thisWeek"` if it never came up). For any existing action whose urgency shifted during the walk, update its horizon as part of this same write.
 - **New stand-up entry** — append `{ id: "su-…", at: $now, reflection: "<reflection>", focusToday: ["act-…", …] }` to `standups[]`.
 - **Trim** — after the append, if `standups.Count > 10`, drop the oldest entries until exactly 10 remain.
 - **Colours, schema, area order** — leave untouched.

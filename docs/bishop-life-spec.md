@@ -104,6 +104,7 @@ The **nested** shape below is canonical. The prototype's flat shape is rejected.
               "title": "Move £500 to savings",
               "starred": true,
               "done": false,
+              "horizon": "today",
               "createdAt": "…",
               "completedAt": null
             }
@@ -128,7 +129,8 @@ The **nested** shape below is canonical. The prototype's flat shape is rejected.
 
 Notable shapes:
 
-- **`horizon` is per-goal**, not per-area or per-action. Format is a coarse month string (`YYYY-MM`) or `null` for "no horizon".
+- **Goal `horizon`** is a coarse month string (`YYYY-MM`) or `null` for "no horizon".
+- **Action `horizon`** is one of `"today"`, `"thisWeek"`, `"thisMonth"`, `"someday"` — per-action urgency, orthogonal to the goal's target month. Defaults to `"thisWeek"` on read so pre-horizon files load cleanly. Cycled inline from the shell or set during the stand-up walk.
 - **Inbox is a flat list** of strings + capture time. Triage happens during a stand-up, never in the inline UI.
 - **`standups[]` is capped at 10** entries inline. Older entries are dropped on write (no archive — the *file* is the memory, not the history of files).
 - **Starred actions** are surfaced explicitly in the context pack; the stand-up enforces the "≤3 starred" ceiling.
@@ -143,13 +145,13 @@ A minimal WinUI 3 shell — **not** deferred:
 - Embeds the prototype's HTML/CSS verbatim, minus `localStorage` and the direct Anthropic API call. The visual design is already done; rebuilding it in XAML is not where time should go.
 - Four-tab navigation kept from the prototype.
 - **"Initiate Stand-Up" button** — the accent-coloured CTA. Launches Windows Terminal running `claude` with `/bish-life-standup` ready to invoke, using the same `wt.exe` + `cmd /k claude` pattern bishop.dev's `TerminalLauncher` already uses (copied, not referenced — see §3).
-- **Inline interactions:** star toggle, check-off, inline title edit. Each mutation builds the new whole-file state in JS, posts it to the .NET host, which writes `.prev` and then atomic-saves through `Bishop.Life.Core`.
+- **Inline interactions:** star toggle, check-off, inline title edit, and action-horizon cycle (Today → This week → This month → Someday). Each mutation builds the new whole-file state in JS, posts it to the .NET host, which writes `.prev` and then atomic-saves through `Bishop.Life.Core`.
 - File-watch driven refresh: external writes (stand-ups, hand edits) cause the shell to repost state to the view without a restart.
 
 ### Out of scope for Phase 0 (and the inline UI generally)
 
 - Add/delete of areas, goals, or actions — handled only by stand-up or hand-edit.
-- Horizon changes — stand-up only.
+- Goal horizon changes — stand-up only. (Action horizon is inline; see Phase 0 scope.)
 - Inbox triage — stand-up only.
 - Any login, sync, or remote surface.
 
