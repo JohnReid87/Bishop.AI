@@ -47,6 +47,18 @@ public sealed class LifeMutationCoordinator
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Clears the in-flight flag without requiring an observed file change.
+    /// Used by the host when the user reactivates the window after a stand-up
+    /// that completed, was aborted, or whose watcher event never landed.
+    /// </summary>
+    public void NoteStandupAborted()
+    {
+        if (!_standupInFlight) return;
+        _standupInFlight = false;
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     public MutationResult ApplyMutation(LifePlan plan)
     {
         if (_standupInFlight) return MutationResult.RejectedStandupInFlight;

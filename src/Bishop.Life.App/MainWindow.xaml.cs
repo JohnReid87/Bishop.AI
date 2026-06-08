@@ -22,6 +22,7 @@ public sealed partial class MainWindow : Window
 
         _host = new LifePlanHost(View);
         Closed += OnClosed;
+        Activated += OnActivated;
 
         if (Content is FrameworkElement root)
         {
@@ -70,6 +71,12 @@ public sealed partial class MainWindow : Window
     {
         _host?.Dispose();
         _host = null;
+    }
+
+    private void OnActivated(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        _host?.NoteWindowActivated();
     }
 
     [StructLayout(LayoutKind.Sequential)]

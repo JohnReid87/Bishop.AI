@@ -48,15 +48,25 @@
       "Bash(xargs:*)",
       "Bash(xxd:*)",
       "PowerShell(bishop:*)",
-      "Write(./.bishop/**)",
-      "Read(./.bishop/**)",
       "Bash(dotnet tool run slopwatch:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
-      "Bash(git rev-parse:*)"
+      "Bash(git rev-parse:*)",
+      "Write(.bishop/**)",
+      "Write(.bishop\\**)",
+      "Read(.bishop/**)",
+      "Read(.bishop\\**)",
+      "Edit(.bishop/**)",
+      "Edit(.bishop\\**)",
+      "Bash(rm .bishop:*)",
+      "Bash(rm -r .bishop:*)",
+      "Bash(rm -rf .bishop:*)",
+      "PowerShell(Remove-Item .bishop:*)",
+      "PowerShell(Remove-Item -Recurse .bishop:*)",
+      "PowerShell(Remove-Item -Recurse -Force .bishop:*)"
     ]
   }
 }

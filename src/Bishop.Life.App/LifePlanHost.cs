@@ -89,6 +89,21 @@ internal sealed class LifePlanHost : IDisposable
         _watcher.Start();
     }
 
+    /// <summary>
+    /// Called by the host window on activation. Pushes a fresh envelope so the
+    /// WebView2 reflects current disk state — covers init completion (file went
+    /// missing→ok), stand-up completion (file rewritten), and stand-up abort
+    /// (terminal closed without a write) when the watcher event was missed.
+    /// </summary>
+    public void NoteWindowActivated()
+    {
+        if (!_navigated || _disposed) return;
+        if (_coordinator.StandupInFlight)
+            _coordinator.NoteStandupAborted(); // fires StateChanged → PostState
+        else
+            PostState();
+    }
+
     public void SetTheme(bool isDark)
     {
         _pendingDarkTheme = isDark;
