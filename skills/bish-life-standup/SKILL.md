@@ -43,13 +43,15 @@ Parse the JSON from stdout. The shape is:
 - `starred[]` — `{ actionId, area, goal, title, horizon }` for each non-done starred action. `starredCeiling` is `3`; note when at/above it.
 - `untendedAreas[]` — area names with zero open actions.
 - `inbox[]` — `{ id, text, capturedAt }`. Triage happens later in this same pass.
+- `calendar[]` — `{ id, summary, start, end, allDay, status }` for primary-calendar events in the next 14 days. Hidden from the Step 2 summary; surfaced one-by-one in Step 4 instead (see "Calendar items" below). Empty when Google auth is not set up.
+- `calendarUnavailable` — `true` when Google was configured but the fetch failed (timeout, expired token, scope revoked, etc.). When `true`, note it once during the walk so the user knows the stand-up is running blind on calendar.
 - `plan` — the full `LifePlan` (schema `bishop.life/v1`): `meta`, `areas[]` with goals/actions, `inbox[]`, `standups[]`. Action `horizon` is one of `"today"`, `"thisWeek"`, `"thisMonth"`, `"someday"` — orthogonal to goal `horizon` (the `YYYY-MM` target month). Use this for the Step 7 composition; do not re-read `bishop.life.json` directly.
 
 If the CLI exits non-zero, surface the stderr message and STOP.
 
 ### Step 2 — Display the surfaced context
 
-Display the pack to the user verbatim — a calm, scannable block. No advice yet. Example shape:
+Display the pack to the user verbatim — a calm, scannable block. No advice yet. Calendar items are **deliberately omitted** from this summary so they don't pre-empt the brain-dump; they get walked in Step 4. Example shape:
 
 ```
 **Last stand-up:** 2 days ago (2026-06-06)
@@ -84,6 +86,8 @@ Identify the distinct threads in the brain-dump (each project, money item, life 
 - **Existing goals/actions affected.** If the dump implies an existing action is done, a goal is renamed, or a starred item should be unstarred, raise it during the walk — don't quietly mutate things in Step 5.
 
 Walk one thread per assistant message — do not bundle multiple threads into one question. Keep tone calm and conversational; this isn't an interrogation, it's a sort.
+
+**Calendar items** — after walking everything the user raised, walk through any `calendar[]` entries from the context pack. These are agent-driven prompts, not user threads. For each event, ask one focused question — e.g. "You have *{summary}* on {start} — anything you want to prep for, or capture as an action?" Apply the same rules as user-raised threads: it might belong on the board, it might just be context, or it might be drop-worthy. Don't bundle multiple events into one message. If `calendarUnavailable` is `true`, note it once at the start of this phase ("Calendar wasn't reachable — running blind on upcoming events") and skip event prompts entirely.
 
 End the walk with: "Anything I missed?" Read the user's response. If they raise new threads, walk those too. If not, proceed to Step 5.
 
@@ -170,5 +174,6 @@ Do not editorialise further. The ritual is done.
 - Do NOT assume everything raised in the brain-dump belongs on the board. "Drop / don't record" must be an explicit option offered during the walk for things that are context, autopilot, or one-off plans.
 - Do NOT star blocked actions. Reflect the blocker in the action title instead (e.g. "(blocked on X)").
 - Do NOT re-read `bishop.life.json` directly. The CLI emits both the surfaced context and the full `plan` — use that for Step 5 composition.
+- Do NOT surface `calendar[]` events in the Step 2 summary — calendar items are walked one-by-one in Step 4, *after* the brain-dump, so that real-life dates don't pre-empt what the user wanted to bring up themselves.
 
 </guardrails>

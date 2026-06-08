@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Bishop.Cli.Context.Pack;
 using Bishop.Life.Core;
+using Bishop.Life.Core.Google;
 using Bishop.Life.Core.Schema;
 using FluentAssertions;
 using Microsoft.Extensions.Time.Testing;
@@ -45,7 +46,7 @@ public sealed class LifeStandupContextPackCliCommandTests : IDisposable
     [Fact]
     public async Task InvokeAsync_FileMissing_EmitsExistsFalseAndExitsZero()
     {
-        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time);
+        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time, calendarSource: null);
 
         var json = await RunAndCaptureStdoutAsync(cmd);
 
@@ -58,7 +59,7 @@ public sealed class LifeStandupContextPackCliCommandTests : IDisposable
     public async Task InvokeAsync_SchemaMismatch_EmitsSchemaOkFalseAndSurfacesActualSchema()
     {
         File.WriteAllText(_planPath, """{ "schema": "bishop.life/v999", "meta": {}, "areas": [], "inbox": [], "standups": [] }""");
-        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time);
+        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time, calendarSource: null);
 
         var json = await RunAndCaptureStdoutAsync(cmd);
 
@@ -112,7 +113,7 @@ public sealed class LifeStandupContextPackCliCommandTests : IDisposable
         };
         File.WriteAllText(_planPath, LifePlanJson.Serialize(plan));
 
-        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time);
+        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time, calendarSource: null);
 
         var json = await RunAndCaptureStdoutAsync(cmd);
         var root = json.RootElement;
@@ -142,6 +143,79 @@ public sealed class LifeStandupContextPackCliCommandTests : IDisposable
         root.GetProperty("plan").GetProperty("schema").GetString().Should().Be("bishop.life/v1");
     }
 
+    [Fact]
+    public async Task InvokeAsync_WithCalendarSource_IncludesEventsAndCalendarUnavailableFalse()
+    {
+        SeedEmptyPlan();
+        var events = new[]
+        {
+            new CalendarEvent("ev-1", "Dentist", DateTimeOffset.Parse("2026-06-10T09:00:00Z"), DateTimeOffset.Parse("2026-06-10T09:30:00Z"), AllDay: false, Status: "accepted"),
+            new CalendarEvent("ev-2", "Conference", DateTimeOffset.Parse("2026-06-15T00:00:00Z"), DateTimeOffset.Parse("2026-06-16T00:00:00Z"), AllDay: true, Status: "tentative"),
+        };
+        var source = new FakeCalendarSource(events);
+        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time, source);
+
+        var json = await RunAndCaptureStdoutAsync(cmd);
+        var root = json.RootElement;
+
+        root.GetProperty("calendarUnavailable").GetBoolean().Should().BeFalse();
+        var calendar = root.GetProperty("calendar");
+        calendar.GetArrayLength().Should().Be(2);
+        calendar[0].GetProperty("id").GetString().Should().Be("ev-1");
+        calendar[0].GetProperty("summary").GetString().Should().Be("Dentist");
+        calendar[0].GetProperty("allDay").GetBoolean().Should().BeFalse();
+        calendar[0].GetProperty("status").GetString().Should().Be("accepted");
+        calendar[1].GetProperty("allDay").GetBoolean().Should().BeTrue();
+
+        source.RequestedFrom.Should().Be(_time.GetUtcNow());
+        source.RequestedTo.Should().Be(_time.GetUtcNow().AddDays(14));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CalendarSourceThrows_SetsCalendarUnavailableTrue()
+    {
+        SeedEmptyPlan();
+        var source = new FakeCalendarSource(throwInstead: new HttpRequestException("simulated"));
+        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time, source);
+
+        var json = await RunAndCaptureStdoutAsync(cmd);
+
+        json.RootElement.GetProperty("calendarUnavailable").GetBoolean().Should().BeTrue();
+        json.RootElement.GetProperty("calendar").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_NoCalendarSource_EmitsEmptyCalendarAndUnavailableFalse()
+    {
+        SeedEmptyPlan();
+        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time, calendarSource: null);
+
+        var json = await RunAndCaptureStdoutAsync(cmd);
+
+        json.RootElement.GetProperty("calendarUnavailable").GetBoolean().Should().BeFalse();
+        json.RootElement.GetProperty("calendar").GetArrayLength().Should().Be(0);
+    }
+
+    private void SeedEmptyPlan()
+    {
+        var plan = new LifePlan { Schema = "bishop.life/v1", Meta = new Meta { CreatedAt = _time.GetUtcNow() } };
+        File.WriteAllText(_planPath, LifePlanJson.Serialize(plan));
+    }
+
+    private sealed class FakeCalendarSource(IReadOnlyList<CalendarEvent>? events = null, Exception? throwInstead = null) : ICalendarSource
+    {
+        public DateTimeOffset RequestedFrom { get; private set; }
+        public DateTimeOffset RequestedTo { get; private set; }
+
+        public Task<IReadOnlyList<CalendarEvent>> FetchUpcomingAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken)
+        {
+            RequestedFrom = from;
+            RequestedTo = to;
+            if (throwInstead is not null) throw throwInstead;
+            return Task.FromResult(events ?? (IReadOnlyList<CalendarEvent>)[]);
+        }
+    }
+
     [Theory]
     [InlineData(null, "first stand-up")]
     [InlineData("2026-06-08T09:00:00Z", "today")]
@@ -156,10 +230,30 @@ public sealed class LifeStandupContextPackCliCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task InvokeAsync_PopulatedPlanWithCalendar_PreservesBothPaths()
+    {
+        // Smoke test that calendar data flows alongside a fully-shaped plan rather than only
+        // exercising the empty-plan path.
+        var plan = new LifePlan { Schema = "bishop.life/v1", Meta = new Meta { CreatedAt = _time.GetUtcNow() } };
+        File.WriteAllText(_planPath, LifePlanJson.Serialize(plan));
+
+        var source = new FakeCalendarSource(new[]
+        {
+            new CalendarEvent("ev-1", "1:1", DateTimeOffset.Parse("2026-06-09T14:00:00Z"), DateTimeOffset.Parse("2026-06-09T14:30:00Z"), false, "accepted"),
+        });
+        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time, source);
+
+        var json = await RunAndCaptureStdoutAsync(cmd);
+
+        json.RootElement.GetProperty("schemaOk").GetBoolean().Should().BeTrue();
+        json.RootElement.GetProperty("calendar").GetArrayLength().Should().Be(1);
+    }
+
+    [Fact]
     public async Task InvokeAsync_MalformedJson_ExitsOneWithStderr()
     {
         File.WriteAllText(_planPath, "{ not json");
-        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time);
+        var cmd = new LifeStandupContextPackCliCommand(new LifePlanFileService(_planPath), _time, calendarSource: null);
 
         var stderr = new StringWriter();
         var originalErr = Console.Error;

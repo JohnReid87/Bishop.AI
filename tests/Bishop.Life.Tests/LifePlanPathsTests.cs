@@ -42,6 +42,24 @@ public class LifePlanPathsTests
     }
 
     [Fact]
+    public void ResolveGoogleTokenPath_SitsAlongsideLifeFile()
+    {
+        var saved = Environment.GetEnvironmentVariable(LifePlanPaths.EnvVarName);
+        try
+        {
+            var target = Path.Combine(Path.GetTempPath(), "bishop-life-override.json");
+            Environment.SetEnvironmentVariable(LifePlanPaths.EnvVarName, target);
+
+            LifePlanPaths.ResolveGoogleTokenPath()
+                .Should().Be(Path.Combine(Path.GetTempPath(), "google-token.json"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(LifePlanPaths.EnvVarName, saved);
+        }
+    }
+
+    [Fact]
     public void Resolve_WithRelativeOverride_Throws()
     {
         var saved = Environment.GetEnvironmentVariable(LifePlanPaths.EnvVarName);

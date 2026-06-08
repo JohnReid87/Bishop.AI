@@ -28,6 +28,7 @@ using Bishop.Cli.Context.Pack;
 using Bishop.Cli.Context.Print;
 using Bishop.Cli.InstallSkills;
 using Bishop.Cli.Lanes.List;
+using Bishop.Cli.Life.Auth;
 using Bishop.Cli.Bootstrap;
 using Bishop.Cli.Hooks.CheckPath;
 using Bishop.Cli.Tags.List;
@@ -144,6 +145,17 @@ var contextProviders = host.Services.GetServices<IContextProvider>();
 var contextPackCmd = new PrintContextPackCliCommand(mediator, contextProviders);
 contextPackCmd.AddCommand(new LifeStandupContextPackCliCommand(new Bishop.Life.Core.LifePlanFileService(), timeProvider));
 root.AddCommand(contextPackCmd);
+
+// ── life ──────────────────────────────────────────────────────────────────────
+
+var lifeCmd = new Command("life", "bishop.life subcommands");
+if (OperatingSystem.IsWindows())
+{
+    var lifeAuthCmd = new Command("auth", "Authorize external integrations for bishop.life");
+    lifeAuthCmd.AddCommand(new AuthGoogleCliCommand());
+    lifeCmd.AddCommand(lifeAuthCmd);
+}
+root.AddCommand(lifeCmd);
 
 // ── hook ──────────────────────────────────────────────────────────────────────
 

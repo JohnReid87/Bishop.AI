@@ -1,7 +1,9 @@
 using Bishop.Life.Core;
+using Bishop.Life.Core.Google;
 using Bishop.Life.Core.Schema;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Runtime.Versioning;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -12,6 +14,8 @@ internal sealed class LifeStandupContextPackCliCommand : Command
 {
     internal const string ExpectedSchema = "bishop.life/v1";
     internal const int StarredCeiling = 3;
+    internal const int CalendarHorizonDays = 14;
+    internal static readonly TimeSpan CalendarTimeout = TimeSpan.FromSeconds(5);
 
     private static readonly JsonSerializerOptions s_jsonOpts = new()
     {
@@ -23,13 +27,23 @@ internal sealed class LifeStandupContextPackCliCommand : Command
     };
 
     public LifeStandupContextPackCliCommand(LifePlanFileService fileService, TimeProvider timeProvider)
+        : this(fileService, timeProvider, calendarSource: ResolveDefaultCalendarSource())
+    {
+    }
+
+    // Test seam — lets tests inject a fake calendar source without DPAPI/network.
+    internal LifeStandupContextPackCliCommand(
+        LifePlanFileService fileService,
+        TimeProvider timeProvider,
+        ICalendarSource? calendarSource)
         : base("life-standup", "Emit bishop.life stand-up context pack as JSON")
     {
-        this.SetHandler((InvocationContext ctx) =>
+        this.SetHandler(async (InvocationContext ctx) =>
         {
             try
             {
-                var result = LifeStandupContextPackBuilder.Build(fileService, timeProvider);
+                var result = await LifeStandupContextPackBuilder.BuildAsync(
+                    fileService, timeProvider, calendarSource, ctx.GetCancellationToken());
                 Console.WriteLine(JsonSerializer.Serialize(result, s_jsonOpts));
             }
             catch (Exception ex) when (ex is IOException or JsonException or InvalidOperationException)
@@ -39,11 +53,27 @@ internal sealed class LifeStandupContextPackCliCommand : Command
             }
         });
     }
+
+    private static ICalendarSource? ResolveDefaultCalendarSource()
+    {
+        // Construction is best-effort: env vars unset or token missing → no calendar source, which
+        // surfaces as calendar_unavailable: true. Auth failures don't crash the stand-up.
+        if (!OperatingSystem.IsWindows()) return null;
+        var settings = GoogleOAuthSettings.FromEnvironment();
+        if (settings is null) return null;
+        var store = new GoogleTokenStore();
+        if (!store.Exists()) return null;
+        return new GoogleCalendarService(settings, store);
+    }
 }
 
 internal static class LifeStandupContextPackBuilder
 {
-    public static LifeStandupContextPack Build(LifePlanFileService service, TimeProvider time)
+    public static async Task<LifeStandupContextPack> BuildAsync(
+        LifePlanFileService service,
+        TimeProvider time,
+        ICalendarSource? calendarSource,
+        CancellationToken cancellationToken)
     {
         var path = service.FilePath;
 
@@ -62,6 +92,8 @@ internal static class LifeStandupContextPackBuilder
                 Starred: [],
                 UntendedAreas: [],
                 Inbox: [],
+                Calendar: [],
+                CalendarUnavailable: false,
                 Plan: null);
         }
 
@@ -83,6 +115,8 @@ internal static class LifeStandupContextPackBuilder
                 Starred: [],
                 UntendedAreas: [],
                 Inbox: [],
+                Calendar: [],
+                CalendarUnavailable: false,
                 Plan: null);
         }
 
@@ -112,6 +146,8 @@ internal static class LifeStandupContextPackBuilder
             .Select(i => new InboxEntry(i.Id, i.Text, i.CapturedAt))
             .ToList();
 
+        var (calendar, calendarUnavailable) = await FetchCalendarAsync(calendarSource, now, cancellationToken);
+
         return new LifeStandupContextPack(
             FilePath: path,
             Exists: true,
@@ -125,7 +161,43 @@ internal static class LifeStandupContextPackBuilder
             Starred: starred,
             UntendedAreas: untendedAreas,
             Inbox: inbox,
+            Calendar: calendar,
+            CalendarUnavailable: calendarUnavailable,
             Plan: plan);
+    }
+
+    private static async Task<(IReadOnlyList<CalendarEventEntry> Events, bool Unavailable)> FetchCalendarAsync(
+        ICalendarSource? source,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        // No source configured (unset env vars, missing token, or non-Windows) is not an error —
+        // the standup just runs without calendar context.
+        if (source is null) return ([], false);
+
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(LifeStandupContextPackCliCommand.CalendarTimeout);
+
+            var from = now;
+            var to = now.AddDays(LifeStandupContextPackCliCommand.CalendarHorizonDays);
+            var events = await source.FetchUpcomingAsync(from, to, cts.Token);
+
+            return (events.Select(e => new CalendarEventEntry(
+                Id: e.Id,
+                Summary: e.Summary,
+                Start: e.Start,
+                End: e.End,
+                AllDay: e.AllDay,
+                Status: e.Status)).ToList(), false);
+        }
+        catch
+        {
+            // Any failure — timeout, HTTP error, expired token, scope revoked — surfaces as
+            // calendar_unavailable. Stand-up must still run.
+            return ([], true);
+        }
     }
 
     internal static string LastStandupPhrase(DateTimeOffset? last, DateTimeOffset now)
@@ -156,6 +228,8 @@ internal sealed record LifeStandupContextPack(
     IReadOnlyList<StarredActionEntry> Starred,
     IReadOnlyList<string> UntendedAreas,
     IReadOnlyList<InboxEntry> Inbox,
+    IReadOnlyList<CalendarEventEntry> Calendar,
+    bool CalendarUnavailable,
     LifePlan? Plan);
 
 internal sealed record StarredActionEntry(
@@ -169,3 +243,11 @@ internal sealed record InboxEntry(
     string Id,
     string Text,
     DateTimeOffset CapturedAt);
+
+internal sealed record CalendarEventEntry(
+    string Id,
+    string Summary,
+    DateTimeOffset Start,
+    DateTimeOffset End,
+    bool AllDay,
+    string Status);
