@@ -7,6 +7,8 @@ bishop.category: setup
 
 > Uses `bishop context-pack life-standup` for the surfaced context (per `docs/SKILL_FAMILY.md` §4). Workspace context is not relevant — this skill operates on bishop.life's data file, not a Bishop workspace.
 
+> **TTS hook is user-scoped.** The `Stop` → `bishop hook speak-on-stop` hook lives in `~/.claude/settings.json` (not the Bishop.AI repo's project settings), so it follows the user across any working directory. `StandupTranscriptScanner` gates it on `<command-name>/bish-life-standup</command-name>` in the transcript, so it stays silent for every other skill.
+
 Shell tool selection (Bash vs PowerShell) — this skill targets a Windows-only path (`%APPDATA%`). Use `PowerShell` throughout.
 
 Design tenets carried from `docs/bishop-life-spec.md` §1 — observe them in tone and structure:
