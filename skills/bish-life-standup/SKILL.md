@@ -5,7 +5,7 @@ allowed-tools: Read, Write, PowerShell, Bash
 bishop.category: setup
 ---
 
-> Exempt from `bishop context-pack` (per `docs/SKILL_FAMILY.md` §4): this skill operates on bishop.life's data file, not on a Bishop workspace. No workspace context is relevant.
+> Uses `bishop context-pack life-standup` for the surfaced context (per `docs/SKILL_FAMILY.md` §4). Workspace context is not relevant — this skill operates on bishop.life's data file, not a Bishop workspace.
 
 Shell tool selection (Bash vs PowerShell) — this skill targets a Windows-only path (`%APPDATA%`). Use `PowerShell` throughout.
 
@@ -18,46 +18,36 @@ Design tenets carried from `docs/bishop-life-spec.md` §1 — observe them in to
 
 <what-to-do>
 
-### Step 1 — Resolve the canonical path
+### Step 1 — Load the context pack via the CLI
 
-- If `$env:BISHOP_LIFE_FILE` is set and non-empty, use that absolute path verbatim.
-- Otherwise, the canonical path is `Join-Path $env:APPDATA 'Bishop\life\bishop.life.json'`.
+Run:
 
-Capture the resolved path as `$path`.
+```
+bishop context-pack life-standup
+```
 
-### Step 2 — Refuse-if-missing check
+Parse the JSON from stdout. The shape is:
 
-Run `Test-Path -LiteralPath $path`.
+- `filePath` — the resolved path to `bishop.life.json` (respects `$env:BISHOP_LIFE_FILE`).
+- `exists` — `false` if the file is missing. If so → print exactly:
 
-- If it returns `False` → print exactly:
+  > `bishop.life is not initialised at <filePath>. Run /bish-life-init first.`
 
-  > `bishop.life is not initialised at <path>. Run /bish-life-init first.`
+  Then STOP.
+- `schemaOk` — `false` if the file's `schema` field isn't `"bishop.life/v1"`. If so → STOP and surface:
 
-  Then STOP. Do not create the file, do not prompt.
+  > `bishop.life schema mismatch — expected "bishop.life/v1", got "<schema>". Refusing to proceed.`
 
-### Step 3 — Read and parse
+- `lastStandupAt`, `lastStandupPhrase` — last stand-up timestamp + human phrase ("yesterday", "3 days ago", "first stand-up"). No shame on long gaps; just state the fact.
+- `openActionCount` — total actions where `done` is `false`, across all areas/goals.
+- `starred[]` — `{ actionId, area, goal, title, horizon }` for each non-done starred action. `starredCeiling` is `3`; note when at/above it.
+- `untendedAreas[]` — area names with zero open actions.
+- `inbox[]` — `{ id, text, capturedAt }`. Triage happens later in this same pass.
+- `plan` — the full `LifePlan` (schema `bishop.life/v1`): `meta`, `areas[]` with goals/actions, `inbox[]`, `standups[]`. Action `horizon` is one of `"today"`, `"thisWeek"`, `"thisMonth"`, `"someday"` — orthogonal to goal `horizon` (the `YYYY-MM` target month). Use this for the Step 7 composition; do not re-read `bishop.life.json` directly.
 
-Use the `Read` tool on `$path`. Parse the JSON. The schema is `bishop.life/v1` per `docs/bishop-life-spec.md` §6:
+If the CLI exits non-zero, surface the stderr message and STOP.
 
-- `schema` — must equal `"bishop.life/v1"`.
-- `meta.createdAt`, `meta.lastStandupAt` — ISO 8601 UTC strings (`lastStandupAt` may be `null` on first stand-up).
-- `areas[]` — `{ id, name, color, goals[] }`. Each goal: `{ id, name, horizon, actions[] }`. Each action: `{ id, title, starred, done, horizon, createdAt, completedAt }`. Action `horizon` is one of `"today"`, `"thisWeek"`, `"thisMonth"`, `"someday"` — orthogonal to goal `horizon` (the `YYYY-MM` target month). Defaults to `"thisWeek"` on read for actions written by older clients.
-- `inbox[]` — `{ id, text, capturedAt }`.
-- `standups[]` — `{ id, at, reflection, focusToday[] }`. Capped at 10 entries; oldest dropped on write.
-
-If `schema` is anything other than `"bishop.life/v1"`, STOP and surface:
-
-> `bishop.life schema mismatch — expected "bishop.life/v1", got "<actual>". Refusing to proceed.`
-
-### Step 4 — Assemble the context pack
-
-From the parsed file, compute:
-
-- **Time since last stand-up** — `meta.lastStandupAt` → human phrase (e.g. "yesterday", "3 days ago", "first stand-up"). No shame on long gaps; just state the fact.
-- **Open action count** — total actions where `done` is `false`, across all areas/goals.
-- **Starred actions** — every action where `starred` is `true`, with full `area ▸ goal ▸ action title` lineage. Note if the count is already at or above 3.
-- **Untended areas** — areas with zero open (non-`done`) actions, OR areas whose most-recently-created action predates the last stand-up by a long stretch. Surface by name; don't editorialise.
-- **Inbox count** — `inbox.Count`, with the raw text of each item if non-empty (triage happens later in this same pass).
+### Step 2 — Display the surfaced context
 
 Display the pack to the user verbatim — a calm, scannable block. No advice yet. Example shape:
 
@@ -73,15 +63,15 @@ Display the pack to the user verbatim — a calm, scannable block. No advice yet
   • Book dentist
 ```
 
-### Step 5 — Brain-dump prompt
+### Step 3 — Brain-dump prompt
 
 Ask exactly one open prompt. Phrasing along the lines of:
 
 > What's on your mind? Anything from the last few days — wins, worries, things you've been putting off, things you want to start. Dump it all; I'll walk through it with you.
 
-Read the user's response. Do not start asking follow-up questions in this step — just collect the dump. The walk happens in Step 6.
+Read the user's response. Do not start asking follow-up questions in this step — just collect the dump. The walk happens in Step 4.
 
-### Step 6 — Walk the raised threads
+### Step 4 — Walk the raised threads
 
 Identify the distinct threads in the brain-dump (each project, money item, life thing, person, worry — anything mentionable). Then walk them one at a time, in order. For each thread, ask the questions that are actually open — not a fixed checklist. Common shapes:
 
@@ -91,19 +81,19 @@ Identify the distinct threads in the brain-dump (each project, money item, life 
 - **Which area and goal does it fit under?** Prefer an existing goal. Create a new goal under an existing area if needed. Only add a new area if the user explicitly asks.
 - **What's the horizon?** For any action you're adding or surfacing, ask whether it's `today`, `thisWeek`, `thisMonth`, or `someday`. Default to the bucket the user's own words imply ("I want to nail this today" → `today`, "in the next few weeks" → `thisWeek`, vague "at some point" → `someday`) and confirm rather than re-asking. Horizon is orthogonal to starring — a starred someday action is a contradiction; flag it.
 - **Standing autopilot things stay off the board.** If the user describes something as "on autopilot" / "happens by itself" / "I'm not actively doing anything about it", don't add a goal for it. The board is for active threads.
-- **Existing goals/actions affected.** If the dump implies an existing action is done, a goal is renamed, or a starred item should be unstarred, raise it during the walk — don't quietly mutate things in Step 7.
+- **Existing goals/actions affected.** If the dump implies an existing action is done, a goal is renamed, or a starred item should be unstarred, raise it during the walk — don't quietly mutate things in Step 5.
 
 Walk one thread per assistant message — do not bundle multiple threads into one question. Keep tone calm and conversational; this isn't an interrogation, it's a sort.
 
-End the walk with: "Anything I missed?" Read the user's response. If they raise new threads, walk those too. If not, proceed to Step 7.
+End the walk with: "Anything I missed?" Read the user's response. If they raise new threads, walk those too. If not, proceed to Step 5.
 
-### Step 7 — Compose the new file in memory
+### Step 5 — Compose the new file in memory
 
-From the walk in Step 6 plus the existing state, build a single new whole-file JSON object. By this point the decisions are mostly made — this step is mechanical assembly, not fresh judgement. Specifically:
+From the walk in Step 4 plus the `plan` returned by the CLI in Step 1, build a single new whole-file JSON object. By this point the decisions are mostly made — this step is mechanical assembly, not fresh judgement. Specifically:
 
 - **Reflection** — 2–6 sentences synthesising what came out of the walk. Honest, non-judgemental. Reference specific items the user mentioned. Do not invent feelings the user did not express. Reflect what was resolved during the walk (e.g. "X is parked because of Y", "Z stays off the board"), not just what was raised.
 - **Focus today** — pick 1–3 actions to focus on today, drawn from what the walk surfaced as actionable now (not blocked). The selected action ids go into the new stand-up's `focusToday[]`.
-- **Starred state** — adjust `starred` on existing actions to reflect what matters this week. Hard ceiling: total starred across the whole file MUST be ≤ 3 after this write. If the walk surfaced a new priority that would exceed 3, unstar the least-relevant existing one (and call that out in the proposed-mutations list in Step 8). Never star blocked actions.
+- **Starred state** — adjust `starred` on existing actions to reflect what matters this week. Hard ceiling: total starred across the whole file MUST be ≤ 3 after this write. If the walk surfaced a new priority that would exceed 3, unstar the least-relevant existing one (and call that out in the proposed-mutations list in Step 6). Never star blocked actions.
 - **Inbox triage** — every item in `inbox[]` should have been resolved during the walk (promoted or dropped). After this step, `inbox[]` is empty.
 - **Adds/edits/removes of areas, goals, actions** — the stand-up is the only path that mutates the tree. Apply whatever the walk produced: new actions, completed actions (`done: true`, `completedAt` set to now), renamed goals, new goals under existing areas, etc. Adding entire new *areas* is rare but allowed — only if the user explicitly asked. Do not add areas speculatively.
 - **Ids** — for any new entity, mint an id of the form `<prefix>-<short-slug-or-random>`: `act-…` for actions, `goal-…` for goals, `area-…` for areas, `ibx-…` for inbox items (none created here, but the prefix is reserved), `su-…` for the new stand-up entry. Stable existing ids are never renamed.
@@ -115,7 +105,7 @@ From the walk in Step 6 plus the existing state, build a single new whole-file J
 
 Preserve property order to match the seed shape (`schema`, `meta`, `areas`, `inbox`, `standups`) and indent with two spaces. This keeps hand-edit diffs readable (spec §4).
 
-### Step 8 — Show the proposed change and confirm
+### Step 6 — Show the proposed change and confirm
 
 Before any write, show the user:
 
@@ -128,11 +118,11 @@ Then ask:
 > Write this stand-up? (`y` to commit / `n` to abandon — nothing has been written yet)
 
 - On `n` → STOP. The file on disk is unchanged. Do not write `.prev`, do not write `.tmp`.
-- On `y` → proceed to Step 9.
+- On `y` → proceed to Step 7.
 
-### Step 9 — Atomic write
+### Step 7 — Atomic write
 
-In this exact order (each step gated on the previous succeeding):
+Use the `filePath` from the Step 1 context pack as `$path`. In this exact order (each step gated on the previous succeeding):
 
 1. **Snapshot the pre-state** to `.prev` (single-step undo, spec §4):
 
@@ -143,7 +133,7 @@ In this exact order (each step gated on the previous succeeding):
 2. **Write the new whole-file JSON** to a `.tmp` sibling using the `Write` tool:
 
    - Target path: `"$path.tmp"`.
-   - Content: the JSON object composed in Step 7, two-space indented, UTF-8 without BOM (the `Write` tool's default).
+   - Content: the JSON object composed in Step 5, two-space indented, UTF-8 without BOM (the `Write` tool's default).
 
 3. **Rename** `.tmp` over the live file:
 
@@ -155,7 +145,7 @@ In this exact order (each step gated on the previous succeeding):
 
 If any step fails, surface the error and STOP. Do not attempt to roll back from `.prev` automatically — the user does that by hand if they need to (it's why `.prev` exists).
 
-### Step 10 — Confirm
+### Step 8 — Confirm
 
 Print a single short line:
 
@@ -175,10 +165,10 @@ Do not editorialise further. The ritual is done.
 - Do NOT add or rename **areas** speculatively — only when the user explicitly asks. Adding goals and actions inside existing areas is fine and expected.
 - Do NOT change `schema`, area `id`s, area `color`s, or `meta.createdAt`. These are stable across stand-ups.
 - Do NOT score, streak, or guilt. No "you skipped 4 days" framing. State `lastStandupAt` as a fact and move on (tenet 1).
-- Do NOT skip the per-item walk (Step 6). Diffing straight from brain-dump to drafted mutations turns the ritual into data entry and was explicitly rejected during dogfooding. The walk *is* the ritual.
+- Do NOT skip the per-item walk (Step 4). Diffing straight from brain-dump to drafted mutations turns the ritual into data entry and was explicitly rejected during dogfooding. The walk *is* the ritual.
 - Do NOT bundle multiple raised threads into a single assistant message during the walk. One thread per message keeps the conversation a sort, not an interrogation.
 - Do NOT assume everything raised in the brain-dump belongs on the board. "Drop / don't record" must be an explicit option offered during the walk for things that are context, autopilot, or one-off plans.
 - Do NOT star blocked actions. Reflect the blocker in the action title instead (e.g. "(blocked on X)").
-- Do NOT call `bishop` CLI. This skill has no Bishop workspace dependency.
+- Do NOT re-read `bishop.life.json` directly. The CLI emits both the surfaced context and the full `plan` — use that for Step 5 composition.
 
 </guardrails>

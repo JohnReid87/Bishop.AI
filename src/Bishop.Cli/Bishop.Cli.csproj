@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bishop.App\Bishop.App.csproj" />
+    <ProjectReference Include="..\Bishop.Life.Core\Bishop.Life.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

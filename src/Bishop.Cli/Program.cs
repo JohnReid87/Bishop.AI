@@ -141,7 +141,9 @@ contextCmd.AddCommand(new PrintContextCliCommand(mediator));
 root.AddCommand(contextCmd);
 
 var contextProviders = host.Services.GetServices<IContextProvider>();
-root.AddCommand(new PrintContextPackCliCommand(mediator, contextProviders));
+var contextPackCmd = new PrintContextPackCliCommand(mediator, contextProviders);
+contextPackCmd.AddCommand(new LifeStandupContextPackCliCommand(new Bishop.Life.Core.LifePlanFileService(), timeProvider));
+root.AddCommand(contextPackCmd);
 
 // ── hook ──────────────────────────────────────────────────────────────────────
 
