@@ -49,6 +49,10 @@
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* The HTML `hidden` attribute uses `display:none`, which `.cta { display:inline-flex }`
+     and `.standup-banner { display:flex }` silently override (class beats attribute).
+     Force `hidden` to win so the JS toggles in applyEnvelope actually take effect. */
+  [hidden] { display: none !important; }
   body {
     background: var(--bg); color: var(--ink);
     font-family: var(--mono); font-size: 14px; line-height: 1.5;
