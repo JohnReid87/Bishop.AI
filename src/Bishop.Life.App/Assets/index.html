@@ -347,6 +347,9 @@ function applyEnvelope(env) {
   plan = env.plan || null;
   setFilePath(filePath);
   setSaved(status === "ok" ? "loaded · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : status);
+  // Stand-up runs even when no file exists yet (it can seed one), so enable
+  // the button on any envelope from the host rather than gating on plan data.
+  document.getElementById("standupBtn").disabled = false;
   render();
 }
 
@@ -356,6 +359,12 @@ if (window.chrome && window.chrome.webview) {
     applyEnvelope(env);
   });
 }
+
+document.getElementById("standupBtn").addEventListener("click", () => {
+  if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.postMessage("standup");
+  }
+});
 
 render();
 </script>
