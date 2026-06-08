@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,9 +15,12 @@ namespace Bishop.Life.App;
 /// Wires a <see cref="WebView2"/> to a bishop.life JSON file: loads the asset HTML
 /// over a virtual host mapping, reads the plan via <see cref="LifePlanFileService"/>,
 /// posts it to JS on load, and re-posts on every debounced file change via
-/// <see cref="LifePlanWatcher"/>. Handles a single JS→host message — <c>"standup"</c>
-/// — by launching Windows Terminal with <c>claude /bish-life-standup</c> in the
-/// data-file folder; the file-watcher picks up any resulting edits.
+/// <see cref="LifePlanWatcher"/>. Handles two JS→host message shapes:
+/// <list type="bullet">
+///   <item><c>"standup"</c> — launches Windows Terminal with <c>claude /bish-life-standup</c>.</item>
+///   <item><c>{"type":"mutate","plan":{…}}</c> — applies an inline edit (star,
+///         check, title) via <see cref="LifeMutationCoordinator"/>.</item>
+/// </list>
 /// </summary>
 internal sealed class LifePlanHost : IDisposable
 {
@@ -24,17 +28,24 @@ internal sealed class LifePlanHost : IDisposable
     private const string LandingUrl = "https://bishop.life/index.html";
     private const string StandupCommand = "/bish-life-standup";
 
+    // Watcher debounce is 250ms; allow some headroom for the rename + queued
+    // event to land before we treat a reload as external again.
+    private static readonly TimeSpan SelfWriteWindow = TimeSpan.FromMilliseconds(750);
+
     private readonly WebView2 _view;
     private readonly DispatcherQueue _dispatcher;
     private readonly LifePlanFileService _service;
     private readonly LifePlanWatcher _watcher;
     private readonly LifeTerminalLauncher _launcher;
+    private readonly LifeMutationCoordinator _coordinator;
+    private DateTime _selfWriteUntilUtc = DateTime.MinValue;
     private bool _navigated;
     private bool _disposed;
 
     private static readonly JsonSerializerOptions PostOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
         WriteIndented = false,
     };
 
@@ -46,6 +57,8 @@ internal sealed class LifePlanHost : IDisposable
         _watcher = new LifePlanWatcher(_service.FilePath);
         _watcher.Reloaded += OnFileReloaded;
         _launcher = new LifeTerminalLauncher();
+        _coordinator = new LifeMutationCoordinator(_service);
+        _coordinator.StateChanged += OnCoordinatorStateChanged;
     }
 
     public async Task StartAsync()
@@ -65,15 +78,75 @@ internal sealed class LifePlanHost : IDisposable
 
     private void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
     {
-        // WebView2 raises this on the UI thread; safe to call Process.Start directly.
-        // index.html only ever posts string messages, so TryGetWebMessageAsString is safe.
-        if (args.TryGetWebMessageAsString() != "standup") return;
+        // WebView2 raises this on the UI thread. Messages arrive in two shapes —
+        // a bare "standup" string (legacy path) or a JSON object {type,plan}.
+        var json = args.WebMessageAsJson; // always JSON-encoded, even for strings
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
 
+            if (root.ValueKind == JsonValueKind.String)
+            {
+                if (root.GetString() == "standup") LaunchStandup();
+                return;
+            }
+
+            if (root.ValueKind != JsonValueKind.Object) return;
+            if (!root.TryGetProperty("type", out var typeEl)) return;
+            var type = typeEl.GetString();
+
+            if (type == "standup")
+            {
+                LaunchStandup();
+            }
+            else if (type == "mutate" && root.TryGetProperty("plan", out var planEl))
+            {
+                ApplyMutation(planEl);
+            }
+        }
+        catch (JsonException ex)
+        {
+            // JS only ever sends well-formed envelopes; if this fires the bridge
+            // contract has drifted. Log so it shows up in Debug Output, then drop.
+            Debug.WriteLine($"LifePlanHost: malformed web message dropped: {ex.Message}");
+        }
+    }
+
+    private void LaunchStandup()
+    {
         var folder = Path.GetDirectoryName(_service.FilePath);
         if (string.IsNullOrEmpty(folder)) return;
         Directory.CreateDirectory(folder); // ensure wt -d target exists on first run
 
         _launcher.LaunchClaude(folder, StandupCommand);
+        _coordinator.NoteStandupLaunched(); // fires StateChanged → PostState
+    }
+
+    private void ApplyMutation(JsonElement planEl)
+    {
+        LifePlan? plan;
+        try
+        {
+            plan = JsonSerializer.Deserialize<LifePlan>(planEl.GetRawText(), PostOptions);
+        }
+        catch (JsonException ex)
+        {
+            Debug.WriteLine($"LifePlanHost: malformed mutate payload dropped: {ex.Message}");
+            return;
+        }
+        if (plan is null) return;
+
+        // Reserve the self-write window *before* calling Save so the watcher
+        // event that our own rename triggers is recognised as ours and ignored.
+        _selfWriteUntilUtc = DateTime.UtcNow + SelfWriteWindow;
+        var result = _coordinator.ApplyMutation(plan);
+
+        if (result == MutationResult.RejectedStandupInFlight)
+        {
+            // JS may have raced past the in-flight banner — re-post authoritative state.
+            PostState();
+        }
     }
 
     private void OnNavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
@@ -85,6 +158,22 @@ internal sealed class LifePlanHost : IDisposable
     private void OnFileReloaded(object? sender, EventArgs e)
     {
         // Watcher fires on a thread-pool thread; PostWebMessage must run on the UI thread.
+        _dispatcher.TryEnqueue(() =>
+        {
+            if (DateTime.UtcNow < _selfWriteUntilUtc)
+            {
+                // Our own save just rolled through the watcher. Re-posting would
+                // clobber an in-progress contenteditable edit in the WebView.
+                _selfWriteUntilUtc = DateTime.MinValue;
+                return;
+            }
+            _coordinator.NoteExternalReload();
+            PostState();
+        });
+    }
+
+    private void OnCoordinatorStateChanged(object? sender, EventArgs e)
+    {
         _dispatcher.TryEnqueue(PostState);
     }
 
@@ -99,17 +188,19 @@ internal sealed class LifePlanHost : IDisposable
 
     private Envelope BuildEnvelope()
     {
+        var inFlight = _coordinator.StandupInFlight;
+
         if (!_service.Exists())
-            return new Envelope(Status: "missing", FilePath: _service.FilePath, Plan: null);
+            return new Envelope(Status: "missing", FilePath: _service.FilePath, Plan: null, StandupInFlight: inFlight);
 
         try
         {
             var plan = _service.Load();
-            return new Envelope(Status: "ok", FilePath: _service.FilePath, Plan: plan);
+            return new Envelope(Status: "ok", FilePath: _service.FilePath, Plan: plan, StandupInFlight: inFlight);
         }
         catch (Exception ex)
         {
-            return new Envelope(Status: "error", FilePath: _service.FilePath, Plan: null, Error: ex.Message);
+            return new Envelope(Status: "error", FilePath: _service.FilePath, Plan: null, StandupInFlight: inFlight, Error: ex.Message);
         }
     }
 
@@ -119,9 +210,15 @@ internal sealed class LifePlanHost : IDisposable
         _disposed = true;
         _watcher.Reloaded -= OnFileReloaded;
         _watcher.Dispose();
+        _coordinator.StateChanged -= OnCoordinatorStateChanged;
         if (_view.CoreWebView2 is { } core)
             core.WebMessageReceived -= OnWebMessageReceived;
     }
 
-    private sealed record Envelope(string Status, string FilePath, LifePlan? Plan, string? Error = null);
+    private sealed record Envelope(
+        string Status,
+        string FilePath,
+        LifePlan? Plan,
+        bool StandupInFlight,
+        string? Error = null);
 }

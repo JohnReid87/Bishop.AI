@@ -116,6 +116,17 @@
   .bal-count { font-size:11px; color:var(--ink-dim); width:96px; text-align:right; flex:none; }
   .untended { color: var(--t-year); }
 
+  /* stand-up in-flight banner */
+  .standup-banner { background:rgba(196,168,95,.10); border:1px solid rgba(196,168,95,.45); color:var(--t-year); border-radius:9px; padding:9px 13px; margin:0 0 14px; font-size:12.5px; display:flex; align-items:center; gap:9px; }
+  .standup-banner::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--t-year); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+  .standup-disabled .check, .standup-disabled .star { cursor: not-allowed; opacity: .55; }
+  .standup-disabled .act-text[contenteditable="true"] { background: transparent; }
+  .act-text[contenteditable="true"] { outline: none; border-radius: 3px; padding: 1px 3px; margin: -1px -3px; cursor: text; }
+  .act-text[contenteditable="true"]:hover { background: rgba(255,255,255,.04); }
+  .act-text[contenteditable="true"]:focus { background: var(--bg-2); box-shadow: 0 0 0 1px var(--line-2); }
+  .check, .star { cursor: pointer; }
+
   /* today banner */
   .today { background:var(--accent-soft); border:1px solid var(--accent-dim); border-radius:10px; padding:13px 15px; margin-bottom:18px; }
   .today h4 { font-size:11px; letter-spacing:.6px; text-transform:uppercase; color:var(--accent); margin-bottom:7px; }
@@ -146,6 +157,7 @@
     <button class="tab" data-view="balance">Balance</button>
   </div>
 
+  <div id="standupBanner" class="standup-banner" hidden>Stand-up in progress &mdash; inline edits paused.</div>
   <div id="container"></div>
 
   <div class="foot">
@@ -155,8 +167,11 @@
 </div>
 
 <script>
-/* viewer-only — receives state from the .NET host via window.chrome.webview.
-   no localStorage, no fetch, no edit handlers. card #1008 wires interactions. */
+/* Receives state from the .NET host via window.chrome.webview. Inline
+   mutations (star, check, title) build the new whole-file plan in-place,
+   then postMessage it back as {type:"mutate", plan:…}; the host atomically
+   saves and re-posts on file change. While a stand-up is in flight, the
+   host sets standupInFlight=true and mutations are disabled. */
 
 const HORIZONS = { month:"This month", year:"This year", beyond:"Beyond" };
 
@@ -164,6 +179,9 @@ let plan = null;       // nested LifePlan from Bishop.Life.Core
 let status = "waiting";
 let filePath = "";
 let currentView = "focus";
+let standupInFlight = false;
+let titleDebounce = null;
+let titleDebounceTarget = null; // {id, el} of the contenteditable awaiting flush
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -191,6 +209,40 @@ function allActions() {
 
 function setSaved(text) { document.getElementById("saved").textContent = text; }
 function setFilePath(p) { document.getElementById("filePath").textContent = p || ""; }
+
+function findAction(id) {
+  if (!plan || !id) return null;
+  for (const a of plan.areas || [])
+    for (const g of a.goals || [])
+      for (const act of g.actions || [])
+        if (act.id === id) return act;
+  return null;
+}
+
+function postMutation() {
+  if (!window.chrome || !window.chrome.webview) return;
+  window.chrome.webview.postMessage(JSON.stringify({ type: "mutate", plan }));
+  setSaved("saving…");
+}
+
+function flushPendingTitleEdit() {
+  if (!titleDebounceTarget) return;
+  clearTimeout(titleDebounce);
+  const { id, el } = titleDebounceTarget;
+  titleDebounce = null;
+  titleDebounceTarget = null;
+  commitTitle(id, el.textContent);
+}
+
+function commitTitle(id, value) {
+  const a = findAction(id); if (!a) return;
+  const trimmed = (value || "").replace(/\s+/g, " ").trim();
+  if (!trimmed || trimmed === a.title) return;
+  a.title = trimmed;
+  postMutation();
+}
+
+function attr(id) { return `data-action-id="${esc(id)}"`; }
 
 function render() {
   const focusCount = allActions().filter(x => x.action.starred && !x.action.done).length;
@@ -232,10 +284,10 @@ function focusView() {
     h += `<div class="empty">Nothing starred. Run a stand-up to set today's focus.</div>`;
   } else {
     h += starred.map(({ action, goal, area }) => `
-      <div class="card" style="display:flex;align-items:center;gap:11px">
+      <div class="card" style="display:flex;align-items:center;gap:11px" ${attr(action.id)}>
         <div class="check ${action.done ? "on" : ""}"></div>
         <div style="flex:1">
-          <div class="act-text" style="font-size:13.5px">${esc(action.title)}</div>
+          <div class="act-text" style="font-size:13.5px" contenteditable="true" spellcheck="false">${esc(action.title)}</div>
           <div class="lineage" style="margin-top:3px"><span class="dot" style="background:${esc(area.color)}"></span> <b>${esc(area.name)}</b> &#9656; ${esc(goal.name)}</div>
         </div>
         <span class="star on">&#9733;</span>
@@ -284,9 +336,9 @@ function mapView() {
         <span class="pill ${b}">${HORIZONS[b]}</span>
         <span class="progress">${done}/${acts.length}</span>
       </div>`;
-      g += acts.map(a => `<div class="act ${a.done ? "done" : ""}">
+      g += acts.map(a => `<div class="act ${a.done ? "done" : ""}" ${attr(a.id)}>
         <div class="check ${a.done ? "on" : ""}"></div>
-        <span class="act-text">${esc(a.title)}</span>
+        <span class="act-text" contenteditable="true" spellcheck="false">${esc(a.title)}</span>
         <span class="star ${a.starred ? "on" : ""}">${a.starred ? "&#9733;" : "&#9734;"}</span>
       </div>`).join("");
       return g + "</div>";
@@ -345,13 +397,72 @@ function applyEnvelope(env) {
   status = env.status || "ok";
   filePath = env.filePath || "";
   plan = env.plan || null;
+  standupInFlight = !!env.standupInFlight;
   setFilePath(filePath);
   setSaved(status === "ok" ? "loaded · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : status);
   // Stand-up runs even when no file exists yet (it can seed one), so enable
   // the button on any envelope from the host rather than gating on plan data.
-  document.getElementById("standupBtn").disabled = false;
+  document.getElementById("standupBtn").disabled = standupInFlight;
+  document.getElementById("standupBanner").hidden = !standupInFlight;
+  document.body.classList.toggle("standup-disabled", standupInFlight);
+  // Drop any pending edit — its target node is about to be replaced by render().
+  titleDebounce = null;
+  titleDebounceTarget = null;
   render();
 }
+
+const container = document.getElementById("container");
+
+container.addEventListener("click", e => {
+  const host = e.target.closest("[data-action-id]");
+  if (!host) return;
+  if (standupInFlight) return;
+  const id = host.dataset.actionId;
+  const action = findAction(id); if (!action) return;
+
+  if (e.target.closest(".check")) {
+    flushPendingTitleEdit();
+    action.done = !action.done;
+    action.completedAt = action.done ? new Date().toISOString() : null;
+    postMutation();
+    render();
+  } else if (e.target.closest(".star")) {
+    flushPendingTitleEdit();
+    action.starred = !action.starred;
+    postMutation();
+    render();
+  }
+});
+
+container.addEventListener("input", e => {
+  const text = e.target.closest(".act-text[contenteditable='true']");
+  if (!text) return;
+  const host = text.closest("[data-action-id]");
+  if (!host) return;
+  if (standupInFlight) { text.textContent = findAction(host.dataset.actionId)?.title || ""; return; }
+  clearTimeout(titleDebounce);
+  titleDebounceTarget = { id: host.dataset.actionId, el: text };
+  titleDebounce = setTimeout(flushPendingTitleEdit, 500);
+});
+
+container.addEventListener("blur", e => {
+  const text = e.target.closest && e.target.closest(".act-text[contenteditable='true']");
+  if (!text) return;
+  flushPendingTitleEdit();
+}, true);
+
+container.addEventListener("keydown", e => {
+  const text = e.target.closest && e.target.closest(".act-text[contenteditable='true']");
+  if (!text) return;
+  if (e.key === "Enter") { e.preventDefault(); text.blur(); }
+  else if (e.key === "Escape") {
+    const host = text.closest("[data-action-id]");
+    const action = host && findAction(host.dataset.actionId);
+    if (action) { text.textContent = action.title; }
+    clearTimeout(titleDebounce); titleDebounce = null; titleDebounceTarget = null;
+    text.blur();
+  }
+});
 
 if (window.chrome && window.chrome.webview) {
   window.chrome.webview.addEventListener("message", evt => {
@@ -361,6 +472,8 @@ if (window.chrome && window.chrome.webview) {
 }
 
 document.getElementById("standupBtn").addEventListener("click", () => {
+  if (standupInFlight) return;
+  flushPendingTitleEdit();
   if (window.chrome && window.chrome.webview) {
     window.chrome.webview.postMessage("standup");
   }
