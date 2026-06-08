@@ -13,6 +13,7 @@ internal static class WindowsSpeechSynthesizer
             return;
 
         using var synth = new SpeechSynthesizer();
+        synth.Voice = SpeechSynthesizer.AllVoices.First(v => v.Id.EndsWith("HazelM"));
         using var stream = await synth.SynthesizeTextToStreamAsync(text).AsTask(cancellationToken);
 
         var size = (int)stream.Size;
