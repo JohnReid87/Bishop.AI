@@ -15,8 +15,10 @@ namespace Bishop.Life.App;
 /// <summary>
 /// Wires a <see cref="WebView2"/> to a bishop.life JSON file: loads the asset HTML
 /// over a virtual host mapping, reads the plan via <see cref="LifePlanFileService"/>,
-/// posts it to JS on load, and re-posts on every debounced file change via
-/// <see cref="LifePlanWatcher"/>. Handles two JS→host message shapes:
+/// and posts envelope state to JS. State is refreshed from disk in exactly two
+/// places: on window activation (<see cref="NoteWindowActivated"/>) and
+/// immediately after an inline mutation via <see cref="LifeMutationCoordinator"/>.
+/// Handles two JS→host message shapes:
 /// <list type="bullet">
 ///   <item><c>"standup"</c> — launches Windows Terminal with <c>claude /bish-life-standup</c>.</item>
 ///   <item><c>{"type":"mutate","plan":{…}}</c> — applies an inline edit (star,
@@ -33,17 +35,11 @@ internal sealed class LifePlanHost : IDisposable
     private static readonly Color DarkBackground = Color.FromArgb(255, 0x14, 0x14, 0x14);
     private static readonly Color LightBackground = Color.FromArgb(255, 0xF3, 0xF3, 0xF3);
 
-    // Watcher debounce is 250ms; allow some headroom for the rename + queued
-    // event to land before we treat a reload as external again.
-    private static readonly TimeSpan SelfWriteWindow = TimeSpan.FromMilliseconds(750);
-
     private readonly WebView2 _view;
     private readonly DispatcherQueue _dispatcher;
     private readonly LifePlanFileService _service;
-    private readonly LifePlanWatcher _watcher;
     private readonly LifeTerminalLauncher _launcher;
     private readonly LifeMutationCoordinator _coordinator;
-    private DateTime _selfWriteUntilUtc = DateTime.MinValue;
     private bool _navigated;
     private bool _disposed;
     // Set by MainWindow before EnsureCoreWebView2Async completes so the very
@@ -63,8 +59,6 @@ internal sealed class LifePlanHost : IDisposable
         _view = view;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         _service = new LifePlanFileService();
-        _watcher = new LifePlanWatcher(_service.FilePath);
-        _watcher.Reloaded += OnFileReloaded;
         _launcher = new LifeTerminalLauncher();
         _coordinator = new LifeMutationCoordinator(_service);
         _coordinator.StateChanged += OnCoordinatorStateChanged;
@@ -86,15 +80,13 @@ internal sealed class LifePlanHost : IDisposable
         _view.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
         _view.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
         _view.CoreWebView2.Navigate(LandingUrl);
-
-        _watcher.Start();
     }
 
     /// <summary>
     /// Called by the host window on activation. Pushes a fresh envelope so the
     /// WebView2 reflects current disk state — covers init completion (file went
     /// missing→ok), stand-up completion (file rewritten), and stand-up abort
-    /// (terminal closed without a write) when the watcher event was missed.
+    /// (terminal closed without a write). Also clears any stuck in-flight flag.
     /// </summary>
     public void NoteWindowActivated()
     {
@@ -172,8 +164,8 @@ internal sealed class LifePlanHost : IDisposable
         Directory.CreateDirectory(folder);
 
         _launcher.LaunchClaude(folder, InitCommand);
-        // Init seeds the file from scratch; the watcher's external-reload event
-        // will refresh the envelope when /bish-life-init finishes writing.
+        // Init seeds the file from scratch; window activation on return refreshes
+        // the envelope.
     }
 
     private void ApplyMutation(JsonElement planEl)
@@ -190,39 +182,14 @@ internal sealed class LifePlanHost : IDisposable
         }
         if (plan is null) return;
 
-        // Reserve the self-write window *before* calling Save so the watcher
-        // event that our own rename triggers is recognised as ours and ignored.
-        _selfWriteUntilUtc = DateTime.UtcNow + SelfWriteWindow;
-        var result = _coordinator.ApplyMutation(plan);
-
-        if (result == MutationResult.RejectedStandupInFlight)
-        {
-            // JS may have raced past the in-flight banner — re-post authoritative state.
-            PostState();
-        }
+        _coordinator.ApplyMutation(plan);
+        PostState();
     }
 
     private void OnNavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
         _navigated = true;
         PostState();
-    }
-
-    private void OnFileReloaded(object? sender, EventArgs e)
-    {
-        // Watcher fires on a thread-pool thread; PostWebMessage must run on the UI thread.
-        _dispatcher.TryEnqueue(() =>
-        {
-            if (DateTime.UtcNow < _selfWriteUntilUtc)
-            {
-                // Our own save just rolled through the watcher. Re-posting would
-                // clobber an in-progress contenteditable edit in the WebView.
-                _selfWriteUntilUtc = DateTime.MinValue;
-                return;
-            }
-            _coordinator.NoteExternalReload();
-            PostState();
-        });
     }
 
     private void OnCoordinatorStateChanged(object? sender, EventArgs e)
@@ -261,8 +228,6 @@ internal sealed class LifePlanHost : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _watcher.Reloaded -= OnFileReloaded;
-        _watcher.Dispose();
         _coordinator.StateChanged -= OnCoordinatorStateChanged;
         if (_view.CoreWebView2 is { } core)
             core.WebMessageReceived -= OnWebMessageReceived;

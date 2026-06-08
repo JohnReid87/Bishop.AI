@@ -2,22 +2,16 @@ using Bishop.Life.Core.Schema;
 
 namespace Bishop.Life.Core;
 
-public enum MutationResult
-{
-    Saved,
-    RejectedStandupInFlight,
-}
-
 /// <summary>
-/// Gates inline mutations (star, check, title-edit) on whether a stand-up is
-/// currently rewriting the plan file. Wraps <see cref="LifePlanFileService"/>
-/// so the App layer has a single seam to call.
+/// Tracks whether a stand-up subprocess is currently rewriting the plan file
+/// and wraps <see cref="LifePlanFileService"/> so the App layer has a single
+/// seam for inline mutations (star, check, title-edit).
 /// </summary>
 /// <remarks>
-/// The in-flight signal is best-effort: it flips on when the host launches a
-/// stand-up and flips off on the next externally-observed file change. The
-/// host is responsible for distinguishing its own writes from external ones
-/// before calling <see cref="NoteExternalReload"/>.
+/// The in-flight flag flips on when the host launches a stand-up and flips
+/// off when the host reports the user has returned to the window. Mutations
+/// are not gated on the flag — last-write-wins is acceptable for this
+/// single-user local app.
 /// </remarks>
 public sealed class LifeMutationCoordinator
 {
@@ -40,17 +34,9 @@ public sealed class LifeMutationCoordinator
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void NoteExternalReload()
-    {
-        if (!_standupInFlight) return;
-        _standupInFlight = false;
-        StateChanged?.Invoke(this, EventArgs.Empty);
-    }
-
     /// <summary>
-    /// Clears the in-flight flag without requiring an observed file change.
-    /// Used by the host when the user reactivates the window after a stand-up
-    /// that completed, was aborted, or whose watcher event never landed.
+    /// Clears the in-flight flag. Called by the host when the user reactivates
+    /// the window after a stand-up that completed or was aborted.
     /// </summary>
     public void NoteStandupAborted()
     {
@@ -59,10 +45,5 @@ public sealed class LifeMutationCoordinator
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public MutationResult ApplyMutation(LifePlan plan)
-    {
-        if (_standupInFlight) return MutationResult.RejectedStandupInFlight;
-        _service.Save(plan);
-        return MutationResult.Saved;
-    }
+    public void ApplyMutation(LifePlan plan) => _service.Save(plan);
 }

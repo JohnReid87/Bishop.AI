@@ -73,9 +73,9 @@ The file is **not** git-tracked by the product. Users may version it manually if
 
 The WinUI shell and the Claude Code skill both write the same file. The model is:
 
-- **One writer at a time.** The shell disables mutations and shows a transient banner while a stand-up is mid-write (in-flight flag / file-lock).
+- **Last-write-wins.** Both surfaces freely write the file; the shell shows an "in progress" pip while a stand-up is launched but does not block inline mutations.
 - **Atomic writes only.** Both surfaces go through `Bishop.Life.Core.LifePlanFileService`, which writes to `.tmp` and renames.
-- **Filesystem-watched refresh.** `LifePlanWatcher` debounces `FileSystemWatcher` events and raises `Reloaded`; the shell reposts state to its WebView2 view on each tick. No restart required after a stand-up.
+- **Refresh on activation and after mutation.** The shell reloads from disk in exactly two places: when the window is activated (covers stand-up / init completion) and immediately after an inline mutation. No filesystem watcher.
 
 ## 6. Schema (canonical)
 
