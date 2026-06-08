@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- When building inside VS without C++ tools installed, the XAML compiler's GetVCInstallPath
+       target blindly enumerates $(VsInstallRoot)\VC\Tools\MSVC and throws. Pre-setting
+       VCToolsInstallDir skips that enumeration; UseVCMetaManaged=false tells the XAML compiler
+       to use .NET reflection instead of vcmeta.dll (safe for pure-managed projects). -->
+  <PropertyGroup Condition="'$(VsInstallRoot)' != '' and !Exists('$(VsInstallRoot)\VC\Tools\MSVC')">
+    <VCToolsInstallDir>$(VsInstallRoot)\VC\</VCToolsInstallDir>
+    <UseVCMetaManaged>false</UseVCMetaManaged>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Bishop.Life.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSdkBootstrapInitialize>true</WindowsAppSdkBootstrapInitialize>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- See Bishop.UI.csproj for the rationale: WebView2's NuGet resolves
+         to x86 native_uap binaries when PlatformTarget is unset, which the
+         x64 process refuses to load. -->
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.*" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.*" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bishop.Life.Core\Bishop.Life.Core.csproj" />
+  </ItemGroup>
+
+  <!-- See Bishop.UI.csproj — WebView2Loader.dll lives under runtimes\win-<arch>\native\
+       and must be copied to the output root for unpackaged apps to load it. -->
+  <Target Name="CopyWebView2Loader" AfterTargets="Build">
+    <PropertyGroup>
+      <_Wv2RID Condition="'$(PlatformTarget)' == 'x86'">win-x86</_Wv2RID>
+      <_Wv2RID Condition="'$(PlatformTarget)' == 'ARM64'">win-arm64</_Wv2RID>
+      <_Wv2RID Condition="'$(_Wv2RID)' == ''">win-x64</_Wv2RID>
+    </PropertyGroup>
+    <Copy SourceFiles="$(TargetDir)runtimes\$(_Wv2RID)\native\WebView2Loader.dll"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetDir)runtimes\$(_Wv2RID)\native\WebView2Loader.dll')"/>
+  </Target>
+
+</Project>

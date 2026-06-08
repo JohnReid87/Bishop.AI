@@ -13,6 +13,7 @@
   </Folder>
   <Folder Name="/Life/">
     <Project Path="src/Bishop.Life.Core/Bishop.Life.Core.csproj" />
+    <Project Path="src/Bishop.Life.App/Bishop.Life.App.csproj" />
     <Project Path="tests/Bishop.Life.Tests/Bishop.Life.Tests.csproj" />
   </Folder>
 </Solution>
