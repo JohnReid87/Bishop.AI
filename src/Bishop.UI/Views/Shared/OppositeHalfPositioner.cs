@@ -33,8 +33,10 @@ internal static class OppositeHalfPositioner
     public static void Place(Window viewer, RectInt32 targetRect)
     {
         var hWnd = WindowNative.GetWindowHandle(viewer);
-        var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
-        var wa = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary).WorkArea;
+        // Pick the monitor from the *target* rect (Bishop's window), not the
+        // viewer — the viewer hasn't been placed yet and `GetFromWindowId`
+        // would otherwise resolve to whatever default monitor it spawned on.
+        var wa = DisplayArea.GetFromRect(targetRect, DisplayAreaFallback.Nearest).WorkArea;
 
         var targetCenterX = targetRect.X + targetRect.Width / 2;
         var targetIsOnLeft = targetCenterX < wa.X + wa.Width / 2;
