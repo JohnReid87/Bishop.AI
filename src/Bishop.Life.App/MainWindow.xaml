@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:wv2="using:Microsoft.UI.Xaml.Controls"
     Title="bishop.life">
-    <Grid Background="#141414">
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <wv2:WebView2 x:Name="View" />
     </Grid>
 </Window>

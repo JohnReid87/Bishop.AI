@@ -1,3 +1,4 @@
+using Bishop.Shared.Layout;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -115,34 +116,9 @@ public sealed partial class MarkdownViewerWindow : Window
     private void PositionOnOppositeHalf()
     {
         var mainAppWindow = App.MainWindow!.AppWindow;
-        var wa = DisplayArea.GetFromWindowId(mainAppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-
         var mainPos = mainAppWindow.Position;
         var mainSize = mainAppWindow.Size;
-        var mainCenterX = mainPos.X + mainSize.Width / 2;
-        var mainIsOnLeft = mainCenterX < wa.X + wa.Width / 2;
-
-        var hWnd = WindowNative.GetWindowHandle(this);
-        var viewerPos = AppWindow.Position;
-        var viewerSize = AppWindow.Size;
-        var (fL, fT, fR, fB) = SnapHelper.GetFrameExtents(hWnd, viewerPos.X, viewerPos.Y, viewerSize.Width, viewerSize.Height);
-
-        int x, y, w, h;
-        if (mainIsOnLeft)
-        {
-            x = wa.X + wa.Width / 2 - fL;
-            y = wa.Y - fT;
-            w = wa.Width / 2 + fL + fR;
-            h = wa.Height + fT + fB;
-        }
-        else
-        {
-            x = wa.X - fL;
-            y = wa.Y - fT;
-            w = wa.Width / 2 + fL + fR;
-            h = wa.Height + fT + fB;
-        }
-
-        AppWindow.MoveAndResize(new RectInt32(x, y, w, h));
+        var targetRect = new RectInt32(mainPos.X, mainPos.Y, mainSize.Width, mainSize.Height);
+        OppositeHalfPositioner.Place(this, targetRect);
     }
 }

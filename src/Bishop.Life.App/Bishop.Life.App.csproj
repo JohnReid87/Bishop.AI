@@ -25,12 +25,19 @@
          to x86 native_uap binaries when PlatformTarget is unset, which the
          x64 process refuses to load. -->
     <PlatformTarget>x64</PlatformTarget>
+    <ApplicationIcon>Assets\Brand\bishop-ai.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <Content Include="Assets\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Source-link the opposite-half positioner so Bishop.UI's viewer dialogs
+         and the Bishop.Life shell stay in lockstep on window placement. -->
+    <Compile Include="..\Bishop.UI\Views\Shared\OppositeHalfPositioner.cs" Link="Shared\OppositeHalfPositioner.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,6 +8,7 @@ using Bishop.Life.Core.Schema;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
+using Windows.UI;
 
 namespace Bishop.Life.App;
 
@@ -29,6 +30,9 @@ internal sealed class LifePlanHost : IDisposable
     private const string StandupCommand = "/bish-life-standup";
     private const string InitCommand = "/bish-life-init";
 
+    private static readonly Color DarkBackground = Color.FromArgb(255, 0x14, 0x14, 0x14);
+    private static readonly Color LightBackground = Color.FromArgb(255, 0xF3, 0xF3, 0xF3);
+
     // Watcher debounce is 250ms; allow some headroom for the rename + queued
     // event to land before we treat a reload as external again.
     private static readonly TimeSpan SelfWriteWindow = TimeSpan.FromMilliseconds(750);
@@ -42,6 +46,9 @@ internal sealed class LifePlanHost : IDisposable
     private DateTime _selfWriteUntilUtc = DateTime.MinValue;
     private bool _navigated;
     private bool _disposed;
+    // Set by MainWindow before EnsureCoreWebView2Async completes so the very
+    // first paint of the WebView2 uses the right theme.
+    private bool _pendingDarkTheme = true;
 
     private static readonly JsonSerializerOptions PostOptions = new()
     {
@@ -64,6 +71,11 @@ internal sealed class LifePlanHost : IDisposable
 
     public async Task StartAsync()
     {
+        // Suppress the white flash that WebView2 paints before the first HTML
+        // frame lands. Has to land before EnsureCoreWebView2Async or the bare
+        // CoreWebView2 surface paints white for a frame on first show.
+        _view.DefaultBackgroundColor = _pendingDarkTheme ? DarkBackground : LightBackground;
+
         await _view.EnsureCoreWebView2Async();
 
         var assetsDir = Path.Combine(AppContext.BaseDirectory, "Assets");
@@ -75,6 +87,13 @@ internal sealed class LifePlanHost : IDisposable
         _view.CoreWebView2.Navigate(LandingUrl);
 
         _watcher.Start();
+    }
+
+    public void SetTheme(bool isDark)
+    {
+        _pendingDarkTheme = isDark;
+        if (_view.CoreWebView2 is null) return;
+        _view.DefaultBackgroundColor = isDark ? DarkBackground : LightBackground;
     }
 
     private void OnWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)

@@ -28,6 +28,26 @@
     --mono: "Cascadia Code", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --areas: #6b8caf,#c97a8a,#9aa86a,#5fa89c,#7fa87a,#7878bc,#9a7ab8,#c4a85f;
   }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #F3F3F3;
+      --bg-2: #EAEAEA;
+      --panel: #FFFFFF;
+      --panel-2: #F6F6F6;
+      --line: #D8D8D8;
+      --line-2: #C0C0C0;
+      --ink: #1A1A1A;
+      --ink-dim: #555555;
+      --ink-faint: #8A8A8A;
+      --accent: #0B7A2C;
+      --accent-dim: #0B7A2C;
+      --accent-soft: rgba(11,122,44,0.10);
+      --danger: #C22A2A;
+      --t-month: #3F7A70;
+      --t-year:  #8A7430;
+      --t-beyond: #4A6B8A;
+    }
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: var(--bg); color: var(--ink);
