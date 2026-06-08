@@ -269,6 +269,40 @@
 
             <NavigationView.PaneFooter>
                 <StackPanel>
+                    <!-- Life button row -->
+                    <Grid>
+                        <!-- Expanded: labelled Life button -->
+                        <Button x:Name="LifeButtonExpanded"
+                                HorizontalAlignment="Stretch"
+                                Margin="8,4,8,4"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="LifeButton_Click"
+                                ToolTipService.ToolTip="Life"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE00B;" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Life"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Collapsed: icon-only Life button -->
+                        <Button x:Name="LifeButtonCollapsed"
+                                Width="200" Height="32"
+                                HorizontalAlignment="Center"
+                                Margin="0,0,0,4"
+                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Click="LifeButton_Click"
+                                ToolTipService.ToolTip="Life"
+                                Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
+                            <FontIcon Glyph="&#xE00B;" FontSize="13"/>
+                        </Button>
+                        <TeachingTip x:Name="LifeLaunchErrorTip"
+                                     Title="Couldn't launch Life"
+                                     PreferredPlacement="Right"
+                                     IsLightDismissEnabled="True"/>
+                    </Grid>
                     <!-- Game button row -->
                     <Grid>
                         <!-- Expanded: labelled Play Breakout button -->

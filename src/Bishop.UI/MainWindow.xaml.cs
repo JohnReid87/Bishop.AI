@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
@@ -257,6 +258,64 @@ public sealed partial class MainWindow : Window
             if (await confirmDialog.ShowAsync() == ContentDialogResult.Primary)
                 await ViewModel.DeleteWorkspaceAsync(item);
         });
+
+    private const int SW_RESTORE = 9;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(nint hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(nint hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(nint hWnd);
+
+    private void LifeButton_Click(object sender, RoutedEventArgs e)
+    {
+        var exePath = Path.Combine(AppContext.BaseDirectory, "Life", "Bishop.Life.App.exe");
+        try
+        {
+            var existing = Process.GetProcessesByName("Bishop.Life.App").FirstOrDefault();
+            if (existing is not null)
+            {
+                var hWnd = existing.MainWindowHandle;
+                if (hWnd != nint.Zero)
+                {
+                    if (IsIconic(hWnd))
+                        ShowWindow(hWnd, SW_RESTORE);
+                    SetForegroundWindow(hWnd);
+                    return;
+                }
+            }
+
+            if (!File.Exists(exePath))
+            {
+                ShowLifeLaunchError($"Expected at {exePath}");
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = exePath,
+                WorkingDirectory = Path.GetDirectoryName(exePath)!,
+                UseShellExecute = false,
+            });
+        }
+        catch (Exception ex)
+        {
+            ShowLifeLaunchError($"{ex.Message}\nExpected at {exePath}");
+        }
+    }
+
+    private void ShowLifeLaunchError(string subtitle)
+    {
+        LifeLaunchErrorTip.Subtitle = subtitle;
+        LifeLaunchErrorTip.Target = ViewModel.IsPaneOpen ? LifeButtonExpanded : LifeButtonCollapsed;
+        LifeLaunchErrorTip.IsOpen = true;
+    }
 
     private void GameButton_Click(object sender, RoutedEventArgs e)
     {
