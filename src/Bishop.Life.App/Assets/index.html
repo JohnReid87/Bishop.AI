@@ -263,7 +263,12 @@ function findAction(id) {
 
 function postMutation() {
   if (!window.chrome || !window.chrome.webview) return;
-  window.chrome.webview.postMessage(JSON.stringify({ type: "mutate", plan }));
+  // Pass the object directly — JSON.stringify here would make WebView2 deliver
+  // it as a JSON-encoded String (ValueKind.String on the host), which the host's
+  // string branch only recognizes for the bare "standup" / "init" commands and
+  // silently drops everything else. As an object it arrives as ValueKind.Object
+  // and the {type:"mutate",plan} handler runs.
+  window.chrome.webview.postMessage({ type: "mutate", plan });
   setSaved("saving…");
 }
 
