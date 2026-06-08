@@ -15,9 +15,10 @@ namespace Bishop.Life.App;
 /// <summary>
 /// Wires a <see cref="WebView2"/> to a bishop.life JSON file: loads the asset HTML
 /// over a virtual host mapping, reads the plan via <see cref="LifePlanFileService"/>,
-/// and posts envelope state to JS. State is refreshed from disk in exactly two
-/// places: on window activation (<see cref="NoteWindowActivated"/>) and
-/// immediately after an inline mutation via <see cref="LifeMutationCoordinator"/>.
+/// and posts envelope state to JS. State is refreshed from disk on every debounced
+/// disk change via <see cref="LifePlanWatcher"/>, with <see cref="NoteWindowActivated"/>
+/// as a belt-and-braces refresh for cases where the watcher is late or the user
+/// returns from a launched terminal that wrote nothing.
 /// Handles two JS→host message shapes:
 /// <list type="bullet">
 ///   <item><c>"standup"</c> — launches Windows Terminal with <c>claude /bish-life-standup</c>.</item>
@@ -38,6 +39,7 @@ internal sealed class LifePlanHost : IDisposable
     private readonly WebView2 _view;
     private readonly DispatcherQueue _dispatcher;
     private readonly LifePlanFileService _service;
+    private readonly LifePlanWatcher _watcher;
     private readonly LifeTerminalLauncher _launcher;
     private readonly LifeMutationCoordinator _coordinator;
     private bool _navigated;
@@ -59,6 +61,8 @@ internal sealed class LifePlanHost : IDisposable
         _view = view;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         _service = new LifePlanFileService();
+        _watcher = new LifePlanWatcher(_service.FilePath);
+        _watcher.Reloaded += OnFileReloaded;
         _launcher = new LifeTerminalLauncher();
         _coordinator = new LifeMutationCoordinator(_service);
         _coordinator.StateChanged += OnCoordinatorStateChanged;
@@ -80,6 +84,8 @@ internal sealed class LifePlanHost : IDisposable
         _view.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
         _view.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
         _view.CoreWebView2.Navigate(LandingUrl);
+
+        _watcher.Start();
     }
 
     /// <summary>
@@ -197,6 +203,25 @@ internal sealed class LifePlanHost : IDisposable
         _dispatcher.TryEnqueue(PostState);
     }
 
+    /// <summary>
+    /// Watcher fired — disk changed. The JS layer blocks inline mutations while a
+    /// stand-up is in flight, so any reload event during in-flight is from the
+    /// launched terminal (init seed or stand-up rewrite) and clears the flag.
+    /// On the UI thread because <see cref="LifeMutationCoordinator"/> isn't
+    /// thread-safe.
+    /// </summary>
+    private void OnFileReloaded(object? sender, EventArgs e)
+    {
+        _dispatcher.TryEnqueue(() =>
+        {
+            if (_disposed) return;
+            if (_coordinator.StandupInFlight)
+                _coordinator.NoteStandupAborted(); // fires StateChanged → PostState
+            else
+                PostState();
+        });
+    }
+
     private void PostState()
     {
         if (!_navigated || _disposed) return;
@@ -229,6 +254,8 @@ internal sealed class LifePlanHost : IDisposable
         if (_disposed) return;
         _disposed = true;
         _coordinator.StateChanged -= OnCoordinatorStateChanged;
+        _watcher.Reloaded -= OnFileReloaded;
+        _watcher.Dispose();
         if (_view.CoreWebView2 is { } core)
             core.WebMessageReceived -= OnWebMessageReceived;
     }
