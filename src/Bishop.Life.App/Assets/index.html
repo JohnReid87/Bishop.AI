@@ -846,16 +846,17 @@ function hideStandupTerminal() {
   hideStandupInput();
 }
 
-// Card #1060: the stand-up SKILL's first user turn echoes the
-// `bishop context-pack life-standup` JSON envelope (see
-// LifeStandupContextPackCliCommand). It's noise in the visible transcript —
-// drop it before it can become a tx-user bubble. The schema string is unique
-// enough to identify the shape without false positives.
+// Card #1060: the stand-up's first user turn is Claude Code's slash-command
+// expansion of `/bish-life-standup` — the full SKILL.md prompt prefixed with
+// "Base directory for this skill: …". It's pure agent scaffolding, not
+// anything the user wrote, and it dwarfs the rest of the transcript when
+// rendered as a bubble. Drop it. The prefix is a Claude Code convention
+// for every skill expansion, so the check is robust and specific.
+// (The JSON envelope from `bishop context-pack life-standup` arrives as a
+// tool_result and is already filtered upstream by the tailer.)
 function isContextPackEnvelope(text) {
   if (!text) return false;
-  const t = text.trimStart();
-  if (!t.startsWith("{")) return false;
-  return t.includes("\"expectedSchema\"") && t.includes("bishop.life/v1");
+  return text.trimStart().startsWith("Base directory for this skill:");
 }
 
 function clearTranscript() {
