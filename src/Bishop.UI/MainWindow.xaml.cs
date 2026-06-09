@@ -5,6 +5,7 @@ using Bishop.ViewModels.Shared;
 using Bishop.ViewModels.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -18,7 +19,9 @@ using System.Text.Json;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage.Pickers;
+using Windows.System;
 using Windows.UI;
+using Windows.UI.Core;
 using WinRT.Interop;
 
 namespace Bishop.UI;
@@ -72,7 +75,21 @@ public sealed partial class MainWindow : Window
     private void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (ViewModel.CatMode.IsActive)
+        {
             e.Handled = true;
+            return;
+        }
+
+        if (e.Key == VirtualKey.L)
+        {
+            var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
+            var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+            if (ctrl.HasFlag(CoreVirtualKeyStates.Down) && shift.HasFlag(CoreVirtualKeyStates.Down))
+            {
+                e.Handled = true;
+                LifeButton_Click(this, new RoutedEventArgs());
+            }
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -272,14 +289,6 @@ public sealed partial class MainWindow : Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsIconic(nint hWnd);
 
-    private void LifeAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
-    {
-        if (ViewModel.CatMode.IsActive)
-            return;
-        LifeButton_Click(this, new RoutedEventArgs());
-        args.Handled = true;
-    }
-
     private void LifeButton_Click(object sender, RoutedEventArgs e)
     {
         var exePath = Path.Combine(AppContext.BaseDirectory, "Life", "Bishop.Life.App.exe");
@@ -398,7 +407,7 @@ public sealed partial class MainWindow : Window
 
         // DwmGetWindowAttribute returns zero frame extents before the window is shown,
         // so re-snap once after first activation to apply the correct padding.
-        void OnFirstActivated(object sender, WindowActivatedEventArgs e)
+        void OnFirstActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs e)
         {
             Activated -= OnFirstActivated;
             SnapToHalfScreen();
