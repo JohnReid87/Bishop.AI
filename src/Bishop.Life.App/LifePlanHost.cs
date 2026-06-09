@@ -32,8 +32,10 @@ namespace Bishop.Life.App;
 ///   <item><c>{"type":"terminal:resize","cols":n,"rows":m}</c> — viewport size
 ///         change so ConPTY's screen buffer tracks the rendered grid.</item>
 /// </list>
-/// Posts <c>{"type":"terminal:show|data|hide"}</c> back to JS to drive the
-/// xterm.js pane lifecycle.
+/// Posts <c>{"type":"terminal:show|data|hide|systemNote"}</c> back to JS to
+/// drive the xterm.js pane lifecycle. <c>systemNote</c> renders a muted
+/// in-transcript bubble (card #1065) — used to surface input that was
+/// dropped between JS and the PTY, and session-end races with input.
 /// </summary>
 internal sealed class LifePlanHost : IDisposable
 {
@@ -211,7 +213,31 @@ internal sealed class LifePlanHost : IDisposable
             }
             else if (type == "terminal:input" && root.TryGetProperty("data", out var dataEl))
             {
-                _standupPty?.Write(dataEl.GetString() ?? string.Empty);
+                // Card #1065: surface dropped input. Four prior fixes (#1061–#1064)
+                // worked blind because the silent failure modes (PTY not attached,
+                // Write throws, session exited) all looked identical from the UI:
+                // nothing happens. Each branch posts a distinct system-note bubble
+                // so the next repro names the cause.
+                var input = dataEl.GetString() ?? string.Empty;
+                var pty = _standupPty;
+                if (pty is null)
+                {
+                    Debug.WriteLine("LifePlanHost: terminal:input dropped — PTY not attached");
+                    PostTerminalSystemNote("[input dropped — PTY not attached]");
+                }
+                else
+                {
+                    try
+                    {
+                        pty.Write(input);
+                        Debug.WriteLine($"LifePlanHost: terminal:input wrote {input.Length} chars");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"LifePlanHost: terminal:input Write threw: {ex}");
+                        PostTerminalSystemNote($"[input dropped — Write threw: {ex.Message}]");
+                    }
+                }
             }
             else if (type == "terminal:resize")
             {
@@ -331,13 +357,22 @@ internal sealed class LifePlanHost : IDisposable
         {
             DetachStandupPty();
             DetachTranscriptTailer();
-            PostTerminalHide();
-            // Watcher will usually have fired by now and cleared the flag, but
-            // when the stand-up exits without writing (user typed /exit on the
-            // open brain-dump prompt) we still need to drop the in-flight state
-            // and refresh the envelope. Mirrors NoteWindowActivated.
+            // Card #1065: surface the session-ended cause BEFORE hiding the pane,
+            // and delay the hide so the note is visible long enough to read when
+            // it races with a user keystroke (the abyss-bug repro path).
+            PostTerminalSystemNote("[Claude session ended]");
             if (_coordinator.StandupInFlight) _coordinator.NoteStandupAborted();
             else PostState();
+
+            var timer = _dispatcher.CreateTimer();
+            timer.Interval = TimeSpan.FromMilliseconds(1500);
+            timer.IsRepeating = false;
+            timer.Tick += (s, _) =>
+            {
+                s.Stop();
+                PostTerminalHide();
+            };
+            timer.Start();
         });
     }
 
@@ -354,6 +389,14 @@ internal sealed class LifePlanHost : IDisposable
     {
         if (!_navigated || _disposed) return;
         var payload = new TerminalDataEnvelope(Type: "terminal:data", Data: data);
+        var json = JsonSerializer.Serialize(payload, PostOptions);
+        _view.CoreWebView2.PostWebMessageAsJson(json);
+    }
+
+    private void PostTerminalSystemNote(string text)
+    {
+        if (!_navigated || _disposed) return;
+        var payload = new TerminalSystemNoteEnvelope(Type: "terminal:systemNote", Text: text);
         var json = JsonSerializer.Serialize(payload, PostOptions);
         _view.CoreWebView2.PostWebMessageAsJson(json);
     }
@@ -482,6 +525,10 @@ internal sealed class LifePlanHost : IDisposable
     private sealed record TerminalDataEnvelope(
         string Type,
         string Data);
+
+    private sealed record TerminalSystemNoteEnvelope(
+        string Type,
+        string Text);
 
     private sealed record TranscriptEventEnvelope(
         string Type,

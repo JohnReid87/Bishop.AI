@@ -248,6 +248,13 @@
     color: var(--ink-faint); font-size: 12.5px; font-style: italic;
     padding: 6px 0; display: flex; align-items: center; gap: 8px;
   }
+  /* Card #1065: muted single-line note for host-side diagnostics
+     (input dropped, session ended). Centred so it doesn't pretend to
+     be either side of the conversation. */
+  .tx-system {
+    color: var(--ink-faint); font-size: 12px; font-style: italic;
+    text-align: center; padding: 4px 0;
+  }
   .tx-thinking::before {
     content: ""; width: 7px; height: 7px; border-radius: 50%;
     background: var(--accent); animation: pulse 1.4s ease-in-out infinite;
@@ -820,6 +827,11 @@ if (window.chrome && window.chrome.webview) {
       appendTranscriptEvent(env.kind, env.text || "");
       return;
     }
+    if (env && env.type === "terminal:systemNote") {
+      // Card #1065: host-side diagnostic note (dropped input, session-end).
+      appendSystemNote(env.text || "");
+      return;
+    }
     applyEnvelope(env);
   });
 }
@@ -923,6 +935,16 @@ function appendTranscriptEvent(kind, text) {
     return;
   }
   lastTranscriptKind = kind;
+  if (wasAtBottom) scrollToBottom(standupTerminalEl);
+}
+
+function appendSystemNote(text) {
+  if (!text) return;
+  const wasAtBottom = isScrolledToBottom(standupTerminalEl);
+  const entry = document.createElement("div");
+  entry.className = "tx-entry tx-system";
+  entry.textContent = text;
+  standupTerminalEl.appendChild(entry);
   if (wasAtBottom) scrollToBottom(standupTerminalEl);
 }
 
