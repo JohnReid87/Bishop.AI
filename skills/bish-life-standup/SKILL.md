@@ -11,6 +11,14 @@ bishop.category: setup
 
 Shell tool selection (Bash vs PowerShell) — this skill targets a Windows-only path (`%APPDATA%`). Use `PowerShell` throughout.
 
+**TTS hook discipline.** The `Stop` → `bishop hook speak-on-stop` hook speaks the last assistant message minus `<!-- no-speak -->…<!-- /no-speak -->` blocks (see `BishLifeTranscriptScanner.StripForSpeech`). The user dictates while doing other things — what should be spoken is:
+
+- The single direct question to the user (the brain-dump prompt, the per-thread question, the "Write this stand-up?" confirm),
+- The drafted reflection prose (it's the synthesis the user benefits from hearing),
+- Short conversational acknowledgements.
+
+Wrap everything else in `<!-- no-speak -->…<!-- /no-speak -->`: the Step 2 context block (already wrapped below), option enumerations (`(y / n / …)`), focus-list and mutations bullets, section headings, file paths, JSON keys, schema strings, and the `area ▸ goal ▸ action` lineage triplets used during the walk. The prompt templates below already show this — preserve the wrapping when you emit them.
+
 Design tenets carried from `docs/bishop-life-spec.md` §1 — observe them in tone and structure:
 
 1. **No shame.** Never score, streak, or guilt. A missed day is silent — do not comment on gaps in `lastStandupAt`, do not chide.
@@ -33,12 +41,12 @@ Parse the JSON from stdout. The shape is:
 - `filePath` — the resolved path to `bishop.life.json` (respects `$env:BISHOP_LIFE_FILE`).
 - `exists` — `false` if the file is missing. If so → print exactly:
 
-  > `bishop.life is not initialised at <filePath>. Run /bish-life-init first.`
+  > bishop.life is not initialised. <!-- no-speak -->Path: `<filePath>`. Run `/bish-life-init` first.<!-- /no-speak -->
 
   Then STOP.
 - `schemaOk` — `false` if the file's `schema` field isn't `"bishop.life/v1"`. If so → STOP and surface:
 
-  > `bishop.life schema mismatch — expected "bishop.life/v1", got "<schema>". Refusing to proceed.`
+  > bishop.life schema mismatch. Refusing to proceed. <!-- no-speak -->Expected `"bishop.life/v1"`, got `"<schema>"`.<!-- /no-speak -->
 
 - `lastStandupAt`, `lastStandupPhrase` — last stand-up timestamp + human phrase ("yesterday", "3 days ago", "first stand-up"). No shame on long gaps; just state the fact.
 - `openActionCount` — total actions where `done` is `false`, across all areas/goals.
@@ -128,7 +136,7 @@ Before any write, show the user:
 
 Then ask:
 
-> Write this stand-up? (`y` to commit / `n` to abandon — nothing has been written yet)
+> Write this stand-up? <!-- no-speak -->(`y` to commit / `n` to abandon — nothing has been written yet)<!-- /no-speak -->
 
 - On `n` → STOP. The file on disk is unchanged. Do not write `.prev`, do not write `.tmp`.
 - On `y` → proceed to Step 7.
@@ -162,7 +170,7 @@ If any step fails, surface the error and STOP. Do not attempt to roll back from 
 
 Print a single short line:
 
-> `Stand-up saved. Backup at <path>.prev — delete or restore by hand if you need to undo.`
+> Stand-up saved. <!-- no-speak -->Backup at `<path>.prev` — delete or restore by hand if you need to undo.<!-- /no-speak -->
 
 Do not editorialise further. The ritual is done.
 

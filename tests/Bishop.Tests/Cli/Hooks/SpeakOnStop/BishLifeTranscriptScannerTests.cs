@@ -207,6 +207,126 @@ public sealed class BishLifeTranscriptScannerTests : IDisposable
     }
 
     [Fact]
+    public void Life_add_echo_prompt_speaks_only_the_captured_phrase()
+    {
+        var assistant =
+            "<!-- no-speak -->Capture as:<!-- /no-speak --> \"book the dentist\" " +
+            "<!-- no-speak -->— keep? (`y` / paste a correction / `n` to drop)<!-- /no-speak -->";
+        WriteTranscript(
+            User("<command-name>/bish-life-add</command-name>"),
+            Assistant(assistant));
+
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        text.Should().Be("\"book the dentist\"");
+    }
+
+    [Fact]
+    public void Life_add_uninitialised_refusal_speaks_only_the_short_message()
+    {
+        var assistant =
+            "bishop.life is not initialised. " +
+            "<!-- no-speak -->Path: `C:\\Users\\j\\AppData\\Roaming\\Bishop\\life\\bishop.life.json`. " +
+            "Run `/bish-life-init` first.<!-- /no-speak -->";
+        WriteTranscript(
+            User("<command-name>/bish-life-add</command-name>"),
+            Assistant(assistant));
+
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        text.Should().Be("bishop.life is not initialised.");
+    }
+
+    [Fact]
+    public void Life_add_capture_confirmation_speaks_only_the_acknowledgement()
+    {
+        var assistant =
+            "Captured 2 inbox items. " +
+            "<!-- no-speak -->Backup at `C:\\Users\\j\\AppData\\Roaming\\Bishop\\life\\bishop.life.json.prev` " +
+            "— delete or restore by hand if you need to undo.<!-- /no-speak -->";
+        WriteTranscript(
+            User("<command-name>/bish-life-add</command-name>"),
+            Assistant(assistant));
+
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        text.Should().Be("Captured 2 inbox items.");
+    }
+
+    [Fact]
+    public void Life_standup_step6_confirm_speaks_reflection_and_question_only()
+    {
+        var assistant =
+            "Today was a sort: emergency fund moved up a notch, the dentist is finally booked, " +
+            "and the side-project rewrite is parked until July.\n\n" +
+            "<!-- no-speak -->\n" +
+            "**Focus today:**\n" +
+            "- Finances ▸ Emergency fund ▸ Move £500\n" +
+            "- Health ▸ Sleep ▸ Phone out of bedroom\n\n" +
+            "**Mutations:**\n" +
+            "- new action `act-xyz` under Finances\n" +
+            "- starred `act-abc` removed (over ceiling)\n" +
+            "<!-- /no-speak -->\n\n" +
+            "Write this stand-up? <!-- no-speak -->(`y` to commit / `n` to abandon — nothing has been written yet)<!-- /no-speak -->";
+        WriteTranscript(
+            User("<command-name>/bish-life-standup</command-name>"),
+            Assistant(assistant));
+
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        text.Should().Contain("Today was a sort");
+        text.Should().Contain("Write this stand-up?");
+        text.Should().NotContain("Focus today");
+        text.Should().NotContain("Mutations");
+        text.Should().NotContain("Move £500");
+        text.Should().NotContain("act-xyz");
+        text.Should().NotContain("`y`");
+        text.Should().NotContain("abandon");
+        text.Should().NotContain("▸");
+    }
+
+    [Fact]
+    public void Life_standup_saved_confirmation_speaks_only_the_acknowledgement()
+    {
+        var assistant =
+            "Stand-up saved. " +
+            "<!-- no-speak -->Backup at `C:\\Users\\j\\AppData\\Roaming\\Bishop\\life\\bishop.life.json.prev` " +
+            "— delete or restore by hand if you need to undo.<!-- /no-speak -->";
+        WriteTranscript(
+            User("<command-name>/bish-life-standup</command-name>"),
+            Assistant(assistant));
+
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        text.Should().Be("Stand-up saved.");
+    }
+
+    [Fact]
+    public void Life_standup_context_pack_block_speaks_only_the_brain_dump_prompt()
+    {
+        var assistant =
+            "<!-- no-speak -->\n" +
+            "**Last stand-up:** 2 days ago (2026-06-06)\n" +
+            "**Open actions:** 7\n" +
+            "**Starred (2/3):**\n" +
+            "  • Finances ▸ Emergency fund ▸ Move £500\n" +
+            "  • Health ▸ Sleep ▸ Phone out\n" +
+            "**Untended areas:** Career, Relationships\n" +
+            "**Inbox (2):**\n" +
+            "  • Look into ISA limits\n" +
+            "  • Book dentist\n" +
+            "<!-- /no-speak -->\n\n" +
+            "What's on your mind? Anything from the last few days — wins, worries, things you've been putting off.";
+        WriteTranscript(
+            User("<command-name>/bish-life-standup</command-name>"),
+            Assistant(assistant));
+
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        text.Should().StartWith("What's on your mind?");
+        text.Should().NotContain("Last stand-up");
+        text.Should().NotContain("Open actions");
+        text.Should().NotContain("Starred");
+        text.Should().NotContain("Untended");
+        text.Should().NotContain("Inbox");
+        text.Should().NotContain("ISA");
+    }
+
+    [Fact]
     public void Strips_no_speak_then_strips_markdown_from_remainder()
     {
         WriteTranscript(

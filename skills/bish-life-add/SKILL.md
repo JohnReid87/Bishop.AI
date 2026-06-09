@@ -11,6 +11,14 @@ bishop.stage: false
 
 Shell tool selection (Bash vs PowerShell) — this skill targets a Windows-only path (`%APPDATA%`). Use `PowerShell` throughout.
 
+**TTS hook discipline.** The `Stop` → `bishop hook speak-on-stop` hook speaks the last assistant message minus `<!-- no-speak -->…<!-- /no-speak -->` blocks (see `BishLifeTranscriptScanner.StripForSpeech`). The user dictates while doing other things — what should be spoken is:
+
+- The single direct question to the user,
+- The echoed captured phrase itself (so phonetic misreads can be caught),
+- A short conversational acknowledgement ("got it, saved").
+
+Wrap everything else in `<!-- no-speak -->…<!-- /no-speak -->`: option enumerations (`(y / n / …)`), section headings, file paths, JSON keys, schema strings, the surrounding "Capture as: … — keep?" framing. The prompt templates below already show this — preserve the wrapping when you emit them.
+
 Design tenets carried from `docs/bishop-life-spec.md` §1:
 
 1. **Inbox-only landing.** Capture goes into `inbox[]` as-is. Do NOT classify into area/goal here — the next stand-up triages. Keeping capture short is the point.
@@ -32,7 +40,7 @@ Run `Test-Path -LiteralPath $path`.
 
 - If it returns `False` → print exactly:
 
-  > `bishop.life is not initialised at <path>. Run /bish-life-init first.`
+  > bishop.life is not initialised. <!-- no-speak -->Path: `<path>`. Run `/bish-life-init` first.<!-- /no-speak -->
 
   Then STOP. Do not prompt, do not write.
 
@@ -42,7 +50,7 @@ Read `$path` with the `Read` tool and parse it via PowerShell `ConvertFrom-Json`
 
 Schema guard: if `$plan.schema` is not `"bishop.life/v1"`, STOP and surface:
 
-> `bishop.life schema mismatch — expected "bishop.life/v1", got "<schema>". Refusing to proceed.`
+> bishop.life schema mismatch. Refusing to proceed. <!-- no-speak -->Expected `"bishop.life/v1"`, got `"<schema>"`.<!-- /no-speak -->
 
 ### Step 4 — Compute the next inbox id
 
@@ -58,7 +66,7 @@ Read the user's response. For each captured item:
 
 1. Echo the action sentence back verbatim and ask:
 
-   > Capture as: "<text>" — keep? (`y` / paste a correction / `n` to drop)
+   > <!-- no-speak -->Capture as:<!-- /no-speak --> "<text>" <!-- no-speak -->— keep? (`y` / paste a correction / `n` to drop)<!-- /no-speak -->
 
    - On `y` (or empty input) → accept the text as typed.
    - On any other text → treat that text as the corrected sentence; do not re-confirm (one round of echo-back is enough).
@@ -110,7 +118,7 @@ If any step fails, surface the error and STOP. Do not roll back from `.prev` aut
 
 Print a single short line naming how many items landed, e.g.:
 
-> `Captured 2 inbox items. Backup at <path>.prev — delete or restore by hand if you need to undo.`
+> Captured 2 inbox items. <!-- no-speak -->Backup at `<path>.prev` — delete or restore by hand if you need to undo.<!-- /no-speak -->
 
 </what-to-do>
 
