@@ -206,9 +206,14 @@
     color: var(--ink); white-space: pre-wrap; word-wrap: break-word;
     margin-left: 32px;
   }
+  /* Card #1060: mirror .tx-user as a left-aligned bubble — same shape/padding,
+     neutral panel background so it reads as Claude's turn vs the accent-tinted
+     user turn. Markdown renders inside the bubble. */
   .tx-assistant {
-    color: var(--ink); padding: 2px 0;
-    line-height: 1.55;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 12px;
+    color: var(--ink); line-height: 1.55;
+    margin-right: 32px;
   }
   .tx-assistant p { margin: 0 0 8px; }
   .tx-assistant p:last-child { margin-bottom: 0; }
@@ -283,6 +288,14 @@
   .today ul { list-style:none; display:flex; flex-direction:column; gap:5px; }
   .today li { font-size:13px; display:flex; gap:8px; }
   .today li::before { content:"\203A"; color:var(--accent); }
+
+  /* Card #1060: hide page chrome below the stand-up input while a session is
+     live so the conversation is the only thing on-screen. Keeps the top
+     buttons, viz panel, transcript, input, and footer status line. */
+  body.standup-session-active .tabs,
+  body.standup-session-active #standupBanner,
+  body.standup-session-active #addBanner,
+  body.standup-session-active #container { display: none !important; }
 
   /* footer */
   .foot { display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--line); margin-top:32px; padding-top:13px; }
@@ -821,14 +834,28 @@ let lastTranscriptKind = null;
 
 function showStandupTerminal() {
   standupTerminalEl.hidden = false;
+  document.body.classList.add("standup-session-active");
   clearTranscript();
   showStandupInput();
 }
 
 function hideStandupTerminal() {
   standupTerminalEl.hidden = true;
+  document.body.classList.remove("standup-session-active");
   clearTranscript();
   hideStandupInput();
+}
+
+// Card #1060: the stand-up SKILL's first user turn echoes the
+// `bishop context-pack life-standup` JSON envelope (see
+// LifeStandupContextPackCliCommand). It's noise in the visible transcript —
+// drop it before it can become a tx-user bubble. The schema string is unique
+// enough to identify the shape without false positives.
+function isContextPackEnvelope(text) {
+  if (!text) return false;
+  const t = text.trimStart();
+  if (!t.startsWith("{")) return false;
+  return t.includes("\"expectedSchema\"") && t.includes("bishop.life/v1");
 }
 
 function clearTranscript() {
@@ -838,6 +865,10 @@ function clearTranscript() {
 }
 
 function appendTranscriptEvent(kind, text) {
+  // Card #1060: drop the context-pack envelope so the first user bubble in
+  // a stand-up isn't a wall of JSON.
+  if (kind === "user" && isContextPackEnvelope(text)) return;
+
   const wasAtBottom = isScrolledToBottom(standupTerminalEl);
   removeThinking();
 
@@ -853,7 +884,12 @@ function appendTranscriptEvent(kind, text) {
   } else if (kind === "assistant") {
     const body = document.createElement("div");
     body.className = "tx-assistant";
-    body.innerHTML = renderMarkdown(text);
+    // Card #1060: drop the `<!-- no-speak -->`/`<!-- /no-speak -->` markers
+    // that the SKILL wraps around the agenda — they're TTS hints only and
+    // would otherwise survive into the rendered HTML, breaking the
+    // line-by-line bullet-list handling in renderMarkdown.
+    const stripped = text.replace(/<!--\s*\/?no-speak\s*-->/g, "");
+    body.innerHTML = renderMarkdown(stripped);
     entry.appendChild(body);
     standupTerminalEl.appendChild(entry);
   } else if (kind === "tool") {
