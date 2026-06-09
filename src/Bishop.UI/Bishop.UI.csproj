@@ -48,6 +48,8 @@
     <Content Remove="Assets\Brand\icon-branch.svg" />
     <Content Remove="Assets\Brand\icon-chat.svg" />
     <Content Remove="Assets\Brand\icon-code.svg" />
+    <Content Remove="Assets\Brand\icon-life.ico" />
+    <Content Remove="Assets\Brand\icon-life.svg" />
     <Content Remove="Assets\Brand\icon-run.svg" />
     <Content Remove="Assets\Brand\icon-settings.svg" />
     <Content Remove="Assets\Brand\icon-terminal.svg" />
