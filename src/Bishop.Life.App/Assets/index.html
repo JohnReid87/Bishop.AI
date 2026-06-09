@@ -858,6 +858,11 @@ function showStandupTerminal() {
   clearTranscript();
   showThinking();
   showStandupInput();
+  // Card #1063: reveal the visualizer with a resting flat line the moment the
+  // pane opens, so the first TTS chunk animates in-place instead of popping the
+  // panel into existence and shifting layout mid-conversation.
+  vizPanel.hidden = false;
+  drawFlatLine();
 }
 
 function hideStandupTerminal() {
@@ -865,6 +870,8 @@ function hideStandupTerminal() {
   document.body.classList.remove("standup-session-active");
   clearTranscript();
   hideStandupInput();
+  cancelSpeakViz();
+  vizPanel.hidden = true;
 }
 
 // Card #1060: the stand-up's first user turn is Claude Code's slash-command
@@ -1138,8 +1145,10 @@ standupInputEl.addEventListener("keydown", ev => {
    PCM sign drives vertical deflection. CRT-phosphor styling: persistence
    trail (per-frame translucent clear instead of clearRect) plus an
    additive glow underlay on the accent stroke. No playhead — the trace
-   itself is the cue. The panel is revealed on the first utterance and
-   stays visible thereafter; between chunks it shows a flat accent line. */
+   itself is the cue. The panel's visibility is owned by show/hideStandup-
+   Terminal (card #1063): it appears with a resting flat line when the
+   pane opens and hides when the pane closes; between chunks it shows
+   the flat accent line. */
 const vizPanel = document.getElementById("vizPanel");
 const vizCanvas = document.getElementById("vizCanvas");
 let vizSession = null;
@@ -1147,7 +1156,6 @@ const VIZ_WINDOW_MS = 300; // total window — 150 ms each side of "now"
 
 function startSpeakViz(pcmBase64, pcmSampleRateHz, durationMs) {
   cancelSpeakViz();
-  vizPanel.hidden = false;
   vizSession = {
     pcm: decodePcmBase64(pcmBase64 || ""),
     sampleRateHz: pcmSampleRateHz || 8000,
