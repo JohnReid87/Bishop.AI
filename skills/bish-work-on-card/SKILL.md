@@ -232,29 +232,31 @@ card was loaded before any move or implementation:
    > to leave the card in "Doing" and the working tree untouched)
 
    - On `y` (or an edited commit message) → run in order:
-     1. Append the drafted `### Agent notes` block via the temp-file
-        procedure (see `Card Push Procedure` in `BishopContext.static.md`):
-        write the notes to `.bishop/tmp-card-agent-notes.md`, run `card
-        edit`, then `Remove-Item` via the `PowerShell` tool.
-        ```
-        bishop card edit <number> --append-description-file ".bishop/tmp-card-agent-notes.md" --to-lane "Done"
-        ```
+     1. Write the drafted `### Agent notes` block to
+        `.bishop/tmp-card-agent-notes.md` via the temp-file procedure (see
+        `Card Push Procedure` in `BishopContext.static.md`). Do not run
+        `card edit` yet.
      2. Commit:
         ```
         git add -A && git commit -m "<message>"
         ```
-     3. On a successful commit, capture the hash and branch then record them —
-        run each git command separately, capture the output, and pass the literal
-        values to `set-commit` (do not use shell variable expansion):
+        If the commit fails (e.g. pre-commit hook), do NOT run the card edit
+        — leave the card in "Doing" with no description changes, surface
+        the error, and let the user re-run the commit manually. The temp
+        file may be left in place for retry.
+     3. On a successful commit, capture the hash and branch — run each git
+        command separately, capture the output, and pass the literal values
+        to `card edit` (do not use shell variable expansion):
         ```
         git log -1 --format=%H
         git rev-parse --abbrev-ref HEAD
-        bishop card set-commit <number> --hash <full-sha> --branch <branch>
         ```
-        If `set-commit` exits non-zero, continue — it is non-fatal; the commit
-        has already landed.
-     If the commit fails (e.g. pre-commit hook), do NOT roll the card back —
-     surface the error and let the user re-run the commit manually.
+     4. Issue a single `card edit` that appends the notes, moves the card
+        to Done, and records the commit hash + branch:
+        ```
+        bishop card edit <number> --append-description-file ".bishop/tmp-card-agent-notes.md" --to-lane "Done" --commit-hash <full-sha> --commit-branch <branch>
+        ```
+     5. `Remove-Item` the temp file via the `PowerShell` tool.
    - On `n` → leave the card in "Doing" and the working tree as-is. Do not
      commit or move.
 
