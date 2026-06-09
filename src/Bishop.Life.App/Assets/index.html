@@ -840,17 +840,6 @@ if (window.chrome && window.chrome.webview) {
 const standupTerminalEl = document.getElementById("standupTerminal");
 let transcriptThinkingEl = null;
 let lastTranscriptKind = null;
-// Card #1062: single source of truth for whether Bishop is mid-turn. Mirrors
-// transcriptThinkingEl truthiness and gates the keydown send path so input
-// typed before Claude is reading stdin gets queued instead of dropped.
-let _isThinking = false;
-// FIFO of user messages typed while _isThinking. Each entry is
-// { text, bubble, flushed }: the bubble renders immediately with .pending,
-// the entry is drained on removeThinking() (posts terminal:input, clears
-// .pending, sets flushed:true). When the matching user transcript:event
-// later arrives from the JSONL tail, the entry is consumed and the event
-// is suppressed so the bubble isn't duplicated.
-const pendingMessages = [];
 
 function showStandupTerminal() {
   standupTerminalEl.hidden = false;
@@ -891,29 +880,12 @@ function clearTranscript() {
   standupTerminalEl.innerHTML = "";
   transcriptThinkingEl = null;
   lastTranscriptKind = null;
-  _isThinking = false;
-  pendingMessages.length = 0;
 }
 
 function appendTranscriptEvent(kind, text) {
   // Card #1060: drop the context-pack envelope so the first user bubble in
   // a stand-up isn't a wall of JSON.
   if (kind === "user" && isContextPackEnvelope(text)) return;
-
-  // Card #1062: if this user event echoes a message we already rendered as
-  // a pending bubble and have since flushed to the PTY, consume the pending
-  // entry and skip — the bubble is already in the DOM.
-  if (kind === "user") {
-    const idx = pendingMessages.findIndex(m => m.flushed && m.text === text);
-    if (idx !== -1) {
-      pendingMessages.splice(idx, 1);
-      // Match the normal user-branch behaviour: Claude is now about to reply,
-      // so resume the thinking indicator.
-      showThinking();
-      lastTranscriptKind = "user";
-      return;
-    }
-  }
 
   const wasAtBottom = isScrolledToBottom(standupTerminalEl);
   removeThinking();
@@ -955,7 +927,6 @@ function appendTranscriptEvent(kind, text) {
 }
 
 function showThinking() {
-  _isThinking = true;
   if (transcriptThinkingEl) return;
   const el = document.createElement("div");
   el.className = "tx-thinking";
@@ -965,26 +936,9 @@ function showThinking() {
 }
 
 function removeThinking() {
-  _isThinking = false;
   if (transcriptThinkingEl) {
     transcriptThinkingEl.remove();
     transcriptThinkingEl = null;
-  }
-  flushPendingMessages();
-}
-
-// Card #1062: drain queued user messages in FIFO order — post each to the
-// PTY, clear the .pending modifier on the bubble, and mark the entry as
-// flushed so the matching transcript:event from the JSONL tail can be
-// suppressed (see appendTranscriptEvent).
-function flushPendingMessages() {
-  for (const m of pendingMessages) {
-    if (m.flushed) continue;
-    if (window.chrome && window.chrome.webview) {
-      window.chrome.webview.postMessage({ type: "terminal:input", data: m.text + "\r" });
-    }
-    if (m.bubble) m.bubble.classList.remove("pending");
-    m.flushed = true;
   }
 }
 
@@ -1106,29 +1060,11 @@ standupInputEl.addEventListener("keydown", ev => {
   ev.preventDefault();
   const text = standupInputEl.value;
   if (!text) return;
-  if (_isThinking) {
-    // Card #1062: Bishop is mid-turn — claude isn't reading stdin yet, so
-    // sending now would drop the input on the floor. Render a pending bubble
-    // immediately for feedback and queue the text; flushPendingMessages()
-    // posts it once the thinking indicator clears.
-    const wasAtBottom = isScrolledToBottom(standupTerminalEl);
-    const entry = document.createElement("div");
-    entry.className = "tx-entry";
-    const bubble = document.createElement("div");
-    bubble.className = "tx-user pending";
-    bubble.textContent = text;
-    entry.appendChild(bubble);
-    // Insert above the thinking indicator so the spinner stays at the bottom.
-    if (transcriptThinkingEl) {
-      standupTerminalEl.insertBefore(entry, transcriptThinkingEl);
-    } else {
-      standupTerminalEl.appendChild(entry);
-    }
-    pendingMessages.push({ text, bubble, flushed: false });
-    if (wasAtBottom) scrollToBottom(standupTerminalEl);
-  } else if (window.chrome && window.chrome.webview) {
+  if (window.chrome && window.chrome.webview) {
     // Trailing \r matches what xterm's onData would emit for Enter, which is
-    // what the claude TUI expects to commit a prompt.
+    // what the claude TUI expects to commit a prompt. The user bubble renders
+    // when the JSONL tail emits the matching transcript:event — same path as
+    // assistant lines.
     window.chrome.webview.postMessage({ type: "terminal:input", data: text + "\r" });
   }
   standupInputEl.value = "";
