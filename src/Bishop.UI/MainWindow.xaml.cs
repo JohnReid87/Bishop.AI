@@ -1,5 +1,4 @@
 using Bishop.UI.Services;
-using Bishop.UI.Views.Game;
 using Bishop.UI.Views.Scripts;
 using Bishop.UI.Views.Workspaces;
 using Bishop.ViewModels.Shared;
@@ -315,13 +314,6 @@ public sealed partial class MainWindow : Window
         LifeLaunchErrorTip.Subtitle = subtitle;
         LifeLaunchErrorTip.Target = ViewModel.IsPaneOpen ? LifeButtonExpanded : LifeButtonCollapsed;
         LifeLaunchErrorTip.IsOpen = true;
-    }
-
-    private void GameButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.IsWorkspacelessPageActive = true;
-        ViewModel.SelectedWorkspace = null;
-        ContentFrame.Navigate(typeof(GamePage));
     }
 
     private void ScriptsButton_Click(object sender, RoutedEventArgs e)

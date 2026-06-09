@@ -65,7 +65,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bishop.App\Bishop.App.csproj" />
-    <ProjectReference Include="..\Bishop.Game\Bishop.Game.csproj" />
     <ProjectReference Include="..\Bishop.ViewModels\Bishop.ViewModels.csproj" />
   </ItemGroup>
 

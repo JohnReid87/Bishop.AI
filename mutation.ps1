@@ -3,7 +3,7 @@
 # Output: StrykerOutput/<timestamp>/mutation-report.html  and  mutation-report.json
 #
 # Fast path (~5-7 min):
-#   ./mutation.ps1 -Project Bishop.Game
+#   ./mutation.ps1 -Project Bishop.Core
 #   ./mutation.ps1 -Project Bishop.App -Mutate "src/Bishop.App/Handlers/**"
 #
 # Slow path (~2-4h, all source projects):
@@ -18,7 +18,7 @@ param (
 $ErrorActionPreference = 'Stop'
 
 if (-not $All -and -not $Project -and -not $Mutate) {
-    Write-Error "Specify -Project <name> and/or -Mutate <glob> for a scoped run, or -All for solution-wide (~2-4h).`n  Example: ./mutation.ps1 -Project Bishop.Game"
+    Write-Error "Specify -Project <name> and/or -Mutate <glob> for a scoped run, or -All for solution-wide (~2-4h).`n  Example: ./mutation.ps1 -Project Bishop.Core"
     exit 1
 }
 

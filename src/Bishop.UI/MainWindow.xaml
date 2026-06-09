@@ -303,34 +303,6 @@
                                      PreferredPlacement="Right"
                                      IsLightDismissEnabled="True"/>
                     </Grid>
-                    <!-- Game button row -->
-                    <Grid>
-                        <!-- Expanded: labelled Play Breakout button -->
-                        <Button HorizontalAlignment="Stretch"
-                                Margin="8,4,8,4"
-                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                Click="GameButton_Click"
-                                ToolTipService.ToolTip="Play Breakout"
-                                Visibility="{x:Bind cnv:XamlConvert.ToVis(ViewModel.IsPaneOpen), Mode=OneWay}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE7FC;" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="Play Breakout"
-                                           FontSize="11"
-                                           VerticalAlignment="Center"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            </StackPanel>
-                        </Button>
-                        <!-- Collapsed: icon-only Play Breakout button -->
-                        <Button Width="200" Height="32"
-                                HorizontalAlignment="Center"
-                                Margin="0,0,0,4"
-                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
-                                Click="GameButton_Click"
-                                ToolTipService.ToolTip="Play Breakout"
-                                Visibility="{x:Bind cnv:XamlConvert.ToVisInverse(ViewModel.IsPaneOpen), Mode=OneWay}">
-                            <FontIcon Glyph="&#xE7FC;" FontSize="13"/>
-                        </Button>
-                    </Grid>
                     <!-- Scripts row -->
                     <Grid>
                         <!-- Expanded: labelled Scripts button -->

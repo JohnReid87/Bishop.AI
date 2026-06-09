@@ -20,7 +20,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 ## Architecture
 
 ### Repository layout
-- `src/` — .NET projects (Core, Data, App, ViewModels, Cli, UI, Game).
+- `src/` — .NET projects (Core, Data, App, ViewModels, Cli, UI).
 - `tests/Bishop.Tests/` — xUnit project.
 - `skills/` — vendored Claude Code skill files shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`. Grouped into six categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
   - **Conversational:** `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
