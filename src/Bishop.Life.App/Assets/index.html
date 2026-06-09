@@ -77,6 +77,12 @@
   }
   .cta:hover { background: rgba(0,255,65,0.16); border-color: var(--accent); }
   .cta .tri { font-size: 10px; }
+  /* Secondary CTA: lower visual weight than the primary stand-up CTA — muted
+     ink colours instead of the accent green, so the daily ritual remains the
+     visual focus while quick capture stays one click away. */
+  .cta.secondary { color: var(--ink-dim); background: transparent; border-color: var(--line); }
+  .cta.secondary:hover { background: rgba(255,255,255,0.04); border-color: var(--ink-dim); color: var(--ink); }
+  .cta.secondary .plus { font-size: 14px; line-height: 1; }
 
   /* tabs */
   .tabs { display: flex; gap: 6px; padding: 4px 0 16px; }
@@ -184,6 +190,7 @@
     <div class="wordmark"><span class="bars"><span></span><span></span><span></span></span>bishop<span class="suffix">.life</span></div>
     <div class="spacer"></div>
     <button class="cta" id="initBtn" hidden><span class="tri">&#9655;</span> Initialize Life</button>
+    <button class="cta secondary" id="addBtn" disabled><span class="plus">+</span> Add</button>
     <button class="cta" id="standupBtn" disabled><span class="tri">&#9655;</span> Initiate Stand-Up</button>
   </div>
 
@@ -195,6 +202,7 @@
   </div>
 
   <div id="standupBanner" class="standup-banner" hidden>Stand-up in progress &mdash; inline edits paused.</div>
+  <div id="addBanner" class="standup-banner" hidden>Add in progress &mdash; inline edits paused.</div>
   <div id="container"></div>
 
   <div class="foot">
@@ -222,6 +230,7 @@ let status = "waiting";
 let filePath = "";
 let currentView = "focus";
 let standupInFlight = false;
+let addInFlight = false;
 let titleDebounce = null;
 let titleDebounceTarget = null; // {id, el} of the contenteditable awaiting flush
 
@@ -458,14 +467,20 @@ function applyEnvelope(env) {
   filePath = env.filePath || "";
   plan = env.plan || null;
   standupInFlight = !!env.standupInFlight;
+  addInFlight = !!env.addInFlight;
+  const anyInFlight = standupInFlight || addInFlight;
   setFilePath(filePath);
   setSaved(status === "ok" ? "loaded · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : status);
-  // Stand-up runs even when no file exists yet (it can seed one), so enable
-  // the button on any envelope from the host rather than gating on plan data.
-  document.getElementById("standupBtn").disabled = standupInFlight;
-  document.getElementById("initBtn").hidden = status !== "missing" || standupInFlight;
+  // Stand-up and add both run even when no file exists yet (stand-up seeds
+  // one, add appends to inbox), so enable both buttons on any envelope from
+  // the host rather than gating on plan data. While either skill is in flight,
+  // both CTAs are disabled to prevent overlapping launches.
+  document.getElementById("standupBtn").disabled = anyInFlight;
+  document.getElementById("addBtn").disabled = anyInFlight;
+  document.getElementById("initBtn").hidden = status !== "missing" || anyInFlight;
   document.getElementById("standupBanner").hidden = !standupInFlight;
-  document.body.classList.toggle("standup-disabled", standupInFlight);
+  document.getElementById("addBanner").hidden = !addInFlight;
+  document.body.classList.toggle("standup-disabled", anyInFlight);
   // Drop any pending edit — its target node is about to be replaced by render().
   titleDebounce = null;
   titleDebounceTarget = null;
@@ -477,7 +492,7 @@ const container = document.getElementById("container");
 container.addEventListener("click", e => {
   const host = e.target.closest("[data-action-id]");
   if (!host) return;
-  if (standupInFlight) return;
+  if (standupInFlight || addInFlight) return;
   const id = host.dataset.actionId;
   const action = findAction(id); if (!action) return;
 
@@ -507,7 +522,7 @@ container.addEventListener("input", e => {
   if (!text) return;
   const host = text.closest("[data-action-id]");
   if (!host) return;
-  if (standupInFlight) { text.textContent = findAction(host.dataset.actionId)?.title || ""; return; }
+  if (standupInFlight || addInFlight) { text.textContent = findAction(host.dataset.actionId)?.title || ""; return; }
   clearTimeout(titleDebounce);
   titleDebounceTarget = { id: host.dataset.actionId, el: text };
   titleDebounce = setTimeout(flushPendingTitleEdit, 500);
@@ -540,10 +555,18 @@ if (window.chrome && window.chrome.webview) {
 }
 
 document.getElementById("standupBtn").addEventListener("click", () => {
-  if (standupInFlight) return;
+  if (standupInFlight || addInFlight) return;
   flushPendingTitleEdit();
   if (window.chrome && window.chrome.webview) {
     window.chrome.webview.postMessage("standup");
+  }
+});
+
+document.getElementById("addBtn").addEventListener("click", () => {
+  if (standupInFlight || addInFlight) return;
+  flushPendingTitleEdit();
+  if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.postMessage("add");
   }
 });
 

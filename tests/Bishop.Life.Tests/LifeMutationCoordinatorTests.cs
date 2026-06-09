@@ -73,4 +73,63 @@ public class LifeMutationCoordinatorTests
 
         events.Should().Be(2);
     }
+
+    [Fact]
+    public void NoteAddLaunched_SetsInFlightAndFiresStateChanged()
+    {
+        using var tmp = new TempDir();
+        var coordinator = new LifeMutationCoordinator(new LifePlanFileService(tmp.FilePath()));
+        var events = 0;
+        coordinator.StateChanged += (_, _) => events++;
+
+        coordinator.NoteAddLaunched();
+        coordinator.NoteAddLaunched(); // idempotent
+
+        coordinator.AddInFlight.Should().BeTrue();
+        events.Should().Be(1);
+    }
+
+    [Fact]
+    public void NoteAddAborted_ClearsInFlightFlag()
+    {
+        using var tmp = new TempDir();
+        var coordinator = new LifeMutationCoordinator(new LifePlanFileService(tmp.FilePath()));
+
+        coordinator.NoteAddLaunched();
+        coordinator.NoteAddAborted();
+
+        coordinator.AddInFlight.Should().BeFalse();
+    }
+
+    [Fact]
+    public void NoteAddAborted_IsIdempotentWhenNotInFlight()
+    {
+        using var tmp = new TempDir();
+        var coordinator = new LifeMutationCoordinator(new LifePlanFileService(tmp.FilePath()));
+        var events = 0;
+        coordinator.StateChanged += (_, _) => events++;
+
+        coordinator.NoteAddAborted();
+
+        coordinator.AddInFlight.Should().BeFalse();
+        events.Should().Be(0);
+    }
+
+    [Fact]
+    public void AddAndStandup_InFlightFlagsAreIndependent()
+    {
+        using var tmp = new TempDir();
+        var coordinator = new LifeMutationCoordinator(new LifePlanFileService(tmp.FilePath()));
+
+        coordinator.NoteStandupLaunched();
+        coordinator.NoteAddLaunched();
+
+        coordinator.StandupInFlight.Should().BeTrue();
+        coordinator.AddInFlight.Should().BeTrue();
+
+        coordinator.NoteStandupAborted();
+
+        coordinator.StandupInFlight.Should().BeFalse();
+        coordinator.AddInFlight.Should().BeTrue();
+    }
 }

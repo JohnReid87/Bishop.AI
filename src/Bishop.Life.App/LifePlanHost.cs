@@ -32,6 +32,7 @@ internal sealed class LifePlanHost : IDisposable
     private const string LandingUrl = "https://bishop.life/index.html";
     private const string StandupCommand = "/bish-life-standup";
     private const string InitCommand = "/bish-life-init";
+    private const string AddCommand = "/bish-life-add";
 
     private static readonly Color DarkBackground = Color.FromArgb(255, 0x14, 0x14, 0x14);
     private static readonly Color LightBackground = Color.FromArgb(255, 0xF3, 0xF3, 0xF3);
@@ -97,10 +98,18 @@ internal sealed class LifePlanHost : IDisposable
     public void NoteWindowActivated()
     {
         if (!_navigated || _disposed) return;
+        var cleared = false;
         if (_coordinator.StandupInFlight)
+        {
             _coordinator.NoteStandupAborted(); // fires StateChanged → PostState
-        else
-            PostState();
+            cleared = true;
+        }
+        if (_coordinator.AddInFlight)
+        {
+            _coordinator.NoteAddAborted();
+            cleared = true;
+        }
+        if (!cleared) PostState();
     }
 
     public void SetTheme(bool isDark)
@@ -125,6 +134,7 @@ internal sealed class LifePlanHost : IDisposable
                 var s = root.GetString();
                 if (s == "standup") LaunchStandup();
                 else if (s == "init") LaunchInit();
+                else if (s == "add") LaunchAdd();
                 return;
             }
 
@@ -139,6 +149,10 @@ internal sealed class LifePlanHost : IDisposable
             else if (type == "init")
             {
                 LaunchInit();
+            }
+            else if (type == "add")
+            {
+                LaunchAdd();
             }
             else if (type == "mutate" && root.TryGetProperty("plan", out var planEl))
             {
@@ -174,6 +188,16 @@ internal sealed class LifePlanHost : IDisposable
         // the envelope.
     }
 
+    private void LaunchAdd()
+    {
+        var folder = Path.GetDirectoryName(_service.FilePath);
+        if (string.IsNullOrEmpty(folder)) return;
+        Directory.CreateDirectory(folder);
+
+        _launcher.LaunchClaude(folder, AddCommand);
+        _coordinator.NoteAddLaunched(); // fires StateChanged → PostState
+    }
+
     private void ApplyMutation(JsonElement planEl)
     {
         LifePlan? plan;
@@ -205,20 +229,28 @@ internal sealed class LifePlanHost : IDisposable
 
     /// <summary>
     /// Watcher fired — disk changed. The JS layer blocks inline mutations while a
-    /// stand-up is in flight, so any reload event during in-flight is from the
-    /// launched terminal (init seed or stand-up rewrite) and clears the flag.
-    /// On the UI thread because <see cref="LifeMutationCoordinator"/> isn't
-    /// thread-safe.
+    /// stand-up or add is in flight, so any reload event during in-flight is from
+    /// the launched terminal (init seed, stand-up rewrite, or add append) and
+    /// clears the flags. On the UI thread because <see cref="LifeMutationCoordinator"/>
+    /// isn't thread-safe.
     /// </summary>
     private void OnFileReloaded(object? sender, EventArgs e)
     {
         _dispatcher.TryEnqueue(() =>
         {
             if (_disposed) return;
+            var cleared = false;
             if (_coordinator.StandupInFlight)
+            {
                 _coordinator.NoteStandupAborted(); // fires StateChanged → PostState
-            else
-                PostState();
+                cleared = true;
+            }
+            if (_coordinator.AddInFlight)
+            {
+                _coordinator.NoteAddAborted();
+                cleared = true;
+            }
+            if (!cleared) PostState();
         });
     }
 
@@ -233,19 +265,20 @@ internal sealed class LifePlanHost : IDisposable
 
     private Envelope BuildEnvelope()
     {
-        var inFlight = _coordinator.StandupInFlight;
+        var standupInFlight = _coordinator.StandupInFlight;
+        var addInFlight = _coordinator.AddInFlight;
 
         if (!_service.Exists())
-            return new Envelope(Status: "missing", FilePath: _service.FilePath, Plan: null, StandupInFlight: inFlight);
+            return new Envelope(Status: "missing", FilePath: _service.FilePath, Plan: null, StandupInFlight: standupInFlight, AddInFlight: addInFlight);
 
         try
         {
             var plan = _service.Load();
-            return new Envelope(Status: "ok", FilePath: _service.FilePath, Plan: plan, StandupInFlight: inFlight);
+            return new Envelope(Status: "ok", FilePath: _service.FilePath, Plan: plan, StandupInFlight: standupInFlight, AddInFlight: addInFlight);
         }
         catch (Exception ex)
         {
-            return new Envelope(Status: "error", FilePath: _service.FilePath, Plan: null, StandupInFlight: inFlight, Error: ex.Message);
+            return new Envelope(Status: "error", FilePath: _service.FilePath, Plan: null, StandupInFlight: standupInFlight, AddInFlight: addInFlight, Error: ex.Message);
         }
     }
 
@@ -265,5 +298,6 @@ internal sealed class LifePlanHost : IDisposable
         string FilePath,
         LifePlan? Plan,
         bool StandupInFlight,
+        bool AddInFlight,
         string? Error = null);
 }
