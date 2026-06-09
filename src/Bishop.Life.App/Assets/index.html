@@ -203,6 +203,7 @@
     <button class="tab" data-view="map">Map</button>
     <button class="tab" data-view="horizons">Horizons</button>
     <button class="tab" data-view="balance">Balance</button>
+    <button class="tab" data-view="inbox">Inbox<span class="n" id="nInbox"></span></button>
   </div>
 
   <div id="standupBanner" class="standup-banner" hidden>Stand-up in progress &mdash; inline edits paused.</div>
@@ -320,6 +321,8 @@ function attr(id) { return `data-action-id="${esc(id)}"`; }
 function render() {
   const focusCount = allActions().filter(x => x.action.starred && !x.action.done).length;
   document.getElementById("nFocus").textContent = focusCount || "";
+  const inboxCount = (plan && plan.inbox ? plan.inbox.length : 0);
+  document.getElementById("nInbox").textContent = inboxCount || "";
 
   const c = document.getElementById("container");
   if (status === "missing") {
@@ -335,7 +338,7 @@ function render() {
     return;
   }
 
-  const renderers = { focus: focusView, map: mapView, horizons: horizonsView, balance: balanceView };
+  const renderers = { focus: focusView, map: mapView, horizons: horizonsView, balance: balanceView, inbox: inboxView };
   c.innerHTML = renderers[currentView]();
 }
 
@@ -470,6 +473,33 @@ function balanceView() {
     <div class="bal-count">${r.goalCount ? `${r.goalCount}g &middot; ${r.open} open` : `<span class="untended">untended</span>`}</div>
   </div>`).join("");
   return h + "</div>";
+}
+
+function inboxView() {
+  const items = (plan.inbox || []).slice().sort((a, b) => {
+    const ta = new Date(a.capturedAt || 0).getTime();
+    const tb = new Date(b.capturedAt || 0).getTime();
+    return tb - ta;
+  });
+  let h = `<div class="view"><div class="sect">Inbox</div><div class="sect-sub">Captured via <code>/bish-life-add</code>. Triaged into areas during the next stand-up.</div>`;
+  if (!items.length) {
+    h += `<div class="empty">Inbox is empty. Capture a thought with <code>/bish-life-add</code>.</div>`;
+  } else {
+    h += items.map(item => `<div class="card" style="display:flex;align-items:flex-start;gap:11px">
+      <div style="flex:1">
+        <div class="act-text" style="font-size:13.5px">${esc(item.text)}</div>
+        <div class="lineage" style="margin-top:3px">${esc(formatCapturedAt(item.capturedAt))}</div>
+      </div>
+    </div>`).join("");
+  }
+  return h + "</div>";
+}
+
+function formatCapturedAt(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 document.querySelector(".tabs").addEventListener("click", e => {
