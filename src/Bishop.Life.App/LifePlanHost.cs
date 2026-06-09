@@ -119,8 +119,8 @@ internal sealed class LifePlanHost : IDisposable
         if (!_navigated || _disposed) return;
         var payload = new SpeakEnvelope(
             Type: "speak." + message.Kind,
-            Samples: message.Samples,
-            SampleRateHz: message.SampleRateHz,
+            PcmBase64: message.PcmBase64,
+            PcmSampleRateHz: message.PcmSampleRateHz,
             DurationMs: message.DurationMs);
         var json = JsonSerializer.Serialize(payload, PostOptions);
         _view.CoreWebView2.PostWebMessageAsJson(json);
@@ -335,8 +335,8 @@ internal sealed class LifePlanHost : IDisposable
 
     private sealed record SpeakEnvelope(
         string Type,
-        float[]? Samples,
-        int SampleRateHz,
+        string? PcmBase64,
+        int PcmSampleRateHz,
         int DurationMs);
 
     private sealed record Envelope(

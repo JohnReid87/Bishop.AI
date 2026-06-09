@@ -13,8 +13,8 @@ public class SpeakPipeContractTests
         {
             Kind = SpeakPipeMessage.KindStarted,
             WavPath = @"C:\temp\foo.wav",
-            Samples = new[] { 0.1f, 0.2f, 0.3f },
-            SampleRateHz = 40,
+            PcmBase64 = Convert.ToBase64String(new byte[] { 1, 0, 2, 0, 3, 0 }),
+            PcmSampleRateHz = 8000,
             DurationMs = 1234,
         };
 
@@ -24,8 +24,8 @@ public class SpeakPipeContractTests
         back.Should().NotBeNull();
         back!.Kind.Should().Be("started");
         back.WavPath.Should().Be(@"C:\temp\foo.wav");
-        back.Samples.Should().Equal(0.1f, 0.2f, 0.3f);
-        back.SampleRateHz.Should().Be(40);
+        back.PcmBase64.Should().Be(msg.PcmBase64);
+        back.PcmSampleRateHz.Should().Be(8000);
         back.DurationMs.Should().Be(1234);
     }
 
@@ -36,14 +36,16 @@ public class SpeakPipeContractTests
         {
             Kind = SpeakPipeMessage.KindStarted,
             WavPath = "x",
-            SampleRateHz = 40,
+            PcmBase64 = "AAAA",
+            PcmSampleRateHz = 8000,
         };
 
         var json = JsonSerializer.Serialize(msg, SpeakPipeContract.JsonOptions);
 
         json.Should().Contain("\"kind\":");
         json.Should().Contain("\"wavPath\":");
-        json.Should().Contain("\"sampleRateHz\":");
+        json.Should().Contain("\"pcmBase64\":");
+        json.Should().Contain("\"pcmSampleRateHz\":");
     }
 
     [Fact]
@@ -54,7 +56,7 @@ public class SpeakPipeContractTests
         var json = JsonSerializer.Serialize(msg, SpeakPipeContract.JsonOptions);
 
         json.Should().NotContain("wavPath");
-        json.Should().NotContain("samples");
+        json.Should().NotContain("pcmBase64");
     }
 
     [Fact]

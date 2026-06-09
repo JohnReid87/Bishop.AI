@@ -15,15 +15,14 @@ namespace Bishop.Cli.Life.Speak;
 [SupportedOSPlatform("windows")]
 internal static class SpeakPipePublisher
 {
-    private const int AmplitudesPerSecond = 40;
     private const int ConnectTimeoutMs = 200;
 
     public static async Task<bool> TryPublishAsync(string wavPath, CancellationToken cancellationToken)
     {
-        WavAmplitudeReader.Envelope envelope;
+        WavPcmReader.Pcm pcm;
         try
         {
-            envelope = WavAmplitudeReader.Read(wavPath, AmplitudesPerSecond);
+            pcm = WavPcmReader.Read(wavPath);
         }
         catch (Exception)
         {
@@ -53,9 +52,9 @@ internal static class SpeakPipePublisher
             {
                 Kind = SpeakPipeMessage.KindStarted,
                 WavPath = wavPath,
-                Samples = envelope.Samples,
-                SampleRateHz = AmplitudesPerSecond,
-                DurationMs = envelope.DurationMs,
+                PcmBase64 = WavPcmReader.ToBase64(pcm.Samples),
+                PcmSampleRateHz = pcm.SampleRateHz,
+                DurationMs = pcm.DurationMs,
             };
             await WriteLineAsync(client, started, cancellationToken);
 
@@ -63,7 +62,7 @@ internal static class SpeakPipePublisher
             // buffer so the listener has time to read it into memory. The
             // listener should copy bytes immediately on `started` rather
             // than streaming off disk to keep this margin generous.
-            var holdMs = envelope.DurationMs + 500;
+            var holdMs = pcm.DurationMs + 500;
             try
             {
                 await Task.Delay(holdMs, cancellationToken);

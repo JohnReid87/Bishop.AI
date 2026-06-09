@@ -167,9 +167,10 @@
   .untended { color: var(--t-year); }
 
   /* speak viz panel — animates while Bishop.Cli's Piper TTS plays via the
-     bishop-life-speak named pipe. Bars are sampled RMS amplitude; the
-     accent token keeps the bars in the brand signal-green so the panel
-     reads as the same indicator the rest of the dashboard uses. */
+     bishop-life-speak named pipe. Renders a CRT-phosphor oscilloscope
+     trace of the raw PCM waveform, centred at "now" with the left half
+     a horizontal mirror of the right half so the trace stays symmetric
+     about the vertical centre line. */
   .viz-panel { display:flex; align-items:center; gap:10px; height:64px; padding:0 12px;
     background:var(--panel); border:1px solid var(--line); border-radius:9px;
     margin:0 0 14px; }
@@ -689,7 +690,7 @@ if (window.chrome && window.chrome.webview) {
   window.chrome.webview.addEventListener("message", evt => {
     const env = typeof evt.data === "string" ? JSON.parse(evt.data) : evt.data;
     if (env && typeof env.type === "string" && env.type.startsWith("speak.")) {
-      if (env.type === "speak.started") startSpeakViz(env.samples || [], env.sampleRateHz || 40, env.durationMs || 0);
+      if (env.type === "speak.started") startSpeakViz(env.pcmBase64 || "", env.pcmSampleRateHz || 8000, env.durationMs || 0);
       else if (env.type === "speak.stopped") stopSpeakViz();
       return;
     }
@@ -697,28 +698,39 @@ if (window.chrome && window.chrome.webview) {
   });
 }
 
-/* Speak viz — receives a downsampled RMS envelope from Bishop.Cli over the
-   bishop-life-speak pipe (forwarded by LifePlanHost). Draws the full
-   utterance envelope statically across the panel, mirrored around vertical
-   centre, with a vertical playhead sweeping left→right driven by wall-clock
-   time. The panel is revealed on the first utterance of the viewer's
-   lifetime and stays visible thereafter; between chunks it shows a flat
-   accent-coloured line. */
+/* Speak viz — receives raw 8 kHz mono int16 PCM (base64) from Bishop.Cli
+   over the bishop-life-speak pipe (forwarded by LifePlanHost). Renders a
+   centred oscilloscope trace: ±150 ms of waveform around the current
+   playback time, with the left half drawn as the horizontal mirror of
+   the right so the trace stays symmetric about the vertical centre.
+   PCM sign drives vertical deflection. CRT-phosphor styling: persistence
+   trail (per-frame translucent clear instead of clearRect) plus an
+   additive glow underlay on the accent stroke. No playhead — the trace
+   itself is the cue. The panel is revealed on the first utterance and
+   stays visible thereafter; between chunks it shows a flat accent line. */
 const vizPanel = document.getElementById("vizPanel");
 const vizCanvas = document.getElementById("vizCanvas");
 let vizSession = null;
+const VIZ_WINDOW_MS = 300; // total window — 150 ms each side of "now"
 
-function startSpeakViz(samples, sampleRateHz, durationMs) {
+function startSpeakViz(pcmBase64, pcmSampleRateHz, durationMs) {
   cancelSpeakViz();
   vizPanel.hidden = false;
   vizSession = {
-    samples: samples || [],
-    sampleRateHz: sampleRateHz || 40,
+    pcm: decodePcmBase64(pcmBase64 || ""),
+    sampleRateHz: pcmSampleRateHz || 8000,
     durationMs: durationMs || 0,
     startedAt: performance.now(),
     raf: 0,
+    decayStartedAt: 0,
   };
   resizeSpeakViz();
+  // Wipe any leftover trail from the previous utterance so the new trace
+  // doesn't ghost atop stale phosphor.
+  const ctx = vizCanvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, vizCanvas.clientWidth, vizCanvas.clientHeight);
   drawSpeakViz();
 }
 
@@ -732,6 +744,23 @@ function cancelSpeakViz() {
   vizSession = null;
 }
 
+// Decode base64 → Int16Array (little-endian). Returns an empty array when
+// the input is empty or malformed so the rest of the viz can stay branchless.
+function decodePcmBase64(b64) {
+  if (!b64) return new Int16Array(0);
+  try {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    // Copy into a fresh buffer so the Int16 view is guaranteed aligned.
+    const buf = new ArrayBuffer(bytes.length);
+    new Uint8Array(buf).set(bytes);
+    return new Int16Array(buf);
+  } catch (_) {
+    return new Int16Array(0);
+  }
+}
+
 function resizeSpeakViz() {
   const dpr = window.devicePixelRatio || 1;
   const w = vizCanvas.clientWidth;
@@ -742,6 +771,18 @@ function resizeSpeakViz() {
 
 function accentColor() {
   return getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#00FF41";
+}
+
+// Parse `--accent` to {r,g,b} so we can build phosphor-trail rgba() strings
+// without baking the hex into the JS.
+function accentRgb() {
+  const hex = accentColor().replace("#", "");
+  if (hex.length !== 6) return { r: 0, g: 255, b: 65 };
+  return {
+    r: parseInt(hex.slice(0, 2), 16),
+    g: parseInt(hex.slice(2, 4), 16),
+    b: parseInt(hex.slice(4, 6), 16),
+  };
 }
 
 function drawFlatLine() {
@@ -765,49 +806,104 @@ function drawSpeakViz() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const w = vizCanvas.clientWidth;
   const h = vizCanvas.clientHeight;
-  ctx.clearRect(0, 0, w, h);
-
-  const samples = vizSession.samples;
-  const n = samples.length;
   const mid = h / 2;
-  const accent = accentColor();
-  const dim = "rgba(127,168,122,0.22)";
 
-  // Prefer the explicit utterance duration; fall back to samples/rate so a
-  // missing durationMs still gets a sensible sweep.
+  // CRT phosphor persistence: translucent clear (~100 ms full fade at 60 fps)
+  // via destination-out so the previous frame ghosts under the new trace.
+  // Using destination-out instead of an rgba fill keeps the effect theme-
+  // agnostic — pixels fade to fully transparent rather than to black.
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = "source-over";
+
+  const pcm = vizSession.pcm;
+  const n = pcm.length;
+  const rate = vizSession.sampleRateHz;
   const totalMs = vizSession.durationMs > 0
     ? vizSession.durationMs
-    : (vizSession.sampleRateHz > 0 ? (n / vizSession.sampleRateHz) * 1000 : 0);
+    : (rate > 0 ? (n / rate) * 1000 : 0);
   const elapsedMs = performance.now() - vizSession.startedAt;
-  const progress = totalMs > 0 ? Math.min(1, elapsedMs / totalMs) : 1;
-  const playheadX = progress * w;
+  const nowMs = Math.min(elapsedMs, totalMs > 0 ? totalMs : elapsedMs);
 
-  if (n > 0) {
-    // One column per pixel, averaging the samples that fall inside it so the
-    // shape doesn't alias as the panel resizes.
-    for (let x = 0; x < w; x++) {
-      const i0 = Math.floor((x / w) * n);
-      const i1 = Math.max(i0 + 1, Math.floor(((x + 1) / w) * n));
-      let amp = 0;
-      let count = 0;
-      for (let i = i0; i < i1 && i < n; i++) { amp += samples[i]; count++; }
-      amp = count > 0 ? amp / count : 0;
-      // Piper RMS values typically sit in 0.02..0.35 — scale into the panel.
-      const norm = Math.min(1, amp * 3.5);
-      const bh = Math.max(2, norm * h * 0.9);
-      const y = mid - bh / 2;
-      ctx.fillStyle = x <= playheadX ? accent : dim;
-      ctx.fillRect(x, y, 1, bh);
-    }
+  // Map the right half of the panel to the next 150 ms of waveform; mirror
+  // it horizontally to the left half. PCM sign → vertical deflection.
+  // Centre column = current playback time.
+  const halfMs = VIZ_WINDOW_MS / 2;
+  const halfW = w / 2;
+
+  // Edge decay: when the right-hand half of the window has run past the end
+  // of the utterance, fade the right-edge deflection to zero so the trace
+  // collapses to a flat line smoothly rather than snapping.
+  const overshootMs = Math.max(0, (nowMs + halfMs) - (totalMs > 0 ? totalMs : nowMs + halfMs));
+  const edgeDecay = Math.max(0, 1 - overshootMs / halfMs);
+
+  const accent = accentColor();
+  const { r, g, b } = accentRgb();
+
+  if (n > 0 && rate > 0) {
+    // First pass: additive glow underlay (wider, semi-transparent).
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.35)`;
+    ctx.lineWidth = 3;
+    drawTracePath(ctx, pcm, rate, nowMs, halfMs, halfW, mid, h, edgeDecay);
+
+    // Second pass: sharp accent stroke on top.
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.25;
+    drawTracePath(ctx, pcm, rate, nowMs, halfMs, halfW, mid, h, edgeDecay);
+  } else {
+    // No waveform — keep the flat accent line so the panel never goes black.
+    ctx.fillStyle = accent;
+    const y = Math.round(mid) - 1;
+    ctx.fillRect(0, y, w, 2);
   }
 
-  // Playhead.
-  ctx.fillStyle = accent;
-  ctx.fillRect(Math.max(0, Math.min(w - 1, playheadX)), 0, 1, h);
-
-  if (progress < 1) {
+  // Continue while playback is live, then for ~150 ms after so the trail
+  // visibly decays back to flat before we stop the loop.
+  if (elapsedMs < (totalMs > 0 ? totalMs : 0) + 200) {
     vizSession.raf = requestAnimationFrame(drawSpeakViz);
+  } else {
+    cancelSpeakViz();
+    drawFlatLine();
   }
+}
+
+// Build the right half as a polyline (one Y per column), then stroke it
+// twice — once normally on the right, once mirrored across the vertical
+// centre to the left — so the trace is symmetric about the centre line.
+function drawTracePath(ctx, pcm, rate, nowMs, halfMs, halfW, mid, h, edgeDecay) {
+  const sampleAt = ms => {
+    if (ms < 0) return 0;
+    const idx = Math.floor((ms / 1000) * rate);
+    if (idx < 0 || idx >= pcm.length) return 0;
+    return pcm[idx] / 32768; // → -1..1
+  };
+
+  const amp = h * 0.45;
+  const cols = Math.max(2, Math.floor(halfW));
+  const ys = new Float32Array(cols + 1);
+  for (let i = 0; i <= cols; i++) {
+    const t = i / cols; // 0 at centre, 1 at right edge
+    // Right edge fades to flat as the window runs past the end of the
+    // utterance, so the trace collapses smoothly rather than snapping.
+    const fade = 1 - t * (1 - edgeDecay);
+    const v = sampleAt(nowMs + t * halfMs) * fade;
+    ys[i] = mid - v * amp;
+  }
+
+  // Right half: centre → right edge.
+  ctx.beginPath();
+  ctx.moveTo(halfW, ys[0]);
+  for (let i = 1; i <= cols; i++) ctx.lineTo(halfW + i, ys[i]);
+  ctx.stroke();
+
+  // Left half: horizontal mirror of the right.
+  ctx.beginPath();
+  ctx.moveTo(halfW, ys[0]);
+  for (let i = 1; i <= cols; i++) ctx.lineTo(halfW - i, ys[i]);
+  ctx.stroke();
 }
 
 window.addEventListener("resize", () => {
