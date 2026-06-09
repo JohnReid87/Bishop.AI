@@ -55,6 +55,7 @@ internal sealed class LifePlanHost : IDisposable
     private readonly LifeSpeakPipeServer _speakPipe;
     private readonly LifeSpeakPlayer _speakPlayer;
     private ClaudePtySession? _standupPty;
+    private ClaudeSessionJsonlTailer? _transcriptTailer;
     private bool _navigated;
     private bool _disposed;
     // Default xterm.js geometry on first show; resized as soon as the JS side
@@ -233,21 +234,75 @@ internal sealed class LifePlanHost : IDisposable
         if (string.IsNullOrEmpty(folder)) return;
         Directory.CreateDirectory(folder); // ensure cwd target exists on first run
 
+        // Card #1059: pin a session id up front so the JSONL tailer can find the
+        // on-disk transcript without a race against claude's first write.
+        var sessionId = Guid.NewGuid().ToString();
+        var claudeArgs = $"{StandupCommand} --session-id {sessionId}";
+
         // Card #1053: try the embedded ConPTY pane first so the stand-up renders
         // inside Bishop.Life. Any failure (Pty.Net throw, missing claude,
         // ConPTY unavailable) falls through to the legacy wt.exe path so the
         // user still gets a working stand-up.
-        var pty = _launcher.TryLaunchClaudePty(folder, StandupCommand, _ptyCols, _ptyRows);
+        var pty = _launcher.TryLaunchClaudePty(folder, claudeArgs, _ptyCols, _ptyRows);
         if (pty is not null)
         {
             AttachStandupPty(pty);
+            AttachTranscriptTailer(folder, sessionId);
             PostTerminalShow();
         }
         else
         {
-            _launcher.LaunchClaude(folder, StandupCommand);
+            _launcher.LaunchClaude(folder, claudeArgs);
         }
         _coordinator.NoteStandupLaunched(); // fires StateChanged → PostState
+    }
+
+    private void AttachTranscriptTailer(string cwd, string sessionId)
+    {
+        DetachTranscriptTailer();
+        try
+        {
+            var jsonlPath = ClaudeSessionPaths.ResolveSessionFilePath(cwd, sessionId);
+            var tailer = new ClaudeSessionJsonlTailer(jsonlPath);
+            tailer.UserMessage += OnTranscriptUser;
+            tailer.AssistantText += OnTranscriptAssistant;
+            tailer.ToolUse += OnTranscriptTool;
+            tailer.Start();
+            _transcriptTailer = tailer;
+        }
+        catch (Exception ex)
+        {
+            // Tailer is best-effort: stand-up still works via terminal:data if it
+            // ever gets re-enabled in the JS. Don't propagate.
+            Debug.WriteLine($"LifePlanHost: transcript tailer failed: {ex.Message}");
+        }
+    }
+
+    private void DetachTranscriptTailer()
+    {
+        if (_transcriptTailer is null) return;
+        _transcriptTailer.UserMessage -= OnTranscriptUser;
+        _transcriptTailer.AssistantText -= OnTranscriptAssistant;
+        _transcriptTailer.ToolUse -= OnTranscriptTool;
+        _transcriptTailer.Dispose();
+        _transcriptTailer = null;
+    }
+
+    private void OnTranscriptUser(string text) =>
+        _dispatcher.TryEnqueue(() => PostTranscriptEvent("user", text));
+
+    private void OnTranscriptAssistant(string text) =>
+        _dispatcher.TryEnqueue(() => PostTranscriptEvent("assistant", text));
+
+    private void OnTranscriptTool(ClaudeSessionJsonlTailer.ToolUseEvent evt) =>
+        _dispatcher.TryEnqueue(() => PostTranscriptEvent("tool", evt.Summary));
+
+    private void PostTranscriptEvent(string kind, string text)
+    {
+        if (!_navigated || _disposed) return;
+        var payload = new TranscriptEventEnvelope(Type: "transcript:event", Kind: kind, Text: text);
+        var json = JsonSerializer.Serialize(payload, PostOptions);
+        _view.CoreWebView2.PostWebMessageAsJson(json);
     }
 
     private void AttachStandupPty(ClaudePtySession pty)
@@ -275,6 +330,7 @@ internal sealed class LifePlanHost : IDisposable
         _dispatcher.TryEnqueue(() =>
         {
             DetachStandupPty();
+            DetachTranscriptTailer();
             PostTerminalHide();
             // Watcher will usually have fired by now and cleared the flag, but
             // when the stand-up exits without writing (user typed /exit on the
@@ -412,6 +468,7 @@ internal sealed class LifePlanHost : IDisposable
         if (_disposed) return;
         _disposed = true;
         DetachStandupPty();
+        DetachTranscriptTailer();
         _coordinator.StateChanged -= OnCoordinatorStateChanged;
         _watcher.Reloaded -= OnFileReloaded;
         _watcher.Dispose();
@@ -425,6 +482,11 @@ internal sealed class LifePlanHost : IDisposable
     private sealed record TerminalDataEnvelope(
         string Type,
         string Data);
+
+    private sealed record TranscriptEventEnvelope(
+        string Type,
+        string Kind,
+        string Text);
 
     private sealed record SpeakEnvelope(
         string Type,

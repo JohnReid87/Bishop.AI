@@ -6,11 +6,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cascadia+Code:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<!-- xterm.js bundled locally under Assets/xterm/ (card #1053). UMD globals
-     used at runtime: window.Terminal, window.FitAddon. -->
+<!-- xterm.js bundled locally under Assets/xterm/ (card #1053). Retained as
+     dormant fallback; the live stand-up renders from the on-disk session
+     JSONL via #standupTranscript instead (card #1059). -->
 <link rel="stylesheet" href="xterm/xterm.css" />
-<script src="xterm/xterm.js"></script>
-<script src="xterm/xterm-addon-fit.js"></script>
 
 <style>
   :root {
@@ -183,30 +182,70 @@
     margin:0 0 14px; }
   .viz-panel canvas { flex:1; height:48px; display:block; }
 
-  /* Embedded stand-up terminal (card #1053). Sits directly below the speech
-     viz panel and pushes the regular SPA content (Focus/Map/etc.) below.
-     The .xterm child is supplied by xterm.js; we just give it a sized box. */
-  /* Viewport-relative fixed height (card #1058) — 60vh gives the terminal
-     a comfortably tall pane while leaving room for the starred-actions
-     view below. A fixed height avoids the flex/FitAddon feedback loop
-     where flex-basis: auto + ResizeObserver caused unbounded growth. */
+  /* Embedded stand-up transcript (card #1059). Replaces the raw xterm.js
+     view (card #1053) with an HTML chat transcript rendered from the on-disk
+     session JSONL. The .standup-terminal class is kept as the shell because
+     the viewport-fixed-height contract (card #1058) and palette match what
+     this card needs anyway. */
   .standup-terminal { background:var(--bg); border:1px solid var(--line);
-    border-radius:9px; padding:8px; margin:0 0 14px;
-    height:60vh; overflow:hidden; }
-  .standup-terminal .xterm { width:100%; height:100%; }
-  .standup-terminal .xterm-viewport { background-color:transparent !important;
+    border-radius:9px; padding:12px 14px; margin:0 0 14px;
+    height:60vh; overflow-y:auto;
     scrollbar-gutter: stable; }
-  /* Theme the WebView2 scrollbar inside the xterm viewport. Default WebKit
-     scrollbars are wider and overlay the rightmost terminal column; an 8px
-     palette-matched thumb plus `scrollbar-gutter: stable` (above) reserves
-     a permanent gutter so no character cell ever sits under the thumb. */
-  .standup-terminal .xterm-viewport::-webkit-scrollbar { width: 8px; }
-  .standup-terminal .xterm-viewport::-webkit-scrollbar-track { background: transparent; }
-  .standup-terminal .xterm-viewport::-webkit-scrollbar-thumb {
-    background: var(--line); border-radius: 4px;
+  .standup-terminal::-webkit-scrollbar { width: 8px; }
+  .standup-terminal::-webkit-scrollbar-track { background: transparent; }
+  .standup-terminal::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .standup-terminal::-webkit-scrollbar-thumb:hover { background: var(--line-2); }
+  .standup-terminal::-webkit-scrollbar-thumb:active { background: var(--ink-faint); }
+
+  /* Transcript entries */
+  .tx-entry { margin: 0 0 12px; }
+  .tx-entry:last-child { margin-bottom: 0; }
+  .tx-user {
+    background: var(--accent-soft); border: 1px solid var(--accent-dim);
+    border-radius: 8px; padding: 8px 12px;
+    color: var(--ink); white-space: pre-wrap; word-wrap: break-word;
+    margin-left: 32px;
   }
-  .standup-terminal .xterm-viewport::-webkit-scrollbar-thumb:hover { background: var(--line-2); }
-  .standup-terminal .xterm-viewport::-webkit-scrollbar-thumb:active { background: var(--ink-faint); }
+  .tx-assistant {
+    color: var(--ink); padding: 2px 0;
+    line-height: 1.55;
+  }
+  .tx-assistant p { margin: 0 0 8px; }
+  .tx-assistant p:last-child { margin-bottom: 0; }
+  .tx-assistant h1, .tx-assistant h2, .tx-assistant h3 {
+    font-size: 13.5px; font-weight: 600; margin: 12px 0 4px; color: var(--ink);
+  }
+  .tx-assistant ul, .tx-assistant ol { margin: 4px 0 8px 20px; }
+  .tx-assistant li { margin: 2px 0; }
+  .tx-assistant code {
+    background: var(--bg-2); padding: 1px 5px; border-radius: 3px;
+    font-size: 12.5px; color: var(--ink);
+  }
+  .tx-assistant pre {
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px 11px; margin: 6px 0 10px;
+    overflow-x: auto; font-size: 12.5px; line-height: 1.45;
+  }
+  .tx-assistant pre code { background: transparent; padding: 0; }
+  .tx-assistant strong { color: var(--ink); }
+  .tx-assistant em { color: var(--ink-dim); }
+  .tx-tool {
+    color: var(--ink-faint); font-size: 12px; font-style: italic;
+    padding: 2px 0 2px 14px; border-left: 1px solid var(--line);
+    margin: 2px 0;
+  }
+  .tx-thinking {
+    color: var(--ink-faint); font-size: 12.5px; font-style: italic;
+    padding: 6px 0; display: flex; align-items: center; gap: 8px;
+  }
+  .tx-thinking::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent); animation: pulse 1.4s ease-in-out infinite;
+  }
+  .tx-empty {
+    color: var(--ink-faint); font-size: 12.5px; font-style: italic;
+    padding: 10px 0;
+  }
 
   /* Stand-up input box (card #1057). All stand-up keystrokes are routed
      through this textarea instead of into the embedded xterm, because
@@ -749,80 +788,177 @@ if (window.chrome && window.chrome.webview) {
     }
     if (env && typeof env.type === "string" && env.type.startsWith("terminal:")) {
       if (env.type === "terminal:show") showStandupTerminal();
-      else if (env.type === "terminal:data") writeStandupTerminal(env.data || "");
       else if (env.type === "terminal:hide") hideStandupTerminal();
+      // terminal:data still flows from the host as a dormant fallback for the
+      // legacy xterm path; the transcript:event stream is the live channel
+      // (card #1059), so we no longer render raw PTY bytes here.
+      return;
+    }
+    if (env && env.type === "transcript:event") {
+      appendTranscriptEvent(env.kind, env.text || "");
       return;
     }
     applyEnvelope(env);
   });
 }
 
-/* Embedded stand-up terminal (card #1053). Lifecycle:
-   show → boot xterm.js, wire onData/onResize→postMessage, focus
-   data  → term.write(bytes)
-   hide  → tear down so the next stand-up starts clean
-   On xterm.js boot failure the host's wt.exe fallback already fired,
-   so just leave the pane hidden. */
+/* Embedded stand-up transcript (card #1059). Replaces the xterm.js view
+   (card #1053) with an HTML chat transcript rendered from the on-disk
+   Claude Code session JSONL. The .NET host launches `claude --session-id
+   <guid>`, tails the resulting JSONL file, and emits one
+   {type:"transcript:event", kind, text} envelope per parsed line.
+   Lifecycle:
+     show → clear transcript, reveal pane, show input textarea, focus it
+     transcript:event → append a user/assistant/tool entry
+     hide → clear transcript, hide pane
+   No live ConPTY rendering on this path; raw PTY bytes still flow as
+   `terminal:data` envelopes but are ignored — they are kept dormant on
+   the host side so a future fallback can re-render them if JSONL tailing
+   ever fails. */
 const standupTerminalEl = document.getElementById("standupTerminal");
-let standupTerm = null;
-let standupFit = null;
-let standupResizeObs = null;
+let transcriptThinkingEl = null;
+let lastTranscriptKind = null;
 
 function showStandupTerminal() {
-  if (standupTerm) return; // already up
-  if (typeof Terminal === "undefined" || typeof FitAddon === "undefined") {
-    console.warn("xterm.js not loaded — host fallback should have fired.");
-    return;
-  }
   standupTerminalEl.hidden = false;
-  standupTerm = new Terminal({
-    fontFamily: "Cascadia Code, Consolas, monospace",
-    fontSize: 13,
-    cursorBlink: true,
-    theme: { background: "#141414", foreground: "#e6e6e6" },
-    allowProposedApi: true,
-  });
-  standupFit = new FitAddon.FitAddon();
-  standupTerm.loadAddon(standupFit);
-  standupTerm.open(standupTerminalEl);
-  fitStandupTerm();
-  // Suppress every keydown so direct typing into the xterm never reaches the
-  // PTY (card #1057). All stand-up input is routed through #standupInput
-  // below; the terminal stays usable for mouse selection and scroll. Paste
-  // (Ctrl+Shift+V) flows through the browser paste event rather than this
-  // handler, so xterm's native paste continues to work.
-  standupTerm.attachCustomKeyEventHandler(ev => ev.type !== "keydown");
-  standupTerm.onData(d => {
-    if (window.chrome && window.chrome.webview) {
-      window.chrome.webview.postMessage({ type: "terminal:input", data: d });
-    }
-  });
-  // ResizeObserver fires for any flex/layout change without us coupling to
-  // the global resize event; pair it with the global resize as a backstop.
-  standupResizeObs = new ResizeObserver(() => fitStandupTerm());
-  standupResizeObs.observe(standupTerminalEl);
+  clearTranscript();
   showStandupInput();
 }
 
-function fitStandupTerm() {
-  if (!standupTerm || !standupFit) return;
-  try { standupFit.fit(); } catch { /* container not measurable yet */ return; }
-  const { cols, rows } = standupTerm;
-  if (window.chrome && window.chrome.webview) {
-    window.chrome.webview.postMessage({ type: "terminal:resize", cols, rows });
+function hideStandupTerminal() {
+  standupTerminalEl.hidden = true;
+  clearTranscript();
+  hideStandupInput();
+}
+
+function clearTranscript() {
+  standupTerminalEl.innerHTML = "";
+  transcriptThinkingEl = null;
+  lastTranscriptKind = null;
+}
+
+function appendTranscriptEvent(kind, text) {
+  const wasAtBottom = isScrolledToBottom(standupTerminalEl);
+  removeThinking();
+
+  const entry = document.createElement("div");
+  entry.className = "tx-entry";
+  if (kind === "user") {
+    const bubble = document.createElement("div");
+    bubble.className = "tx-user";
+    bubble.textContent = text;
+    entry.appendChild(bubble);
+    standupTerminalEl.appendChild(entry);
+    showThinking();
+  } else if (kind === "assistant") {
+    const body = document.createElement("div");
+    body.className = "tx-assistant";
+    body.innerHTML = renderMarkdown(text);
+    entry.appendChild(body);
+    standupTerminalEl.appendChild(entry);
+  } else if (kind === "tool") {
+    const line = document.createElement("div");
+    line.className = "tx-tool";
+    line.textContent = text;
+    entry.appendChild(line);
+    standupTerminalEl.appendChild(entry);
+    // Tool calls happen during the agent turn — keep showing the thinking
+    // indicator until the next assistant text lands.
+    showThinking();
+  } else {
+    return;
+  }
+  lastTranscriptKind = kind;
+  if (wasAtBottom) scrollToBottom(standupTerminalEl);
+}
+
+function showThinking() {
+  if (transcriptThinkingEl) return;
+  const el = document.createElement("div");
+  el.className = "tx-thinking";
+  el.textContent = "Bishop is thinking…";
+  standupTerminalEl.appendChild(el);
+  transcriptThinkingEl = el;
+}
+
+function removeThinking() {
+  if (transcriptThinkingEl) {
+    transcriptThinkingEl.remove();
+    transcriptThinkingEl = null;
   }
 }
 
-function writeStandupTerminal(data) {
-  if (standupTerm) standupTerm.write(data);
+function isScrolledToBottom(el) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 24;
 }
 
-function hideStandupTerminal() {
-  if (standupResizeObs) { standupResizeObs.disconnect(); standupResizeObs = null; }
-  if (standupTerm) { standupTerm.dispose(); standupTerm = null; }
-  standupFit = null;
-  standupTerminalEl.hidden = true;
-  hideStandupInput();
+function scrollToBottom(el) {
+  el.scrollTop = el.scrollHeight;
+}
+
+/* Minimal markdown → HTML. Covers paragraphs, ATX headings (#–###),
+   fenced code blocks, inline code, **bold**, *italic*, bullet/numbered
+   lists, and [text](url) links. All output passes through escapeHtml
+   first so user content can't inject markup. Deliberately tiny — claude
+   prose in stand-ups is short and doesn't need a full CommonMark engine. */
+function renderMarkdown(src) {
+  if (!src) return "";
+  // Pull out fenced code blocks first so their contents bypass inline rules.
+  const codeStash = [];
+  let s = String(src).replace(/```([a-z0-9_+-]*)\n([\s\S]*?)```/gi, (_, lang, body) => {
+    const i = codeStash.length;
+    codeStash.push(`<pre><code>${escapeHtml(body.replace(/\n$/, ""))}</code></pre>`);
+    return ` CODE${i} `;
+  });
+  s = escapeHtml(s);
+  // Inline code (`x`).
+  s = s.replace(/`([^`\n]+)`/g, (_, c) => `<code>${c}</code>`);
+  // Bold + italic. Bold first so **x** inside *x* doesn't double-wrap.
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+  // Links.
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+  // Block transform line-by-line.
+  const lines = s.split("\n");
+  const out = [];
+  let listKind = null; // "ul" | "ol" | null
+  let para = [];
+  const flushPara = () => {
+    if (para.length) { out.push(`<p>${para.join(" ")}</p>`); para = []; }
+  };
+  const closeList = () => { if (listKind) { out.push(`</${listKind}>`); listKind = null; } };
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) { flushPara(); closeList(); continue; }
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) { flushPara(); closeList(); out.push(`<h${heading[1].length}>${heading[2]}</h${heading[1].length}>`); continue; }
+    const bullet = line.match(/^[-*]\s+(.+)$/);
+    if (bullet) {
+      flushPara();
+      if (listKind !== "ul") { closeList(); out.push("<ul>"); listKind = "ul"; }
+      out.push(`<li>${bullet[1]}</li>`);
+      continue;
+    }
+    const numbered = line.match(/^\d+\.\s+(.+)$/);
+    if (numbered) {
+      flushPara();
+      if (listKind !== "ol") { closeList(); out.push("<ol>"); listKind = "ol"; }
+      out.push(`<li>${numbered[1]}</li>`);
+      continue;
+    }
+    closeList();
+    para.push(line);
+  }
+  flushPara();
+  closeList();
+
+  // Restore code blocks.
+  return out.join("").replace(/ CODE(\d+) /g, (_, i) => codeStash[Number(i)]);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
 /* Stand-up input box (card #1057). Routes keystrokes/dictation to the PTY
@@ -1095,7 +1231,6 @@ function drawTracePath(ctx, pcm, rate, nowMs, halfMs, halfW, mid, h, eouGain) {
 window.addEventListener("resize", () => {
   if (vizSession) resizeSpeakViz();
   else if (!vizPanel.hidden) drawFlatLine();
-  if (standupTerm) fitStandupTerm();
 });
 
 document.getElementById("standupBtn").addEventListener("click", () => {
