@@ -297,6 +297,9 @@
   body.standup-session-active #standupBanner,
   body.standup-session-active #addBanner,
   body.standup-session-active #container .view > *:not(.today) { display: none !important; }
+  /* Card #1060: shrink the transcript while a session is live so the
+     latest-stand-up summary above it fits on one screen. */
+  body.standup-session-active .standup-terminal { height: 42vh; }
 
   /* footer */
   .foot { display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--line); margin-top:32px; padding-top:13px; }
