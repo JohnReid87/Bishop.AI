@@ -1083,14 +1083,20 @@ standupInputEl.addEventListener("keydown", ev => {
   const text = standupInputEl.value;
   if (!text) return;
   if (window.chrome && window.chrome.webview) {
-    // Card #1065 follow-up: split the body and the Enter into two separate
-    // writes. Sending `text + "\r"` as a single chunk reliably reaches ConPTY
-    // (verified — host logs "wrote N chars" and no drop bubble fires) but
-    // Claude's TUI doesn't consume it until the *next* write nudges its read
-    // loop. Splitting makes the \r itself the second, nudging write. The user
-    // bubble still renders from the JSONL tail's transcript:event.
+    // Abyss-bug fix: send the body and the Enter as two writes with a real
+    // wall-clock gap between them. Back-to-back postMessage→pty.Write calls
+    // land microseconds apart and ConPTY coalesces them into a single read
+    // event, which Claude's TUI in raw mode treats as one keystroke chunk
+    // and does not submit until the next event nudges its input loop —
+    // hence the "first message swallowed, second message unsticks the first"
+    // repro. A 50ms setTimeout forces two separate readable events on
+    // Claude's side. (Diagnosed by toggling the Ctrl+Shift+T debug TUI: with
+    // it open, xterm's render work accidentally provided the gap; with it
+    // closed, the bug reappeared. See #1065 thread.)
     window.chrome.webview.postMessage({ type: "terminal:input", data: text });
-    window.chrome.webview.postMessage({ type: "terminal:input", data: "\r" });
+    setTimeout(() => {
+      window.chrome.webview.postMessage({ type: "terminal:input", data: "\r" });
+    }, 50);
   }
   standupInputEl.value = "";
   resizeStandupInput();
