@@ -63,12 +63,7 @@
     font-family: var(--mono); font-size: 14px; line-height: 1.5;
     -webkit-font-smoothing: antialiased; min-height: 100vh;
   }
-  /* Flex column so .standup-terminal can flex-fill the remaining vertical
-     space during stand-up (card #1058). min-height: 100vh anchors the
-     column to the viewport; when stand-up is inactive the terminal is
-     `hidden` so this collapses to block-like behaviour. */
-  .app { max-width: 900px; margin: 0 auto; padding: 0 18px 60px;
-    display: flex; flex-direction: column; min-height: 100vh; }
+  .app { max-width: 900px; margin: 0 auto; padding: 0 18px 60px; }
 
   /* top bar */
   .topbar { display: flex; align-items: center; gap: 14px; padding: 16px 2px 14px; }
@@ -191,12 +186,13 @@
   /* Embedded stand-up terminal (card #1053). Sits directly below the speech
      viz panel and pushes the regular SPA content (Focus/Map/etc.) below.
      The .xterm child is supplied by xterm.js; we just give it a sized box. */
-  /* flex-fills the remaining vertical space inside .app (card #1058);
-     min-height keeps a sensible floor on very short viewports and gives
-     FitAddon something to measure before xterm content arrives. */
+  /* Viewport-relative fixed height (card #1058) — 60vh gives the terminal
+     a comfortably tall pane while leaving room for the starred-actions
+     view below. A fixed height avoids the flex/FitAddon feedback loop
+     where flex-basis: auto + ResizeObserver caused unbounded growth. */
   .standup-terminal { background:var(--bg); border:1px solid var(--line);
     border-radius:9px; padding:8px; margin:0 0 14px;
-    flex:1 1 auto; min-height:200px; overflow:hidden; }
+    height:60vh; overflow:hidden; }
   .standup-terminal .xterm { width:100%; height:100%; }
   .standup-terminal .xterm-viewport { background-color:transparent !important;
     scrollbar-gutter: stable; }
