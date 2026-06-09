@@ -7,6 +7,9 @@
     xmlns:cnv="using:Bishop.UI.Converters"
     Title="Bishop.AI">
     <Grid x:Name="RootGrid" PreviewKeyDown="RootGrid_PreviewKeyDown">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="L" Modifiers="Control,Shift" Invoked="LifeAccelerator_Invoked"/>
+        </Grid.KeyboardAccelerators>
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="*"/>

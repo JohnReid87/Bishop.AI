@@ -272,6 +272,14 @@ public sealed partial class MainWindow : Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsIconic(nint hWnd);
 
+    private void LifeAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (ViewModel.CatMode.IsActive)
+            return;
+        LifeButton_Click(this, new RoutedEventArgs());
+        args.Handled = true;
+    }
+
     private void LifeButton_Click(object sender, RoutedEventArgs e)
     {
         var exePath = Path.Combine(AppContext.BaseDirectory, "Life", "Bishop.Life.App.exe");
