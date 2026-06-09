@@ -1083,11 +1083,14 @@ standupInputEl.addEventListener("keydown", ev => {
   const text = standupInputEl.value;
   if (!text) return;
   if (window.chrome && window.chrome.webview) {
-    // Trailing \r matches what xterm's onData would emit for Enter, which is
-    // what the claude TUI expects to commit a prompt. The user bubble renders
-    // when the JSONL tail emits the matching transcript:event — same path as
-    // assistant lines.
-    window.chrome.webview.postMessage({ type: "terminal:input", data: text + "\r" });
+    // Card #1065 follow-up: split the body and the Enter into two separate
+    // writes. Sending `text + "\r"` as a single chunk reliably reaches ConPTY
+    // (verified — host logs "wrote N chars" and no drop bubble fires) but
+    // Claude's TUI doesn't consume it until the *next* write nudges its read
+    // loop. Splitting makes the \r itself the second, nudging write. The user
+    // bubble still renders from the JSONL tail's transcript:event.
+    window.chrome.webview.postMessage({ type: "terminal:input", data: text });
+    window.chrome.webview.postMessage({ type: "terminal:input", data: "\r" });
   }
   standupInputEl.value = "";
   resizeStandupInput();
