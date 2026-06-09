@@ -35,11 +35,6 @@ public sealed partial class MainWindow : Window
 
     private void SetupTitleBar()
     {
-        // Caption buttons left at their defaults so they follow the OS light/dark
-        // theme; we only extend the content area into the title bar and set the
-        // window icon so the taskbar / alt-tab show the Bishop mark.
-        AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Brand", "icon-life.ico");
         if (File.Exists(iconPath))
             AppWindow.SetIcon(iconPath);
