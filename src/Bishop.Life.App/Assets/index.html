@@ -291,11 +291,12 @@
 
   /* Card #1060: hide page chrome below the stand-up input while a session is
      live so the conversation is the only thing on-screen. Keeps the top
-     buttons, viz panel, transcript, input, and footer status line. */
+     buttons, viz panel, transcript, input, footer status line, and the
+     latest-stand-up `.today` summary at the top of the focus view. */
   body.standup-session-active .tabs,
   body.standup-session-active #standupBanner,
   body.standup-session-active #addBanner,
-  body.standup-session-active #container { display: none !important; }
+  body.standup-session-active #container .view > *:not(.today) { display: none !important; }
 
   /* footer */
   .foot { display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--line); margin-top:32px; padding-top:13px; }
