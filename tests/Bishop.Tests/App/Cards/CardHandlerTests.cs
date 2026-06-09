@@ -561,6 +561,104 @@ public sealed class CardHandlerTests : IClassFixture<DbFixture>
         persisted.IsClosed.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task EditCard_CommitHashOnly_PersistsHash()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "Task"), default);
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
+
+        // Act
+        await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: false, TagName: null,
+                CommitHash: "abc123"),
+            default);
+
+        // Assert
+        var persisted = await _db.Cards.FindAsync(card.Id);
+        persisted!.CommitHash.Should().Be("abc123");
+        persisted.BranchName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task EditCard_CommitHashAndBranch_PersistsBoth()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "Task"), default);
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
+
+        // Act
+        await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: false, TagName: null,
+                CommitHash: "deadbeef", CommitBranchName: "main"),
+            default);
+
+        // Assert
+        var persisted = await _db.Cards.FindAsync(card.Id);
+        persisted!.CommitHash.Should().Be("deadbeef");
+        persisted.BranchName.Should().Be("main");
+    }
+
+    [Fact]
+    public async Task EditCard_CommitFieldsOmitted_LeavesExistingCommitMetadataUntouched()
+    {
+        // Arrange — seed the card with prior commit metadata, then edit an unrelated field
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, lanes[0].Name, "Task"), default);
+        await using (var seedDb = await _factory.CreateDbContextAsync())
+        {
+            var seedCard = await seedDb.Cards.FindAsync(card.Id);
+            seedCard!.CommitHash = "preexisting";
+            seedCard.BranchName = "feature/x";
+            await seedDb.SaveChangesAsync();
+        }
+        _db.ChangeTracker.Clear();
+
+        var handler = new UpdateCardCommandHandler(_factory, Substitute.For<ISender>());
+
+        // Act
+        await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: "Renamed", Description: null, UpdateTag: false, TagName: null),
+            default);
+
+        // Assert
+        var persisted = await _db.Cards.FindAsync(card.Id);
+        persisted!.CommitHash.Should().Be("preexisting");
+        persisted.BranchName.Should().Be("feature/x");
+        persisted.Title.Should().Be("Renamed");
+    }
+
+    [Fact]
+    public async Task EditCard_CommitHashWithAppendAndToLane_PersistsAllInOneCall()
+    {
+        // Arrange
+        var (workspace, lanes) = await CreateWorkspaceWithLanesAsync();
+        var doneLane = lanes.Single(l => l.Name == "Done");
+        var card = await new AddCardCommandHandler(_factory)
+            .Handle(new AddCardCommand(workspace.Id, SystemLaneNames.ToDo, "Task", "Existing"), default);
+        var handler = new UpdateCardCommandHandler(_factory, CreateSender());
+
+        // Act
+        await handler.Handle(
+            new UpdateCardCommand(card.Id, Title: null, Description: null, UpdateTag: false, TagName: null,
+                AppendDescription: "### Agent notes\nDone.", ToLaneName: doneLane.Name,
+                CommitHash: "cafebabe", CommitBranchName: "main"),
+            default);
+
+        // Assert
+        var persisted = await _db.Cards.FindAsync(card.Id);
+        persisted!.Description.Should().Be("Existing\n\n---\n\n### Agent notes\nDone.");
+        persisted.LaneName.Should().Be(doneLane.Name);
+        persisted.IsClosed.Should().BeTrue();
+        persisted.CommitHash.Should().Be("cafebabe");
+        persisted.BranchName.Should().Be("main");
+    }
+
     private ISender CreateSender()
     {
         var sender = Substitute.For<ISender>();

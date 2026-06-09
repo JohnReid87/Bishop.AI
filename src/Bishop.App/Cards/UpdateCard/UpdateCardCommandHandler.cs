@@ -20,7 +20,8 @@ internal sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardComma
     public async Task<Card> Handle(UpdateCardCommand request, CancellationToken cancellationToken)
     {
         if (request.Title is null && request.Description is null && request.AppendDescription is null
-            && !request.UpdateTag && request.ToLaneName is null)
+            && !request.UpdateTag && request.ToLaneName is null
+            && request.CommitHash is null && request.CommitBranchName is null)
             throw new InvalidOperationException("At least one field (--title, --description, or --tag) must be supplied.");
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -54,6 +55,12 @@ internal sealed class UpdateCardCommandHandler : IRequestHandler<UpdateCardComma
                 card.TagName = request.TagName;
             }
         }
+
+        if (request.CommitHash is not null)
+            card.CommitHash = request.CommitHash;
+
+        if (request.CommitBranchName is not null)
+            card.BranchName = request.CommitBranchName;
 
         await db.SaveChangesAsync(cancellationToken);
 

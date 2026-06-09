@@ -17,6 +17,8 @@ internal sealed class EditCardCliCommand : Command
         var editAppendDescFileOpt = new Option<string?>("--append-description-file", "Append to description from file (use - for stdin); mutually exclusive with --description and --description-file");
         var editTagOpt = new Option<string?>("--tag", "Set tag (use empty string to clear)");
         var editToLaneOpt = new Option<string?>("--to-lane", "Move card to this lane after editing");
+        var editCommitHashOpt = new Option<string?>("--commit-hash", "Record the commit SHA against the card");
+        var editCommitBranchOpt = new Option<string?>("--commit-branch", "Record the commit branch name against the card");
 
         AddArgument(cardEditIdArg);
         AddOption(CommonOptions.WorkspaceOption);
@@ -26,6 +28,8 @@ internal sealed class EditCardCliCommand : Command
         AddOption(editAppendDescFileOpt);
         AddOption(editTagOpt);
         AddOption(editToLaneOpt);
+        AddOption(editCommitHashOpt);
+        AddOption(editCommitBranchOpt);
 
         this.SetHandler(async (InvocationContext ctx) =>
         {
@@ -37,6 +41,8 @@ internal sealed class EditCardCliCommand : Command
             var appendDescFile = ctx.ParseResult.GetValueForOption(editAppendDescFileOpt);
             var tag = ctx.ParseResult.GetValueForOption(editTagOpt);
             var toLane = ctx.ParseResult.GetValueForOption(editToLaneOpt);
+            var commitHash = ctx.ParseResult.GetValueForOption(editCommitHashOpt);
+            var commitBranch = ctx.ParseResult.GetValueForOption(editCommitBranchOpt);
 
             var descOptionCount = new[] { description is not null, descFile is not null, appendDescFile is not null }.Count(x => x);
             if (descOptionCount > 1)
@@ -66,7 +72,7 @@ internal sealed class EditCardCliCommand : Command
             }
 
             var updateTag = tag is not null;
-            var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTag, tag, appendDesc, toLane));
+            var card = await mediator.Send(new UpdateCardCommand(cardId, title, desc, updateTag, tag, appendDesc, toLane, commitHash, commitBranch));
             Console.WriteLine($"Updated card #{card.Number} — '{card.Title}'");
         });
     }

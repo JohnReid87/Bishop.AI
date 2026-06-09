@@ -10,4 +10,6 @@ public sealed record UpdateCardCommand(
     bool UpdateTag,
     string? TagName,
     string? AppendDescription = null,
-    string? ToLaneName = null) : IRequest<Card>;
+    string? ToLaneName = null,
+    string? CommitHash = null,
+    string? CommitBranchName = null) : IRequest<Card>;
