@@ -131,6 +131,16 @@
   .h-pill.someday  { color: var(--t-beyond); background: rgba(107,140,175,.13); }
   .h-pill:hover    { filter: brightness(1.15); }
 
+  /* goal-level horizon pill (YYYY-MM). Click swaps to an inline month input. */
+  .g-pill { font-size: 10px; font-weight: 600; letter-spacing:.3px; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; cursor: pointer; user-select: none; transition: .15s; flex:none; }
+  .g-pill.month  { color: var(--t-month);  background: rgba(95,168,156,.13); }
+  .g-pill.year   { color: var(--t-year);   background: rgba(196,168,95,.13); }
+  .g-pill.beyond { color: var(--t-beyond); background: rgba(107,140,175,.13); }
+  .g-pill.empty  { color: var(--ink-faint); background: var(--bg-2); border:1px dashed var(--line-2); }
+  .g-pill:hover  { filter: brightness(1.15); }
+  .g-pill-edit   { font-family: var(--mono); font-size: 11px; padding: 1px 4px; border-radius: 4px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--ink); outline: none; }
+  .standup-disabled .g-pill { cursor: not-allowed; opacity: .55; }
+
   /* per-horizon section header inside an area */
   .h-sect { font-size:11px; letter-spacing:.6px; text-transform:uppercase; color:var(--ink-dim); margin:10px 0 4px 3px; padding-left:13px; border-left:1px solid var(--line); }
   .h-sect.today { color: var(--accent); }
@@ -288,6 +298,61 @@ function findAction(id) {
   return null;
 }
 
+function findGoal(id) {
+  if (!plan || !id) return null;
+  for (const a of plan.areas || [])
+    for (const g of a.goals || [])
+      if (g.id === id) return g;
+  return null;
+}
+
+// Swap a goal chip with an inline <input type="month"> focused for edit. Commit
+// on change/blur; Enter commits, Escape reverts. On a successful commit we let
+// the host's envelope re-render the chip; on no-op we just re-render locally.
+function openGoalHorizonEditor(pill) {
+  const id = pill.dataset.goalId;
+  const goal = findGoal(id); if (!goal) return;
+  const current = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(goal.horizon || "")) ? goal.horizon : "";
+  const input = document.createElement("input");
+  input.type = "month";
+  input.className = "g-pill-edit";
+  input.value = current;
+  input.dataset.goalId = id;
+  pill.replaceWith(input);
+  input.focus();
+  let done = false;
+  const finish = (commit) => {
+    if (done) return; done = true;
+    if (commit) {
+      if (commitGoalHorizon(id, input.value)) { render(); return; }
+    }
+    render();
+  };
+  input.addEventListener("blur", () => finish(true));
+  input.addEventListener("keydown", ev => {
+    if (ev.key === "Enter") { ev.preventDefault(); finish(true); }
+    else if (ev.key === "Escape") { ev.preventDefault(); finish(false); }
+  });
+}
+
+// Empty value clears horizon to null; otherwise must match YYYY-MM (01–12).
+// Invalid input is rejected silently and the chip re-renders to its prior state.
+function commitGoalHorizon(id, value) {
+  const g = findGoal(id); if (!g) return false;
+  const v = (value || "").trim();
+  if (v === "") {
+    if (g.horizon == null) return false;
+    g.horizon = null;
+  } else if (/^\d{4}-(0[1-9]|1[0-2])$/.test(v)) {
+    if (v === g.horizon) return false;
+    g.horizon = v;
+  } else {
+    return false;
+  }
+  postMutation();
+  return true;
+}
+
 function postMutation() {
   if (!window.chrome || !window.chrome.webview) return;
   // Pass the object directly — JSON.stringify here would make WebView2 deliver
@@ -397,6 +462,14 @@ function actionHorizonKey(a) {
   return ACTION_HORIZONS[a.horizon] ? a.horizon : DEFAULT_ACTION_HORIZON;
 }
 
+function goalHorizonChip(goal) {
+  const h = goal.horizon;
+  const isYm = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(h || ""));
+  const cls = isYm ? bucket(h) : (h ? "beyond" : "empty");
+  const label = isYm ? esc(h) : (h ? esc(h) : "—");
+  return `<span class="g-pill ${cls}" data-goal-id="${esc(goal.id)}" title="Click to set goal horizon (YYYY-MM)">${label}</span>`;
+}
+
 function mapView() {
   let h = `<div class="view"><div class="sect">The map</div><div class="sect-sub">Actions grouped by horizon within each life area. The urgency at a glance.</div>`;
   h += (plan.areas || []).map(area => {
@@ -409,6 +482,15 @@ function mapView() {
       <span class="area-name">${esc(area.name)}</span>
       <span class="area-meta">${goals.length} goal${goals.length !== 1 ? "s" : ""} &middot; ${openCount} open</span>
     </div>`;
+
+    for (const g of goals) {
+      block += `<div class="goal-block">
+        <div class="goal-head">
+          <span class="goal-title">${esc(g.name)}</span>
+          ${goalHorizonChip(g)}
+        </div>
+      </div>`;
+    }
 
     // Group actions by horizon section; empty sections collapse (not rendered).
     // Within a section, starred sorts above unstarred so a starred Today action leads its bucket.
@@ -538,6 +620,12 @@ function applyEnvelope(env) {
 const container = document.getElementById("container");
 
 container.addEventListener("click", e => {
+  const gPill = e.target.closest(".g-pill[data-goal-id]");
+  if (gPill) {
+    if (standupInFlight || addInFlight) return;
+    openGoalHorizonEditor(gPill);
+    return;
+  }
   const host = e.target.closest("[data-action-id]");
   if (!host) return;
   if (standupInFlight || addInFlight) return;
