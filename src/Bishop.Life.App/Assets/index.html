@@ -166,6 +166,15 @@
   .bal-count { font-size:11px; color:var(--ink-dim); width:96px; text-align:right; flex:none; }
   .untended { color: var(--t-year); }
 
+  /* speak viz panel — animates while Bishop.Cli's Piper TTS plays via the
+     bishop-life-speak named pipe. Bars are sampled RMS amplitude; the
+     accent token keeps the bars in the brand signal-green so the panel
+     reads as the same indicator the rest of the dashboard uses. */
+  .viz-panel { display:flex; align-items:center; gap:10px; height:64px; padding:0 12px;
+    background:var(--panel); border:1px solid var(--line); border-radius:9px;
+    margin:0 0 14px; transition: opacity .25s; }
+  .viz-panel canvas { flex:1; height:48px; display:block; }
+
   /* stand-up in-flight banner */
   .standup-banner { background:rgba(196,168,95,.10); border:1px solid rgba(196,168,95,.45); color:var(--t-year); border-radius:9px; padding:9px 13px; margin:0 0 14px; font-size:12.5px; display:flex; align-items:center; gap:9px; }
   .standup-banner::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--t-year); animation: pulse 1.4s ease-in-out infinite; }
@@ -210,6 +219,7 @@
 
   <div id="standupBanner" class="standup-banner" hidden>Stand-up in progress &mdash; inline edits paused.</div>
   <div id="addBanner" class="standup-banner" hidden>Add in progress &mdash; inline edits paused.</div>
+  <div id="vizPanel" class="viz-panel" hidden><canvas id="vizCanvas"></canvas></div>
   <div id="container"></div>
 
   <div class="foot">
@@ -678,9 +688,99 @@ container.addEventListener("keydown", e => {
 if (window.chrome && window.chrome.webview) {
   window.chrome.webview.addEventListener("message", evt => {
     const env = typeof evt.data === "string" ? JSON.parse(evt.data) : evt.data;
+    if (env && typeof env.type === "string" && env.type.startsWith("speak.")) {
+      if (env.type === "speak.started") startSpeakViz(env.samples || [], env.sampleRateHz || 40, env.durationMs || 0);
+      else if (env.type === "speak.stopped") stopSpeakViz();
+      return;
+    }
     applyEnvelope(env);
   });
 }
+
+/* Speak viz — receives downsampled RMS amplitudes from Bishop.Cli over the
+   bishop-life-speak pipe (forwarded by LifePlanHost). Draws a moving window
+   of bars trailing the audio cursor. Raw samples (not pre-computed FFT) so
+   swapping in a different visualisation is JS-only. */
+const vizPanel = document.getElementById("vizPanel");
+const vizCanvas = document.getElementById("vizCanvas");
+let vizSession = null;
+
+function startSpeakViz(samples, sampleRateHz, durationMs) {
+  cancelSpeakViz();
+  vizPanel.hidden = false;
+  vizPanel.style.opacity = "1";
+  vizSession = {
+    samples: samples,
+    sampleRateHz: sampleRateHz,
+    durationMs: durationMs,
+    startedAt: performance.now(),
+    raf: 0,
+  };
+  resizeSpeakViz();
+  drawSpeakViz();
+}
+
+function stopSpeakViz() {
+  cancelSpeakViz();
+  // Fade out so the panel doesn't pop between consecutive utterances during
+  // a stand-up — if a new speak.started arrives before the fade ends, the
+  // panel is already at opacity 1 and just re-animates.
+  vizPanel.style.opacity = "0";
+  setTimeout(() => { if (!vizSession) vizPanel.hidden = true; }, 280);
+}
+
+function cancelSpeakViz() {
+  if (vizSession && vizSession.raf) cancelAnimationFrame(vizSession.raf);
+  vizSession = null;
+}
+
+function resizeSpeakViz() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = vizCanvas.clientWidth;
+  const h = vizCanvas.clientHeight;
+  vizCanvas.width = Math.max(1, Math.round(w * dpr));
+  vizCanvas.height = Math.max(1, Math.round(h * dpr));
+}
+
+function drawSpeakViz() {
+  if (!vizSession) return;
+  const ctx = vizCanvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = vizCanvas.clientWidth;
+  const h = vizCanvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  const elapsedMs = performance.now() - vizSession.startedAt;
+  const cursor = Math.floor((elapsedMs / 1000) * vizSession.sampleRateHz);
+
+  const barCount = 72;
+  const barGap = 2;
+  const barW = Math.max(1, (w - barGap * (barCount - 1)) / barCount);
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#00FF41";
+
+  for (let i = 0; i < barCount; i++) {
+    const idx = cursor - (barCount - 1 - i);
+    const valid = idx >= 0 && idx < vizSession.samples.length;
+    const amp = valid ? vizSession.samples[idx] : 0;
+    // Piper RMS values typically sit in 0.02..0.35 — scale into the panel.
+    const norm = Math.min(1, amp * 3.5);
+    const bh = Math.max(2, norm * h * 0.9);
+    const x = i * (barW + barGap);
+    const y = (h - bh) / 2;
+    ctx.fillStyle = valid ? accent : "rgba(127,168,122,0.10)";
+    ctx.fillRect(x, y, barW, bh);
+  }
+
+  // Keep animating until the cursor has scrolled past the trailing window,
+  // even after we've run out of samples — gives the last bars time to
+  // travel off-screen so the end of the utterance doesn't freeze on a tail.
+  if (cursor < vizSession.samples.length + barCount) {
+    vizSession.raf = requestAnimationFrame(drawSpeakViz);
+  }
+}
+
+window.addEventListener("resize", () => { if (vizSession) resizeSpeakViz(); });
 
 document.getElementById("standupBtn").addEventListener("click", () => {
   if (standupInFlight || addInFlight) return;

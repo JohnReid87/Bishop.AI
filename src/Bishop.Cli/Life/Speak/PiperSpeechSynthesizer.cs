@@ -47,12 +47,21 @@ internal static class PiperSpeechSynthesizer
                     throw new InvalidOperationException($"piper exited {proc.ExitCode}: {err}");
             }
 
-            using var player = new System.Media.SoundPlayer(wavPath);
-            player.PlaySync();
+            // Hand off to Life.App over the speak pipe when it's listening so
+            // the dashboard's viz panel can render the utterance. Falls back
+            // to local SoundPlayer when no listener is reachable, preserving
+            // today's standup-without-viewer flow.
+            var handedOff = await SpeakPipePublisher.TryPublishAsync(wavPath, cancellationToken);
+            if (!handedOff)
+            {
+                using var player = new System.Media.SoundPlayer(wavPath);
+                player.PlaySync();
+            }
         }
         finally
         {
-            try { File.Delete(wavPath); } catch { }
+            try { File.Delete(wavPath); }
+            catch (Exception ex) { Debug.WriteLine($"PiperSpeechSynthesizer: temp wav delete failed: {ex.Message}"); }
         }
     }
 }
