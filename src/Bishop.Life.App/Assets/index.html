@@ -168,9 +168,11 @@
 
   /* speak viz panel — animates while Bishop.Cli's Piper TTS plays via the
      bishop-life-speak named pipe. Renders a CRT-phosphor oscilloscope
-     trace of the raw PCM waveform, centred at "now" with the left half
-     a horizontal mirror of the right half so the trace stays symmetric
-     about the vertical centre line. */
+     trace of the raw PCM waveform: the centre column maps to the 150 ms
+     look-ahead boundary and the edges map to current playback time, so
+     peaks emerge at centre and flow outward. The left half is a
+     horizontal mirror of the right so the trace stays symmetric about
+     the vertical centre line. */
   .viz-panel { display:flex; align-items:center; gap:10px; height:64px; padding:0 12px;
     background:var(--panel); border:1px solid var(--line); border-radius:9px;
     margin:0 0 14px; }
@@ -700,9 +702,11 @@ if (window.chrome && window.chrome.webview) {
 
 /* Speak viz — receives raw 8 kHz mono int16 PCM (base64) from Bishop.Cli
    over the bishop-life-speak pipe (forwarded by LifePlanHost). Renders a
-   centred oscilloscope trace: ±150 ms of waveform around the current
-   playback time, with the left half drawn as the horizontal mirror of
-   the right so the trace stays symmetric about the vertical centre.
+   centred oscilloscope trace: the centre column maps to the 150 ms
+   look-ahead boundary and the edges map to the current playback time,
+   so peaks emerge at centre and slide outward as playback advances.
+   The left half is drawn as the horizontal mirror of the right so the
+   trace stays symmetric about the vertical centre.
    PCM sign drives vertical deflection. CRT-phosphor styling: persistence
    trail (per-frame translucent clear instead of clearRect) plus an
    additive glow underlay on the accent stroke. No playhead — the trace
@@ -826,14 +830,15 @@ function drawSpeakViz() {
   const elapsedMs = performance.now() - vizSession.startedAt;
   const nowMs = Math.min(elapsedMs, totalMs > 0 ? totalMs : elapsedMs);
 
-  // Map the right half of the panel to the next 150 ms of waveform; mirror
-  // it horizontally to the left half. PCM sign → vertical deflection.
-  // Centre column = current playback time.
+  // Map the right half of the panel to the next 150 ms of waveform, with
+  // the centre column = look-ahead boundary (nowMs + 150 ms) and the right
+  // edge = current playback time; mirror horizontally to the left half so
+  // peaks emerge at centre and flow outward. PCM sign → vertical deflection.
   const halfMs = VIZ_WINDOW_MS / 2;
   const halfW = w / 2;
 
-  // Edge decay: when the right-hand half of the window has run past the end
-  // of the utterance, fade the right-edge deflection to zero so the trace
+  // Centre decay: when the look-ahead end of the window has run past the
+  // end of the utterance, fade the centre deflection to zero so the trace
   // collapses to a flat line smoothly rather than snapping.
   const overshootMs = Math.max(0, (nowMs + halfMs) - (totalMs > 0 ? totalMs : nowMs + halfMs));
   const edgeDecay = Math.max(0, 1 - overshootMs / halfMs);
@@ -873,6 +878,9 @@ function drawSpeakViz() {
 // Build the right half as a polyline (one Y per column), then stroke it
 // twice — once normally on the right, once mirrored across the vertical
 // centre to the left — so the trace is symmetric about the centre line.
+// Column index i = 0 (centre) maps to the 150 ms look-ahead sample; i =
+// cols (right edge) maps to "now". Peaks therefore appear at centre and
+// slide outward toward the edges as playback advances.
 function drawTracePath(ctx, pcm, rate, nowMs, halfMs, halfW, mid, h, edgeDecay) {
   const sampleAt = ms => {
     if (ms < 0) return 0;
@@ -886,10 +894,11 @@ function drawTracePath(ctx, pcm, rate, nowMs, halfMs, halfW, mid, h, edgeDecay) 
   const ys = new Float32Array(cols + 1);
   for (let i = 0; i <= cols; i++) {
     const t = i / cols; // 0 at centre, 1 at right edge
-    // Right edge fades to flat as the window runs past the end of the
-    // utterance, so the trace collapses smoothly rather than snapping.
-    const fade = 1 - t * (1 - edgeDecay);
-    const v = sampleAt(nowMs + t * halfMs) * fade;
+    // Centre fades to flat as the look-ahead end of the window runs past
+    // the end of the utterance, so the trace collapses smoothly rather
+    // than snapping. Look-ahead now lives at the centre (t = 0).
+    const fade = 1 - (1 - t) * (1 - edgeDecay);
+    const v = sampleAt(nowMs + (1 - t) * halfMs) * fade;
     ys[i] = mid - v * amp;
   }
 
