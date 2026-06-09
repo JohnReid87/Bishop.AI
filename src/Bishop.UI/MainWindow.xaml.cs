@@ -5,7 +5,6 @@ using Bishop.ViewModels.Shared;
 using Bishop.ViewModels.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
-using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,9 +18,7 @@ using System.Text.Json;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage.Pickers;
-using Windows.System;
 using Windows.UI;
-using Windows.UI.Core;
 using WinRT.Interop;
 
 namespace Bishop.UI;
@@ -78,17 +75,6 @@ public sealed partial class MainWindow : Window
         {
             e.Handled = true;
             return;
-        }
-
-        if (e.Key == VirtualKey.L)
-        {
-            var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
-            var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-            if (ctrl.HasFlag(CoreVirtualKeyStates.Down) && shift.HasFlag(CoreVirtualKeyStates.Down))
-            {
-                e.Handled = true;
-                LifeButton_Click(this, new RoutedEventArgs());
-            }
         }
     }
 
