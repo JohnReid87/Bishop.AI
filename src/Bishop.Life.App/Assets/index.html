@@ -6,6 +6,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cascadia+Code:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<!-- xterm.js bundled locally under Assets/xterm/ (card #1053). UMD globals
+     used at runtime: window.Terminal, window.FitAddon. -->
+<link rel="stylesheet" href="xterm/xterm.css" />
+<script src="xterm/xterm.js"></script>
+<script src="xterm/xterm-addon-fit.js"></script>
 
 <style>
   :root {
@@ -178,6 +183,15 @@
     margin:0 0 14px; }
   .viz-panel canvas { flex:1; height:48px; display:block; }
 
+  /* Embedded stand-up terminal (card #1053). Sits directly below the speech
+     viz panel and pushes the regular SPA content (Focus/Map/etc.) below.
+     The .xterm child is supplied by xterm.js; we just give it a sized box. */
+  .standup-terminal { background:var(--bg); border:1px solid var(--line);
+    border-radius:9px; padding:8px; margin:0 0 14px; height:360px;
+    overflow:hidden; }
+  .standup-terminal .xterm { width:100%; height:100%; }
+  .standup-terminal .xterm-viewport { background-color:transparent !important; }
+
   /* stand-up in-flight banner */
   .standup-banner { background:rgba(196,168,95,.10); border:1px solid rgba(196,168,95,.45); color:var(--t-year); border-radius:9px; padding:9px 13px; margin:0 0 14px; font-size:12.5px; display:flex; align-items:center; gap:9px; }
   .standup-banner::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--t-year); animation: pulse 1.4s ease-in-out infinite; }
@@ -223,6 +237,7 @@
   <div id="standupBanner" class="standup-banner" hidden>Stand-up in progress &mdash; inline edits paused.</div>
   <div id="addBanner" class="standup-banner" hidden>Add in progress &mdash; inline edits paused.</div>
   <div id="vizPanel" class="viz-panel" hidden><canvas id="vizCanvas"></canvas></div>
+  <div id="standupTerminal" class="standup-terminal" hidden></div>
   <div id="container"></div>
 
   <div class="foot">
@@ -696,8 +711,75 @@ if (window.chrome && window.chrome.webview) {
       else if (env.type === "speak.stopped") stopSpeakViz();
       return;
     }
+    if (env && typeof env.type === "string" && env.type.startsWith("terminal:")) {
+      if (env.type === "terminal:show") showStandupTerminal();
+      else if (env.type === "terminal:data") writeStandupTerminal(env.data || "");
+      else if (env.type === "terminal:hide") hideStandupTerminal();
+      return;
+    }
     applyEnvelope(env);
   });
+}
+
+/* Embedded stand-up terminal (card #1053). Lifecycle:
+   show → boot xterm.js, wire onData/onResize→postMessage, focus
+   data  → term.write(bytes)
+   hide  → tear down so the next stand-up starts clean
+   On xterm.js boot failure the host's wt.exe fallback already fired,
+   so just leave the pane hidden. */
+const standupTerminalEl = document.getElementById("standupTerminal");
+let standupTerm = null;
+let standupFit = null;
+let standupResizeObs = null;
+
+function showStandupTerminal() {
+  if (standupTerm) return; // already up
+  if (typeof Terminal === "undefined" || typeof FitAddon === "undefined") {
+    console.warn("xterm.js not loaded — host fallback should have fired.");
+    return;
+  }
+  standupTerminalEl.hidden = false;
+  standupTerm = new Terminal({
+    fontFamily: "Cascadia Code, Consolas, monospace",
+    fontSize: 13,
+    cursorBlink: true,
+    theme: { background: "#141414", foreground: "#e6e6e6" },
+    allowProposedApi: true,
+  });
+  standupFit = new FitAddon.FitAddon();
+  standupTerm.loadAddon(standupFit);
+  standupTerm.open(standupTerminalEl);
+  fitStandupTerm();
+  standupTerm.onData(d => {
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage({ type: "terminal:input", data: d });
+    }
+  });
+  // ResizeObserver fires for any flex/layout change without us coupling to
+  // the global resize event; pair it with the global resize as a backstop.
+  standupResizeObs = new ResizeObserver(() => fitStandupTerm());
+  standupResizeObs.observe(standupTerminalEl);
+  standupTerm.focus();
+}
+
+function fitStandupTerm() {
+  if (!standupTerm || !standupFit) return;
+  try { standupFit.fit(); } catch { /* container not measurable yet */ return; }
+  const { cols, rows } = standupTerm;
+  if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.postMessage({ type: "terminal:resize", cols, rows });
+  }
+}
+
+function writeStandupTerminal(data) {
+  if (standupTerm) standupTerm.write(data);
+}
+
+function hideStandupTerminal() {
+  if (standupResizeObs) { standupResizeObs.disconnect(); standupResizeObs = null; }
+  if (standupTerm) { standupTerm.dispose(); standupTerm = null; }
+  standupFit = null;
+  standupTerminalEl.hidden = true;
 }
 
 /* Speak viz — receives raw 8 kHz mono int16 PCM (base64) from Bishop.Cli
@@ -916,6 +998,7 @@ function drawTracePath(ctx, pcm, rate, nowMs, halfMs, halfW, mid, h, eouGain) {
 window.addEventListener("resize", () => {
   if (vizSession) resizeSpeakViz();
   else if (!vizPanel.hidden) drawFlatLine();
+  if (standupTerm) fitStandupTerm();
 });
 
 document.getElementById("standupBtn").addEventListener("click", () => {

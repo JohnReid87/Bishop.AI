@@ -45,6 +45,9 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.*" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.*" PrivateAssets="all" />
     <PackageReference Include="System.Windows.Extensions" Version="9.0.*" />
+    <!-- Pty.Net is pre-release-only (Microsoft hasn't 1.0'd it). Pinned exactly
+         so a future 0.1.17-pre can't break the API without us noticing. -->
+    <PackageReference Include="Pty.Net" Version="0.1.16-pre" />
   </ItemGroup>
 
   <ItemGroup>

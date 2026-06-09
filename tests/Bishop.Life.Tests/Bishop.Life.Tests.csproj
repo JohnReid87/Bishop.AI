@@ -1,7 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- Promoted to net10.0-windows so we can source-link ClaudePtySession.cs
+         from Bishop.Life.App without dragging in the full WinUI WinExe via a
+         ProjectReference. The [SupportedOSPlatform("windows")] attribute on
+         ClaudePtySession also requires a Windows TFM to compile clean. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -13,6 +17,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <!-- Needed by the source-linked ClaudePtySession.cs (IPtyConnection). -->
+    <PackageReference Include="Pty.Net" Version="0.1.16-pre" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,6 +27,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bishop.Life.Core\Bishop.Life.Core.csproj" />
+    <!-- Source-link only ClaudePtySession; the App project itself is a WinUI
+         WinExe and can't be ProjectReferenced from a plain test project. -->
+    <Compile Include="..\..\src\Bishop.Life.App\ClaudePtySession.cs" Link="Sourced\ClaudePtySession.cs" />
   </ItemGroup>
 
 </Project>

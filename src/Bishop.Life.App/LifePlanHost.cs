@@ -21,12 +21,19 @@ namespace Bishop.Life.App;
 /// disk change via <see cref="LifePlanWatcher"/>, with <see cref="NoteWindowActivated"/>
 /// as a belt-and-braces refresh for cases where the watcher is late or the user
 /// returns from a launched terminal that wrote nothing.
-/// Handles two JS→host message shapes:
+/// Handles these JS→host message shapes:
 /// <list type="bullet">
-///   <item><c>"standup"</c> — launches Windows Terminal with <c>claude /bish-life-standup</c>.</item>
+///   <item><c>"standup"</c> — tries the embedded ConPTY terminal first (card
+///         #1053), falling back to <c>wt.exe</c> if Pty.Net spawn fails.</item>
 ///   <item><c>{"type":"mutate","plan":{…}}</c> — applies an inline edit (star,
 ///         check, title) via <see cref="LifeMutationCoordinator"/>.</item>
+///   <item><c>{"type":"terminal:input","data":"…"}</c> — keystroke from xterm.js
+///         to forward into the PTY stdin.</item>
+///   <item><c>{"type":"terminal:resize","cols":n,"rows":m}</c> — viewport size
+///         change so ConPTY's screen buffer tracks the rendered grid.</item>
 /// </list>
+/// Posts <c>{"type":"terminal:show|data|hide"}</c> back to JS to drive the
+/// xterm.js pane lifecycle.
 /// </summary>
 internal sealed class LifePlanHost : IDisposable
 {
@@ -47,8 +54,14 @@ internal sealed class LifePlanHost : IDisposable
     private readonly LifeMutationCoordinator _coordinator;
     private readonly LifeSpeakPipeServer _speakPipe;
     private readonly LifeSpeakPlayer _speakPlayer;
+    private ClaudePtySession? _standupPty;
     private bool _navigated;
     private bool _disposed;
+    // Default xterm.js geometry on first show; resized as soon as the JS side
+    // measures its container and posts terminal:resize. 80×30 is the wt.exe
+    // default so the first frame matches what users see today.
+    private int _ptyCols = 80;
+    private int _ptyRows = 30;
     // Set by MainWindow before EnsureCoreWebView2Async completes so the very
     // first paint of the WebView2 uses the right theme.
     private bool _pendingDarkTheme = true;
@@ -195,6 +208,16 @@ internal sealed class LifePlanHost : IDisposable
             {
                 ApplyMutation(planEl);
             }
+            else if (type == "terminal:input" && root.TryGetProperty("data", out var dataEl))
+            {
+                _standupPty?.Write(dataEl.GetString() ?? string.Empty);
+            }
+            else if (type == "terminal:resize")
+            {
+                if (root.TryGetProperty("cols", out var colsEl) && colsEl.TryGetInt32(out var c)) _ptyCols = c;
+                if (root.TryGetProperty("rows", out var rowsEl) && rowsEl.TryGetInt32(out var r)) _ptyRows = r;
+                _standupPty?.Resize(_ptyCols, _ptyRows);
+            }
         }
         catch (JsonException ex)
         {
@@ -208,10 +231,75 @@ internal sealed class LifePlanHost : IDisposable
     {
         var folder = Path.GetDirectoryName(_service.FilePath);
         if (string.IsNullOrEmpty(folder)) return;
-        Directory.CreateDirectory(folder); // ensure wt -d target exists on first run
+        Directory.CreateDirectory(folder); // ensure cwd target exists on first run
 
-        _launcher.LaunchClaude(folder, StandupCommand);
+        // Card #1053: try the embedded ConPTY pane first so the stand-up renders
+        // inside Bishop.Life. Any failure (Pty.Net throw, missing claude,
+        // ConPTY unavailable) falls through to the legacy wt.exe path so the
+        // user still gets a working stand-up.
+        var pty = _launcher.TryLaunchClaudePty(folder, StandupCommand, _ptyCols, _ptyRows);
+        if (pty is not null)
+        {
+            AttachStandupPty(pty);
+            PostTerminalShow();
+        }
+        else
+        {
+            _launcher.LaunchClaude(folder, StandupCommand);
+        }
         _coordinator.NoteStandupLaunched(); // fires StateChanged → PostState
+    }
+
+    private void AttachStandupPty(ClaudePtySession pty)
+    {
+        DetachStandupPty(); // belt-and-braces if a prior session lingered
+        _standupPty = pty;
+        pty.DataReceived += OnStandupPtyData;
+        pty.ProcessExited += OnStandupPtyExited;
+    }
+
+    private void DetachStandupPty()
+    {
+        if (_standupPty is null) return;
+        _standupPty.DataReceived -= OnStandupPtyData;
+        _standupPty.ProcessExited -= OnStandupPtyExited;
+        _standupPty.Dispose();
+        _standupPty = null;
+    }
+
+    private void OnStandupPtyData(string data) =>
+        _dispatcher.TryEnqueue(() => PostTerminalData(data));
+
+    private void OnStandupPtyExited()
+    {
+        _dispatcher.TryEnqueue(() =>
+        {
+            DetachStandupPty();
+            PostTerminalHide();
+            // Watcher will usually have fired by now and cleared the flag, but
+            // when the stand-up exits without writing (user typed /exit on the
+            // open brain-dump prompt) we still need to drop the in-flight state
+            // and refresh the envelope. Mirrors NoteWindowActivated.
+            if (_coordinator.StandupInFlight) _coordinator.NoteStandupAborted();
+            else PostState();
+        });
+    }
+
+    private void PostTerminalShow() => PostBareEnvelope("terminal:show");
+    private void PostTerminalHide() => PostBareEnvelope("terminal:hide");
+
+    private void PostBareEnvelope(string type)
+    {
+        if (!_navigated || _disposed) return;
+        _view.CoreWebView2.PostWebMessageAsJson($"{{\"type\":\"{type}\"}}");
+    }
+
+    private void PostTerminalData(string data)
+    {
+        if (!_navigated || _disposed) return;
+        var payload = new TerminalDataEnvelope(Type: "terminal:data", Data: data);
+        var json = JsonSerializer.Serialize(payload, PostOptions);
+        _view.CoreWebView2.PostWebMessageAsJson(json);
     }
 
     private void LaunchInit()
@@ -323,6 +411,7 @@ internal sealed class LifePlanHost : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        DetachStandupPty();
         _coordinator.StateChanged -= OnCoordinatorStateChanged;
         _watcher.Reloaded -= OnFileReloaded;
         _watcher.Dispose();
@@ -332,6 +421,10 @@ internal sealed class LifePlanHost : IDisposable
         if (_view.CoreWebView2 is { } core)
             core.WebMessageReceived -= OnWebMessageReceived;
     }
+
+    private sealed record TerminalDataEnvelope(
+        string Type,
+        string Data);
 
     private sealed record SpeakEnvelope(
         string Type,
