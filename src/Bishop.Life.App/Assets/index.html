@@ -63,9 +63,8 @@
   /* top bar */
   .topbar { display: flex; align-items: center; gap: 14px; padding: 16px 2px 14px; }
   .wordmark { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; letter-spacing: -0.3px; }
-  .bars { display: inline-flex; align-items: flex-end; gap: 2.5px; height: 16px; }
-  .bars span { width: 3.5px; background: var(--ink); border-radius: 1px; }
-  .bars span:nth-child(1){ height: 40% } .bars span:nth-child(2){ height: 68% } .bars span:nth-child(3){ height: 100% }
+  .wordmark .icon { width: 20px; height: 20px; display: block; flex: none; }
+  .wordmark .name { display: inline; }
   .wordmark .suffix { color: var(--ink-faint); font-weight: 500; }
   .topbar .spacer { flex: 1; }
   .cta {
@@ -201,7 +200,7 @@
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="wordmark"><span class="bars"><span></span><span></span><span></span></span>bishop<span class="suffix">.life</span></div>
+    <div class="wordmark"><img class="icon" src="Brand/icon-life.svg" alt="" /><span class="name">bishop<span class="suffix">.life</span></span></div>
     <div class="spacer"></div>
     <button class="cta" id="initBtn" hidden><span class="tri">&#9655;</span> Initialize Life</button>
     <button class="cta secondary" id="addBtn" disabled><span class="plus">+</span> Add</button>
