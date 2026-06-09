@@ -2,8 +2,10 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using Bishop.Shared.Layout;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Windows.Graphics;
+using Windows.UI;
 
 namespace Bishop.Life.App;
 
@@ -38,6 +40,26 @@ public sealed partial class MainWindow : Window
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Brand", "icon-life.ico");
         if (File.Exists(iconPath))
             AppWindow.SetIcon(iconPath);
+
+        var titleBar = AppWindow.TitleBar;
+        var surface = Color.FromArgb(255, 0x14, 0x14, 0x14);
+        var hover = Color.FromArgb(255, 0x23, 0x23, 0x23);
+        var pressed = Color.FromArgb(255, 0x2A, 0x2A, 0x2A);
+        var inactiveText = Color.FromArgb(255, 0x99, 0x99, 0x99);
+
+        titleBar.BackgroundColor = surface;
+        titleBar.InactiveBackgroundColor = surface;
+        titleBar.ForegroundColor = Colors.White;
+        titleBar.InactiveForegroundColor = inactiveText;
+
+        titleBar.ButtonBackgroundColor = surface;
+        titleBar.ButtonInactiveBackgroundColor = surface;
+        titleBar.ButtonForegroundColor = Colors.White;
+        titleBar.ButtonInactiveForegroundColor = inactiveText;
+        titleBar.ButtonHoverBackgroundColor = hover;
+        titleBar.ButtonHoverForegroundColor = Colors.White;
+        titleBar.ButtonPressedBackgroundColor = pressed;
+        titleBar.ButtonPressedForegroundColor = Colors.White;
     }
 
     private void PositionWindow()
