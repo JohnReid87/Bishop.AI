@@ -135,8 +135,12 @@
   .h-sect { font-size:11px; letter-spacing:.6px; text-transform:uppercase; color:var(--ink-dim); margin:10px 0 4px 3px; padding-left:13px; border-left:1px solid var(--line); }
   .h-sect.today { color: var(--accent); }
 
-  .area-block { margin-bottom: 22px; }
-  .area-head { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
+  /* Map-tab area block: per-area coloured left border + tinted heading row
+     so areas are visually distinct at a glance. Per-horizon section styling
+     inside the block stays neutral (see card #1029). The border-left colour
+     and area-head background are set inline from `area.color`. */
+  .area-block { margin-bottom: 22px; border-left: 4px solid transparent; padding-left: 11px; }
+  .area-head { display:flex; align-items:center; gap:9px; margin-bottom:9px; padding: 6px 9px; border-radius: 6px; }
   .area-name { font-weight:600; font-size:14.5px; flex:1; }
   .area-meta { font-size:11px; color:var(--ink-faint); }
   .goal-block { margin:0 0 8px 3px; padding-left:13px; border-left:1px solid var(--line); }
@@ -235,6 +239,19 @@ let titleDebounce = null;
 let titleDebounceTarget = null; // {id, el} of the contenteditable awaiting flush
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// Convert a #RRGGBB hex string into an rgba() with the given alpha, for
+// tinting area heading backgrounds on the Map tab without baking opacity
+// into the source colour. Falls back to a neutral tint if the hex is junk.
+function tint(hex, alpha) {
+  const h = String(hex || "").replace("#", "");
+  if (h.length !== 6) return `rgba(255,255,255,${alpha})`;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  if ([r, g, b].some(n => Number.isNaN(n))) return `rgba(255,255,255,${alpha})`;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 function bucket(horizon) {
   if (!horizon) return "beyond";
@@ -383,7 +400,8 @@ function mapView() {
     const goals = area.goals || [];
     const flat = goals.flatMap(g => (g.actions || []).map(a => ({ a, goal: g })));
     const openCount = flat.filter(x => !x.a.done).length;
-    let block = `<div class="area-block"><div class="area-head">
+    let block = `<div class="area-block" style="border-left-color:${esc(area.color)}">
+      <div class="area-head" style="background:${esc(tint(area.color, 0.10))}">
       <span class="dot" style="background:${esc(area.color)}"></span>
       <span class="area-name">${esc(area.name)}</span>
       <span class="area-meta">${goals.length} goal${goals.length !== 1 ? "s" : ""} &middot; ${openCount} open</span>

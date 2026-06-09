@@ -40,7 +40,7 @@ public sealed partial class MainWindow : Window
         // window icon so the taskbar / alt-tab show the Bishop mark.
         AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
 
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Brand", "bishop-ai.ico");
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Brand", "icon-life.ico");
         if (File.Exists(iconPath))
             AppWindow.SetIcon(iconPath);
     }
