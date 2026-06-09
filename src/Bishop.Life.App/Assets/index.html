@@ -750,6 +750,25 @@ function showStandupTerminal() {
   standupTerm.loadAddon(standupFit);
   standupTerm.open(standupTerminalEl);
   fitStandupTerm();
+  // Ctrl+V → read clipboard, send as terminal input, suppress default ^V.
+  // Wispr Flow's dictation paste-out simulates Ctrl+V, so without this it
+  // arrives at the PTY as a literal control character. Ctrl+Shift+V is left
+  // alone so xterm.js's existing paste handling still works.
+  standupTerm.attachCustomKeyEventHandler(ev => {
+    if (ev.type === "keydown" && ev.ctrlKey && !ev.shiftKey && !ev.altKey
+        && (ev.key === "v" || ev.key === "V")) {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText().then(text => {
+          if (!text) return;
+          if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage({ type: "terminal:input", data: text });
+          }
+        }).catch(() => { /* clipboard read denied — silently drop */ });
+      }
+      return false;
+    }
+    return true;
+  });
   standupTerm.onData(d => {
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.postMessage({ type: "terminal:input", data: d });
