@@ -6,11 +6,15 @@ namespace Bishop.Cli.Hooks.SpeakOnStop;
 /// <summary>
 /// Reads a Claude Code transcript JSONL file and decides whether the most recent
 /// assistant message should be spoken aloud — i.e. whether the active skill is
-/// <c>bish-life-standup</c>.
+/// one of the opted-in <c>bish-life-*</c> skills.
 /// </summary>
-internal static class StandupTranscriptScanner
+internal static class BishLifeTranscriptScanner
 {
-    private const string StandupSkillName = "bish-life-standup";
+    private static readonly HashSet<string> SpeakingSkills = new(StringComparer.Ordinal)
+    {
+        "bish-life-standup",
+        "bish-life-add",
+    };
     private static readonly Regex CommandNameRegex = new(@"<command-name>/?([a-z0-9-]+)</command-name>", RegexOptions.Compiled);
     private static readonly Regex NoSpeakRegex = new(@"<!--\s*no-speak\s*-->.*?<!--\s*/no-speak\s*-->", RegexOptions.Compiled | RegexOptions.Singleline);
     private static readonly Regex EmphasisRegex = new(@"(\*\*|\*|_)(.+?)\1", RegexOptions.Compiled | RegexOptions.Singleline);
@@ -59,7 +63,7 @@ internal static class StandupTranscriptScanner
             }
         }
 
-        if (activeSkill != StandupSkillName || string.IsNullOrWhiteSpace(lastAssistantText))
+        if (activeSkill is null || !SpeakingSkills.Contains(activeSkill) || string.IsNullOrWhiteSpace(lastAssistantText))
             return false;
 
         var cleaned = StripForSpeech(lastAssistantText);

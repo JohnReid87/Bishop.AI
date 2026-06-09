@@ -4,11 +4,11 @@ using System.Text.Json;
 
 namespace Bishop.Tests.Cli.Hooks.SpeakOnStop;
 
-public sealed class StandupTranscriptScannerTests : IDisposable
+public sealed class BishLifeTranscriptScannerTests : IDisposable
 {
     private readonly string _transcriptPath;
 
-    public StandupTranscriptScannerTests()
+    public BishLifeTranscriptScannerTests()
     {
         _transcriptPath = Path.Combine(Path.GetTempPath(), $"bishop-tx-{Guid.NewGuid()}.jsonl");
     }
@@ -37,10 +37,23 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("<command-name>/bish-life-standup</command-name>"),
             Assistant("What's on top of mind today?"));
 
-        var result = StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text);
+        var result = BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text);
 
         result.Should().BeTrue();
         text.Should().Be("What's on top of mind today?");
+    }
+
+    [Fact]
+    public void Returns_text_when_last_command_is_life_add_skill()
+    {
+        WriteTranscript(
+            User("<command-name>/bish-life-add</command-name>"),
+            Assistant("What just came to mind?"));
+
+        var result = BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text);
+
+        result.Should().BeTrue();
+        text.Should().Be("What just came to mind?");
     }
 
     [Fact]
@@ -50,7 +63,7 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("just a regular message"),
             Assistant("hello"));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out _).Should().BeFalse();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out _).Should().BeFalse();
     }
 
     [Fact]
@@ -62,7 +75,17 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("<command-name>/bish-work-on-card</command-name>"),
             Assistant("working on card now"));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out _).Should().BeFalse();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Returns_false_when_last_command_is_unlisted_bish_life_skill()
+    {
+        WriteTranscript(
+            User("<command-name>/bish-life-init</command-name>"),
+            Assistant("initialised"));
+
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out _).Should().BeFalse();
     }
 
     [Fact]
@@ -74,14 +97,14 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("ok, continue"),
             Assistant("second turn"));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
         text.Should().Be("second turn");
     }
 
     [Fact]
     public void Returns_false_when_transcript_missing()
     {
-        StandupTranscriptScanner.TryGetTextToSpeak(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()), out _)
+        BishLifeTranscriptScanner.TryGetTextToSpeak(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()), out _)
             .Should().BeFalse();
     }
 
@@ -94,7 +117,7 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             "{broken",
             Assistant("survived"));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
         text.Should().Be("survived");
     }
 
@@ -103,7 +126,7 @@ public sealed class StandupTranscriptScannerTests : IDisposable
     {
         WriteTranscript(User("<command-name>/bish-life-standup</command-name>"));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out _).Should().BeFalse();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out _).Should().BeFalse();
     }
 
     [Fact]
@@ -113,7 +136,7 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("<command-name>/bish-life-standup</command-name>"),
             Assistant("Intro line.\n<!-- no-speak -->\nNoisy context goes here.\n<!-- /no-speak -->\nWhat's on your mind?"));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
         text.Should().NotContain("Noisy context");
         text.Should().Contain("Intro line.");
         text.Should().Contain("What's on your mind?");
@@ -126,7 +149,7 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("<command-name>/bish-life-standup</command-name>"),
             Assistant("Reflection prose.\n<!-- no-speak -->focus list<!-- /no-speak -->\nMore prose.\n<!-- no-speak -->mutations<!-- /no-speak -->\nFinal question?"));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
         text.Should().NotContain("focus list");
         text.Should().NotContain("mutations");
         text.Should().Contain("Reflection prose.");
@@ -141,7 +164,7 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("<command-name>/bish-life-standup</command-name>"),
             Assistant("Before.\n<!-- no-speak -->\nContent that never closes."));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
         text.Should().Contain("Content that never closes.");
     }
 
@@ -152,7 +175,7 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("<command-name>/bish-life-standup</command-name>"),
             Assistant("**Bold heading**\n- bullet one\n* bullet two\n• bullet three\nUse `code` and _italic_ and *emphasis* here.\n# Heading text"));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
         text.Should().NotContain("**");
         text.Should().NotContain("`");
         text.Should().NotContain("- bullet");
@@ -176,7 +199,7 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("<command-name>/bish-life-standup</command-name>"),
             Assistant("Finances ▸ Emergency fund ▸ Move money\nA › B › C"));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
         text.Should().NotContain("▸");
         text.Should().NotContain("›");
         text.Should().Contain("Finances");
@@ -190,7 +213,7 @@ public sealed class StandupTranscriptScannerTests : IDisposable
             User("<command-name>/bish-life-standup</command-name>"),
             Assistant("<!-- no-speak -->**Last stand-up:** 2 days ago\n• Item one<!-- /no-speak -->\n**Reflection:** today went *well*."));
 
-        StandupTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
+        BishLifeTranscriptScanner.TryGetTextToSpeak(_transcriptPath, out var text).Should().BeTrue();
         text.Should().NotContain("Last stand-up");
         text.Should().NotContain("Item one");
         text.Should().NotContain("**");

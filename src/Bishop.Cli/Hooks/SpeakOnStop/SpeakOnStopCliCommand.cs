@@ -9,7 +9,7 @@ namespace Bishop.Cli.Hooks.SpeakOnStop;
 internal sealed class SpeakOnStopCliCommand : Command
 {
     public SpeakOnStopCliCommand()
-        : base("speak-on-stop", "Stop hook: speak the last assistant message aloud when the active skill is bish-life-standup")
+        : base("speak-on-stop", "Stop hook: speak the last assistant message aloud when the active skill is one of the opted-in bish-life-* skills")
     {
         this.SetHandler(async (context) =>
         {
@@ -27,14 +27,15 @@ internal sealed class SpeakOnStopCliCommand : Command
                 if (string.IsNullOrEmpty(transcriptPath))
                     return;
 
-                if (!StandupTranscriptScanner.TryGetTextToSpeak(transcriptPath, out var text))
+                if (!BishLifeTranscriptScanner.TryGetTextToSpeak(transcriptPath, out var text))
                     return;
 
                 await Speaker.SpeakAsync(text, context.GetCancellationToken());
             }
-            catch
+            catch (Exception ex)
             {
-                // Silent failure — the card requires the hook to never block the conversation.
+                // Stop hook must never throw — Claude Code only reads stdout, so a stderr line is diagnostic without blocking the conversation.
+                await Console.Error.WriteLineAsync($"speak-on-stop: {ex.GetType().Name}: {ex.Message}");
             }
         });
     }
