@@ -172,7 +172,7 @@
      reads as the same indicator the rest of the dashboard uses. */
   .viz-panel { display:flex; align-items:center; gap:10px; height:64px; padding:0 12px;
     background:var(--panel); border:1px solid var(--line); border-radius:9px;
-    margin:0 0 14px; transition: opacity .25s; }
+    margin:0 0 14px; }
   .viz-panel canvas { flex:1; height:48px; display:block; }
 
   /* stand-up in-flight banner */
@@ -697,10 +697,13 @@ if (window.chrome && window.chrome.webview) {
   });
 }
 
-/* Speak viz — receives downsampled RMS amplitudes from Bishop.Cli over the
-   bishop-life-speak pipe (forwarded by LifePlanHost). Draws a moving window
-   of bars trailing the audio cursor. Raw samples (not pre-computed FFT) so
-   swapping in a different visualisation is JS-only. */
+/* Speak viz — receives a downsampled RMS envelope from Bishop.Cli over the
+   bishop-life-speak pipe (forwarded by LifePlanHost). Draws the full
+   utterance envelope statically across the panel, mirrored around vertical
+   centre, with a vertical playhead sweeping left→right driven by wall-clock
+   time. The panel is revealed on the first utterance of the viewer's
+   lifetime and stays visible thereafter; between chunks it shows a flat
+   accent-coloured line. */
 const vizPanel = document.getElementById("vizPanel");
 const vizCanvas = document.getElementById("vizCanvas");
 let vizSession = null;
@@ -708,11 +711,10 @@ let vizSession = null;
 function startSpeakViz(samples, sampleRateHz, durationMs) {
   cancelSpeakViz();
   vizPanel.hidden = false;
-  vizPanel.style.opacity = "1";
   vizSession = {
-    samples: samples,
-    sampleRateHz: sampleRateHz,
-    durationMs: durationMs,
+    samples: samples || [],
+    sampleRateHz: sampleRateHz || 40,
+    durationMs: durationMs || 0,
     startedAt: performance.now(),
     raf: 0,
   };
@@ -722,11 +724,7 @@ function startSpeakViz(samples, sampleRateHz, durationMs) {
 
 function stopSpeakViz() {
   cancelSpeakViz();
-  // Fade out so the panel doesn't pop between consecutive utterances during
-  // a stand-up — if a new speak.started arrives before the fade ends, the
-  // panel is already at opacity 1 and just re-animates.
-  vizPanel.style.opacity = "0";
-  setTimeout(() => { if (!vizSession) vizPanel.hidden = true; }, 280);
+  drawFlatLine();
 }
 
 function cancelSpeakViz() {
@@ -742,6 +740,24 @@ function resizeSpeakViz() {
   vizCanvas.height = Math.max(1, Math.round(h * dpr));
 }
 
+function accentColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#00FF41";
+}
+
+function drawFlatLine() {
+  if (vizPanel.hidden) return;
+  resizeSpeakViz();
+  const ctx = vizCanvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = vizCanvas.clientWidth;
+  const h = vizCanvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = accentColor();
+  const y = Math.round(h / 2) - 1;
+  ctx.fillRect(0, y, w, 2);
+}
+
 function drawSpeakViz() {
   if (!vizSession) return;
   const ctx = vizCanvas.getContext("2d");
@@ -751,36 +767,53 @@ function drawSpeakViz() {
   const h = vizCanvas.clientHeight;
   ctx.clearRect(0, 0, w, h);
 
+  const samples = vizSession.samples;
+  const n = samples.length;
+  const mid = h / 2;
+  const accent = accentColor();
+  const dim = "rgba(127,168,122,0.22)";
+
+  // Prefer the explicit utterance duration; fall back to samples/rate so a
+  // missing durationMs still gets a sensible sweep.
+  const totalMs = vizSession.durationMs > 0
+    ? vizSession.durationMs
+    : (vizSession.sampleRateHz > 0 ? (n / vizSession.sampleRateHz) * 1000 : 0);
   const elapsedMs = performance.now() - vizSession.startedAt;
-  const cursor = Math.floor((elapsedMs / 1000) * vizSession.sampleRateHz);
+  const progress = totalMs > 0 ? Math.min(1, elapsedMs / totalMs) : 1;
+  const playheadX = progress * w;
 
-  const barCount = 72;
-  const barGap = 2;
-  const barW = Math.max(1, (w - barGap * (barCount - 1)) / barCount);
-  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#00FF41";
-
-  for (let i = 0; i < barCount; i++) {
-    const idx = cursor - (barCount - 1 - i);
-    const valid = idx >= 0 && idx < vizSession.samples.length;
-    const amp = valid ? vizSession.samples[idx] : 0;
-    // Piper RMS values typically sit in 0.02..0.35 — scale into the panel.
-    const norm = Math.min(1, amp * 3.5);
-    const bh = Math.max(2, norm * h * 0.9);
-    const x = i * (barW + barGap);
-    const y = (h - bh) / 2;
-    ctx.fillStyle = valid ? accent : "rgba(127,168,122,0.10)";
-    ctx.fillRect(x, y, barW, bh);
+  if (n > 0) {
+    // One column per pixel, averaging the samples that fall inside it so the
+    // shape doesn't alias as the panel resizes.
+    for (let x = 0; x < w; x++) {
+      const i0 = Math.floor((x / w) * n);
+      const i1 = Math.max(i0 + 1, Math.floor(((x + 1) / w) * n));
+      let amp = 0;
+      let count = 0;
+      for (let i = i0; i < i1 && i < n; i++) { amp += samples[i]; count++; }
+      amp = count > 0 ? amp / count : 0;
+      // Piper RMS values typically sit in 0.02..0.35 — scale into the panel.
+      const norm = Math.min(1, amp * 3.5);
+      const bh = Math.max(2, norm * h * 0.9);
+      const y = mid - bh / 2;
+      ctx.fillStyle = x <= playheadX ? accent : dim;
+      ctx.fillRect(x, y, 1, bh);
+    }
   }
 
-  // Keep animating until the cursor has scrolled past the trailing window,
-  // even after we've run out of samples — gives the last bars time to
-  // travel off-screen so the end of the utterance doesn't freeze on a tail.
-  if (cursor < vizSession.samples.length + barCount) {
+  // Playhead.
+  ctx.fillStyle = accent;
+  ctx.fillRect(Math.max(0, Math.min(w - 1, playheadX)), 0, 1, h);
+
+  if (progress < 1) {
     vizSession.raf = requestAnimationFrame(drawSpeakViz);
   }
 }
 
-window.addEventListener("resize", () => { if (vizSession) resizeSpeakViz(); });
+window.addEventListener("resize", () => {
+  if (vizSession) resizeSpeakViz();
+  else if (!vizPanel.hidden) drawFlatLine();
+});
 
 document.getElementById("standupBtn").addEventListener("click", () => {
   if (standupInFlight || addInFlight) return;
