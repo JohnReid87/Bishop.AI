@@ -1,18 +1,20 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/Bishop.App/Bishop.App.csproj" />
-    <Project Path="src/Bishop.Cli/Bishop.Cli.csproj" />
-    <Project Path="src/Bishop.Core/Bishop.Core.csproj" />
-    <Project Path="src/Bishop.Data/Bishop.Data.csproj" />
-    <Project Path="src/Bishop.UI/Bishop.UI.csproj" />
-    <Project Path="src/Bishop.ViewModels/Bishop.ViewModels.csproj" />
+  <Folder Name="/bishop/src/">
+    <Project Path="bishop/src/Bishop.App/Bishop.App.csproj" />
+    <Project Path="bishop/src/Bishop.Cli/Bishop.Cli.csproj" />
+    <Project Path="bishop/src/Bishop.Core/Bishop.Core.csproj" />
+    <Project Path="bishop/src/Bishop.Data/Bishop.Data.csproj" />
+    <Project Path="bishop/src/Bishop.UI/Bishop.UI.csproj" />
+    <Project Path="bishop/src/Bishop.ViewModels/Bishop.ViewModels.csproj" />
   </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/Bishop.Tests/Bishop.Tests.csproj" />
+  <Folder Name="/bishop/tests/">
+    <Project Path="bishop/tests/Bishop.Tests/Bishop.Tests.csproj" />
   </Folder>
-  <Folder Name="/Life/">
-    <Project Path="src/Bishop.Life.Core/Bishop.Life.Core.csproj" />
-    <Project Path="src/Bishop.Life.App/Bishop.Life.App.csproj" />
-    <Project Path="tests/Bishop.Life.Tests/Bishop.Life.Tests.csproj" />
+  <Folder Name="/life/src/">
+    <Project Path="life/src/Bishop.Life.Core/Bishop.Life.Core.csproj" />
+    <Project Path="life/src/Bishop.Life.App/Bishop.Life.App.csproj" />
+  </Folder>
+  <Folder Name="/life/tests/">
+    <Project Path="life/tests/Bishop.Life.Tests/Bishop.Life.Tests.csproj" />
   </Folder>
 </Solution>

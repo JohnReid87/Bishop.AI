@@ -37,7 +37,7 @@
   <ItemGroup>
     <!-- Source-link the opposite-half positioner so Bishop.UI's viewer dialogs
          and the Bishop.Life shell stay in lockstep on window placement. -->
-    <Compile Include="..\Bishop.UI\Views\Shared\OppositeHalfPositioner.cs" Link="Shared\OppositeHalfPositioner.cs" />
+    <Compile Include="..\..\..\bishop\src\Bishop.UI\Views\Shared\OppositeHalfPositioner.cs" Link="Shared\OppositeHalfPositioner.cs" />
   </ItemGroup>
 
   <ItemGroup>

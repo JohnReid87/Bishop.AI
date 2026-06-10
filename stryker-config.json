@@ -1,11 +1,11 @@
 {
   "stryker-config": {
     "test-projects": [
-      "tests/Bishop.Tests/Bishop.Tests.csproj"
+      "bishop/tests/Bishop.Tests/Bishop.Tests.csproj"
     ],
     "mutate": [
-      "src/**/*.cs",
-      "!src/Bishop.Data/**/Migrations/**/*.cs"
+      "bishop/src/**/*.cs",
+      "!bishop/src/Bishop.Data/**/Migrations/**/*.cs"
     ],
     "thresholds": {
       "high": 80,

@@ -80,7 +80,7 @@
        publish-time step (not a ProjectReference) to isolate the two WinUI runtimes and
        avoid duplicate-file warnings between the two apps' Windows App SDK references. -->
   <Target Name="PublishBishopLifeApp" AfterTargets="Publish">
-    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\Bishop.Life.App\Bishop.Life.App.csproj&quot; -c $(Configuration) -o &quot;$(PublishDir)Life&quot; --nologo" />
+    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\..\..\life\src\Bishop.Life.App\Bishop.Life.App.csproj&quot; -c $(Configuration) -o &quot;$(PublishDir)Life&quot; --nologo" />
   </Target>
 
   <Target Name="CopyWebView2Loader" AfterTargets="Build">

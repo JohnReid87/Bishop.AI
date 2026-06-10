@@ -99,13 +99,16 @@ No metrics, no KPIs — qualitative measures of "did this stay in the loop":
 
 A guided tour for orientation. Dependency direction is **Core → Data → App → { ViewModels → UI, Cli }**.
 
-- **Domain types** (Workspace, Lane, Card, Tag): `src/Bishop.Core/`
-- **Persistence** (EF Core 9, SQLite WAL, migrations, repos): `src/Bishop.Data/`
-- **Application** (MediatR handlers, terminal launcher, validators): `src/Bishop.App/`
-- **ViewModels** (presentation-framework-agnostic, `IUiDispatcher` lives here): `src/Bishop.ViewModels/`
-- **UI** (WinUI 3 desktop app, Views, DI composition root): `src/Bishop.UI/`
-- **CLI** (the `bishop` console executable — the automation surface): `src/Bishop.Cli/`
-- **Tests** (xUnit + FluentAssertions): `tests/Bishop.Tests/`
+The filesystem is split into per-app peers: `bishop/` (this app + its CLI) and `life/` (the Bishop.Life sibling). Each carries its own `src/` and `tests/`.
+
+- **Domain types** (Workspace, Lane, Card, Tag): `bishop/src/Bishop.Core/`
+- **Persistence** (EF Core 9, SQLite WAL, migrations, repos): `bishop/src/Bishop.Data/`
+- **Application** (MediatR handlers, terminal launcher, validators): `bishop/src/Bishop.App/`
+- **ViewModels** (presentation-framework-agnostic, `IUiDispatcher` lives here): `bishop/src/Bishop.ViewModels/`
+- **UI** (WinUI 3 desktop app, Views, DI composition root): `bishop/src/Bishop.UI/`
+- **CLI** (the `bishop` console executable — the automation surface): `bishop/src/Bishop.Cli/`
+- **Tests** (xUnit + FluentAssertions): `bishop/tests/Bishop.Tests/`
+- **Bishop.Life** (sibling WinUI 3 app + its core): `life/src/Bishop.Life.{Core,App}/`, tests at `life/tests/Bishop.Life.Tests/`
 - **Bundled skills** (installed to `~/.claude/skills/` via `bishop install-skills`): `skills/`
 - **Installer** (Wix v5 per-user MSI): `installer/`
 

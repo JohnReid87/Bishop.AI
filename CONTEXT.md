@@ -20,8 +20,12 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 ## Architecture
 
 ### Repository layout
-- `src/` — .NET projects (Core, Data, App, ViewModels, Cli, UI).
-- `tests/Bishop.Tests/` — xUnit project.
+Top-level filesystem is split into per-app peers — `bishop/` (the Bishop.AI desktop app and its CLI) and `life/` (the Bishop.Life sibling app). Each peer carries its own `src/` and `tests/`. This mirrors the `.slnx` grouping verbatim.
+
+- `bishop/src/` — Bishop.AI .NET projects (Core, Data, App, ViewModels, Cli, UI).
+- `bishop/tests/Bishop.Tests/` — xUnit project for Bishop.AI.
+- `life/src/` — Bishop.Life .NET projects (Core, App).
+- `life/tests/Bishop.Life.Tests/` — xUnit project for Bishop.Life.
 - `skills/` — vendored Claude Code skill files shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`. Grouped into six categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
   - **Conversational:** `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
   - **Code:** `bish-arch`, `bish-dead-code`, `bish-security`
@@ -40,7 +44,7 @@ Layered, with strict one-way dependencies. Modify in this order when implementin
 3. **Bishop.App** — MediatR `IRequest` types and handlers, application services (e.g. the terminal launcher), validators. References Core + Data.
 4. **Bishop.ViewModels** — presentation-framework-agnostic ViewModels. Targets `net10.0`; references `Bishop.App` so VMs can take `IMediator`. **Must not** reference `Microsoft.UI.*`, `Windows.UI.*`, or `Microsoft.WindowsAppSDK` — compile-time absence is the layer enforcement. UI-thread marshalling goes through the `IUiDispatcher` abstraction defined here; visual mapping (e.g. `Visibility`) lives in XAML converters, not VMs.
 5. **Bishop.UI** and **Bishop.Cli** — presentation peers. UI is the WinUI 3 desktop app (Views, DI composition root, `WinUiDispatcher : IUiDispatcher`); it references App + ViewModels. Cli is the `bishop` console executable; references App. Neither references Data directly.
-6. **Bishop.Tests** — xUnit project under `tests/Bishop.Tests`. References whichever layers it tests.
+6. **Bishop.Tests** — xUnit project under `bishop/tests/Bishop.Tests`. References whichever layers it tests.
 
 Dependency direction: **Core → Data → App → { ViewModels → UI, Cli }**. UI and Cli go through MediatR handlers in App for everything.
 
@@ -135,7 +139,7 @@ Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are instal
 - **CLI is the automation surface; UI is the interactive surface.** Skills mutate state through `bishop` CLI invocations; humans use the UI directly for card / lane / tag edits. Both writers share the SQLite DB in WAL mode.
 - **Naming:** standard .NET (PascalCase types/members, _camelCase private fields, `I`-prefix interfaces). One public type per file.
 - **Async:** all I/O async; `Async` suffix; pass `CancellationToken` through handlers.
-- **MVVM:** ViewModels derive from `ObservableObject`; commands use `[RelayCommand]`. Code-behind (`*.xaml.cs`) is limited to view mechanics (drag/drop, focus, lifecycle, visual-tree construction) and **must not reference `Bishop.App`** (no `IMediator`, handlers, App services, or App result-DTOs); all application calls and state go through the ViewModel. Sole exception: the DI composition root `App.xaml.cs`. An architecture test (`CodeBehindLayerRuleTests`) enforces this by scanning every `*.xaml.cs` under `src/Bishop.UI` for `Bishop.App` references, with a tracked allowlist for the remaining offenders.
+- **MVVM:** ViewModels derive from `ObservableObject`; commands use `[RelayCommand]`. Code-behind (`*.xaml.cs`) is limited to view mechanics (drag/drop, focus, lifecycle, visual-tree construction) and **must not reference `Bishop.App`** (no `IMediator`, handlers, App services, or App result-DTOs); all application calls and state go through the ViewModel. Sole exception: the DI composition root `App.xaml.cs`. An architecture test (`CodeBehindLayerRuleTests`) enforces this by scanning every `*.xaml.cs` under `bishop/src/Bishop.UI` for `Bishop.App` references, with a tracked allowlist for the remaining offenders.
 - **MediatR:** one request + one handler per file, colocated. Validators (if any) live next to the request.
 - **EF Core:** entities are POCOs free of EF/persistence concerns; configuration via `IEntityTypeConfiguration<T>` classes, not data annotations. Entities may carry guarded domain-transition methods (e.g. `Batch.Close`, `Batch.TransitionToWorking`) that enforce invariants without knowing about the DB.
 - **Data access (Contract):** handlers in `Bishop.App` inject `IDbContextFactory<BishopDbContext>` directly — no Repository abstraction. Cross-aggregate invariants (e.g. assigning a card to a batch) live in `internal static` helper classes (e.g. `BatchAssignment`) called by the handler inside a caller-opened `IsolationLevel.Serializable` transaction. An architecture test (`DataAccessLayerRuleTests`) enforces this: no type in `Bishop.Data` ending in `Repository`, and no handler injecting one.

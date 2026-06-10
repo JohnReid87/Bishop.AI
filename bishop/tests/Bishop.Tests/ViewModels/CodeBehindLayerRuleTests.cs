@@ -35,7 +35,7 @@ public class CodeBehindLayerRuleTests
     [Fact]
     public void UiCodeBehind_DoesNotReferenceBishopApp()
     {
-        var uiRoot = Path.Combine(RepoRoot, "src", "Bishop.UI");
+        var uiRoot = Path.Combine(RepoRoot, "bishop", "src", "Bishop.UI");
         Directory.Exists(uiRoot)
             .Should().BeTrue($"expected Bishop.UI source under {uiRoot}");
 

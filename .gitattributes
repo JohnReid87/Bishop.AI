@@ -1,2 +1,2 @@
-src/Bishop.Data/Migrations/*.Designer.cs linguist-generated=true
-src/Bishop.Data/Migrations/BishopDbContextModelSnapshot.cs linguist-generated=true
+bishop/src/Bishop.Data/Migrations/*.Designer.cs linguist-generated=true
+bishop/src/Bishop.Data/Migrations/BishopDbContextModelSnapshot.cs linguist-generated=true

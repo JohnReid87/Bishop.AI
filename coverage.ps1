@@ -5,7 +5,7 @@
 $ErrorActionPreference = 'Stop'
 
 $repoRoot   = $PSScriptRoot
-$testProj   = Join-Path $repoRoot 'tests/Bishop.Tests/Bishop.Tests.csproj'
+$testProj   = Join-Path $repoRoot 'bishop/tests/Bishop.Tests/Bishop.Tests.csproj'
 $settings   = Join-Path $repoRoot 'coverlet.runsettings'
 $resultsDir = Join-Path $repoRoot 'TestResults'
 $reportDir  = Join-Path $resultsDir 'coverage-report'

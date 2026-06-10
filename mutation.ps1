@@ -4,7 +4,7 @@
 #
 # Fast path (~5-7 min):
 #   ./mutation.ps1 -Project Bishop.Core
-#   ./mutation.ps1 -Project Bishop.App -Mutate "src/Bishop.App/Handlers/**"
+#   ./mutation.ps1 -Project Bishop.App -Mutate "bishop/src/Bishop.App/Handlers/**"
 #
 # Slow path (~2-4h, all source projects):
 #   ./mutation.ps1 -All
@@ -30,7 +30,8 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $strykerArgs = @()
 
 if ($Project) {
-    $projPath = Join-Path $repoRoot 'src' $Project "$Project.csproj"
+    $appRoot = if ($Project -like 'Bishop.Life.*') { 'life' } else { 'bishop' }
+    $projPath = Join-Path $repoRoot $appRoot 'src' $Project "$Project.csproj"
     if (-not (Test-Path $projPath)) {
         Write-Error "Project not found: $projPath"
         exit 1

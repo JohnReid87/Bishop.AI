@@ -157,7 +157,7 @@ not by aesthetic preference:
   (`AddWorkspaceDialog`, `CardDetailDialog`, `SkillStageDialog`). The subtle blue lift separates the dialog
   layer from the board behind it.
 - **`icon-surface: #141914`** — SVG icon-tile backgrounds in
-  `src/Bishop.UI/Assets/Brand/` (app icon, favicon, chat / code /
+  `bishop/src/Bishop.UI/Assets/Brand/` (app icon, favicon, chat / code /
   terminal / run / branch / settings glyphs). The subtle green lift
   hints at the signal colour without using it.
 
@@ -181,7 +181,7 @@ Do not introduce custom SVGs for in-app actions — use Segoe MDL2.
 Brand SVGs and related image assets live at:
 
 ```
-src/Bishop.UI/Assets/Brand/
+bishop/src/Bishop.UI/Assets/Brand/
 ```
 
 Anything outside this directory is not considered a brand asset. The

@@ -30,6 +30,6 @@ From inside a `ContentDialog`, do not open another `ContentDialog` — WinUI 3 t
 
 Approved substitutes:
 
-- **`Flyout`** — for small inline confirms (precedent: `ManageWorkspacesControl.ConfirmFlyoutAsync` in `src/Bishop.UI/Views/ManageWorkspacesControl.xaml.cs`).
+- **`Flyout`** — for small inline confirms (precedent: `ManageWorkspacesControl.ConfirmFlyoutAsync` in `bishop/src/Bishop.UI/Views/ManageWorkspacesControl.xaml.cs`).
 - **`MarkdownViewerWindow`** — for displaying markdown content in a separate window.
 - **`TeachingTip`** — for transient, non-blocking information.

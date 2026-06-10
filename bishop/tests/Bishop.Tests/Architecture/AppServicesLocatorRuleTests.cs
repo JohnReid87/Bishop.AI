@@ -42,7 +42,7 @@ public class AppServicesLocatorRuleTests
     [Fact]
     public void UiCodeBehind_DoesNotServiceLocateThroughAppServices()
     {
-        var uiRoot = Path.Combine(RepoRoot, "src", "Bishop.UI");
+        var uiRoot = Path.Combine(RepoRoot, "bishop", "src", "Bishop.UI");
         Directory.Exists(uiRoot)
             .Should().BeTrue($"expected Bishop.UI source under {uiRoot}");
 

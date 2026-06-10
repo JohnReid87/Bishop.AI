@@ -2,10 +2,10 @@
 
 ## Structure
 
-Mirrors `src/` layout:
+Mirrors `bishop/src/` layout:
 
 ```
-tests/Bishop.Tests/
+bishop/tests/Bishop.Tests/
 ├── App/
 │   ├── Cards/          ← CardHandlerTests
 │   ├── Git/            ← GetRecentCommitsTests
@@ -33,4 +33,4 @@ tests/Bishop.Tests/
 
 ## Not present: Bishop.UI.Tests
 
-A `tests/Bishop.UI.Tests/` project does not exist and is not planned. WinUI 3 rendering and code-behind orchestration are intentionally out of test scope (see CONTEXT.md — "No tests target `net10.0-windows`"). The solution file references only `tests/Bishop.Tests/Bishop.Tests.csproj`.
+A `bishop/tests/Bishop.UI.Tests/` project does not exist and is not planned. WinUI 3 rendering and code-behind orchestration are intentionally out of test scope (see CONTEXT.md — "No tests target `net10.0-windows`"). The solution file references only `bishop/tests/Bishop.Tests/Bishop.Tests.csproj`.

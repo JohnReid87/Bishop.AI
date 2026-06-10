@@ -71,14 +71,14 @@ function Publish-And-Deploy {
 
 if ($doCli) {
     Publish-And-Deploy `
-        -Project (Join-Path $RepoRoot 'src\Bishop.Cli\Bishop.Cli.csproj') `
+        -Project (Join-Path $RepoRoot 'bishop\src\Bishop.Cli\Bishop.Cli.csproj') `
         -InstallDir $CliInstall `
         -Label 'Cli'
 }
 
 if ($doUi) {
     Publish-And-Deploy `
-        -Project (Join-Path $RepoRoot 'src\Bishop.UI\Bishop.UI.csproj') `
+        -Project (Join-Path $RepoRoot 'bishop\src\Bishop.UI\Bishop.UI.csproj') `
         -InstallDir $UiInstall `
         -Label 'UI'
 }

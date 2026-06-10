@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bishop.App\Bishop.App.csproj" />
-    <ProjectReference Include="..\Bishop.Life.Core\Bishop.Life.Core.csproj" />
+    <ProjectReference Include="..\..\..\life\src\Bishop.Life.Core\Bishop.Life.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\..\skills\**\*">
+    <Content Include="..\..\..\skills\**\*">
       <Link>skills\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

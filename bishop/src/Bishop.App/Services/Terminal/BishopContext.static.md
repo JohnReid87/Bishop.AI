@@ -419,7 +419,7 @@ session log (in memory) with one entry per surfaced finding:
 - `severity` — the finding's `high` / `med` / `low` (or `critical`).
 - `location` — `file:line` (or comma-separated locations).
 - `file` — primary source file the finding is about (path relative to the
-  workspace, e.g. `src/Bishop.App/Foo.cs`). Part of the finding identity hash
+  workspace, e.g. `bishop/src/Bishop.App/Foo.cs`). Part of the finding identity hash
   so reruns can match prior findings — must be stable across runs for the
   same underlying issue.
 - `rule` — the dimension / category / rule-id the finding belongs to
