@@ -1,6 +1,6 @@
 ---
 name: bish-life-standup
-description: The daily bishop.life stand-up ritual. Reads `bishop.life.json`, surfaces a context pack (time since last stand-up, open action count, starred actions with `area ▸ goal` lineage, untended areas, inbox count), runs an open brain-dump and then walks each raised thread interactively (is it actionable, is it done, does it even belong on the board, which area/goal), then rewrites the whole file in a single atomic pass — `.prev` backup, `.tmp` + rename, append to `standups[]` and trim to the last 10, triage `inbox[]` into areas/goals as part of the same write, enforce ≤3 starred actions. Use when the user wants to do their stand-up, or invokes `/bish-life-standup`.
+description: The daily bishop.life stand-up ritual. Reads `bishop.life.json`, surfaces a context pack (time since last stand-up, open action count, starred actions with `area ▸ goal` lineage, untended areas, inbox count), opens by resuming the last live thread (or a neutral grounded open when nothing carried over) which doubles as the brain-dump, then walks each raised thread interactively (is it actionable, is it done, does it even belong on the board, which area/goal), then rewrites the whole file in a single atomic pass — `.prev` backup, `.tmp` + rename, append to `standups[]` and trim to the last 10, triage `inbox[]` into areas/goals as part of the same write, enforce ≤3 starred actions. Use when the user wants to do their stand-up, or invokes `/bish-life-standup`.
 allowed-tools: Read, Write, PowerShell, Bash
 bishop.category: setup
 ---
@@ -13,7 +13,7 @@ Shell tool selection (Bash vs PowerShell) — this skill targets a Windows-only 
 
 **TTS hook discipline.** The `Stop` → `bishop hook speak-on-stop` hook speaks the last assistant message minus `<!-- no-speak -->…<!-- /no-speak -->` blocks (see `BishLifeTranscriptScanner.StripForSpeech`). The user dictates while doing other things — what should be spoken is:
 
-- The single direct question to the user (the brain-dump prompt, the per-thread question, the "Write this stand-up?" confirm),
+- The single direct question to the user (the opening / resume question, the per-thread question, the "Write this stand-up?" confirm),
 - The drafted reflection prose (it's the synthesis the user benefits from hearing),
 - Short conversational acknowledgements.
 
@@ -25,6 +25,7 @@ Design tenets carried from `docs/bishop-life-spec.md` §1 — observe them in to
 2. **Externalised memory.** The file is the brain — assume the user has forgotten everything since the last stand-up. The context pack does the remembering for them.
 3. **Predictable ritual.** Same shape every day: context pack → brain-dump → per-item walk → drafted reflection + ≤3 focus items → confirm → whole-file write. The walk is what turns a vent into a board update — without it, the skill is just data entry.
 4. **≤3 starred actions** at any time, total across all areas/goals. Forcing scarcity is the feature.
+5. **Resume, don't greet.** The stand-up opens by picking up the live thread from last time, not with a fixed greeting. The opening line *is* the brain-dump invitation, voiced as the question a person who remembered would ask. Predictability lives in the shape (tenet 3), not in the wording — vary the content, hold the register.
 
 <what-to-do>
 
@@ -63,7 +64,7 @@ If the CLI exits non-zero, surface the stderr message and STOP.
 
 Display the pack to the user verbatim — a calm, scannable block. No advice yet. Calendar items are **deliberately omitted** from this summary so they don't pre-empt the brain-dump; they get walked in Step 4.
 
-Wrap the entire context block in `<!-- no-speak -->...<!-- /no-speak -->` markers so the TTS hook skips it (the brain-dump prompt in Step 3 is what should be spoken, not the surfaced data). Example shape:
+Wrap the entire context block in `<!-- no-speak -->...<!-- /no-speak -->` markers so the TTS hook skips it (the opening question in Step 3 is what should be spoken, not the surfaced data). Example shape:
 
 ```
 <!-- no-speak -->
@@ -79,13 +80,31 @@ Wrap the entire context block in `<!-- no-speak -->...<!-- /no-speak -->` marker
 <!-- /no-speak -->
 ```
 
-### Step 3 — Brain-dump prompt
+### Step 3 — Open by resuming the thread
 
-Ask exactly one open prompt. Phrasing along the lines of:
+The opening line is generated from state, never fixed (tenet 5). It is the one spoken line that starts the conversation and it doubles as the brain-dump invitation — there is no separate generic prompt. Vary the *content* (which thread, how it's phrased); hold the *register* constant: one line, one question, calm and understated, no perky or exclamatory energy. Because the line is grounded in whatever is actually live, it differs every stand-up on its own — do not manufacture variety for its own sake.
 
-> What's on your mind? Anything from the last few days — wins, worries, things you've been putting off, things you want to start. Dump it all; I'll walk through it with you.
+Pick the **single** most salient carried-over thread to open on — never a list (a list is a status readout, not a resumption). Selection order:
 
-Read the user's response. Do not start asking follow-up questions in this step — just collect the dump. The walk happens in Step 4.
+1. A previous-stand-up `focusToday[]` item that is **still open** — resolve its id to `area ▸ goal ▸ action title` via the `plan` returned in Step 1 (the most recent `standups[]` entry's `focusToday[]`, cross-referenced against the tree). These were explicitly the focus last time; they are what a person who remembered would ask about. *(If the CLI is later extended to surface a resolved `lastFocus[]` with `done`/`blocked` flags, prefer it — it removes the cross-referencing and makes the already-resolved case below reliable.)*
+2. Failing that, a currently-`starred[]` item that is clearly mid-flight.
+
+Open with the question that person would ask, then leave the floor open so the user can carry on into anything else:
+
+> Morning. How did *{last focus item}* go? — and whatever else has come up since.
+
+Read the user's response. It **is** the brain-dump — do not start follow-up questions here (the walk is Step 4). The trailing "...and whatever else has come up" keeps the floor open so the opener does not narrow the dump to that one thread.
+
+**No-shame on carry-over (tenet 1, applied here).** The honest answer to "how did *X* go?" is often "I didn't get to it." Treat that as completely normal — acknowledge it and roll it forward; no comment on the gap, no disappointment, no "still?". A warm opener that flinches at "didn't happen" becomes a daily guilt-trip, which is the exact failure the ritual exists to avoid.
+
+**Do not ask about what is already resolved.** If the carried-over focus item is already `done` (completed in a prior session or via the inline UI), do not ask how it went — acknowledge it in one clause and open on the next live thread instead, or fall through to the neutral open below.
+
+**Fallback — nothing to resume.** When there is no live carried-over thread:
+
+- First-ever stand-up (`lastStandupPhrase` is `"first stand-up"`): a calm first-time open — nothing on the board yet, what's on your mind to start.
+- Quiet board, or everything carried over is done or dropped: grounded-but-neutral — e.g. "Quiet board, nothing carried over — what's on your mind?" Do not invent a callback that doesn't exist.
+
+The visual context block (Step 2) is unchanged: it remains the silent, at-a-glance state on screen. This step changes only the *spoken* open — from a fixed prompt to a state-grounded resumption.
 
 ### Step 4 — Walk the raised threads
 
@@ -192,5 +211,11 @@ Do not editorialise further. The ritual is done.
 - Do NOT star blocked actions. Reflect the blocker in the action title instead (e.g. "(blocked on X)").
 - Do NOT re-read `bishop.life.json` directly. The CLI emits both the surfaced context and the full `plan` — use that for Step 5 composition.
 - Do NOT surface `calendar[]` events in the Step 2 summary — calendar items are walked one-by-one in Step 4, *after* the brain-dump, so that real-life dates don't pre-empt what the user wanted to bring up themselves.
+- Do NOT use a fixed opening line. The spoken open is generated from the carried-over thread; a static greeting goes stale (Step 3, tenet 5).
+- Do NOT open by listing multiple threads — pick one. Listing is a status readout, not a resumption.
+- Do NOT react to "didn't happen" with comment, disappointment, or "still?" — acknowledge and roll it forward (tenet 1).
+- Do NOT ask "how did X go?" about an action already marked `done` — acknowledge in one clause and move to the next live thread, or use the neutral open.
+- Do NOT let the resumed-thread opener narrow the dump — the floor stays open for anything else the user wants to raise.
+- Do NOT fabricate a carried-over thread when none exists (first stand-up, quiet board) — use the neutral grounded open instead.
 
 </guardrails>
