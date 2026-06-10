@@ -45,11 +45,11 @@ public class StandupControllerTests
     }
 
     [Fact]
-    public void HandleInput_WithoutPty_PostsDroppedSystemNote()
+    public async Task HandleInput_WithoutPty_PostsDroppedSystemNote()
     {
         var harness = new Harness();
 
-        harness.Controller.HandleInput("hello");
+        await harness.Controller.HandleInputAsync("hello", submit: false);
 
         harness.Channel.Posts.Should().ContainSingle()
             .Which.Should().BeOfType<StandupController.SystemNoteEnvelope>()
@@ -57,27 +57,40 @@ public class StandupControllerTests
     }
 
     [Fact]
-    public void HandleInput_AfterLaunch_ForwardsToPty()
+    public async Task HandleInput_AfterLaunch_BodyOnly_ForwardsSingleWriteToPty()
     {
         var harness = new Harness();
         harness.Controller.Launch("cwd", "args", "sid");
         harness.Channel.Posts.Clear();
 
-        harness.Controller.HandleInput("ls\r");
+        await harness.Controller.HandleInputAsync("ls", submit: false);
 
-        harness.FakePty.Writes.Should().ContainSingle().Which.Should().Be("ls\r");
+        harness.FakePty.Writes.Should().ContainSingle().Which.Should().Be("ls");
         harness.Channel.Posts.Should().BeEmpty();
     }
 
     [Fact]
-    public void HandleInput_WhenPtyWriteThrows_PostsSystemNoteWithReason()
+    public async Task HandleInput_AfterLaunch_BodyAndSubmit_ForwardsBodyThenEnter()
+    {
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.Channel.Posts.Clear();
+
+        await harness.Controller.HandleInputAsync("ls", submit: true);
+
+        harness.FakePty.Writes.Should().Equal("ls", "\r");
+        harness.Channel.Posts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task HandleInput_WhenPtyWriteThrows_PostsSystemNoteWithReason()
     {
         var harness = new Harness();
         harness.Controller.Launch("cwd", "args", "sid");
         harness.Channel.Posts.Clear();
         harness.FakePty.NextWriteThrows = new InvalidOperationException("boom");
 
-        harness.Controller.HandleInput("x");
+        await harness.Controller.HandleInputAsync("x", submit: false);
 
         harness.Channel.Posts.Should().ContainSingle()
             .Which.Should().BeOfType<StandupController.SystemNoteEnvelope>()
@@ -198,14 +211,14 @@ public class StandupControllerTests
     }
 
     [Fact]
-    public void HandleInput_AfterDispose_IsNoop()
+    public async Task HandleInput_AfterDispose_IsNoop()
     {
         var harness = new Harness();
         harness.Controller.Launch("cwd", "args", "sid");
         harness.Controller.Dispose();
         harness.Channel.Posts.Clear();
 
-        harness.Controller.HandleInput("late");
+        await harness.Controller.HandleInputAsync("late", submit: true);
 
         harness.Channel.Posts.Should().BeEmpty();
         harness.FakePty.Writes.Should().BeEmpty();

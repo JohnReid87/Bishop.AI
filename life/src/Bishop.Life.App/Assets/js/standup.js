@@ -33,20 +33,11 @@ export function initStandup(opts = {}) {
     ev.preventDefault();
     const text = standupInputEl.value;
     if (!text) return;
-    // Abyss-bug fix: send the body and the Enter as two writes with a real
-    // wall-clock gap between them. Back-to-back postMessage→pty.Write calls
-    // land microseconds apart and ConPTY coalesces them into a single read
-    // event, which Claude's TUI in raw mode treats as one keystroke chunk
-    // and does not submit until the next event nudges its input loop —
-    // hence the "first message swallowed, second message unsticks the first"
-    // repro. A 50ms setTimeout forces two separate readable events on
-    // Claude's side. (Diagnosed by toggling the Ctrl+Shift+T debug TUI: with
-    // it open, xterm's render work accidentally provided the gap; with it
-    // closed, the bug reappeared. See #1065 thread.)
-    postToHost({ type: "terminal:input", data: text });
-    setTimeout(() => {
-      postToHost({ type: "terminal:input", data: "\r" });
-    }, 50);
+    // Card #1076: the body-then-Enter split with the 50ms inter-write delay
+    // (originally added here in #1065) now lives in C# in PtyInputSequencer.
+    // JS sends a single envelope with submit:true; the sequencer handles the
+    // two writes and the wall-clock gap that Claude's raw-mode TUI requires.
+    postToHost({ type: "terminal:input", data: text, submit: true });
     standupInputEl.value = "";
     resizeStandupInput();
   });

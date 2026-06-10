@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Threading;
+using System.Threading.Tasks;
 using Bishop.Life.Core;
 using Bishop.Life.Core.Web;
 
@@ -42,6 +44,7 @@ internal sealed class StandupController : IDisposable
     private readonly Action<TimeSpan, Action> _scheduleAfter;
 
     private ClaudePtySession? _pty;
+    private PtyInputSequencer? _sequencer;
     private IClaudeSessionTailer? _tailer;
     private int _cols = DefaultCols;
     private int _rows = DefaultRows;
@@ -94,16 +97,18 @@ internal sealed class StandupController : IDisposable
     }
 
     /// <summary>
-    /// Forwards a keystroke from the stand-up input into the PTY. Surfaces dropped
-    /// input via <c>terminal:systemNote</c> so the next repro names the cause —
-    /// each silent failure mode (PTY not attached, Write throws) gets its own
-    /// distinct bubble (card #1065).
+    /// Forwards a keystroke from the stand-up input into the PTY via
+    /// <see cref="PtyInputSequencer"/>, which owns the body-then-Enter split
+    /// and inter-write delay from card #1065. Surfaces dropped input via
+    /// <c>terminal:systemNote</c> so the next repro names the cause — each
+    /// silent failure mode (PTY not attached, Write throws) gets its own
+    /// distinct bubble.
     /// </summary>
-    public void HandleInput(string input)
+    public async Task HandleInputAsync(string body, bool submit, CancellationToken ct = default)
     {
         if (_disposed) return;
-        var pty = _pty;
-        if (pty is null)
+        var sequencer = _sequencer;
+        if (sequencer is null)
         {
             Debug.WriteLine("StandupController: terminal:input dropped — PTY not attached");
             PostSystemNote("[input dropped — PTY not attached]");
@@ -111,8 +116,8 @@ internal sealed class StandupController : IDisposable
         }
         try
         {
-            pty.Write(input);
-            Debug.WriteLine($"StandupController: terminal:input wrote {input.Length} chars");
+            await sequencer.WriteKeystrokeAsync(body, submit, ct).ConfigureAwait(false);
+            Debug.WriteLine($"StandupController: terminal:input wrote body={body.Length} submit={submit}");
         }
         catch (Exception ex)
         {
@@ -137,6 +142,7 @@ internal sealed class StandupController : IDisposable
     {
         DetachPty();
         _pty = pty;
+        _sequencer = new PtyInputSequencer((data, _) => { pty.Write(data); return Task.CompletedTask; });
         pty.ProcessExited += OnPtyExited;
     }
 
@@ -146,6 +152,7 @@ internal sealed class StandupController : IDisposable
         _pty.ProcessExited -= OnPtyExited;
         _pty.Dispose();
         _pty = null;
+        _sequencer = null;
     }
 
     private void AttachTailer(string cwd, string sessionId)

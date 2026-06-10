@@ -49,6 +49,7 @@
          the StandupController itself are kept WinUI-free so they compile under
          this plain net10.0-windows TFM. -->
     <Compile Include="..\..\src\Bishop.Life.App\Standup\StandupController.cs" Link="Sourced\StandupController.cs" />
+    <Compile Include="..\..\src\Bishop.Life.App\Standup\PtyInputSequencer.cs" Link="Sourced\PtyInputSequencer.cs" />
     <Compile Include="..\..\src\Bishop.Life.App\LifeTerminalLauncher.cs" Link="Sourced\LifeTerminalLauncher.cs" />
     <!-- Source-link the Plan slice (card #1071). PlanController is WinUI-free so
          it compiles under the test project's plain net10.0-windows TFM. -->

@@ -118,7 +118,12 @@ internal sealed class LifePlanHost : IDisposable
                 case "init": LaunchInit(); break;
                 case "add": LaunchAdd(); break;
                 case "mutate" when root.TryGetProperty("plan", out var planEl): _plan?.ApplyMutation(planEl); break;
-                case "terminal:input" when root.TryGetProperty("data", out var dataEl): _standup?.HandleInput(dataEl.GetString() ?? string.Empty); break;
+                case "terminal:input" when root.TryGetProperty("data", out var dataEl):
+                    {
+                        var submit = root.TryGetProperty("submit", out var submitEl) && submitEl.ValueKind == JsonValueKind.True;
+                        _ = _standup?.HandleInputAsync(dataEl.GetString() ?? string.Empty, submit);
+                        break;
+                    }
                 case "terminal:resize":
                     var cols = root.TryGetProperty("cols", out var colsEl) && colsEl.TryGetInt32(out var c) ? c : 0;
                     var rows = root.TryGetProperty("rows", out var rowsEl) && rowsEl.TryGetInt32(out var r) ? r : 0;
