@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Bishop.Life.App.Speak;
+using Bishop.Life.App.Standup;
 using Bishop.Life.App.Web;
 using Bishop.Life.Core;
 using Bishop.Life.Core.Schema;
@@ -23,19 +24,13 @@ namespace Bishop.Life.App;
 /// returns from a launched terminal that wrote nothing.
 /// Handles these JS→host message shapes:
 /// <list type="bullet">
-///   <item><c>"standup"</c> — tries the embedded ConPTY terminal first (card
-///         #1053), falling back to <c>wt.exe</c> if Pty.Net spawn fails.</item>
+///   <item><c>"standup"</c> — delegates to <see cref="StandupController"/>
+///         (card #1070), which embeds ConPTY first and falls back to wt.exe.</item>
 ///   <item><c>{"type":"mutate","plan":{…}}</c> — applies an inline edit (star,
 ///         check, title) via <see cref="LifeMutationCoordinator"/>.</item>
-///   <item><c>{"type":"terminal:input","data":"…"}</c> — keystroke from xterm.js
-///         to forward into the PTY stdin.</item>
-///   <item><c>{"type":"terminal:resize","cols":n,"rows":m}</c> — viewport size
-///         change so ConPTY's screen buffer tracks the rendered grid.</item>
+///   <item><c>{"type":"terminal:input","data":"…"}</c> / <c>terminal:resize</c> —
+///         forwarded to <see cref="StandupController"/>.</item>
 /// </list>
-/// Posts <c>{"type":"terminal:show|data|hide|systemNote"}</c> back to JS to
-/// drive the xterm.js pane lifecycle. <c>systemNote</c> renders a muted
-/// in-transcript bubble (card #1065) — used to surface input that was
-/// dropped between JS and the PTY, and session-end races with input.
 /// </summary>
 internal sealed class LifePlanHost : IDisposable
 {
@@ -55,15 +50,9 @@ internal sealed class LifePlanHost : IDisposable
     private readonly LifeTerminalLauncher _launcher;
     private readonly LifeMutationCoordinator _coordinator;
     private SpeakController? _speak;
-    private ClaudePtySession? _standupPty;
-    private ClaudeSessionJsonlTailer? _transcriptTailer;
+    private StandupController? _standup;
     private bool _navigated;
     private bool _disposed;
-    // Default xterm.js geometry on first show; resized as soon as the JS side
-    // measures its container and posts terminal:resize. 80×30 is the wt.exe
-    // default so the first frame matches what users see today.
-    private int _ptyCols = 80;
-    private int _ptyRows = 30;
     // Set by MainWindow before EnsureCoreWebView2Async completes so the very
     // first paint of the WebView2 uses the right theme.
     private bool _pendingDarkTheme = true;
@@ -110,6 +99,15 @@ internal sealed class LifePlanHost : IDisposable
         var channel = new WebView2BrowserChannel(_view.CoreWebView2, _dispatcher);
         _speak = SpeakController.Create(channel);
         _speak.Start();
+
+        _standup = new StandupController(
+            ptyLauncher: _launcher.TryLaunchClaudePty,
+            wtLauncher: (cwd, args) => _launcher.LaunchClaude(cwd, args),
+            tailerFactory: StandupController.DefaultTailerFactory,
+            channel: channel,
+            uiPost: action => _dispatcher.TryEnqueue(() => action()),
+            scheduleAfter: ScheduleAfter);
+        _standup.SessionEnded += OnStandupSessionEnded;
     }
 
     /// <summary>
@@ -183,37 +181,14 @@ internal sealed class LifePlanHost : IDisposable
             }
             else if (type == "terminal:input" && root.TryGetProperty("data", out var dataEl))
             {
-                // Card #1065: surface dropped input. Four prior fixes (#1061–#1064)
-                // worked blind because the silent failure modes (PTY not attached,
-                // Write throws, session exited) all looked identical from the UI:
-                // nothing happens. Each branch posts a distinct system-note bubble
-                // so the next repro names the cause.
                 var input = dataEl.GetString() ?? string.Empty;
-                var pty = _standupPty;
-                if (pty is null)
-                {
-                    Debug.WriteLine("LifePlanHost: terminal:input dropped — PTY not attached");
-                    PostTerminalSystemNote("[input dropped — PTY not attached]");
-                }
-                else
-                {
-                    try
-                    {
-                        pty.Write(input);
-                        Debug.WriteLine($"LifePlanHost: terminal:input wrote {input.Length} chars");
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"LifePlanHost: terminal:input Write threw: {ex}");
-                        PostTerminalSystemNote($"[input dropped — Write threw: {ex.Message}]");
-                    }
-                }
+                _standup?.HandleInput(input);
             }
             else if (type == "terminal:resize")
             {
-                if (root.TryGetProperty("cols", out var colsEl) && colsEl.TryGetInt32(out var c)) _ptyCols = c;
-                if (root.TryGetProperty("rows", out var rowsEl) && rowsEl.TryGetInt32(out var r)) _ptyRows = r;
-                _standupPty?.Resize(_ptyCols, _ptyRows);
+                var cols = root.TryGetProperty("cols", out var colsEl) && colsEl.TryGetInt32(out var c) ? c : 0;
+                var rows = root.TryGetProperty("rows", out var rowsEl) && rowsEl.TryGetInt32(out var r) ? r : 0;
+                _standup?.Resize(cols, rows);
             }
         }
         catch (JsonException ex)
@@ -226,6 +201,7 @@ internal sealed class LifePlanHost : IDisposable
 
     private void LaunchStandup()
     {
+        if (_standup is null) return;
         var folder = Path.GetDirectoryName(_service.FilePath);
         if (string.IsNullOrEmpty(folder)) return;
         Directory.CreateDirectory(folder); // ensure cwd target exists on first run
@@ -235,140 +211,27 @@ internal sealed class LifePlanHost : IDisposable
         var sessionId = Guid.NewGuid().ToString();
         var claudeArgs = $"{StandupCommand} --session-id {sessionId}";
 
-        // Card #1053: try the embedded ConPTY pane first so the stand-up renders
-        // inside Bishop.Life. Any failure (Pty.Net throw, missing claude,
-        // ConPTY unavailable) falls through to the legacy wt.exe path so the
-        // user still gets a working stand-up.
-        var pty = _launcher.TryLaunchClaudePty(folder, claudeArgs, _ptyCols, _ptyRows);
-        if (pty is not null)
-        {
-            AttachStandupPty(pty);
-            AttachTranscriptTailer(folder, sessionId);
-            PostTerminalShow();
-        }
-        else
-        {
-            _launcher.LaunchClaude(folder, claudeArgs);
-        }
+        _standup.Launch(folder, claudeArgs, sessionId);
         _coordinator.NoteStandupLaunched(); // fires StateChanged → PostState
     }
 
-    private void AttachTranscriptTailer(string cwd, string sessionId)
+    private void ScheduleAfter(TimeSpan delay, Action action)
     {
-        DetachTranscriptTailer();
-        try
+        var timer = _dispatcher.CreateTimer();
+        timer.Interval = delay;
+        timer.IsRepeating = false;
+        timer.Tick += (s, _) =>
         {
-            var jsonlPath = ClaudeSessionPaths.ResolveSessionFilePath(cwd, sessionId);
-            var tailer = new ClaudeSessionJsonlTailer(jsonlPath);
-            tailer.UserMessage += OnTranscriptUser;
-            tailer.AssistantText += OnTranscriptAssistant;
-            tailer.ToolUse += OnTranscriptTool;
-            tailer.Start();
-            _transcriptTailer = tailer;
-        }
-        catch (Exception ex)
-        {
-            // Tailer is best-effort: stand-up still works via terminal:data if it
-            // ever gets re-enabled in the JS. Don't propagate.
-            Debug.WriteLine($"LifePlanHost: transcript tailer failed: {ex.Message}");
-        }
+            s.Stop();
+            action();
+        };
+        timer.Start();
     }
 
-    private void DetachTranscriptTailer()
+    private void OnStandupSessionEnded()
     {
-        if (_transcriptTailer is null) return;
-        _transcriptTailer.UserMessage -= OnTranscriptUser;
-        _transcriptTailer.AssistantText -= OnTranscriptAssistant;
-        _transcriptTailer.ToolUse -= OnTranscriptTool;
-        _transcriptTailer.Dispose();
-        _transcriptTailer = null;
-    }
-
-    private void OnTranscriptUser(string text) =>
-        _dispatcher.TryEnqueue(() => PostTranscriptEvent("user", text));
-
-    private void OnTranscriptAssistant(string text) =>
-        _dispatcher.TryEnqueue(() => PostTranscriptEvent("assistant", text));
-
-    private void OnTranscriptTool(ClaudeSessionJsonlTailer.ToolUseEvent evt) =>
-        _dispatcher.TryEnqueue(() => PostTranscriptEvent("tool", evt.Summary));
-
-    private void PostTranscriptEvent(string kind, string text)
-    {
-        if (!_navigated || _disposed) return;
-        var payload = new TranscriptEventEnvelope(Type: "transcript:event", Kind: kind, Text: text);
-        var json = JsonSerializer.Serialize(payload, PostOptions);
-        _view.CoreWebView2.PostWebMessageAsJson(json);
-    }
-
-    private void AttachStandupPty(ClaudePtySession pty)
-    {
-        DetachStandupPty(); // belt-and-braces if a prior session lingered
-        _standupPty = pty;
-        pty.DataReceived += OnStandupPtyData;
-        pty.ProcessExited += OnStandupPtyExited;
-    }
-
-    private void DetachStandupPty()
-    {
-        if (_standupPty is null) return;
-        _standupPty.DataReceived -= OnStandupPtyData;
-        _standupPty.ProcessExited -= OnStandupPtyExited;
-        _standupPty.Dispose();
-        _standupPty = null;
-    }
-
-    private void OnStandupPtyData(string data) =>
-        _dispatcher.TryEnqueue(() => PostTerminalData(data));
-
-    private void OnStandupPtyExited()
-    {
-        _dispatcher.TryEnqueue(() =>
-        {
-            DetachStandupPty();
-            DetachTranscriptTailer();
-            // Card #1065: surface the session-ended cause BEFORE hiding the pane,
-            // and delay the hide so the note is visible long enough to read when
-            // it races with a user keystroke (the abyss-bug repro path).
-            PostTerminalSystemNote("[Claude session ended]");
-            if (_coordinator.StandupInFlight) _coordinator.NoteStandupAborted();
-            else PostState();
-
-            var timer = _dispatcher.CreateTimer();
-            timer.Interval = TimeSpan.FromMilliseconds(1500);
-            timer.IsRepeating = false;
-            timer.Tick += (s, _) =>
-            {
-                s.Stop();
-                PostTerminalHide();
-            };
-            timer.Start();
-        });
-    }
-
-    private void PostTerminalShow() => PostBareEnvelope("terminal:show");
-    private void PostTerminalHide() => PostBareEnvelope("terminal:hide");
-
-    private void PostBareEnvelope(string type)
-    {
-        if (!_navigated || _disposed) return;
-        _view.CoreWebView2.PostWebMessageAsJson($"{{\"type\":\"{type}\"}}");
-    }
-
-    private void PostTerminalData(string data)
-    {
-        if (!_navigated || _disposed) return;
-        var payload = new TerminalDataEnvelope(Type: "terminal:data", Data: data);
-        var json = JsonSerializer.Serialize(payload, PostOptions);
-        _view.CoreWebView2.PostWebMessageAsJson(json);
-    }
-
-    private void PostTerminalSystemNote(string text)
-    {
-        if (!_navigated || _disposed) return;
-        var payload = new TerminalSystemNoteEnvelope(Type: "terminal:systemNote", Text: text);
-        var json = JsonSerializer.Serialize(payload, PostOptions);
-        _view.CoreWebView2.PostWebMessageAsJson(json);
+        if (_coordinator.StandupInFlight) _coordinator.NoteStandupAborted();
+        else PostState();
     }
 
     private void LaunchInit()
@@ -480,8 +343,8 @@ internal sealed class LifePlanHost : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        DetachStandupPty();
-        DetachTranscriptTailer();
+        if (_standup is not null) _standup.SessionEnded -= OnStandupSessionEnded;
+        _standup?.Dispose();
         _coordinator.StateChanged -= OnCoordinatorStateChanged;
         _watcher.Reloaded -= OnFileReloaded;
         _watcher.Dispose();
@@ -489,19 +352,6 @@ internal sealed class LifePlanHost : IDisposable
         if (_view.CoreWebView2 is { } core)
             core.WebMessageReceived -= OnWebMessageReceived;
     }
-
-    private sealed record TerminalDataEnvelope(
-        string Type,
-        string Data);
-
-    private sealed record TerminalSystemNoteEnvelope(
-        string Type,
-        string Text);
-
-    private sealed record TranscriptEventEnvelope(
-        string Type,
-        string Kind,
-        string Text);
 
     private sealed record Envelope(
         string Status,

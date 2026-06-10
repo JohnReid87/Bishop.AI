@@ -15,7 +15,7 @@ namespace Bishop.Life.Core;
 /// line is processed exactly once. The file is opened with full sharing so
 /// claude's append stream is never blocked.
 /// </remarks>
-public sealed class ClaudeSessionJsonlTailer : IDisposable
+public sealed class ClaudeSessionJsonlTailer : IClaudeSessionTailer
 {
     public static readonly TimeSpan DefaultDebounce = TimeSpan.FromMilliseconds(75);
 
