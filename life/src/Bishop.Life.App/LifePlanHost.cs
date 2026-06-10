@@ -4,9 +4,9 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Bishop.Life.App.Speak;
+using Bishop.Life.App.Web;
 using Bishop.Life.Core;
 using Bishop.Life.Core.Schema;
-using Bishop.Life.Core.Speak;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
@@ -54,8 +54,7 @@ internal sealed class LifePlanHost : IDisposable
     private readonly LifePlanWatcher _watcher;
     private readonly LifeTerminalLauncher _launcher;
     private readonly LifeMutationCoordinator _coordinator;
-    private readonly LifeSpeakPipeServer _speakPipe;
-    private readonly LifeSpeakPlayer _speakPlayer;
+    private SpeakController? _speak;
     private ClaudePtySession? _standupPty;
     private ClaudeSessionJsonlTailer? _transcriptTailer;
     private bool _navigated;
@@ -87,9 +86,6 @@ internal sealed class LifePlanHost : IDisposable
         _launcher = new LifeTerminalLauncher();
         _coordinator = new LifeMutationCoordinator(_service);
         _coordinator.StateChanged += OnCoordinatorStateChanged;
-        _speakPlayer = new LifeSpeakPlayer();
-        _speakPipe = new LifeSpeakPipeServer();
-        _speakPipe.MessageReceived += OnSpeakMessage;
     }
 
     public async Task StartAsync()
@@ -110,36 +106,10 @@ internal sealed class LifePlanHost : IDisposable
         _view.CoreWebView2.Navigate(LandingUrl);
 
         _watcher.Start();
-        _speakPipe.Start();
-    }
 
-    private void OnSpeakMessage(SpeakPipeMessage message)
-    {
-        // Pipe events arrive on a background thread; bounce to the UI thread
-        // so we can touch the WebView2 safely. SoundPlayer is happy on either.
-        if (message.Kind == SpeakPipeMessage.KindStarted)
-        {
-            if (!string.IsNullOrEmpty(message.WavPath))
-                _speakPlayer.Start(message.WavPath);
-        }
-        else if (message.Kind == SpeakPipeMessage.KindStopped)
-        {
-            _speakPlayer.Stop();
-        }
-
-        _dispatcher.TryEnqueue(() => PostSpeakMessage(message));
-    }
-
-    private void PostSpeakMessage(SpeakPipeMessage message)
-    {
-        if (!_navigated || _disposed) return;
-        var payload = new SpeakEnvelope(
-            Type: "speak." + message.Kind,
-            PcmBase64: message.PcmBase64,
-            PcmSampleRateHz: message.PcmSampleRateHz,
-            DurationMs: message.DurationMs);
-        var json = JsonSerializer.Serialize(payload, PostOptions);
-        _view.CoreWebView2.PostWebMessageAsJson(json);
+        var channel = new WebView2BrowserChannel(_view.CoreWebView2, _dispatcher);
+        _speak = SpeakController.Create(channel);
+        _speak.Start();
     }
 
     /// <summary>
@@ -515,9 +485,7 @@ internal sealed class LifePlanHost : IDisposable
         _coordinator.StateChanged -= OnCoordinatorStateChanged;
         _watcher.Reloaded -= OnFileReloaded;
         _watcher.Dispose();
-        _speakPipe.MessageReceived -= OnSpeakMessage;
-        _speakPipe.Dispose();
-        _speakPlayer.Dispose();
+        _speak?.Dispose();
         if (_view.CoreWebView2 is { } core)
             core.WebMessageReceived -= OnWebMessageReceived;
     }
@@ -534,12 +502,6 @@ internal sealed class LifePlanHost : IDisposable
         string Type,
         string Kind,
         string Text);
-
-    private sealed record SpeakEnvelope(
-        string Type,
-        string? PcmBase64,
-        int PcmSampleRateHz,
-        int DurationMs);
 
     private sealed record Envelope(
         string Status,

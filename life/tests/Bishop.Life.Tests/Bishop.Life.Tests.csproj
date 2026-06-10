@@ -30,6 +30,13 @@
     <!-- Source-link only ClaudePtySession; the App project itself is a WinUI
          WinExe and can't be ProjectReferenced from a plain test project. -->
     <Compile Include="..\..\src\Bishop.Life.App\ClaudePtySession.cs" Link="Sourced\ClaudePtySession.cs" />
+    <!-- Source-link the Speak slice so SpeakController can be unit-tested
+         (card #1069). LifeSpeakPipeServer + LifeSpeakPlayer come along as
+         constructor dependencies; tests don't Start() them, so no pipe or
+         WAV I/O fires. -->
+    <Compile Include="..\..\src\Bishop.Life.App\Speak\SpeakController.cs" Link="Sourced\SpeakController.cs" />
+    <Compile Include="..\..\src\Bishop.Life.App\Speak\LifeSpeakPipeServer.cs" Link="Sourced\LifeSpeakPipeServer.cs" />
+    <Compile Include="..\..\src\Bishop.Life.App\Speak\LifeSpeakPlayer.cs" Link="Sourced\LifeSpeakPlayer.cs" />
   </ItemGroup>
 
 </Project>
