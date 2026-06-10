@@ -55,6 +55,7 @@ export function showStandupTerminal(): void {
   if (!standupTerminalEl) return;
   standupTerminalEl.hidden = false;
   document.body.classList.add("standup-session-active");
+  setStandupBtnMode(true);
   clearTranscript();
   showThinking();
   showStandupInput();
@@ -68,9 +69,22 @@ export function hideStandupTerminal(): void {
   if (!standupTerminalEl) return;
   standupTerminalEl.hidden = true;
   document.body.classList.remove("standup-session-active");
+  setStandupBtnMode(false);
   clearTranscript();
   hideStandupInput();
   onVizHide();
+}
+
+// Card #1081: the single topbar button toggles between launching a stand-up
+// and ending the live session — keeps the topbar to three slots and matches
+// the conversational "initiate ↔ end" pairing.
+function setStandupBtnMode(sessionActive: boolean): void {
+  const btn = document.getElementById("standupBtn");
+  if (!btn) return;
+  btn.classList.toggle("danger", sessionActive);
+  btn.innerHTML = sessionActive
+    ? '<span class="tri">&#9633;</span> End Stand-Up'
+    : '<span class="tri">&#9655;</span> Initiate Stand-Up';
 }
 
 // Card #1060: the stand-up's first user turn is Claude Code's slash-command

@@ -85,6 +85,10 @@ export interface Standup {
   focusToday: string[];
 }
 
+export interface StandupEndEnvelope {
+  type: string;
+}
+
 export interface SystemNoteEnvelope {
   type: string;
   text: string;

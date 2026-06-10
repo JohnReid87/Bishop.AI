@@ -139,7 +139,11 @@ function applyEnvelope(env: PlanStateEnvelope): void {
   const standupBtn = document.getElementById("standupBtn") as HTMLButtonElement | null;
   const addBtn = document.getElementById("addBtn") as HTMLButtonElement | null;
   const initBtn = document.getElementById("initBtn") as HTMLButtonElement | null;
-  if (standupBtn) standupBtn.disabled = anyInFlight;
+  // Card #1081: while a stand-up is live the button switches to "End Stand-Up"
+  // (relabel happens in standup.ts on terminal:show/hide) — it must stay
+  // clickable so the user can wrap the session, so only an add-in-flight gates
+  // it. When idle, both in-flights still disable it.
+  if (standupBtn) standupBtn.disabled = state.standupInFlight ? false : anyInFlight;
   if (addBtn) addBtn.disabled = anyInFlight;
   if (initBtn) initBtn.hidden = state.status !== "missing" || anyInFlight;
   const standupBanner = document.getElementById("standupBanner");
@@ -255,6 +259,12 @@ installDispatcher({
 });
 
 document.getElementById("standupBtn")?.addEventListener("click", () => {
+  // Card #1081: during a live session the same button ends the stand-up;
+  // body.standup-session-active tracks show/hide envelopes from the host.
+  if (document.body.classList.contains("standup-session-active")) {
+    postToHost({ type: "standup:end" });
+    return;
+  }
   if (state.standupInFlight || state.addInFlight) return;
   flushPendingTitleEdit();
   postToHost("standup");

@@ -67,6 +67,11 @@ body {
 .cta.secondary { color: var(--ink-dim); background: transparent; border-color: var(--line); }
 .cta.secondary:hover { background: rgba(255,255,255,0.04); border-color: var(--ink-dim); color: var(--ink); }
 .cta.secondary .plus { font-size: 14px; line-height: 1; }
+/* Card #1081: danger accent for the End Stand-Up affordance — same slot as
+   the green "Initiate Stand-Up" CTA, swapped to the danger palette so the
+   live-session "this stops the agent" intent reads at a glance. */
+.cta.danger { color: var(--danger); background: rgba(255,85,85,0.10); border-color: var(--danger); }
+.cta.danger:hover { background: rgba(255,85,85,0.18); border-color: var(--danger); }
 
 /* tabs */
 .tabs { display: flex; gap: 6px; padding: 4px 0 16px; }

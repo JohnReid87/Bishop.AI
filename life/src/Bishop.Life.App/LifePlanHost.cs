@@ -124,6 +124,7 @@ internal sealed class LifePlanHost : IDisposable
                         _ = _standup?.HandleInputAsync(dataEl.GetString() ?? string.Empty, submit);
                         break;
                     }
+                case "standup:end": _standup?.End(); break;
                 case "terminal:resize":
                     var cols = root.TryGetProperty("cols", out var colsEl) && colsEl.TryGetInt32(out var c) ? c : 0;
                     var rows = root.TryGetProperty("rows", out var rowsEl) && rowsEl.TryGetInt32(out var r) ? r : 0;

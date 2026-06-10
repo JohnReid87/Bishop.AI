@@ -128,6 +128,24 @@ internal sealed class StandupController : IDisposable
     }
 
     /// <summary>
+    /// User-initiated wrap-up (card #1081). Tears down the PTY and tailer,
+    /// fires <see cref="SessionEnded"/>, and posts <c>terminal:hide</c>
+    /// immediately — no <c>[Claude session ended]</c> note and no
+    /// <see cref="HideDelay"/>, both of which are noise when the user is the
+    /// one ending the session. No-ops when no PTY is attached so a stray
+    /// click after the natural-exit path can't double-hide.
+    /// </summary>
+    public void End()
+    {
+        if (_disposed) return;
+        if (_pty is null) return;
+        DetachPty();
+        DetachTailer();
+        SessionEnded?.Invoke();
+        PostHide();
+    }
+
+    /// <summary>
     /// Updates the controller's cached viewport and forwards to the PTY if one
     /// is attached. Sizes &lt; 1 (zero-sized layout pass) are ignored so they
     /// don't poison the cached defaults.

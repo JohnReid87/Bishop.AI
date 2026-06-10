@@ -86,7 +86,14 @@ export interface TerminalInputOutboundEnvelope {
   submit: boolean;
 }
 
-export type OutboundEnvelope = MutateOutboundEnvelope | TerminalInputOutboundEnvelope;
+export interface StandupEndOutboundEnvelope {
+  type: "standup:end";
+}
+
+export type OutboundEnvelope =
+  | MutateOutboundEnvelope
+  | TerminalInputOutboundEnvelope
+  | StandupEndOutboundEnvelope;
 
 // Bare-string commands recognised by the host on the JsonValueKind.String branch.
 export type OutboundCommand = "standup" | "init" | "add";

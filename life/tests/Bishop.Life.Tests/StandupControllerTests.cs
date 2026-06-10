@@ -181,6 +181,54 @@ public class StandupControllerTests
     }
 
     [Fact]
+    public void End_AfterLaunch_PostsTerminalHide_FiresSessionEnded_AndSkipsSystemNoteAndDelay()
+    {
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.Channel.Posts.Clear();
+
+        harness.Controller.End();
+
+        // No "[Claude session ended]" note and no scheduled hide — the user
+        // initiated the end, so the noise that justifies them on natural exit
+        // (card #1065) doesn't apply.
+        harness.PendingSchedules.Should().BeEmpty();
+        harness.Channel.Posts.Should().ContainSingle()
+            .Which.Should().BeOfType<BareEnvelope>()
+            .Which.Type.Should().Be("terminal:hide");
+        harness.SessionEndedCount.Should().Be(1);
+        harness.FakePty.Disposed.Should().BeTrue();
+        harness.LastTailer!.Disposed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void End_WithoutLaunch_IsNoop()
+    {
+        var harness = new Harness();
+
+        harness.Controller.End();
+
+        harness.Channel.Posts.Should().BeEmpty();
+        harness.SessionEndedCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void End_AfterPtyAlreadyExited_IsNoop()
+    {
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.FakePty.RaisePtyDisconnected();
+        harness.Channel.Posts.Clear();
+        harness.PendingSchedules.Clear();
+        var sessionEndedBefore = harness.SessionEndedCount;
+
+        harness.Controller.End();
+
+        harness.Channel.Posts.Should().BeEmpty();
+        harness.SessionEndedCount.Should().Be(sessionEndedBefore);
+    }
+
+    [Fact]
     public void Resize_ForwardsToPty_AndCachesForNextLaunch()
     {
         var capturedSizes = new List<(int cols, int rows)>();
