@@ -27,6 +27,14 @@ public sealed class SkillModelOptionsTests
     }
 
     [Fact]
+    public void ResolveModelId_WhenSavedIsFable_ReturnsFable()
+    {
+        const string fableId = "claude-fable-5";
+
+        SkillModelOptions.ResolveModelId(fableId).Should().Be(fableId);
+    }
+
+    [Fact]
     public void ResolveModelId_WhenSavedIsHaiku_ReturnsHaiku()
     {
         const string haikuId = "claude-haiku-4-5-20251001";
