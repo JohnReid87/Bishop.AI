@@ -145,6 +145,20 @@ public class StandupControllerTests
     }
 
     [Fact]
+    public void TranscriptParseFailed_IsForwardedAsSystemNote_WithLineNumber()
+    {
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.Channel.Posts.Clear();
+
+        harness.LastTailer!.RaiseParseFailed(new ClaudeSessionJsonlTailer.ParseFailedEvent(7, "unknown event type 'telemetry'"));
+
+        harness.Channel.Posts.Should().ContainSingle()
+            .Which.Should().BeOfType<StandupController.SystemNoteEnvelope>()
+            .Which.Text.Should().Be("Bishop couldn't read Claude session line 7 — format may have changed");
+    }
+
+    [Fact]
     public void PtyExit_PostsSystemNoteThenSchedulesHide_AndFiresSessionEnded()
     {
         var harness = new Harness();
@@ -276,6 +290,7 @@ public class StandupControllerTests
         public event Action<string>? UserMessage;
         public event Action<string>? AssistantText;
         public event Action<ClaudeSessionJsonlTailer.ToolUseEvent>? ToolUse;
+        public event Action<ClaudeSessionJsonlTailer.ParseFailedEvent>? ParseFailed;
 
         public void Start() => Started = true;
         public void Dispose() => Disposed = true;
@@ -283,6 +298,7 @@ public class StandupControllerTests
         public void RaiseUser(string text) => UserMessage?.Invoke(text);
         public void RaiseAssistant(string text) => AssistantText?.Invoke(text);
         public void RaiseTool(ClaudeSessionJsonlTailer.ToolUseEvent evt) => ToolUse?.Invoke(evt);
+        public void RaiseParseFailed(ClaudeSessionJsonlTailer.ParseFailedEvent evt) => ParseFailed?.Invoke(evt);
     }
 
     private sealed class FakePtyConnection : IPtyConnection

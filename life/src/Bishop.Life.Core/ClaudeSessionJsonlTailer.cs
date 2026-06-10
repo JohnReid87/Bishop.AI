@@ -25,6 +25,7 @@ public sealed class ClaudeSessionJsonlTailer : IClaudeSessionTailer
     private readonly System.Threading.Timer _timer;
     private readonly object _gate = new();
     private long _position;
+    private long _lineNumber;
     private string _pendingPartial = string.Empty;
     private bool _disposed;
     private bool _pending;
@@ -32,6 +33,25 @@ public sealed class ClaudeSessionJsonlTailer : IClaudeSessionTailer
     public event Action<string>? UserMessage;
     public event Action<string>? AssistantText;
     public event Action<ToolUseEvent>? ToolUse;
+    public event Action<ParseFailedEvent>? ParseFailed;
+
+    /// <summary>
+    /// Top-level <c>type</c> values that appear in Claude Code session JSONL
+    /// but produce no transcript event. Listed explicitly so genuine schema
+    /// drift (a previously-unseen <c>type</c>) is surfaced via
+    /// <see cref="ParseFailed"/> instead of dropped silently.
+    /// </summary>
+    private static readonly HashSet<string> KnownNoOpTypes = new(StringComparer.Ordinal)
+    {
+        "system",
+        "summary",
+        "attachment",
+        "file-history-snapshot",
+        "last-prompt",
+        "permission-mode",
+        "mode",
+        "ai-title",
+    };
 
     public ClaudeSessionJsonlTailer(string filePath) : this(filePath, DefaultDebounce) { }
 
@@ -99,6 +119,7 @@ public sealed class ClaudeSessionJsonlTailer : IClaudeSessionTailer
             {
                 _position = 0;
                 _pendingPartial = string.Empty;
+                _lineNumber = 0;
             }
             if (fs.Length == _position) return;
 
@@ -128,30 +149,55 @@ public sealed class ClaudeSessionJsonlTailer : IClaudeSessionTailer
         {
             var trimmed = line.TrimEnd('\r');
             if (string.IsNullOrWhiteSpace(trimmed)) continue;
-            try { ProcessLine(trimmed); }
+            _lineNumber++;
+            try { ProcessLine(trimmed, _lineNumber); }
             catch (Exception ex)
             {
-                // One bad line shouldn't stop the tail — claude's JSONL format
-                // is stable, so a parse error here is genuinely unexpected
-                // (truncated mid-write should be impossible thanks to the
-                // trailing-newline split above). Log + continue.
-                System.Diagnostics.Debug.WriteLine($"ClaudeSessionJsonlTailer: dropped line — {ex.Message}");
+                // ProcessLine catches its own parse errors and raises
+                // ParseFailed; anything reaching here is a bug in event
+                // handlers downstream. Surface as a ParseFailed so it is
+                // not silently swallowed.
+                ParseFailed?.Invoke(new ParseFailedEvent(_lineNumber, $"unhandled exception: {ex.Message}"));
             }
         }
     }
 
     /// <summary>
     /// Visible for testing — parses a single JSONL line and raises the matching
-    /// event(s). Unknown shapes are dropped silently.
+    /// event(s). Parse failures and unknown top-level <c>type</c> values raise
+    /// <see cref="ParseFailed"/> with <paramref name="lineNumber"/> so callers
+    /// (e.g. StandupController) can surface schema drift instead of dropping
+    /// it silently.
     /// </summary>
-    internal void ProcessLine(string line)
+    internal void ProcessLine(string line, long lineNumber = 0)
     {
         JsonNode? node;
         try { node = JsonNode.Parse(line); }
-        catch { return; }
-        if (node is null) return;
+        catch (Exception ex)
+        {
+            ParseFailed?.Invoke(new ParseFailedEvent(lineNumber, $"JSON parse failed: {ex.Message}"));
+            return;
+        }
+        if (node is null)
+        {
+            ParseFailed?.Invoke(new ParseFailedEvent(lineNumber, "JSON parsed to null"));
+            return;
+        }
 
-        var type = node["type"]?.GetValue<string>();
+        string? type;
+        try { type = node["type"]?.GetValue<string>(); }
+        catch (Exception ex)
+        {
+            ParseFailed?.Invoke(new ParseFailedEvent(lineNumber, $"type field unreadable: {ex.Message}"));
+            return;
+        }
+
+        if (type is null)
+        {
+            ParseFailed?.Invoke(new ParseFailedEvent(lineNumber, "type field missing"));
+            return;
+        }
+
         if (type == "user")
         {
             // Skip tool_result envelopes — they arrive as type:"user" but their
@@ -163,6 +209,10 @@ public sealed class ClaudeSessionJsonlTailer : IClaudeSessionTailer
         else if (type == "assistant")
         {
             EmitAssistantBlocks(node["message"]);
+        }
+        else if (!KnownNoOpTypes.Contains(type))
+        {
+            ParseFailed?.Invoke(new ParseFailedEvent(lineNumber, $"unknown event type '{type}'"));
         }
     }
 
@@ -282,4 +332,11 @@ public sealed class ClaudeSessionJsonlTailer : IClaudeSessionTailer
     }
 
     public readonly record struct ToolUseEvent(string Name, string Summary);
+
+    /// <summary>
+    /// Raised when a JSONL line cannot be parsed or its top-level
+    /// <c>type</c> is unrecognised. Carries the 1-based line number within
+    /// the session file so consumers can render an actionable system note.
+    /// </summary>
+    public readonly record struct ParseFailedEvent(long LineNumber, string Reason);
 }

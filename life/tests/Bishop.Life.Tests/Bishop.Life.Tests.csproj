@@ -26,6 +26,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Snapshot fixtures for ClaudeSessionJsonlTailer (card #1074) — real
+         Claude Code session JSONL lines, one per top-level type. Copied
+         next to the test assembly so tests resolve paths via
+         AppContext.BaseDirectory. -->
+    <None Include="Fixtures\jsonl\**\*.jsonl" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Bishop.Life.Core\Bishop.Life.Core.csproj" />
     <!-- Source-link only ClaudePtySession; the App project itself is a WinUI
          WinExe and can't be ProjectReferenced from a plain test project. -->

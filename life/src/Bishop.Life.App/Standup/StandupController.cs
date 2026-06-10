@@ -160,6 +160,7 @@ internal sealed class StandupController : IDisposable
             tailer.UserMessage += OnTranscriptUser;
             tailer.AssistantText += OnTranscriptAssistant;
             tailer.ToolUse += OnTranscriptTool;
+            tailer.ParseFailed += OnTranscriptParseFailed;
             tailer.Start();
             _tailer = tailer;
         }
@@ -176,6 +177,7 @@ internal sealed class StandupController : IDisposable
         _tailer.UserMessage -= OnTranscriptUser;
         _tailer.AssistantText -= OnTranscriptAssistant;
         _tailer.ToolUse -= OnTranscriptTool;
+        _tailer.ParseFailed -= OnTranscriptParseFailed;
         _tailer.Dispose();
         _tailer = null;
     }
@@ -204,6 +206,9 @@ internal sealed class StandupController : IDisposable
 
     private void OnTranscriptTool(ClaudeSessionJsonlTailer.ToolUseEvent evt) =>
         _uiPost(() => PostTranscript("tool", evt.Summary));
+
+    private void OnTranscriptParseFailed(ClaudeSessionJsonlTailer.ParseFailedEvent evt) =>
+        _uiPost(() => PostSystemNote($"Bishop couldn't read Claude session line {evt.LineNumber} — format may have changed"));
 
     private void PostShow() => _ = _channel.PostAsync(new BareEnvelope(Type: "terminal:show"));
     private void PostHide() => _ = _channel.PostAsync(new BareEnvelope(Type: "terminal:hide"));

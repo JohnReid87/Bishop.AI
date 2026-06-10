@@ -12,6 +12,7 @@ public interface IClaudeSessionTailer : IDisposable
     event Action<string>? UserMessage;
     event Action<string>? AssistantText;
     event Action<ClaudeSessionJsonlTailer.ToolUseEvent>? ToolUse;
+    event Action<ClaudeSessionJsonlTailer.ParseFailedEvent>? ParseFailed;
 
     void Start();
 }

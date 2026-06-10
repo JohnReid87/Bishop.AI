@@ -77,13 +77,62 @@ public class ClaudeSessionJsonlTailerTests
     }
 
     [Fact]
-    public void ProcessLine_IgnoresMalformedJson()
+    public void ProcessLine_MalformedJson_RaisesParseFailed_WithLineNumber()
     {
         using var tailer = NewTailer(out var captured);
-        tailer.ProcessLine("not json at all");
-        tailer.ProcessLine("");
+
+        tailer.ProcessLine("not json at all", lineNumber: 42);
+
         captured.Users.Should().BeEmpty();
         captured.Assistants.Should().BeEmpty();
+        captured.ParseFailures.Should().ContainSingle();
+        captured.ParseFailures[0].LineNumber.Should().Be(42);
+        captured.ParseFailures[0].Reason.Should().StartWith("JSON parse failed:");
+    }
+
+    [Fact]
+    public void ProcessLine_MissingType_RaisesParseFailed()
+    {
+        using var tailer = NewTailer(out var captured);
+
+        tailer.ProcessLine("""{"message":"no type field"}""", lineNumber: 3);
+
+        captured.ParseFailures.Should().ContainSingle();
+        captured.ParseFailures[0].LineNumber.Should().Be(3);
+        captured.ParseFailures[0].Reason.Should().Be("type field missing");
+    }
+
+    [Fact]
+    public void ProcessLine_UnknownType_RaisesParseFailed()
+    {
+        using var tailer = NewTailer(out var captured);
+
+        tailer.ProcessLine("""{"type":"telemetry","data":42}""", lineNumber: 9);
+
+        captured.ParseFailures.Should().ContainSingle();
+        captured.ParseFailures[0].LineNumber.Should().Be(9);
+        captured.ParseFailures[0].Reason.Should().Contain("'telemetry'");
+    }
+
+    [Theory]
+    [InlineData("system")]
+    [InlineData("summary")]
+    [InlineData("attachment")]
+    [InlineData("file-history-snapshot")]
+    [InlineData("last-prompt")]
+    [InlineData("permission-mode")]
+    [InlineData("mode")]
+    [InlineData("ai-title")]
+    public void ProcessLine_KnownNoOpType_DoesNotRaiseParseFailed(string type)
+    {
+        using var tailer = NewTailer(out var captured);
+
+        tailer.ProcessLine($$"""{"type":"{{type}}"}""", lineNumber: 1);
+
+        captured.Users.Should().BeEmpty();
+        captured.Assistants.Should().BeEmpty();
+        captured.Tools.Should().BeEmpty();
+        captured.ParseFailures.Should().BeEmpty();
     }
 
     [Theory]
@@ -130,6 +179,7 @@ public class ClaudeSessionJsonlTailerTests
         tailer.UserMessage += t => captured.Users.Add(t);
         tailer.AssistantText += t => captured.Assistants.Add(t);
         tailer.ToolUse += t => captured.Tools.Add(t);
+        tailer.ParseFailed += t => captured.ParseFailures.Add(t);
     }
 
     private sealed class CapturedEvents
@@ -137,5 +187,6 @@ public class ClaudeSessionJsonlTailerTests
         public List<string> Users { get; } = new();
         public List<string> Assistants { get; } = new();
         public List<ClaudeSessionJsonlTailer.ToolUseEvent> Tools { get; } = new();
+        public List<ClaudeSessionJsonlTailer.ParseFailedEvent> ParseFailures { get; } = new();
     }
 }
