@@ -350,26 +350,27 @@
   </div>
 </div>
 
-<script>
+<script type="module">
 /* Receives state from the .NET host via window.chrome.webview. Inline
    mutations (star, check, title) build the new whole-file plan in-place,
    then postMessage it back as {type:"mutate", plan:…}; the host atomically
    saves and re-posts on file change. While a stand-up is in flight, the
-   host sets standupInFlight=true and mutations are disabled. */
+   host sets standupInFlight=true and mutations are disabled.
 
-const HORIZONS = { month:"This month", year:"This year", beyond:"Beyond" };
-// Action-level horizon enum (matches Bishop.Life.Core.Schema.Horizon serialized
-// via JsonStringEnumConverter w/ camelCase). Order is the cycle order on click.
-const ACTION_HORIZONS = { today:"Today", thisWeek:"This week", thisMonth:"This month", someday:"Someday" };
-const ACTION_HORIZON_KEYS = Object.keys(ACTION_HORIZONS);
-const DEFAULT_ACTION_HORIZON = "thisWeek";
+   Card #1072: split into ES modules under ./js/. Plan state + helpers live
+   in plan-state.js; WebView2 transport in message-bus.js; inbound routing
+   in dispatcher.js; stand-up modal surface (transcript, system notes,
+   textarea, viz reveal) in standup.js. Rendering, views, click handlers,
+   and speak-viz still live inline here. */
 
-let plan = null;       // nested LifePlan from Bishop.Life.Core
-let status = "waiting";
-let filePath = "";
-let currentView = "focus";
-let standupInFlight = false;
-let addInFlight = false;
+import {
+  state, HORIZONS, ACTION_HORIZONS, ACTION_HORIZON_KEYS, DEFAULT_ACTION_HORIZON,
+  bucket, allGoals, allActions, findAction, findGoal, actionHorizonKey,
+} from "./js/plan-state.js";
+import { postToHost } from "./js/message-bus.js";
+import { installDispatcher } from "./js/dispatcher.js";
+import { initStandup } from "./js/standup.js";
+
 let titleDebounce = null;
 let titleDebounceTarget = null; // {id, el} of the contenteditable awaiting flush
 
@@ -388,47 +389,8 @@ function tint(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function bucket(horizon) {
-  if (!horizon) return "beyond";
-  const parts = String(horizon).split("-");
-  const y = Number(parts[0]), m = Number(parts[1]);
-  if (!y || !m) return "beyond";
-  const now = new Date();
-  const diff = (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1));
-  if (diff <= 3) return "month";
-  if (y === now.getFullYear()) return "year";
-  return "beyond";
-}
-
-function allGoals() {
-  if (!plan) return [];
-  return (plan.areas || []).flatMap(a => (a.goals || []).map(g => ({ goal: g, area: a })));
-}
-
-function allActions() {
-  if (!plan) return [];
-  return (plan.areas || []).flatMap(a => (a.goals || []).flatMap(g => (g.actions || []).map(act => ({ action: act, goal: g, area: a }))));
-}
-
 function setSaved(text) { document.getElementById("saved").textContent = text; }
 function setFilePath(p) { document.getElementById("filePath").textContent = p || ""; }
-
-function findAction(id) {
-  if (!plan || !id) return null;
-  for (const a of plan.areas || [])
-    for (const g of a.goals || [])
-      for (const act of g.actions || [])
-        if (act.id === id) return act;
-  return null;
-}
-
-function findGoal(id) {
-  if (!plan || !id) return null;
-  for (const a of plan.areas || [])
-    for (const g of a.goals || [])
-      if (g.id === id) return g;
-  return null;
-}
 
 // Swap a goal chip with an inline <input type="month"> focused for edit. Commit
 // on change/blur; Enter commits, Escape reverts. On a successful commit we let
@@ -478,13 +440,12 @@ function commitGoalHorizon(id, value) {
 }
 
 function postMutation() {
-  if (!window.chrome || !window.chrome.webview) return;
-  // Pass the object directly — JSON.stringify here would make WebView2 deliver
-  // it as a JSON-encoded String (ValueKind.String on the host), which the host's
-  // string branch only recognizes for the bare "standup" / "init" commands and
-  // silently drops everything else. As an object it arrives as ValueKind.Object
-  // and the {type:"mutate",plan} handler runs.
-  window.chrome.webview.postMessage({ type: "mutate", plan });
+  // Pass the object directly — JSON.stringify on our side would make WebView2
+  // deliver it as a JSON-encoded String (ValueKind.String on the host), which
+  // the host's string branch only recognizes for the bare "standup"/"init"
+  // commands and silently drops everything else. As an object it arrives as
+  // ValueKind.Object and the {type:"mutate",plan} handler runs.
+  postToHost({ type: "mutate", plan: state.plan });
   setSaved("saving…");
 }
 
@@ -510,30 +471,30 @@ function attr(id) { return `data-action-id="${esc(id)}"`; }
 function render() {
   const focusCount = allActions().filter(x => x.action.starred && !x.action.done).length;
   document.getElementById("nFocus").textContent = focusCount || "";
-  const inboxCount = (plan && plan.inbox ? plan.inbox.length : 0);
+  const inboxCount = (state.plan && state.plan.inbox ? state.plan.inbox.length : 0);
   document.getElementById("nInbox").textContent = inboxCount || "";
 
   const c = document.getElementById("container");
-  if (status === "missing") {
-    c.innerHTML = `<div class="empty" style="margin-top:24px">No bishop.life file at <b>${esc(filePath)}</b>. Click <b>Initialize Life</b> above to seed it.</div>`;
+  if (state.status === "missing") {
+    c.innerHTML = `<div class="empty" style="margin-top:24px">No bishop.life file at <b>${esc(state.filePath)}</b>. Click <b>Initialize Life</b> above to seed it.</div>`;
     return;
   }
-  if (status === "error") {
-    c.innerHTML = `<div class="empty" style="margin-top:24px;color:var(--danger)">Couldn't read <b>${esc(filePath)}</b>.</div>`;
+  if (state.status === "error") {
+    c.innerHTML = `<div class="empty" style="margin-top:24px;color:var(--danger)">Couldn't read <b>${esc(state.filePath)}</b>.</div>`;
     return;
   }
-  if (!plan) {
+  if (!state.plan) {
     c.innerHTML = `<div class="empty" style="margin-top:24px">Waiting for state from host&hellip;</div>`;
     return;
   }
 
   const renderers = { focus: focusView, map: mapView, horizons: horizonsView, balance: balanceView, inbox: inboxView };
-  c.innerHTML = renderers[currentView]();
+  c.innerHTML = renderers[state.currentView]();
 }
 
 function focusView() {
   let h = '<div class="view">';
-  const lastStandup = (plan.standups || []).slice(-1)[0];
+  const lastStandup = (state.plan.standups || []).slice(-1)[0];
   if (lastStandup) {
     const focusIds = new Set(lastStandup.focusToday || []);
     const focusTitles = allActions().filter(x => focusIds.has(x.action.id)).map(x => x.action.title);
@@ -582,10 +543,6 @@ function goalMini({ goal, area }) {
   </div>`;
 }
 
-function actionHorizonKey(a) {
-  return ACTION_HORIZONS[a.horizon] ? a.horizon : DEFAULT_ACTION_HORIZON;
-}
-
 function goalHorizonChip(goal) {
   const h = goal.horizon;
   const isYm = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(h || ""));
@@ -596,7 +553,7 @@ function goalHorizonChip(goal) {
 
 function mapView() {
   let h = `<div class="view"><div class="sect">The map</div><div class="sect-sub">Actions grouped by horizon within each life area. The urgency at a glance.</div>`;
-  h += (plan.areas || []).map(area => {
+  h += (state.plan.areas || []).map(area => {
     const goals = area.goals || [];
     const flat = goals.flatMap(g => (g.actions || []).map(a => ({ a, goal: g })));
     const openCount = flat.filter(x => !x.a.done).length;
@@ -666,7 +623,7 @@ function horizonsView() {
 }
 
 function balanceView() {
-  const rows = (plan.areas || []).map(area => {
+  const rows = (state.plan.areas || []).map(area => {
     const goals = area.goals || [];
     const open = goals.reduce((n, g) => n + (g.actions || []).filter(a => !a.done).length, 0);
     return { area, goalCount: goals.length, open };
@@ -682,7 +639,7 @@ function balanceView() {
 }
 
 function inboxView() {
-  const items = (plan.inbox || []).slice().sort((a, b) => {
+  const items = (state.plan.inbox || []).slice().sort((a, b) => {
     const ta = new Date(a.capturedAt || 0).getTime();
     const tb = new Date(b.capturedAt || 0).getTime();
     return tb - ta;
@@ -712,28 +669,28 @@ document.querySelector(".tabs").addEventListener("click", e => {
   const tab = e.target.closest(".tab"); if (!tab) return;
   document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
   tab.classList.add("active");
-  currentView = tab.dataset.view;
+  state.currentView = tab.dataset.view;
   render();
 });
 
 function applyEnvelope(env) {
-  status = env.status || "ok";
-  filePath = env.filePath || "";
-  plan = env.plan || null;
-  standupInFlight = !!env.standupInFlight;
-  addInFlight = !!env.addInFlight;
-  const anyInFlight = standupInFlight || addInFlight;
-  setFilePath(filePath);
-  setSaved(status === "ok" ? "loaded · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : status);
+  state.status = env.status || "ok";
+  state.filePath = env.filePath || "";
+  state.plan = env.plan || null;
+  state.standupInFlight = !!env.standupInFlight;
+  state.addInFlight = !!env.addInFlight;
+  const anyInFlight = state.standupInFlight || state.addInFlight;
+  setFilePath(state.filePath);
+  setSaved(state.status === "ok" ? "loaded · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : state.status);
   // Stand-up and add both run even when no file exists yet (stand-up seeds
   // one, add appends to inbox), so enable both buttons on any envelope from
   // the host rather than gating on plan data. While either skill is in flight,
   // both CTAs are disabled to prevent overlapping launches.
   document.getElementById("standupBtn").disabled = anyInFlight;
   document.getElementById("addBtn").disabled = anyInFlight;
-  document.getElementById("initBtn").hidden = status !== "missing" || anyInFlight;
-  document.getElementById("standupBanner").hidden = !standupInFlight;
-  document.getElementById("addBanner").hidden = !addInFlight;
+  document.getElementById("initBtn").hidden = state.status !== "missing" || anyInFlight;
+  document.getElementById("standupBanner").hidden = !state.standupInFlight;
+  document.getElementById("addBanner").hidden = !state.addInFlight;
   document.body.classList.toggle("standup-disabled", anyInFlight);
   // Drop any pending edit — its target node is about to be replaced by render().
   titleDebounce = null;
@@ -746,13 +703,13 @@ const container = document.getElementById("container");
 container.addEventListener("click", e => {
   const gPill = e.target.closest(".g-pill[data-goal-id]");
   if (gPill) {
-    if (standupInFlight || addInFlight) return;
+    if (state.standupInFlight || state.addInFlight) return;
     openGoalHorizonEditor(gPill);
     return;
   }
   const host = e.target.closest("[data-action-id]");
   if (!host) return;
-  if (standupInFlight || addInFlight) return;
+  if (state.standupInFlight || state.addInFlight) return;
   const id = host.dataset.actionId;
   const action = findAction(id); if (!action) return;
 
@@ -782,7 +739,7 @@ container.addEventListener("input", e => {
   if (!text) return;
   const host = text.closest("[data-action-id]");
   if (!host) return;
-  if (standupInFlight || addInFlight) { text.textContent = findAction(host.dataset.actionId)?.title || ""; return; }
+  if (state.standupInFlight || state.addInFlight) { text.textContent = findAction(host.dataset.actionId)?.title || ""; return; }
   clearTimeout(titleDebounce);
   titleDebounceTarget = { id: host.dataset.actionId, el: text };
   titleDebounce = setTimeout(flushPendingTitleEdit, 500);
@@ -807,301 +764,6 @@ container.addEventListener("keydown", e => {
   }
 });
 
-if (window.chrome && window.chrome.webview) {
-  window.chrome.webview.addEventListener("message", evt => {
-    const env = typeof evt.data === "string" ? JSON.parse(evt.data) : evt.data;
-    if (env && typeof env.type === "string" && env.type.startsWith("speak.")) {
-      if (env.type === "speak.started") startSpeakViz(env.pcmBase64 || "", env.pcmSampleRateHz || 8000, env.durationMs || 0);
-      else if (env.type === "speak.stopped") stopSpeakViz();
-      return;
-    }
-    if (env && typeof env.type === "string" && env.type.startsWith("terminal:")) {
-      if (env.type === "terminal:show") showStandupTerminal();
-      else if (env.type === "terminal:hide") hideStandupTerminal();
-      // terminal:data still flows from the host as a dormant fallback for the
-      // legacy xterm path; the transcript:event stream is the live channel
-      // (card #1059), so we no longer render raw PTY bytes here.
-      return;
-    }
-    if (env && env.type === "transcript:event") {
-      appendTranscriptEvent(env.kind, env.text || "");
-      return;
-    }
-    if (env && env.type === "terminal:systemNote") {
-      // Card #1065: host-side diagnostic note (dropped input, session-end).
-      appendSystemNote(env.text || "");
-      return;
-    }
-    applyEnvelope(env);
-  });
-}
-
-/* Embedded stand-up transcript (card #1059). Replaces the xterm.js view
-   (card #1053) with an HTML chat transcript rendered from the on-disk
-   Claude Code session JSONL. The .NET host launches `claude --session-id
-   <guid>`, tails the resulting JSONL file, and emits one
-   {type:"transcript:event", kind, text} envelope per parsed line.
-   Lifecycle:
-     show → clear transcript, reveal pane, show input textarea, focus it
-     transcript:event → append a user/assistant/tool entry
-     hide → clear transcript, hide pane
-   No live ConPTY rendering on this path; raw PTY bytes still flow as
-   `terminal:data` envelopes but are ignored — they are kept dormant on
-   the host side so a future fallback can re-render them if JSONL tailing
-   ever fails. */
-const standupTerminalEl = document.getElementById("standupTerminal");
-let transcriptThinkingEl = null;
-let lastTranscriptKind = null;
-
-function showStandupTerminal() {
-  standupTerminalEl.hidden = false;
-  document.body.classList.add("standup-session-active");
-  clearTranscript();
-  showThinking();
-  showStandupInput();
-  // Card #1063: reveal the visualizer with a resting flat line the moment the
-  // pane opens, so the first TTS chunk animates in-place instead of popping the
-  // panel into existence and shifting layout mid-conversation.
-  vizPanel.hidden = false;
-  drawFlatLine();
-}
-
-function hideStandupTerminal() {
-  standupTerminalEl.hidden = true;
-  document.body.classList.remove("standup-session-active");
-  clearTranscript();
-  hideStandupInput();
-  cancelSpeakViz();
-  vizPanel.hidden = true;
-}
-
-// Card #1060: the stand-up's first user turn is Claude Code's slash-command
-// expansion of `/bish-life-standup` — the full SKILL.md prompt prefixed with
-// "Base directory for this skill: …". It's pure agent scaffolding, not
-// anything the user wrote, and it dwarfs the rest of the transcript when
-// rendered as a bubble. Drop it. The prefix is a Claude Code convention
-// for every skill expansion, so the check is robust and specific.
-// (The JSON envelope from `bishop context-pack life-standup` arrives as a
-// tool_result and is already filtered upstream by the tailer.)
-function isContextPackEnvelope(text) {
-  if (!text) return false;
-  return text.trimStart().startsWith("Base directory for this skill:");
-}
-
-function clearTranscript() {
-  standupTerminalEl.innerHTML = "";
-  transcriptThinkingEl = null;
-  lastTranscriptKind = null;
-}
-
-function appendTranscriptEvent(kind, text) {
-  // Card #1060: drop the context-pack envelope so the first user bubble in
-  // a stand-up isn't a wall of JSON.
-  if (kind === "user" && isContextPackEnvelope(text)) return;
-
-  const wasAtBottom = isScrolledToBottom(standupTerminalEl);
-  removeThinking();
-
-  const entry = document.createElement("div");
-  entry.className = "tx-entry";
-  if (kind === "user") {
-    const bubble = document.createElement("div");
-    bubble.className = "tx-user";
-    bubble.textContent = text;
-    entry.appendChild(bubble);
-    standupTerminalEl.appendChild(entry);
-    showThinking();
-  } else if (kind === "assistant") {
-    const body = document.createElement("div");
-    body.className = "tx-assistant";
-    // Card #1060: drop the `<!-- no-speak -->`/`<!-- /no-speak -->` markers
-    // that the SKILL wraps around the agenda — they're TTS hints only and
-    // would otherwise survive into the rendered HTML, breaking the
-    // line-by-line bullet-list handling in renderMarkdown.
-    const stripped = text.replace(/<!--\s*\/?no-speak\s*-->/g, "");
-    body.innerHTML = renderMarkdown(stripped);
-    entry.appendChild(body);
-    standupTerminalEl.appendChild(entry);
-  } else if (kind === "tool") {
-    const line = document.createElement("div");
-    line.className = "tx-tool";
-    line.textContent = text;
-    entry.appendChild(line);
-    standupTerminalEl.appendChild(entry);
-    // Tool calls happen during the agent turn — keep showing the thinking
-    // indicator until the next assistant text lands.
-    showThinking();
-  } else {
-    return;
-  }
-  lastTranscriptKind = kind;
-  if (wasAtBottom) scrollToBottom(standupTerminalEl);
-}
-
-function appendSystemNote(text) {
-  if (!text) return;
-  const wasAtBottom = isScrolledToBottom(standupTerminalEl);
-  const entry = document.createElement("div");
-  entry.className = "tx-entry tx-system";
-  entry.textContent = text;
-  standupTerminalEl.appendChild(entry);
-  if (wasAtBottom) scrollToBottom(standupTerminalEl);
-}
-
-function showThinking() {
-  if (transcriptThinkingEl) return;
-  const el = document.createElement("div");
-  el.className = "tx-thinking";
-  el.textContent = "Bishop is thinking…";
-  standupTerminalEl.appendChild(el);
-  transcriptThinkingEl = el;
-}
-
-function removeThinking() {
-  if (transcriptThinkingEl) {
-    transcriptThinkingEl.remove();
-    transcriptThinkingEl = null;
-  }
-}
-
-function isScrolledToBottom(el) {
-  return el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-}
-
-function scrollToBottom(el) {
-  el.scrollTop = el.scrollHeight;
-}
-
-/* Minimal markdown → HTML. Covers paragraphs, ATX headings (#–###),
-   fenced code blocks, inline code, **bold**, *italic*, bullet/numbered
-   lists, and [text](url) links. All output passes through escapeHtml
-   first so user content can't inject markup. Deliberately tiny — claude
-   prose in stand-ups is short and doesn't need a full CommonMark engine. */
-function renderMarkdown(src) {
-  if (!src) return "";
-  // Pull out fenced code blocks first so their contents bypass inline rules.
-  const codeStash = [];
-  let s = String(src).replace(/```([a-z0-9_+-]*)\n([\s\S]*?)```/gi, (_, lang, body) => {
-    const i = codeStash.length;
-    codeStash.push(`<pre><code>${escapeHtml(body.replace(/\n$/, ""))}</code></pre>`);
-    return ` CODE${i} `;
-  });
-  s = escapeHtml(s);
-  // Inline code (`x`).
-  s = s.replace(/`([^`\n]+)`/g, (_, c) => `<code>${c}</code>`);
-  // Bold + italic. Bold first so **x** inside *x* doesn't double-wrap.
-  s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
-  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
-  // Links.
-  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-
-  // Block transform line-by-line.
-  const lines = s.split("\n");
-  const out = [];
-  let listKind = null; // "ul" | "ol" | null
-  let para = [];
-  const flushPara = () => {
-    if (para.length) { out.push(`<p>${para.join(" ")}</p>`); para = []; }
-  };
-  const closeList = () => { if (listKind) { out.push(`</${listKind}>`); listKind = null; } };
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (!line) { flushPara(); closeList(); continue; }
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
-    if (heading) { flushPara(); closeList(); out.push(`<h${heading[1].length}>${heading[2]}</h${heading[1].length}>`); continue; }
-    const bullet = line.match(/^[-*]\s+(.+)$/);
-    if (bullet) {
-      flushPara();
-      if (listKind !== "ul") { closeList(); out.push("<ul>"); listKind = "ul"; }
-      out.push(`<li>${bullet[1]}</li>`);
-      continue;
-    }
-    const numbered = line.match(/^\d+\.\s+(.+)$/);
-    if (numbered) {
-      flushPara();
-      if (listKind !== "ol") { closeList(); out.push("<ol>"); listKind = "ol"; }
-      out.push(`<li>${numbered[1]}</li>`);
-      continue;
-    }
-    closeList();
-    para.push(line);
-  }
-  flushPara();
-  closeList();
-
-  // Restore code blocks.
-  return out.join("").replace(/ CODE(\d+) /g, (_, i) => codeStash[Number(i)]);
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-
-/* Stand-up input box (card #1057). Routes keystrokes/dictation to the PTY
-   through a dedicated textarea so Wispr Flow's keystroke simulation lands
-   in a normal input element (no duplication) rather than xterm's helper
-   textarea. Single visible row until focused, grows up to 5 rows on focus
-   or when content wraps. */
-const standupInputEl = document.getElementById("standupInput");
-const STANDUP_INPUT_BASE_PX = 36;   // one visible row + border + padding
-const STANDUP_INPUT_MAX_PX = 116;   // ~5 rows of 13px @ line-height 1.5 + chrome
-
-function showStandupInput() {
-  standupInputEl.hidden = false;
-  standupInputEl.value = "";
-  resizeStandupInput();
-  standupInputEl.focus();
-}
-
-function hideStandupInput() {
-  standupInputEl.hidden = true;
-  standupInputEl.value = "";
-  standupInputEl.style.height = STANDUP_INPUT_BASE_PX + "px";
-}
-
-function resizeStandupInput() {
-  const focused = document.activeElement === standupInputEl;
-  if (!focused && !standupInputEl.value) {
-    standupInputEl.style.height = STANDUP_INPUT_BASE_PX + "px";
-    return;
-  }
-  // Measure natural content height, then clamp into [base, max].
-  standupInputEl.style.height = "auto";
-  const natural = standupInputEl.scrollHeight;
-  const target = focused
-    ? Math.max(natural, STANDUP_INPUT_MAX_PX)
-    : Math.min(natural, STANDUP_INPUT_MAX_PX);
-  standupInputEl.style.height = Math.min(target, STANDUP_INPUT_MAX_PX) + "px";
-}
-
-standupInputEl.addEventListener("focus", resizeStandupInput);
-standupInputEl.addEventListener("blur", resizeStandupInput);
-standupInputEl.addEventListener("input", resizeStandupInput);
-standupInputEl.addEventListener("keydown", ev => {
-  if (ev.key !== "Enter" || ev.shiftKey) return; // Shift+Enter inserts a newline
-  ev.preventDefault();
-  const text = standupInputEl.value;
-  if (!text) return;
-  if (window.chrome && window.chrome.webview) {
-    // Abyss-bug fix: send the body and the Enter as two writes with a real
-    // wall-clock gap between them. Back-to-back postMessage→pty.Write calls
-    // land microseconds apart and ConPTY coalesces them into a single read
-    // event, which Claude's TUI in raw mode treats as one keystroke chunk
-    // and does not submit until the next event nudges its input loop —
-    // hence the "first message swallowed, second message unsticks the first"
-    // repro. A 50ms setTimeout forces two separate readable events on
-    // Claude's side. (Diagnosed by toggling the Ctrl+Shift+T debug TUI: with
-    // it open, xterm's render work accidentally provided the gap; with it
-    // closed, the bug reappeared. See #1065 thread.)
-    window.chrome.webview.postMessage({ type: "terminal:input", data: text });
-    setTimeout(() => {
-      window.chrome.webview.postMessage({ type: "terminal:input", data: "\r" });
-    }, 50);
-  }
-  standupInputEl.value = "";
-  resizeStandupInput();
-});
-
 /* Speak viz — receives raw 8 kHz mono int16 PCM (base64) from Bishop.Cli
    over the bishop-life-speak pipe (forwarded by LifePlanHost). Renders a
    centred oscilloscope trace: the centre column maps to the 150 ms
@@ -1112,10 +774,10 @@ standupInputEl.addEventListener("keydown", ev => {
    PCM sign drives vertical deflection. CRT-phosphor styling: persistence
    trail (per-frame translucent clear instead of clearRect) plus an
    additive glow underlay on the accent stroke. No playhead — the trace
-   itself is the cue. The panel's visibility is owned by show/hideStandup-
-   Terminal (card #1063): it appears with a resting flat line when the
-   pane opens and hides when the pane closes; between chunks it shows
-   the flat accent line. */
+   itself is the cue. The panel's visibility is owned by the stand-up
+   module's onVizReveal/onVizHide callbacks (card #1063 / #1072): it
+   appears with a resting flat line when the pane opens and hides when
+   the pane closes; between chunks it shows the flat accent line. */
 const vizPanel = document.getElementById("vizPanel");
 const vizCanvas = document.getElementById("vizCanvas");
 let vizSession = null;
@@ -1321,26 +983,33 @@ window.addEventListener("resize", () => {
   else if (!vizPanel.hidden) drawFlatLine();
 });
 
+// Wire up modules. The stand-up module owns vizPanel visibility but delegates
+// the actual draw call back here via callbacks so all canvas work stays inline.
+initStandup({
+  onVizReveal: () => { vizPanel.hidden = false; drawFlatLine(); },
+  onVizHide: () => { cancelSpeakViz(); vizPanel.hidden = true; },
+});
+
+installDispatcher({
+  applyEnvelope,
+  onSpeakStarted: startSpeakViz,
+  onSpeakStopped: stopSpeakViz,
+});
+
 document.getElementById("standupBtn").addEventListener("click", () => {
-  if (standupInFlight || addInFlight) return;
+  if (state.standupInFlight || state.addInFlight) return;
   flushPendingTitleEdit();
-  if (window.chrome && window.chrome.webview) {
-    window.chrome.webview.postMessage("standup");
-  }
+  postToHost("standup");
 });
 
 document.getElementById("addBtn").addEventListener("click", () => {
-  if (standupInFlight || addInFlight) return;
+  if (state.standupInFlight || state.addInFlight) return;
   flushPendingTitleEdit();
-  if (window.chrome && window.chrome.webview) {
-    window.chrome.webview.postMessage("add");
-  }
+  postToHost("add");
 });
 
 document.getElementById("initBtn").addEventListener("click", () => {
-  if (window.chrome && window.chrome.webview) {
-    window.chrome.webview.postMessage("init");
-  }
+  postToHost("init");
 });
 
 render();
