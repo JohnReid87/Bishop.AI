@@ -1,0 +1,306 @@
+:root {
+  --bg: #141414;
+  --bg-2: #181818;
+  --panel: #1d1d1d;
+  --panel-2: #232323;
+  --line: #2c2c2c;
+  --line-2: #383838;
+  --ink: #E8E8E8;
+  --ink-dim: #8a8a8a;
+  --ink-faint: #5f5f5f;
+  --accent: #00FF41;
+  --accent-dim: #0f7a2a;
+  --accent-soft: rgba(0,255,65,0.10);
+  --danger: #FF5555;
+  --t-month: #5fa89c;   /* teal  */
+  --t-year:  #c4a85f;   /* gold  */
+  --t-beyond:#6b8caf;   /* blue  */
+  --mono: "Cascadia Code", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --areas: #6b8caf,#c97a8a,#9aa86a,#5fa89c,#7fa87a,#7878bc,#9a7ab8,#c4a85f;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #F3F3F3;
+    --bg-2: #EAEAEA;
+    --panel: #FFFFFF;
+    --panel-2: #F6F6F6;
+    --line: #D8D8D8;
+    --line-2: #C0C0C0;
+    --ink: #1A1A1A;
+    --ink-dim: #555555;
+    --ink-faint: #8A8A8A;
+    --accent: #0B7A2C;
+    --accent-dim: #0B7A2C;
+    --accent-soft: rgba(11,122,44,0.10);
+    --danger: #C22A2A;
+    --t-month: #3F7A70;
+    --t-year:  #8A7430;
+    --t-beyond: #4A6B8A;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+/* The HTML `hidden` attribute uses `display:none`, which `.cta { display:inline-flex }`
+   and `.standup-banner { display:flex }` silently override (class beats attribute).
+   Force `hidden` to win so the JS toggles in applyEnvelope actually take effect. */
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--mono); font-size: 14px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; min-height: 100vh;
+}
+.app { max-width: 900px; margin: 0 auto; padding: 0 18px 60px; }
+
+/* top bar */
+.topbar { display: flex; align-items: center; gap: 14px; padding: 16px 2px 14px; }
+.cta {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font-family: var(--mono); font-size: 13px; font-weight: 600;
+  color: var(--accent); background: var(--accent-soft);
+  border: 1px solid var(--accent-dim); border-radius: 8px; padding: 8px 14px;
+  transition: .15s;
+}
+.cta:hover { background: rgba(0,255,65,0.16); border-color: var(--accent); }
+.cta .tri { font-size: 10px; }
+/* Secondary CTA: lower visual weight than the primary stand-up CTA — muted
+   ink colours instead of the accent green, so the daily ritual remains the
+   visual focus while quick capture stays one click away. */
+.cta.secondary { color: var(--ink-dim); background: transparent; border-color: var(--line); }
+.cta.secondary:hover { background: rgba(255,255,255,0.04); border-color: var(--ink-dim); color: var(--ink); }
+.cta.secondary .plus { font-size: 14px; line-height: 1; }
+
+/* tabs */
+.tabs { display: flex; gap: 6px; padding: 4px 0 16px; }
+.tab {
+  font-family: var(--mono); font-size: 13px; font-weight: 500; cursor: pointer;
+  color: var(--ink-dim); background: none; border: 1px solid transparent;
+  border-radius: 7px; padding: 7px 13px; transition: .15s; display:flex; align-items:center; gap:7px;
+}
+.tab .n { color: var(--ink-faint); font-size: 11px; }
+.tab:hover { color: var(--ink); background: var(--bg-2); }
+.tab.active { color: var(--ink); background: var(--panel-2); border-color: var(--line); }
+
+.view { animation: fade .3s ease both; }
+@keyframes fade { from {opacity:0} to {opacity:1} }
+.sect { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
+.sect-sub { font-size: 12.5px; color: var(--ink-dim); margin-bottom: 15px; }
+.sect + .sect, .block + .sect { margin-top: 28px; }
+.empty { border: 1px dashed var(--line); border-radius: 10px; padding: 20px; color: var(--ink-faint); font-size: 13px; text-align: center; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 9px; transition: border-color .15s; }
+.card:hover { border-color: var(--line-2); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; display:inline-block; }
+.lineage { font-size: 11px; color: var(--ink-faint); }
+.lineage b { color: var(--ink-dim); font-weight: 500; }
+.pill { font-size: 10px; font-weight: 600; letter-spacing:.3px; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; }
+.pill.month  { color: var(--t-month);  background: rgba(95,168,156,.13); }
+.pill.year   { color: var(--t-year);   background: rgba(196,168,95,.13); }
+.pill.beyond { color: var(--t-beyond); background: rgba(107,140,175,.13); }
+.progress { font-size: 11px; color: var(--ink-faint); }
+
+.act { display:flex; align-items:center; gap:10px; padding:7px 0; }
+.act + .act { border-top: 1px solid rgba(255,255,255,.03); }
+.check { width:16px; height:16px; border-radius:4px; border:1.5px solid var(--ink-faint); flex:none; display:grid; place-items:center; transition:.15s; }
+.check.on { background: var(--accent); border-color: var(--accent); }
+.check.on::after { content:"\2713"; color:#0a160c; font-size:11px; font-weight:800; }
+.act-text { flex:1; font-size:13.5px; }
+.act.done .act-text { color: var(--ink-faint); text-decoration: line-through; }
+.star { background:none; border:none; font-size:14px; color:var(--ink-faint); transition:.15s; line-height:1; }
+.star.on { color: var(--t-year); }
+
+/* action-level horizon pill (mirrors .pill, but interactive — click cycles) */
+.h-pill { font-size: 10px; font-weight: 600; letter-spacing:.3px; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; cursor: pointer; user-select: none; transition: .15s; flex:none; }
+.h-pill.today    { color: var(--accent);   background: var(--accent-soft); }
+.h-pill.thisWeek { color: var(--t-month);  background: rgba(95,168,156,.13); }
+.h-pill.thisMonth{ color: var(--t-year);   background: rgba(196,168,95,.13); }
+.h-pill.someday  { color: var(--t-beyond); background: rgba(107,140,175,.13); }
+.h-pill:hover    { filter: brightness(1.15); }
+
+/* goal-level horizon pill (YYYY-MM). Click swaps to an inline month input. */
+.g-pill { font-size: 10px; font-weight: 600; letter-spacing:.3px; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; cursor: pointer; user-select: none; transition: .15s; flex:none; }
+.g-pill.month  { color: var(--t-month);  background: rgba(95,168,156,.13); }
+.g-pill.year   { color: var(--t-year);   background: rgba(196,168,95,.13); }
+.g-pill.beyond { color: var(--t-beyond); background: rgba(107,140,175,.13); }
+.g-pill.empty  { color: var(--ink-faint); background: var(--bg-2); border:1px dashed var(--line-2); }
+.g-pill:hover  { filter: brightness(1.15); }
+.g-pill-edit   { font-family: var(--mono); font-size: 11px; padding: 1px 4px; border-radius: 4px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--ink); outline: none; }
+.standup-disabled .g-pill { cursor: not-allowed; opacity: .55; }
+
+/* per-horizon section header inside an area */
+.h-sect { font-size:11px; letter-spacing:.6px; text-transform:uppercase; color:var(--ink-dim); margin:10px 0 4px 3px; padding-left:13px; border-left:1px solid var(--line); }
+.h-sect.today { color: var(--accent); }
+
+/* Map-tab area block: per-area coloured left border + tinted heading row
+   so areas are visually distinct at a glance. Per-horizon section styling
+   inside the block stays neutral (see card #1029). The border-left colour
+   and area-head background are set inline from `area.color`. */
+.area-block { margin-bottom: 22px; border-left: 4px solid transparent; padding-left: 11px; }
+.area-head { display:flex; align-items:center; gap:9px; margin-bottom:9px; padding: 6px 9px; border-radius: 6px; }
+.area-name { font-weight:600; font-size:14.5px; flex:1; }
+.area-meta { font-size:11px; color:var(--ink-faint); }
+.goal-block { margin:0 0 8px 3px; padding-left:13px; border-left:1px solid var(--line); }
+.goal-head { display:flex; align-items:center; gap:8px; padding:4px 0; }
+.goal-title { font-size:13.5px; font-weight:500; flex:1; }
+
+.lanes { display:grid; grid-template-columns:1fr; gap:16px; }
+@media (min-width:720px){ .lanes { grid-template-columns:repeat(3,1fr); } }
+.lane-title { font-size:11px; letter-spacing:.8px; text-transform:uppercase; margin-bottom:9px; color:var(--ink-dim); }
+.lane.month .lane-title{ color:var(--t-month) } .lane.year .lane-title{ color:var(--t-year) } .lane.beyond .lane-title{ color:var(--t-beyond) }
+.mini { background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:10px 12px; margin-bottom:8px; }
+.mini .t { font-size:13px; font-weight:500; }
+.mini .m { display:flex; align-items:center; gap:7px; margin-top:6px; }
+
+.bal-row { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); }
+.bal-name { width:160px; display:flex; align-items:center; gap:9px; font-size:13.5px; flex:none; }
+.bar-track { flex:1; height:9px; background:var(--bg-2); border-radius:99px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:99px; transition:width .5s cubic-bezier(.2,.8,.2,1); }
+.bal-count { font-size:11px; color:var(--ink-dim); width:96px; text-align:right; flex:none; }
+.untended { color: var(--t-year); }
+
+/* speak viz panel — animates while Bishop.Cli's Piper TTS plays via the
+   bishop-life-speak named pipe. Renders a CRT-phosphor oscilloscope
+   trace of the raw PCM waveform: the centre column maps to the 150 ms
+   look-ahead boundary and the edges map to current playback time, so
+   peaks emerge at centre and flow outward. The left half is a
+   horizontal mirror of the right so the trace stays symmetric about
+   the vertical centre line. */
+.viz-panel { display:flex; align-items:center; gap:10px; height:64px; padding:0 12px;
+  background:var(--panel); border:1px solid var(--line); border-radius:9px;
+  margin:0 0 14px; }
+.viz-panel canvas { flex:1; height:48px; display:block; }
+
+/* Embedded stand-up transcript (card #1059). Replaces the raw xterm.js
+   view (card #1053) with an HTML chat transcript rendered from the on-disk
+   session JSONL. The .standup-terminal class is kept as the shell because
+   the viewport-fixed-height contract (card #1058) and palette match what
+   this card needs anyway. */
+.standup-terminal { background:var(--bg); border:1px solid var(--line);
+  border-radius:9px; padding:12px 14px; margin:0 0 14px;
+  height:60vh; overflow-y:auto;
+  scrollbar-gutter: stable; }
+.standup-terminal::-webkit-scrollbar { width: 8px; }
+.standup-terminal::-webkit-scrollbar-track { background: transparent; }
+.standup-terminal::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.standup-terminal::-webkit-scrollbar-thumb:hover { background: var(--line-2); }
+.standup-terminal::-webkit-scrollbar-thumb:active { background: var(--ink-faint); }
+
+/* Transcript entries */
+.tx-entry { margin: 0 0 12px; }
+.tx-entry:last-child { margin-bottom: 0; }
+.tx-user {
+  background: var(--accent-soft); border: 1px solid var(--accent-dim);
+  border-radius: 8px; padding: 8px 12px;
+  color: var(--ink); white-space: pre-wrap; word-wrap: break-word;
+  margin-left: 32px;
+}
+/* Card #1062: faded affordance for user bubbles that have been typed
+   while Bishop is thinking and are queued for flush. The bubble appears
+   immediately so the user knows their input was captured; the faded
+   style signals it hasn't reached Claude yet. */
+.tx-user.pending { opacity: 0.5; border-style: dashed; }
+/* Card #1060: mirror .tx-user as a left-aligned bubble — same shape/padding,
+   neutral panel background so it reads as Claude's turn vs the accent-tinted
+   user turn. Markdown renders inside the bubble. */
+.tx-assistant {
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 12px;
+  color: var(--ink); line-height: 1.55;
+  margin-right: 32px;
+}
+.tx-assistant p { margin: 0 0 8px; }
+.tx-assistant p:last-child { margin-bottom: 0; }
+.tx-assistant h1, .tx-assistant h2, .tx-assistant h3 {
+  font-size: 13.5px; font-weight: 600; margin: 12px 0 4px; color: var(--ink);
+}
+.tx-assistant ul, .tx-assistant ol { margin: 4px 0 8px 20px; }
+.tx-assistant li { margin: 2px 0; }
+.tx-assistant code {
+  background: var(--bg-2); padding: 1px 5px; border-radius: 3px;
+  font-size: 12.5px; color: var(--ink);
+}
+.tx-assistant pre {
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px 11px; margin: 6px 0 10px;
+  overflow-x: auto; font-size: 12.5px; line-height: 1.45;
+}
+.tx-assistant pre code { background: transparent; padding: 0; }
+.tx-assistant strong { color: var(--ink); }
+.tx-assistant em { color: var(--ink-dim); }
+.tx-tool {
+  color: var(--ink-faint); font-size: 12px; font-style: italic;
+  padding: 2px 0 2px 14px; border-left: 1px solid var(--line);
+  margin: 2px 0;
+}
+.tx-thinking {
+  color: var(--ink-faint); font-size: 12.5px; font-style: italic;
+  padding: 6px 0; display: flex; align-items: center; gap: 8px;
+}
+/* Card #1065: muted single-line note for host-side diagnostics
+   (input dropped, session ended). Centred so it doesn't pretend to
+   be either side of the conversation. */
+.tx-system {
+  color: var(--ink-faint); font-size: 12px; font-style: italic;
+  text-align: center; padding: 4px 0;
+}
+.tx-thinking::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); animation: pulse 1.4s ease-in-out infinite;
+}
+.tx-empty {
+  color: var(--ink-faint); font-size: 12.5px; font-style: italic;
+  padding: 10px 0;
+}
+
+/* Stand-up input box (card #1057). All stand-up keystrokes are routed
+   through this textarea instead of into the embedded xterm, because
+   Wispr Flow dictation duplicates almost every paste when it simulates
+   keystrokes directly into the terminal. Sits beneath .standup-terminal;
+   starts as a single visible row, grows up to ~5 rows on focus or when
+   content wraps. Enter sends to PTY (with \r); Shift+Enter inserts a
+   literal newline. */
+.standup-input { display:block; width:100%; resize:none; box-sizing:border-box;
+  background:var(--panel); color:var(--ink);
+  border:1px solid var(--line); border-radius:9px;
+  padding:7px 11px; margin:0 0 14px;
+  font-family:var(--mono); font-size:13px; line-height:1.5;
+  outline:none; overflow-y:auto;
+  height:36px;
+  transition:height .12s ease, border-color .15s; }
+.standup-input:focus { border-color: var(--accent-dim); }
+.standup-input::placeholder { color: var(--ink-faint); }
+
+/* stand-up in-flight banner */
+.standup-banner { background:rgba(196,168,95,.10); border:1px solid rgba(196,168,95,.45); color:var(--t-year); border-radius:9px; padding:9px 13px; margin:0 0 14px; font-size:12.5px; display:flex; align-items:center; gap:9px; }
+.standup-banner::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--t-year); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+.standup-disabled .check, .standup-disabled .star { cursor: not-allowed; opacity: .55; }
+.standup-disabled .act-text[contenteditable="true"] { background: transparent; }
+.act-text[contenteditable="true"] { outline: none; border-radius: 3px; padding: 1px 3px; margin: -1px -3px; cursor: text; }
+.act-text[contenteditable="true"]:hover { background: rgba(255,255,255,.04); }
+.act-text[contenteditable="true"]:focus { background: var(--bg-2); box-shadow: 0 0 0 1px var(--line-2); }
+.check, .star { cursor: pointer; }
+
+/* today banner */
+.today { background:var(--accent-soft); border:1px solid var(--accent-dim); border-radius:10px; padding:13px 15px; margin-bottom:18px; }
+.today h4 { font-size:11px; letter-spacing:.6px; text-transform:uppercase; color:var(--accent); margin-bottom:7px; }
+.today .refl { font-size:13px; color:var(--ink); margin-bottom:9px; }
+.today ul { list-style:none; display:flex; flex-direction:column; gap:5px; }
+.today li { font-size:13px; display:flex; gap:8px; }
+.today li::before { content:"\203A"; color:var(--accent); }
+
+/* Card #1060: hide page chrome below the stand-up input while a session is
+   live so the conversation is the only thing on-screen. Keeps the top
+   buttons, viz panel, transcript, input, footer status line, and the
+   latest-stand-up `.today` summary at the top of the focus view. */
+body.standup-session-active .tabs,
+body.standup-session-active #standupBanner,
+body.standup-session-active #addBanner,
+body.standup-session-active #container .view > *:not(.today) { display: none !important; }
+/* Card #1060: shrink the transcript while a session is live so the
+   latest-stand-up summary above it fits on one screen. */
+body.standup-session-active .standup-terminal { height: 42vh; }
+
+/* footer */
+.foot { display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--line); margin-top:32px; padding-top:13px; }
+.saved { font-size:11px; color:var(--ink-faint); }
+.review { font-size:11px; color:var(--ink-faint); }
+.review b { color:var(--ink-dim); font-weight:500; }
