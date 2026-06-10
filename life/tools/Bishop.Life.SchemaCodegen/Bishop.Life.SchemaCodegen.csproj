@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Bishop.Life.SchemaCodegen</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- We invoke the tool via "dotnet <dll>" from MSBuild and tests reference
+         the managed assembly directly; the native apphost.exe is unused and
+         trips MSB3246 ("bad image, no metadata") when consumed as a
+         ProjectReference. Suppressing it cuts both the warning and a stray
+         binary in the output. -->
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.*" />
+  </ItemGroup>
+
+</Project>

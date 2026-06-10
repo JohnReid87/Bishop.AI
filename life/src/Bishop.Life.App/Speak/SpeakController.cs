@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
+using Bishop.Life.Core.Schema.Envelopes;
 using Bishop.Life.Core.Speak;
 using Bishop.Life.Core.Web;
 
@@ -75,10 +76,4 @@ internal sealed class SpeakController : IDisposable
         _pipe.Dispose();
         _player.Dispose();
     }
-
-    internal sealed record SpeakEnvelope(
-        string Type,
-        string? PcmBase64,
-        int PcmSampleRateHz,
-        int DurationMs);
 }

@@ -54,6 +54,28 @@
     <ProjectReference Include="..\Bishop.Life.Core\Bishop.Life.Core.csproj" />
   </ItemGroup>
 
+  <!-- Inputs for the schema codegen target (card #1077). Both the C# schema
+       sources and the codegen tool itself feed the up-to-date check so a
+       change to either retriggers emission. -->
+  <ItemGroup>
+    <LifeSchemaCodegenInput Include="..\Bishop.Life.Core\Schema\**\*.cs" />
+    <LifeSchemaCodegenInput Include="..\..\tools\Bishop.Life.SchemaCodegen\**\*.cs" />
+    <LifeSchemaCodegenInput Include="..\..\tools\Bishop.Life.SchemaCodegen\Bishop.Life.SchemaCodegen.csproj" />
+  </ItemGroup>
+
+  <!-- C#→TypeScript schema codegen (card #1077). Builds the codegen tool once
+       on first build, then invokes the built DLL; Inputs/Outputs let MSBuild
+       skip the whole target on incremental builds when neither the schema
+       sources nor the tool sources have changed. -->
+  <Target Name="GenerateLifeSchemaTypeScript"
+          BeforeTargets="BeforeBuild"
+          Inputs="@(LifeSchemaCodegenInput)"
+          Outputs="$(MSBuildThisFileDirectory)Assets\js\schema.d.ts">
+    <MSBuild Projects="..\..\tools\Bishop.Life.SchemaCodegen\Bishop.Life.SchemaCodegen.csproj"
+             Properties="Configuration=$(Configuration)" />
+    <Exec Command="dotnet &quot;..\..\tools\Bishop.Life.SchemaCodegen\bin\$(Configuration)\net10.0\Bishop.Life.SchemaCodegen.dll&quot; --schema-dir &quot;..\Bishop.Life.Core\Schema&quot; --output &quot;$(MSBuildThisFileDirectory)Assets\js\schema.d.ts&quot;" />
+  </Target>
+
   <!-- See Bishop.UI.csproj — WebView2Loader.dll lives under runtimes\win-<arch>\native\
        and must be copied to the output root for unpackaged apps to load it. -->
   <Target Name="CopyWebView2Loader" AfterTargets="Build">

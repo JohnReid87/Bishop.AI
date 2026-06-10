@@ -4,6 +4,7 @@ using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using Bishop.Life.Core;
+using Bishop.Life.Core.Schema.Envelopes;
 using Bishop.Life.Core.Web;
 
 namespace Bishop.Life.App.Standup;
@@ -224,8 +225,4 @@ internal sealed class StandupController : IDisposable
         DetachPty();
         DetachTailer();
     }
-
-    internal sealed record BareEnvelope(string Type);
-    internal sealed record SystemNoteEnvelope(string Type, string Text);
-    internal sealed record TranscriptEventEnvelope(string Type, string Kind, string Text);
 }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Bishop.Life.App.Plan;
 using Bishop.Life.Core;
 using Bishop.Life.Core.Schema;
+using Bishop.Life.Core.Schema.Envelopes;
 using Bishop.Life.Core.Web;
 using FluentAssertions;
 
@@ -271,8 +272,8 @@ public class PlanControllerTests : IDisposable
                 uiPost: action => action());
         }
 
-        public PlanController.Envelope SingleEnvelope() =>
-            Channel.Posts.Should().ContainSingle().Which.Should().BeOfType<PlanController.Envelope>().Subject;
+        public PlanStateEnvelope SingleEnvelope() =>
+            Channel.Posts.Should().ContainSingle().Which.Should().BeOfType<PlanStateEnvelope>().Subject;
 
         public void Dispose()
         {

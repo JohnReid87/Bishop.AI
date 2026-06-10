@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Bishop.Life.App;
 using Bishop.Life.App.Standup;
 using Bishop.Life.Core;
+using Bishop.Life.Core.Schema.Envelopes;
 using Bishop.Life.Core.Web;
 using FluentAssertions;
 using Pty.Net;
@@ -26,7 +27,7 @@ public class StandupControllerTests
         harness.Controller.Launch("cwd", "args", "session-id");
 
         harness.Channel.Posts.Should().ContainSingle()
-            .Which.Should().BeOfType<StandupController.BareEnvelope>()
+            .Which.Should().BeOfType<BareEnvelope>()
             .Which.Type.Should().Be("terminal:show");
         harness.LaunchedCount.Should().Be(1);
     }
@@ -52,7 +53,7 @@ public class StandupControllerTests
         await harness.Controller.HandleInputAsync("hello", submit: false);
 
         harness.Channel.Posts.Should().ContainSingle()
-            .Which.Should().BeOfType<StandupController.SystemNoteEnvelope>()
+            .Which.Should().BeOfType<SystemNoteEnvelope>()
             .Which.Text.Should().Be("[input dropped — PTY not attached]");
     }
 
@@ -93,7 +94,7 @@ public class StandupControllerTests
         await harness.Controller.HandleInputAsync("x", submit: false);
 
         harness.Channel.Posts.Should().ContainSingle()
-            .Which.Should().BeOfType<StandupController.SystemNoteEnvelope>()
+            .Which.Should().BeOfType<SystemNoteEnvelope>()
             .Which.Text.Should().Be("[input dropped — Write threw: boom]");
     }
 
@@ -107,7 +108,7 @@ public class StandupControllerTests
         harness.LastTailer!.RaiseUser("note one");
 
         var ev = harness.Channel.Posts.Should().ContainSingle()
-            .Which.Should().BeOfType<StandupController.TranscriptEventEnvelope>().Subject;
+            .Which.Should().BeOfType<TranscriptEventEnvelope>().Subject;
         ev.Type.Should().Be("transcript:event");
         ev.Kind.Should().Be("user");
         ev.Text.Should().Be("note one");
@@ -123,7 +124,7 @@ public class StandupControllerTests
         harness.LastTailer!.RaiseAssistant("OK.");
 
         harness.Channel.Posts.Should().ContainSingle()
-            .Which.Should().BeOfType<StandupController.TranscriptEventEnvelope>()
+            .Which.Should().BeOfType<TranscriptEventEnvelope>()
             .Which.Kind.Should().Be("assistant");
     }
 
@@ -137,7 +138,7 @@ public class StandupControllerTests
         harness.LastTailer!.RaiseTool(new ClaudeSessionJsonlTailer.ToolUseEvent("Read", "reading foo.cs"));
 
         var ev = harness.Channel.Posts.Should().ContainSingle()
-            .Which.Should().BeOfType<StandupController.TranscriptEventEnvelope>().Subject;
+            .Which.Should().BeOfType<TranscriptEventEnvelope>().Subject;
         ev.Kind.Should().Be("tool");
         ev.Text.Should().Be("reading foo.cs");
     }
@@ -152,7 +153,7 @@ public class StandupControllerTests
         harness.LastTailer!.RaiseParseFailed(new ClaudeSessionJsonlTailer.ParseFailedEvent(7, "unknown event type 'telemetry'"));
 
         harness.Channel.Posts.Should().ContainSingle()
-            .Which.Should().BeOfType<StandupController.SystemNoteEnvelope>()
+            .Which.Should().BeOfType<SystemNoteEnvelope>()
             .Which.Text.Should().Be("Bishop couldn't read Claude session line 7 — format may have changed");
     }
 
@@ -166,7 +167,7 @@ public class StandupControllerTests
         harness.FakePty.RaisePtyDisconnected();
 
         harness.Channel.Posts.Should().ContainSingle()
-            .Which.Should().BeOfType<StandupController.SystemNoteEnvelope>()
+            .Which.Should().BeOfType<SystemNoteEnvelope>()
             .Which.Text.Should().Be("[Claude session ended]");
         harness.SessionEndedCount.Should().Be(1);
         harness.PendingSchedules.Should().ContainSingle()
@@ -175,7 +176,7 @@ public class StandupControllerTests
         // Firing the scheduled action posts terminal:hide.
         harness.PendingSchedules[0].action();
         harness.Channel.Posts.Should().HaveCount(2);
-        harness.Channel.Posts[1].Should().BeOfType<StandupController.BareEnvelope>()
+        harness.Channel.Posts[1].Should().BeOfType<BareEnvelope>()
             .Which.Type.Should().Be("terminal:hide");
     }
 

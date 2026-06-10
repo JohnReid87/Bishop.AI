@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Bishop.Life.Core;
 using Bishop.Life.Core.Schema;
+using Bishop.Life.Core.Schema.Envelopes;
 using Bishop.Life.Core.Web;
 
 namespace Bishop.Life.App.Plan;
@@ -166,22 +167,22 @@ internal sealed class PlanController : IDisposable
         _ = _channel.PostAsync(envelope);
     }
 
-    private Envelope BuildEnvelope()
+    private PlanStateEnvelope BuildEnvelope()
     {
         var standupInFlight = _coordinator.StandupInFlight;
         var addInFlight = _coordinator.AddInFlight;
 
         if (!_service.Exists())
-            return new Envelope(Status: "missing", FilePath: _service.FilePath, Plan: null, StandupInFlight: standupInFlight, AddInFlight: addInFlight);
+            return new PlanStateEnvelope(Status: "missing", FilePath: _service.FilePath, Plan: null, StandupInFlight: standupInFlight, AddInFlight: addInFlight);
 
         try
         {
             var plan = _service.Load();
-            return new Envelope(Status: "ok", FilePath: _service.FilePath, Plan: plan, StandupInFlight: standupInFlight, AddInFlight: addInFlight);
+            return new PlanStateEnvelope(Status: "ok", FilePath: _service.FilePath, Plan: plan, StandupInFlight: standupInFlight, AddInFlight: addInFlight);
         }
         catch (Exception ex)
         {
-            return new Envelope(Status: "error", FilePath: _service.FilePath, Plan: null, StandupInFlight: standupInFlight, AddInFlight: addInFlight, Error: ex.Message);
+            return new PlanStateEnvelope(Status: "error", FilePath: _service.FilePath, Plan: null, StandupInFlight: standupInFlight, AddInFlight: addInFlight, Error: ex.Message);
         }
     }
 
@@ -192,12 +193,4 @@ internal sealed class PlanController : IDisposable
         _coordinator.StateChanged -= OnCoordinatorStateChanged;
         _watcher.Reloaded -= OnWatcherReloaded;
     }
-
-    internal sealed record Envelope(
-        string Status,
-        string FilePath,
-        LifePlan? Plan,
-        bool StandupInFlight,
-        bool AddInFlight,
-        string? Error = null);
 }

@@ -17,4 +17,7 @@
   <Folder Name="/life/tests/">
     <Project Path="life/tests/Bishop.Life.Tests/Bishop.Life.Tests.csproj" />
   </Folder>
+  <Folder Name="/life/tools/">
+    <Project Path="life/tools/Bishop.Life.SchemaCodegen/Bishop.Life.SchemaCodegen.csproj" />
+  </Folder>
 </Solution>

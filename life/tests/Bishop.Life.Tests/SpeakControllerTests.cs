@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Bishop.Life.App.Speak;
+using Bishop.Life.Core.Schema.Envelopes;
 using Bishop.Life.Core.Speak;
 using Bishop.Life.Core.Web;
 using FluentAssertions;
@@ -37,7 +38,7 @@ public class SpeakControllerTests
         await controller.HandleAsync(msg);
 
         channel.Posts.Should().HaveCount(1);
-        var envelope = channel.Posts[0].Should().BeOfType<SpeakController.SpeakEnvelope>().Subject;
+        var envelope = channel.Posts[0].Should().BeOfType<SpeakEnvelope>().Subject;
         envelope.Type.Should().Be("speak.started");
         envelope.PcmBase64.Should().Be("AAAA");
         envelope.PcmSampleRateHz.Should().Be(16000);
@@ -54,7 +55,7 @@ public class SpeakControllerTests
         await controller.HandleAsync(msg);
 
         channel.Posts.Should().HaveCount(1);
-        var envelope = channel.Posts[0].Should().BeOfType<SpeakController.SpeakEnvelope>().Subject;
+        var envelope = channel.Posts[0].Should().BeOfType<SpeakEnvelope>().Subject;
         envelope.Type.Should().Be("speak.stopped");
         envelope.PcmBase64.Should().BeNull();
     }
