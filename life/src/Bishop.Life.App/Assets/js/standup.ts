@@ -4,26 +4,33 @@
 // posts user input back to the host as {type:"terminal:input", data}.
 //
 // Viz panel visibility belongs here but its rendering (drawFlatLine, speak
-// playback) stays in the inline script — the caller passes onVizReveal/Hide
-// callbacks to initStandup so this module can stay independent of the canvas.
+// playback) stays in main.ts — the caller passes onVizReveal/Hide callbacks to
+// initStandup so this module can stay independent of the canvas.
 
 import { postToHost } from "./message-bus.js";
 
 const STANDUP_INPUT_BASE_PX = 36;   // one visible row + border + padding
 const STANDUP_INPUT_MAX_PX = 116;   // ~5 rows of 13px @ line-height 1.5 + chrome
 
-let standupTerminalEl = null;
-let standupInputEl = null;
-let transcriptThinkingEl = null;
-let lastTranscriptKind = null;
-let onVizReveal = () => {};
-let onVizHide = () => {};
+let standupTerminalEl: HTMLElement | null = null;
+let standupInputEl: HTMLTextAreaElement | null = null;
+let transcriptThinkingEl: HTMLElement | null = null;
+let lastTranscriptKind: string | null = null;
+let onVizReveal: () => void = () => {};
+let onVizHide: () => void = () => {};
 
-export function initStandup(opts = {}) {
+export interface StandupOptions {
+  onVizReveal?: () => void;
+  onVizHide?: () => void;
+}
+
+export function initStandup(opts: StandupOptions = {}): void {
   standupTerminalEl = document.getElementById("standupTerminal");
-  standupInputEl = document.getElementById("standupInput");
-  onVizReveal = opts.onVizReveal || (() => {});
-  onVizHide = opts.onVizHide || (() => {});
+  standupInputEl = document.getElementById("standupInput") as HTMLTextAreaElement | null;
+  onVizReveal = opts.onVizReveal ?? (() => {});
+  onVizHide = opts.onVizHide ?? (() => {});
+
+  if (!standupInputEl) return;
 
   standupInputEl.addEventListener("focus", resizeStandupInput);
   standupInputEl.addEventListener("blur", resizeStandupInput);
@@ -31,6 +38,7 @@ export function initStandup(opts = {}) {
   standupInputEl.addEventListener("keydown", ev => {
     if (ev.key !== "Enter" || ev.shiftKey) return; // Shift+Enter inserts a newline
     ev.preventDefault();
+    if (!standupInputEl) return;
     const text = standupInputEl.value;
     if (!text) return;
     // Card #1076: the body-then-Enter split with the 50ms inter-write delay
@@ -43,7 +51,8 @@ export function initStandup(opts = {}) {
   });
 }
 
-export function showStandupTerminal() {
+export function showStandupTerminal(): void {
+  if (!standupTerminalEl) return;
   standupTerminalEl.hidden = false;
   document.body.classList.add("standup-session-active");
   clearTranscript();
@@ -55,7 +64,8 @@ export function showStandupTerminal() {
   onVizReveal();
 }
 
-export function hideStandupTerminal() {
+export function hideStandupTerminal(): void {
+  if (!standupTerminalEl) return;
   standupTerminalEl.hidden = true;
   document.body.classList.remove("standup-session-active");
   clearTranscript();
@@ -71,18 +81,20 @@ export function hideStandupTerminal() {
 // for every skill expansion, so the check is robust and specific.
 // (The JSON envelope from `bishop context-pack life-standup` arrives as a
 // tool_result and is already filtered upstream by the tailer.)
-function isContextPackEnvelope(text) {
+function isContextPackEnvelope(text: string): boolean {
   if (!text) return false;
   return text.trimStart().startsWith("Base directory for this skill:");
 }
 
-function clearTranscript() {
+function clearTranscript(): void {
+  if (!standupTerminalEl) return;
   standupTerminalEl.innerHTML = "";
   transcriptThinkingEl = null;
   lastTranscriptKind = null;
 }
 
-export function appendTranscriptEvent(kind, text) {
+export function appendTranscriptEvent(kind: string, text: string): void {
+  if (!standupTerminalEl) return;
   // Card #1060: drop the context-pack envelope so the first user bubble in
   // a stand-up isn't a wall of JSON.
   if (kind === "user" && isContextPackEnvelope(text)) return;
@@ -126,8 +138,8 @@ export function appendTranscriptEvent(kind, text) {
   if (wasAtBottom) scrollToBottom(standupTerminalEl);
 }
 
-export function appendSystemNote(text) {
-  if (!text) return;
+export function appendSystemNote(text: string): void {
+  if (!standupTerminalEl || !text) return;
   const wasAtBottom = isScrolledToBottom(standupTerminalEl);
   const entry = document.createElement("div");
   entry.className = "tx-entry tx-system";
@@ -136,8 +148,8 @@ export function appendSystemNote(text) {
   if (wasAtBottom) scrollToBottom(standupTerminalEl);
 }
 
-function showThinking() {
-  if (transcriptThinkingEl) return;
+function showThinking(): void {
+  if (!standupTerminalEl || transcriptThinkingEl) return;
   const el = document.createElement("div");
   el.className = "tx-thinking";
   el.textContent = "Bishop is thinking…";
@@ -145,18 +157,18 @@ function showThinking() {
   transcriptThinkingEl = el;
 }
 
-function removeThinking() {
+function removeThinking(): void {
   if (transcriptThinkingEl) {
     transcriptThinkingEl.remove();
     transcriptThinkingEl = null;
   }
 }
 
-function isScrolledToBottom(el) {
+function isScrolledToBottom(el: HTMLElement): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight < 24;
 }
 
-function scrollToBottom(el) {
+function scrollToBottom(el: HTMLElement): void {
   el.scrollTop = el.scrollHeight;
 }
 
@@ -165,18 +177,18 @@ function scrollToBottom(el) {
    lists, and [text](url) links. All output passes through escapeHtml
    first so user content can't inject markup. Deliberately tiny — claude
    prose in stand-ups is short and doesn't need a full CommonMark engine. */
-function renderMarkdown(src) {
+function renderMarkdown(src: string): string {
   if (!src) return "";
   // Pull out fenced code blocks first so their contents bypass inline rules.
-  const codeStash = [];
-  let s = String(src).replace(/```([a-z0-9_+-]*)\n([\s\S]*?)```/gi, (_, lang, body) => {
+  const codeStash: string[] = [];
+  let s = String(src).replace(/```([a-z0-9_+-]*)\n([\s\S]*?)```/gi, (_m, _lang, body: string) => {
     const i = codeStash.length;
     codeStash.push(`<pre><code>${escapeHtml(body.replace(/\n$/, ""))}</code></pre>`);
     return ` CODE${i} `;
   });
   s = escapeHtml(s);
   // Inline code (`x`).
-  s = s.replace(/`([^`\n]+)`/g, (_, c) => `<code>${c}</code>`);
+  s = s.replace(/`([^`\n]+)`/g, (_m, c: string) => `<code>${c}</code>`);
   // Bold + italic. Bold first so **x** inside *x* doesn't double-wrap.
   s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
   s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
@@ -185,18 +197,25 @@ function renderMarkdown(src) {
 
   // Block transform line-by-line.
   const lines = s.split("\n");
-  const out = [];
-  let listKind = null; // "ul" | "ol" | null
-  let para = [];
-  const flushPara = () => {
+  const out: string[] = [];
+  let listKind: "ul" | "ol" | null = null;
+  let para: string[] = [];
+  const flushPara = (): void => {
     if (para.length) { out.push(`<p>${para.join(" ")}</p>`); para = []; }
   };
-  const closeList = () => { if (listKind) { out.push(`</${listKind}>`); listKind = null; } };
+  const closeList = (): void => {
+    if (listKind) { out.push(`</${listKind}>`); listKind = null; }
+  };
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) { flushPara(); closeList(); continue; }
     const heading = line.match(/^(#{1,3})\s+(.+)$/);
-    if (heading) { flushPara(); closeList(); out.push(`<h${heading[1].length}>${heading[2]}</h${heading[1].length}>`); continue; }
+    if (heading) {
+      flushPara(); closeList();
+      const level = heading[1]!.length;
+      out.push(`<h${level}>${heading[2]}</h${level}>`);
+      continue;
+    }
     const bullet = line.match(/^[-*]\s+(.+)$/);
     if (bullet) {
       flushPara();
@@ -218,11 +237,12 @@ function renderMarkdown(src) {
   closeList();
 
   // Restore code blocks.
-  return out.join("").replace(/ CODE(\d+) /g, (_, i) => codeStash[Number(i)]);
+  return out.join("").replace(/ CODE(\d+) /g, (_m, i: string) => codeStash[Number(i)] ?? "");
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function escapeHtml(s: string): string {
+  const map: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+  return String(s).replace(/[&<>"']/g, c => map[c] ?? c);
 }
 
 /* Stand-up input box (card #1057). Routes keystrokes/dictation to the PTY
@@ -230,20 +250,23 @@ function escapeHtml(s) {
    in a normal input element (no duplication) rather than xterm's helper
    textarea. Single visible row until focused, grows up to 5 rows on focus
    or when content wraps. */
-function showStandupInput() {
+function showStandupInput(): void {
+  if (!standupInputEl) return;
   standupInputEl.hidden = false;
   standupInputEl.value = "";
   resizeStandupInput();
   standupInputEl.focus();
 }
 
-function hideStandupInput() {
+function hideStandupInput(): void {
+  if (!standupInputEl) return;
   standupInputEl.hidden = true;
   standupInputEl.value = "";
   standupInputEl.style.height = STANDUP_INPUT_BASE_PX + "px";
 }
 
-function resizeStandupInput() {
+function resizeStandupInput(): void {
+  if (!standupInputEl) return;
   const focused = document.activeElement === standupInputEl;
   if (!focused && !standupInputEl.value) {
     standupInputEl.style.height = STANDUP_INPUT_BASE_PX + "px";

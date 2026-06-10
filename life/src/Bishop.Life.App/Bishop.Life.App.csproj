@@ -26,12 +26,31 @@
          x64 process refuses to load. -->
     <PlatformTarget>x64</PlatformTarget>
     <ApplicationIcon>Assets\Brand\icon-life.ico</ApplicationIcon>
+    <!-- The SPA's TypeScript toolchain (package.json, tsconfig.json, the .ts
+         sources, and node_modules) lives under Assets/ but must stay out of
+         the WindowsAppSDK content-discovery pipeline — otherwise PRI scans
+         node_modules and the runtime payload bloats with raw .ts sources +
+         tsc lib.*.d.ts files. DefaultItemExcludes is the SDK-blessed hook
+         that removes them from None/Content/etc. auto-includes; the
+         BuildSpaTypeScript target below adds back only the emitted JS. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Assets\node_modules\**;Assets\package.json;Assets\package-lock.json;Assets\tsconfig.json;Assets\js\**\*.ts;Assets\js\**\*.d.ts</DefaultItemExcludes>
   </PropertyGroup>
 
+  <!-- SPA assets shipped to the WebView2 virtual host. The js/ tree holds TS
+       sources (compiled by BuildSpaTypeScript below into js-build/ and added
+       to Content dynamically); the tsc tooling files (package.json,
+       tsconfig.json, node_modules) stay build-time only — see
+       DefaultItemExcludes above. -->
   <ItemGroup>
-    <Content Include="Assets\**\*.*">
+    <Content Include="Assets\**\*.*"
+             Exclude="Assets\js-build\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- Show TypeScript sources + tooling in Solution Explorer without
+         shipping them to the output directory. -->
+    <None Include="Assets\package.json;Assets\tsconfig.json" />
+    <None Include="Assets\js\**\*.ts" />
+    <None Include="Assets\js\**\*.d.ts" />
   </ItemGroup>
 
   <ItemGroup>
@@ -66,14 +85,63 @@
   <!-- C#→TypeScript schema codegen (card #1077). Builds the codegen tool once
        on first build, then invokes the built DLL; Inputs/Outputs let MSBuild
        skip the whole target on incremental builds when neither the schema
-       sources nor the tool sources have changed. -->
+       sources nor the tool sources have changed. Runs as a DependsOnTargets
+       of BuildSpaTypeScript so schema.d.ts is fresh before tsc reads it. -->
   <Target Name="GenerateLifeSchemaTypeScript"
-          BeforeTargets="BeforeBuild"
           Inputs="@(LifeSchemaCodegenInput)"
           Outputs="$(MSBuildThisFileDirectory)Assets\js\schema.d.ts">
     <MSBuild Projects="..\..\tools\Bishop.Life.SchemaCodegen\Bishop.Life.SchemaCodegen.csproj"
              Properties="Configuration=$(Configuration)" />
     <Exec Command="dotnet &quot;..\..\tools\Bishop.Life.SchemaCodegen\bin\$(Configuration)\net10.0\Bishop.Life.SchemaCodegen.dll&quot; --schema-dir &quot;..\Bishop.Life.Core\Schema&quot; --output &quot;$(MSBuildThisFileDirectory)Assets\js\schema.d.ts&quot;" />
+  </Target>
+
+  <!-- TypeScript→JS compilation for the Bishop.Life SPA (card #1078). Runs
+       after schema codegen so tsc sees the freshly generated schema.d.ts,
+       and BeforeTargets="AssignTargetPaths" so the emitted js-build/ files
+       can be added to Content while the build is still picking up output
+       items. npm install is a one-shot: skipped once node_modules/typescript
+       exists. Inputs/Outputs scope the up-to-date check to TS sources +
+       tooling config; a single representative output (main.js) is enough
+       for incrementality because tsc rebuilds the whole graph atomically. -->
+  <ItemGroup>
+    <SpaTypeScriptSource Include="Assets\js\**\*.ts" />
+    <SpaTypeScriptSource Include="Assets\js\**\*.d.ts" />
+    <SpaTypeScriptSource Include="Assets\tsconfig.json" />
+    <SpaTypeScriptSource Include="Assets\package.json" />
+  </ItemGroup>
+
+  <Target Name="BuildSpaTypeScript"
+          BeforeTargets="AssignTargetPaths"
+          DependsOnTargets="GenerateLifeSchemaTypeScript"
+          Inputs="@(SpaTypeScriptSource)"
+          Outputs="$(MSBuildThisFileDirectory)Assets\js-build\main.js">
+    <Exec Command="npm install --no-audit --no-fund --loglevel=error"
+          WorkingDirectory="$(MSBuildThisFileDirectory)Assets"
+          Condition="!Exists('$(MSBuildThisFileDirectory)Assets\node_modules\typescript\package.json')" />
+    <Exec Command="npx --no-install tsc -p tsconfig.json"
+          WorkingDirectory="$(MSBuildThisFileDirectory)Assets" />
+  </Target>
+
+  <!-- The js-build/ directory doesn't exist at project-evaluation time on a
+       clean checkout, so the top-level Content glob can't pick it up. Add
+       its contents to Content here, after BuildSpaTypeScript has produced
+       them and before AssignTargetPaths processes Content for copy-to-output.
+       Also strip the TS tooling files that WindowsAppSDK's own globs would
+       otherwise treat as Content (and ship into the runtime payload). -->
+  <Target Name="IncludeSpaTypeScriptOutput"
+          BeforeTargets="AssignTargetPaths"
+          DependsOnTargets="BuildSpaTypeScript">
+    <ItemGroup>
+      <Content Remove="Assets\node_modules\**\*.*" />
+      <Content Remove="Assets\package.json" />
+      <Content Remove="Assets\package-lock.json" />
+      <Content Remove="Assets\tsconfig.json" />
+      <Content Remove="Assets\js\**\*.ts" />
+      <Content Remove="Assets\js\**\*.d.ts" />
+      <Content Include="Assets\js-build\**\*.*">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
   </Target>
 
   <!-- See Bishop.UI.csproj — WebView2Loader.dll lives under runtimes\win-<arch>\native\

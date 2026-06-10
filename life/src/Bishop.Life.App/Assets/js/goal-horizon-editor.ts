@@ -11,20 +11,28 @@
 
 import { findGoal } from "./plan-state.js";
 
-export function openGoalHorizonEditor(pill, { render, postMutation }) {
-  const id = pill.dataset.goalId;
-  const goal = findGoal(id); if (!goal) return;
-  const current = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(goal.horizon || "")) ? goal.horizon : "";
+export interface GoalHorizonEditorCallbacks {
+  render: () => void;
+  postMutation: () => void;
+}
+
+export function openGoalHorizonEditor(pill: HTMLElement, { render, postMutation }: GoalHorizonEditorCallbacks): void {
+  const id = pill.dataset["goalId"];
+  if (!id) return;
+  const goal = findGoal(id);
+  if (!goal) return;
+  const current = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(goal.horizon || "")) ? (goal.horizon ?? "") : "";
   const input = document.createElement("input");
   input.type = "month";
   input.className = "g-pill-edit";
   input.value = current;
-  input.dataset.goalId = id;
+  input.dataset["goalId"] = id;
   pill.replaceWith(input);
   input.focus();
   let done = false;
-  const finish = (commit) => {
-    if (done) return; done = true;
+  const finish = (commit: boolean): void => {
+    if (done) return;
+    done = true;
     if (commit) commitGoalHorizon(id, input.value, postMutation);
     render();
   };
@@ -35,8 +43,9 @@ export function openGoalHorizonEditor(pill, { render, postMutation }) {
   });
 }
 
-function commitGoalHorizon(id, value, postMutation) {
-  const g = findGoal(id); if (!g) return false;
+function commitGoalHorizon(id: string, value: string, postMutation: () => void): boolean {
+  const g = findGoal(id);
+  if (!g) return false;
   const v = (value || "").trim();
   if (v === "") {
     if (g.horizon == null) return false;

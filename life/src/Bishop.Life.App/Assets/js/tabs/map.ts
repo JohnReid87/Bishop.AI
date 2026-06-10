@@ -1,16 +1,16 @@
 // Map view — areas with per-horizon action sections. Each area block carries
 // the area colour as a left border + tinted heading row so areas read as
 // distinct slabs at a glance (card #1029). Per-goal horizon chips (`.g-pill`)
-// and per-action horizon pills (`.h-pill`) are click targets handled by the
-// inline bootstrap.
+// and per-action horizon pills (`.h-pill`) are click targets handled by main.ts.
 
 import { state, ACTION_HORIZONS, ACTION_HORIZON_KEYS, actionHorizonKey, bucket } from "../plan-state.js";
+import type { Goal, LifeAction } from "../schema.js";
 import { esc, attr } from "../dom-utils.js";
 
 // Convert #RRGGBB → rgba() for tinting Map area heading backgrounds without
 // baking opacity into the source colour. Falls back to a neutral tint when
 // the hex is malformed.
-function tint(hex, alpha) {
+function tint(hex: string, alpha: number): string {
   const h = String(hex || "").replace("#", "");
   if (h.length !== 6) return `rgba(255,255,255,${alpha})`;
   const r = parseInt(h.slice(0, 2), 16);
@@ -20,7 +20,7 @@ function tint(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function goalHorizonChip(goal) {
+function goalHorizonChip(goal: Goal): string {
   const h = goal.horizon;
   const isYm = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(h || ""));
   const cls = isYm ? bucket(h) : (h ? "beyond" : "empty");
@@ -28,11 +28,13 @@ function goalHorizonChip(goal) {
   return `<span class="g-pill ${cls}" data-goal-id="${esc(goal.id)}" title="Click to set goal horizon (YYYY-MM)">${label}</span>`;
 }
 
-export function mapView() {
+export function mapView(): string {
+  const plan = state.plan;
+  if (!plan) return "";
   let h = `<div class="view"><div class="sect">The map</div><div class="sect-sub">Actions grouped by horizon within each life area. The urgency at a glance.</div>`;
-  h += (state.plan.areas || []).map(area => {
+  h += (plan.areas || []).map(area => {
     const goals = area.goals || [];
-    const flat = goals.flatMap(g => (g.actions || []).map(a => ({ a, goal: g })));
+    const flat: { a: LifeAction; goal: Goal }[] = goals.flatMap(g => (g.actions || []).map(a => ({ a, goal: g })));
     const openCount = flat.filter(x => !x.a.done).length;
     let block = `<div class="area-block" style="border-left-color:${esc(area.color)}">
       <div class="area-head" style="background:${esc(tint(area.color, 0.10))}">

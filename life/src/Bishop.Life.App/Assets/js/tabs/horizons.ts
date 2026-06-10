@@ -1,12 +1,12 @@
 // Horizons view — the same goals as the Map, but resorted by how far out
 // they sit. One lane per horizon bucket (month / year / beyond).
 
-import { state, HORIZONS, allGoals, bucket } from "../plan-state.js";
+import { HORIZONS, allGoals, bucket, type HorizonBucket } from "../plan-state.js";
 import { esc } from "../dom-utils.js";
 
-export function horizonsView() {
+export function horizonsView(): string {
   let h = `<div class="view"><div class="sect">Horizons</div><div class="sect-sub">The same goals, sorted by how far out they sit.</div><div class="lanes">`;
-  for (const [k, label] of Object.entries(HORIZONS)) {
+  for (const [k, label] of Object.entries(HORIZONS) as [HorizonBucket, string][]) {
     const items = allGoals().filter(x => bucket(x.goal.horizon) === k);
     h += `<div class="lane ${k}"><div class="lane-title">${label} &middot; ${items.length}</div>`;
     h += items.length

@@ -4,8 +4,10 @@
 import { state } from "../plan-state.js";
 import { esc } from "../dom-utils.js";
 
-export function inboxView() {
-  const items = (state.plan.inbox || []).slice().sort((a, b) => {
+export function inboxView(): string {
+  const plan = state.plan;
+  if (!plan) return "";
+  const items = (plan.inbox || []).slice().sort((a, b) => {
     const ta = new Date(a.capturedAt || 0).getTime();
     const tb = new Date(b.capturedAt || 0).getTime();
     return tb - ta;
@@ -24,7 +26,7 @@ export function inboxView() {
   return h + "</div>";
 }
 
-function formatCapturedAt(iso) {
+function formatCapturedAt(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return String(iso);

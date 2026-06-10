@@ -5,8 +5,10 @@
 import { state } from "../plan-state.js";
 import { esc } from "../dom-utils.js";
 
-export function balanceView() {
-  const rows = (state.plan.areas || []).map(area => {
+export function balanceView(): string {
+  const plan = state.plan;
+  if (!plan) return "";
+  const rows = (plan.areas || []).map(area => {
     const goals = area.goals || [];
     const open = goals.reduce((n, g) => n + (g.actions || []).filter(a => !a.done).length, 0);
     return { area, goalCount: goals.length, open };

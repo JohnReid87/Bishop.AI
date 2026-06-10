@@ -13,32 +13,43 @@
 
 const VIZ_WINDOW_MS = 300; // total window — 150 ms each side of "now"
 
-let vizPanel = null;
-let vizCanvas = null;
-let vizSession = null;
+interface VizSession {
+  pcm: Int16Array;
+  sampleRateHz: number;
+  durationMs: number;
+  startedAt: number;
+  raf: number;
+  decayStartedAt: number;
+}
 
-export function initSpeakViz(panelEl, canvasEl) {
+let vizPanel: HTMLElement | null = null;
+let vizCanvas: HTMLCanvasElement | null = null;
+let vizSession: VizSession | null = null;
+
+export function initSpeakViz(panelEl: HTMLElement, canvasEl: HTMLCanvasElement): void {
   vizPanel = panelEl;
   vizCanvas = canvasEl;
   window.addEventListener("resize", () => {
     if (vizSession) resizeSpeakViz();
-    else if (!vizPanel.hidden) drawFlatLine();
+    else if (vizPanel && !vizPanel.hidden) drawFlatLine();
   });
 }
 
 // Reveal the panel with a resting flat line (card #1063) — first TTS chunk
 // then animates in-place instead of popping the panel into existence mid-turn.
-export function revealResting() {
+export function revealResting(): void {
+  if (!vizPanel) return;
   vizPanel.hidden = false;
   drawFlatLine();
 }
 
-export function hideSpeakViz() {
+export function hideSpeakViz(): void {
   cancelSpeakViz();
-  vizPanel.hidden = true;
+  if (vizPanel) vizPanel.hidden = true;
 }
 
-export function startSpeakViz(pcmBase64, pcmSampleRateHz, durationMs) {
+export function startSpeakViz(pcmBase64: string, pcmSampleRateHz: number, durationMs: number): void {
+  if (!vizCanvas) return;
   cancelSpeakViz();
   vizSession = {
     pcm: decodePcmBase64(pcmBase64 || ""),
@@ -52,25 +63,26 @@ export function startSpeakViz(pcmBase64, pcmSampleRateHz, durationMs) {
   // Wipe any leftover trail from the previous utterance so the new trace
   // doesn't ghost atop stale phosphor.
   const ctx = vizCanvas.getContext("2d");
+  if (!ctx) return;
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, vizCanvas.clientWidth, vizCanvas.clientHeight);
   drawSpeakViz();
 }
 
-export function stopSpeakViz() {
+export function stopSpeakViz(): void {
   cancelSpeakViz();
   drawFlatLine();
 }
 
-function cancelSpeakViz() {
+function cancelSpeakViz(): void {
   if (vizSession && vizSession.raf) cancelAnimationFrame(vizSession.raf);
   vizSession = null;
 }
 
 // Decode base64 → Int16Array (little-endian). Returns an empty array when the
 // input is empty or malformed so the rest of the viz can stay branchless.
-function decodePcmBase64(b64) {
+function decodePcmBase64(b64: string): Int16Array {
   if (!b64) return new Int16Array(0);
   try {
     const bin = atob(b64);
@@ -85,7 +97,8 @@ function decodePcmBase64(b64) {
   }
 }
 
-function resizeSpeakViz() {
+function resizeSpeakViz(): void {
+  if (!vizCanvas) return;
   const dpr = window.devicePixelRatio || 1;
   const w = vizCanvas.clientWidth;
   const h = vizCanvas.clientHeight;
@@ -93,13 +106,13 @@ function resizeSpeakViz() {
   vizCanvas.height = Math.max(1, Math.round(h * dpr));
 }
 
-function accentColor() {
+function accentColor(): string {
   return getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#00FF41";
 }
 
 // Parse `--accent` to {r,g,b} so we can build phosphor-trail rgba() strings
 // without baking the hex into the JS.
-function accentRgb() {
+function accentRgb(): { r: number; g: number; b: number } {
   const hex = accentColor().replace("#", "");
   if (hex.length !== 6) return { r: 0, g: 255, b: 65 };
   return {
@@ -109,10 +122,11 @@ function accentRgb() {
   };
 }
 
-function drawFlatLine() {
-  if (vizPanel.hidden) return;
+function drawFlatLine(): void {
+  if (!vizPanel || !vizCanvas || vizPanel.hidden) return;
   resizeSpeakViz();
   const ctx = vizCanvas.getContext("2d");
+  if (!ctx) return;
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const w = vizCanvas.clientWidth;
@@ -123,9 +137,10 @@ function drawFlatLine() {
   ctx.fillRect(0, y, w, 2);
 }
 
-function drawSpeakViz() {
-  if (!vizSession) return;
+function drawSpeakViz(): void {
+  if (!vizSession || !vizCanvas) return;
   const ctx = vizCanvas.getContext("2d");
+  if (!ctx) return;
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const w = vizCanvas.clientWidth;
@@ -195,12 +210,22 @@ function drawSpeakViz() {
 // left — so the trace is symmetric about the centre line. Column index i = 0
 // (centre) maps to the 150 ms look-ahead sample; i = cols (right edge) maps to
 // "now". Peaks appear at centre and slide outward as playback advances.
-function drawTracePath(ctx, pcm, rate, nowMs, halfMs, halfW, mid, h, eouGain) {
-  const sampleAt = ms => {
+function drawTracePath(
+  ctx: CanvasRenderingContext2D,
+  pcm: Int16Array,
+  rate: number,
+  nowMs: number,
+  halfMs: number,
+  halfW: number,
+  mid: number,
+  h: number,
+  eouGain: number,
+): void {
+  const sampleAt = (ms: number): number => {
     if (ms < 0) return 0;
     const idx = Math.floor((ms / 1000) * rate);
     if (idx < 0 || idx >= pcm.length) return 0;
-    return pcm[idx] / 32768; // → -1..1
+    return (pcm[idx] ?? 0) / 32768; // → -1..1
   };
 
   const amp = h * 0.45;
@@ -217,13 +242,13 @@ function drawTracePath(ctx, pcm, rate, nowMs, halfMs, halfW, mid, h, eouGain) {
 
   // Right half: centre → right edge.
   ctx.beginPath();
-  ctx.moveTo(halfW, ys[0]);
-  for (let i = 1; i <= cols; i++) ctx.lineTo(halfW + i, ys[i]);
+  ctx.moveTo(halfW, ys[0] ?? mid);
+  for (let i = 1; i <= cols; i++) ctx.lineTo(halfW + i, ys[i] ?? mid);
   ctx.stroke();
 
   // Left half: horizontal mirror of the right.
   ctx.beginPath();
-  ctx.moveTo(halfW, ys[0]);
-  for (let i = 1; i <= cols; i++) ctx.lineTo(halfW - i, ys[i]);
+  ctx.moveTo(halfW, ys[0] ?? mid);
+  for (let i = 1; i <= cols; i++) ctx.lineTo(halfW - i, ys[i] ?? mid);
   ctx.stroke();
 }

@@ -315,6 +315,12 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# Bishop.Life SPA TypeScript build outputs (card #1078). The js-build/ tree
+# is regenerated from Assets/js/*.ts on every dotnet build via the tsc target
+# in Bishop.Life.App.csproj.
+life/src/Bishop.Life.App/Assets/js-build/
+*.tsbuildinfo
+
 # Visual Studio 6 build log
 *.plg
 

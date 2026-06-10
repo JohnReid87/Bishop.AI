@@ -1,14 +1,16 @@
 // Focus view — today's reflection from the latest stand-up, starred-and-open
 // actions with goal/area lineage, and a mini-list of goals on the month horizon.
 // Pure render: returns an HTML string built from `state`. Click handlers live
-// in the inline bootstrap so all event wiring stays in one place.
+// in main.ts so all event wiring stays in one place.
 
-import { state, allActions, allGoals, bucket } from "../plan-state.js";
+import { state, allActions, allGoals, bucket, type GoalLineage } from "../plan-state.js";
 import { esc, attr } from "../dom-utils.js";
 
-export function focusView() {
+export function focusView(): string {
+  const plan = state.plan;
+  if (!plan) return "";
   let h = '<div class="view">';
-  const lastStandup = (state.plan.standups || []).slice(-1)[0];
+  const lastStandup = (plan.standups || []).slice(-1)[0];
   if (lastStandup) {
     const focusIds = new Set(lastStandup.focusToday || []);
     const focusTitles = allActions().filter(x => focusIds.has(x.action.id)).map(x => x.action.title);
@@ -44,7 +46,7 @@ export function focusView() {
   return h + "</div>";
 }
 
-function goalMini({ goal, area }) {
+function goalMini({ goal, area }: GoalLineage): string {
   const acts = goal.actions || [];
   const done = acts.filter(a => a.done).length;
   return `<div class="card" style="display:flex;align-items:center;gap:10px">
