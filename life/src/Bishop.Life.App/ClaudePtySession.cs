@@ -7,9 +7,9 @@ namespace Bishop.Life.App;
 
 /// <summary>
 /// Owns a single ConPTY-spawned <c>claude</c> process and surfaces its IO as
-/// .NET events so <see cref="LifePlanHost"/> can forward bytes to and from the
-/// xterm.js terminal pane in the WebView2 SPA. Disposing kills the underlying
-/// process — there is no separate shutdown handshake.
+/// .NET events so <see cref="Standup.StandupController"/> can forward keystrokes
+/// into it and react to process exit. Disposing kills the underlying process —
+/// there is no separate shutdown handshake.
 /// </summary>
 [SupportedOSPlatform("windows")]
 internal sealed class ClaudePtySession : IDisposable

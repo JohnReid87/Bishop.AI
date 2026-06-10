@@ -21,18 +21,11 @@ export function installDispatcher({ applyEnvelope, onSpeakStarted, onSpeakStoppe
     if (env && typeof env.type === "string" && env.type.startsWith("terminal:")) {
       if (env.type === "terminal:show") showStandupTerminal();
       else if (env.type === "terminal:hide") hideStandupTerminal();
-      // terminal:data still flows from the host as a dormant fallback for the
-      // legacy xterm path; the transcript:event stream is the live channel
-      // (card #1059), so we no longer render raw PTY bytes here.
+      else if (env.type === "terminal:systemNote") appendSystemNote(env.text || "");
       return;
     }
     if (env && env.type === "transcript:event") {
       appendTranscriptEvent(env.kind, env.text || "");
-      return;
-    }
-    if (env && env.type === "terminal:systemNote") {
-      // Card #1065: host-side diagnostic note (dropped input, session-end).
-      appendSystemNote(env.text || "");
       return;
     }
     applyEnvelope(env);

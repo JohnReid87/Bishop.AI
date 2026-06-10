@@ -11,7 +11,7 @@ namespace Bishop.Life.App.Standup;
 /// launches Claude via ConPTY (falling back to <c>wt.exe</c>), forwards keystrokes
 /// to the PTY, fans the JSONL transcript out as <c>transcript:event</c> envelopes,
 /// dispatches <c>terminal:systemNote</c> bubbles for dropped input and session-end,
-/// and runs the post-exit delayed-hide of the xterm.js pane.
+/// and runs the post-exit delayed-hide of the stand-up pane.
 /// Second slice of the LifePlanHost decomposition (card #1070); first was
 /// <see cref="Speak.SpeakController"/> (card #1069).
 /// The launcher / tailer / dispatcher seams keep the controller unit-testable
@@ -94,8 +94,8 @@ internal sealed class StandupController : IDisposable
     }
 
     /// <summary>
-    /// Forwards a keystroke from xterm.js into the PTY. Surfaces dropped input
-    /// via <c>terminal:systemNote</c> so the next repro names the cause —
+    /// Forwards a keystroke from the stand-up input into the PTY. Surfaces dropped
+    /// input via <c>terminal:systemNote</c> so the next repro names the cause —
     /// each silent failure mode (PTY not attached, Write throws) gets its own
     /// distinct bubble (card #1065).
     /// </summary>
@@ -137,14 +137,12 @@ internal sealed class StandupController : IDisposable
     {
         DetachPty();
         _pty = pty;
-        pty.DataReceived += OnPtyData;
         pty.ProcessExited += OnPtyExited;
     }
 
     private void DetachPty()
     {
         if (_pty is null) return;
-        _pty.DataReceived -= OnPtyData;
         _pty.ProcessExited -= OnPtyExited;
         _pty.Dispose();
         _pty = null;
@@ -182,9 +180,6 @@ internal sealed class StandupController : IDisposable
         _tailer = null;
     }
 
-    private void OnPtyData(string data) =>
-        _uiPost(() => PostData(data));
-
     private void OnPtyExited() =>
         _uiPost(() =>
         {
@@ -212,7 +207,6 @@ internal sealed class StandupController : IDisposable
 
     private void PostShow() => _ = _channel.PostAsync(new BareEnvelope(Type: "terminal:show"));
     private void PostHide() => _ = _channel.PostAsync(new BareEnvelope(Type: "terminal:hide"));
-    private void PostData(string data) => _ = _channel.PostAsync(new DataEnvelope(Type: "terminal:data", Data: data));
     private void PostSystemNote(string text) => _ = _channel.PostAsync(new SystemNoteEnvelope(Type: "terminal:systemNote", Text: text));
     private void PostTranscript(string kind, string text) => _ = _channel.PostAsync(new TranscriptEventEnvelope(Type: "transcript:event", Kind: kind, Text: text));
 
@@ -225,7 +219,6 @@ internal sealed class StandupController : IDisposable
     }
 
     internal sealed record BareEnvelope(string Type);
-    internal sealed record DataEnvelope(string Type, string Data);
     internal sealed record SystemNoteEnvelope(string Type, string Text);
     internal sealed record TranscriptEventEnvelope(string Type, string Kind, string Text);
 }

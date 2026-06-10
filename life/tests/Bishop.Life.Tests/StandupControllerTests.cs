@@ -85,21 +85,6 @@ public class StandupControllerTests
     }
 
     [Fact]
-    public void PtyData_IsForwardedAsTerminalDataEnvelope()
-    {
-        var harness = new Harness();
-        harness.Controller.Launch("cwd", "args", "sid");
-        harness.Channel.Posts.Clear();
-
-        harness.FakePty.RaisePtyData("hello\r\n");
-
-        var data = harness.Channel.Posts.Should().ContainSingle()
-            .Which.Should().BeOfType<StandupController.DataEnvelope>().Subject;
-        data.Type.Should().Be("terminal:data");
-        data.Data.Should().Be("hello\r\n");
-    }
-
-    [Fact]
     public void TranscriptUserMessage_IsForwardedAsTranscriptEvent()
     {
         var harness = new Harness();
