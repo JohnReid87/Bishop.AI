@@ -65,13 +65,14 @@ Then run them unattended:
 bishop batch run my-batch
 ```
 
-`bish-auto-card` runs each card in turn — implementing, building, and testing — and stops on the first failure. When all cards reach `Done`, you complete the batch:
+`bish-auto-card` runs each card in turn — implementing, building, and testing — and stops on the first failure. When all cards reach `Done`, you merge the batch and clean it up:
 
 ```
-bishop batch complete my-batch
+bishop batch merge my-batch
+bishop batch clean-up my-batch
 ```
 
-The CLI merges the batch branch into local `main` with `--no-ff`, closes the Done cards, and marks the batch closed. It never pushes. You push when you're ready.
+`merge` merges the batch branch into local `main` with `--no-ff` — it never pushes; you push when you're ready. `clean-up` removes the worktree, deletes the branch, closes the Done cards, and marks the batch closed.
 
 ### Review the codebase
 
@@ -110,7 +111,6 @@ The filesystem is split into per-app peers: `bishop/` (this app + its CLI) and `
 - **Tests** (xUnit + FluentAssertions): `bishop/tests/Bishop.Tests/`
 - **Bishop.Life** (sibling WinUI 3 app + its core): `life/src/Bishop.Life.{Core,App}/`, tests at `life/tests/Bishop.Life.Tests/`
 - **Bundled skills** (installed to `~/.claude/skills/` via `bishop install-skills`): `skills/`
-- **Installer** (Wix v5 per-user MSI): `installer/`
 
 UI and CLI both go through MediatR handlers in App for everything; neither references Data directly. For the full CLI surface and architectural conventions, see [CONTEXT.md](CONTEXT.md).
 

@@ -1,6 +1,6 @@
 # bishop.life — Design Spec
 
-Status: post-grill, source-of-truth for the initial build. This is the only `bishop.life`-related design doc in the repo — implementation cards (#1003–#1008) reference this file rather than restating decisions.
+> **Status: historical.** This was the post-grill source-of-truth for the *initial build* (cards #1003–#1008) and is preserved for decision rationale. The product has deliberately moved past it — the stand-up session is now embedded via ConPTY rather than launched in Windows Terminal, TTS and the speech visualizer shipped, Google Calendar feeds the context pack as a read-only source (superseding §7's "no login, sync, or remote surface"), and the viewer SPA is TypeScript. For current truth see [DIRECTION.md → Bishop.Life](../DIRECTION.md#bishoplife--sibling-product-in-the-same-repo) and CONTEXT.md's "Bishop.Life host↔viewer wire contract" section; where this spec and the code disagree, the code wins.
 
 bishop.life is a sister product to bishop.dev (the kanban-for-coding tool this repo ships today). Same chassis, different surface: bishop.dev tracks code work, bishop.life tracks the rest of life. The two stay decoupled at the project level so the shared chassis can be lifted into a future `Bishop.Shared` without a refactor.
 

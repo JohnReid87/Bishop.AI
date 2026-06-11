@@ -106,13 +106,13 @@ Item 12 is a family-wide check, not per-skill:
     appears at least once in each of these four canonical
     bundled-skills lists, grouped by category rather than as a flat
     list:
-    - `README.md` — "Getting started → After MSI install" bullet
-      group.
+    - `README.md` — "Getting started → `bishop install-skills`"
+      bullet group.
     - `CONTEXT.md` — both the `skills/` entry under "Repository
       layout" and the "Skill integration" paragraph.
     - `DIRECTION.md` — the "Skills live in this repo" decision block.
-    - `src/Bishop.App/Terminal/BishopContext.static.md` — the
-      `## Workflow` section's `### *** skills` sub-headings.
+    - `bishop/src/Bishop.App/Services/Terminal/BishopContext.static.md`
+      — the `## Workflow` section's `### *** skills` sub-headings.
 
     Each doc must group skills under labels that map 1:1 to the
     canonical six categories — either the doc-level names
@@ -185,12 +185,12 @@ Item 12 is a family-wide check, not per-skill:
    per-skill. `Read` each of these four docs and check the
    bundled-skills list inside:
 
-   - `README.md` — "Getting started → After MSI install" bullet group.
+   - `README.md` — "Getting started → `bishop install-skills`" bullet group.
    - `CONTEXT.md` — both the `skills/` entry under "Repository
      layout" and the "Skill integration" paragraph.
    - `DIRECTION.md` — the "Skills live in this repo" decision block.
-   - `src/Bishop.App/Terminal/BishopContext.static.md` — the
-     `## Workflow` section's `### *** skills` sub-headings.
+   - `bishop/src/Bishop.App/Services/Terminal/BishopContext.static.md`
+     — the `## Workflow` section's `### *** skills` sub-headings.
 
    For each doc:
 

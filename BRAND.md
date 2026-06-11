@@ -55,6 +55,26 @@ list position as its `AccentIndex`. The same batch shows the same accent
 in every lane. When a batch closes, later batches re-index on the next
 refresh. Collapse state is ephemeral — resets to expanded on app load.
 
+## bishop.life area palette — sibling product
+
+The six bishop.life areas carry a muted palette seeded by `bish-life-init`
+(one colour per default area, sticky to the area `id` — renaming an area
+never changes its colour). The hexes sit in the same mid-saturation /
+mid-luminance band as the tag family but are deliberately distinct values:
+tag hexes stay reserved for tag chips (see "Tag-palette reservation").
+
+| Area          | Hex       |
+| ------------- | --------- |
+| Finances      | `#a8b3c4` |
+| Side projects | `#b8a8c4` |
+| Career        | `#c4b8a8` |
+| Home          | `#a8c4b8` |
+| Health        | `#c4a8a8` |
+| Relationships | `#c4c4a8` |
+
+Do not invent new area colours — these six are the palette
+(`skills/bish-life-init/SKILL.md` is the seeding source).
+
 ## Core palette — neutral scaffold
 
 The dark, near-monochrome stage on which the tag family and the signal
@@ -181,9 +201,10 @@ Do not introduce custom SVGs for in-app actions — use Segoe MDL2.
 Brand SVGs and related image assets live at:
 
 ```
-bishop/src/Bishop.UI/Assets/Brand/
+bishop/src/Bishop.UI/Assets/Brand/        (Bishop.AI)
+life/src/Bishop.Life.App/Assets/Brand/    (bishop.life)
 ```
 
-Anything outside this directory is not considered a brand asset. The
-app ships dark-mode only — light-mode variants are not shipped and not
-maintained.
+Anything outside these two directories is not considered a brand asset.
+Both apps ship dark-mode only — light-mode variants are not shipped and
+not maintained.

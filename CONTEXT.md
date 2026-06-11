@@ -14,7 +14,7 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 - **App layer:** MediatR for commands/queries.
 - **DI:** `Microsoft.Extensions.DependencyInjection` via the generic host.
 - **Data:** EF Core 9 + SQLite (WAL mode for concurrent UI + CLI access). DB file at `%AppData%\Bishop.AI\bishop.db` (override with the `BISHOP_DB` env var — set it to an absolute path; useful for tests and portable configs).
-- **Testing:** xUnit + FluentAssertions. Handlers and repos in `Bishop.App` are tested against in-memory or temp SQLite; ViewModels in `Bishop.ViewModels` are testable against the `IUiDispatcher` abstraction. No tests target `net10.0-windows`; visual rendering and `xaml.cs` orchestration are out of scope.
+- **Testing:** xUnit + FluentAssertions. Handlers in `Bishop.App` are tested against in-memory or temp SQLite; ViewModels in `Bishop.ViewModels` are testable against the `IUiDispatcher` abstraction. No tests target `net10.0-windows`; visual rendering and `xaml.cs` orchestration are out of scope.
 - **Target framework:** `net10.0` for Core / Data / App / ViewModels / Cli / Tests; `net10.0-windows10.0.19041.0` for Bishop.UI.
 
 ## Architecture
@@ -32,9 +32,8 @@ Top-level filesystem is split into per-app peers — `bishop/` (the Bishop.AI de
   - **Code:** `bish-arch`, `bish-dead-code`, `bish-security`
   - **Tests:** `bish-coverage`, `bish-tests`
   - **Review:** `bish-audit-docs`, `bish-triage`
-  - **Setup-Execute:** `bish-auto-card`, `bish-onboard`, `bish-work-on-card`
+  - **Setup-Execute:** `bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` (the `bish-life-*` skills operate on the bishop.life data file rather than a workspace)
   - **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code
-- `installer/` — Wix v5 project that produces the per-user MSI. See `installer/README.md`.
 - `notes/_archive/` — pre-grill design notes; preserved for decision rationale but superseded by DIRECTION.md.
 
 ### Layers
@@ -84,15 +83,19 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop workspace list [--json]`
 - `bishop workspace current [--json]` — resolves the workspace from the current working directory by ancestor match
 - `bishop workspace init [--path <dir>] [--name <name>]` — register a directory (defaults to cwd) as a workspace and seed the default lanes; idempotent (no-op when fully seeded, fills gaps when partial)
+- `bishop workspace remove [--yes] [--dry-run] [-w]` — archive a workspace (soft-delete); card data is preserved; deletes the workspace's `.bishop/` directory if present
+- `bishop workspace purge (--path <dir> | --name <name>) [--yes] [--dry-run]` — hard-delete an *archived* workspace and all its cards
+- `bishop workspace record-skill-run --skill <name> --sha <sha> [-w]` — record that a review skill ran against the workspace at a given commit
 - `bishop card create --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>] [--bottom] [-w <workspace>]` — inserts at the top of the lane by default; `--bottom` appends to the end
 - `bishop card list [-w] [--json]`
 - `bishop card show <card-id> [-w] [--json]`
 - `bishop card move <card-id> --to-lane <name> --to-position <int> [-w]` — moving a card into the system `Done` lane auto-closes it; moving out of `Done` auto-reopens
-- `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path> | --append-description-file <path>] [--tag <name>] [--to-lane <name>] [-w]` — updates only the supplied fields; pass `--tag ""` to clear the tag; `--to-lane` moves the card after editing (auto-closes on move into `Done`)
+- `bishop card edit <card-id> [--title <t>] [--description <d> | --description-file <path> | --append-description-file <path>] [--tag <name>] [--to-lane <name>] [--commit-hash <sha>] [--commit-branch <name>] [-w]` — updates only the supplied fields; pass `--tag ""` to clear the tag; `--to-lane` moves the card after editing (auto-closes on move into `Done`)
 - `bishop card claim [--lane <name>] [--tag <name>] [-w] [--json]` — picks the top card from the source lane (default "To Do"), moves it to "Doing", and emits its details; `--tag` restricts the pick to the first card carrying that tag; exits non-zero if no matching card exists
 - `bishop card remove <card-id> [-w]`
 - `bishop card close <card-id> [-w]` — mark a card as closed
 - `bishop card reopen <card-id> [-w]` — reopen a closed card
+- `bishop card set-commit <card-id> --hash <sha> --branch <name> [-w]` — record the commit hash and branch that implemented a card
 - `bishop lane list [-w]` — lanes are fixed (Backlog / To Do / Doing / Done); no user-mutable lane CRUD
 - `bishop tag list [-w]` — list all tags defined in the workspace
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
@@ -103,13 +106,21 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop batch add-card <name> <card-id> [-w]`
 - `bishop batch remove-card <name> <card-id> [-w]`
 - `bishop batch run <name> [--resume] [--model <model-id>]` — run a batch end-to-end in its worktree via `bish-auto-card`; stops on card failure; `--resume` continues from the next undone card
-- `bishop batch complete <name> [-w]` — merge the batch branch into local main with `--no-ff`, close Done cards, and mark the batch closed; never pushes or calls `gh`; on conflict aborts and exits non-zero with the conflicting file list
+- `bishop batch merge <name> [-w]` — merge the batch branch into the base branch (normally local `main`) with `--no-ff`; never pushes or calls `gh`; on conflict aborts and exits non-zero with the conflicting file list
+- `bishop batch clean-up <name> [-w]` — remove the worktree, delete the branch, close the batch, and close any Done-lane cards assigned to it (requires `merge` first); prints `Closed card #N` per card
 - `bishop batch abandon <name> [-w]` — abandon a batch and remove its worktree
+- `bishop batch remove <name>` — delete a closed batch record from the database; cards stay on the board
 - `bishop batch prune [-w]` — remove worktrees for completed or abandoned batches
+- `bishop findings record --skill <name> --sha <sha> --file <path> [--project <name>] [-w]` — persist a review skill's findings JSON (`-` for stdin) to the DB; surfaced in the Findings page; `--project` scopes the run for project-scoped skills
 - `bishop skill bootstrap [--json]` — emit workspace + tag/lane info for a skill preamble; non-zero exit if not in a workspace
 - `bishop context print [--section <name>] [-w]` — print the workspace CONTEXT.md file, or a single named H2 section
 - `bishop context-pack <skill-name> [--card <n>] [-w] [--list]` — emit a pre-stuffed JSON context bundle (workspace + git + skill-specific data + conventions); `--list` enumerates registered providers
+- `bishop context-pack life-standup` — emit the bishop.life stand-up context pack as JSON (plan summary plus upcoming Google Calendar events when authorized); reads `bishop.life.json`, not the workspace DB
+- `bishop life auth google` — installed-app OAuth flow granting read access to the primary Google Calendar; requires the Google OAuth client env vars; stores the refresh token DPAPI-encrypted
+- `bishop life speak [<text>]` — synthesize text (stdin when omitted) to speech and play synchronously
+- `bishop life speak-prelude` — speak a short random acknowledgement to fill pre-context silence at stand-up launch
 - `bishop hook check-path` — `PreToolUse` hook: reads tool-use JSON from stdin and exits non-zero if the target path is outside the workspace; only active when `BISHOP_AUTO_CARD` is set
+- `bishop hook speak-on-stop` — `Stop` hook: speaks the last assistant message aloud when the active skill is an opted-in `bish-life-*` skill; never blocks the conversation
 
 Card identifiers accept a workspace-scoped Number (`42`, `#42`). CLI output renders `#N` (e.g. `#42`) rather than the full UUID.
 
@@ -121,17 +132,20 @@ Bishop.UI is the interactive surface; the CLI remains the automation surface for
 - **Cards:** view detail dialog; edit title/description/tags; delete; drag-and-drop between lanes and within a lane (writes position immediately).
 - **Tags:** fixed global set (see [Kanban model](#kanban-model)). Assigned per card via the card edit dialog; no add / rename / recolour affordances.
 - **Skills:** launcher buttons on each card and on the workspace header — see [Skill integration](#skill-integration).
+- **Workspace sections:** the workspace detail page toggles between **Board**, **Monitoring**, and **Batches** views. Monitoring lists each review skill's recorded runs (`Last run` / `Commits since`, fed by `bishop findings record`) with links to the findings reports; Batches manages batch lifecycle, and open batches also render on the board as accent-bordered card groups (see BRAND.md → Batch accent palette).
+- **Scripts:** a nav-pane button opens the PowerShell script launcher over `%AppData%\Bishop.AI\scripts\` (populated by hand or via `bish-scripts`).
+- **Settings:** app-level settings dialog (General / Workspaces / Skills sections; version, database path, build info).
 - **Theming:** dark theme applied across shell, nav, board chrome, and dialogs.
 
 ### Bishop.Life host↔viewer wire contract
-`Bishop.Life.App` hosts a `WebView2` whose page is `Assets/index.html` + JS modules under `Assets/js/`. The host and viewer talk over `CoreWebView2.PostWebMessageAsJson` / `WebMessageReceived`, exchanging JSON envelopes with a `type` discriminator (host→viewer envelopes for `speak.*`, `terminal:*`, `transcript:event`, plus a no-discriminator plan-state envelope; viewer→host envelopes for `standup`/`init`/`add` bare strings, `mutate`, `terminal:input`, `terminal:resize`).
+`Bishop.Life.App` hosts a `WebView2` whose page is `Assets/index.html` + TypeScript modules under `Assets/js/` (compiled to `Assets/js-build/` at build time). The host and viewer talk over `CoreWebView2.PostWebMessageAsJson` / `WebMessageReceived`, exchanging JSON envelopes with a `type` discriminator (host→viewer envelopes for `speak.*`, `terminal:*`, `transcript:event`, plus a no-discriminator plan-state envelope; viewer→host envelopes for `standup`/`init`/`add` bare strings, `mutate`, `terminal:input`, `terminal:resize`).
 
 Every wire shape is a `public sealed record` under `Bishop.Life.Core/Schema/Envelopes/`, alongside the plan schema records in `Bishop.Life.Core/Schema/`. The `Bishop.Life.SchemaCodegen` tool walks both directories via Roslyn and emits `life/src/Bishop.Life.App/Assets/js/schema.d.ts` — the single TypeScript source of truth for both ends of the channel. The file is regenerated on every `Bishop.Life.App` build (Inputs/Outputs gate skip incremental builds) and committed for review visibility.
 
 Adding a new envelope: drop a `public sealed record` under `Schema/Envelopes/`, use it from the relevant controller (`SpeakController` / `StandupController` / `PlanController`), rebuild — `schema.d.ts` updates automatically.
 
 ### Skill integration
-Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). They group into six categories — Conversational (`bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`), Code (`bish-arch`, `bish-dead-code`, `bish-security`), Tests (`bish-coverage`, `bish-tests`), Review (`bish-audit-docs`, `bish-triage`), Setup-Execute (`bish-auto-card`, `bish-onboard`, `bish-work-on-card`), and Bishop-level / meta (`bish-write-skill`, `bish-audit-skills`, which operate on `skills/` itself rather than a workspace's code). See [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the category rationale. Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
+Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). They group into six categories — Conversational (`bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`), Code (`bish-arch`, `bish-dead-code`, `bish-security`), Tests (`bish-coverage`, `bish-tests`), Review (`bish-audit-docs`, `bish-triage`), Setup-Execute (`bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` — the `bish-life-*` skills operate on the bishop.life data file rather than a workspace), and Bishop-level / meta (`bish-write-skill`, `bish-audit-skills`, which operate on `skills/` itself rather than a workspace's code). See [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the category rationale. Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
 
 - `name` — skill identifier (required).
 - `description` — user-facing summary.

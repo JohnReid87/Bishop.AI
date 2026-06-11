@@ -2,22 +2,21 @@
 
 ## Structure
 
-Mirrors `bishop/src/` layout:
+Mirrors `bishop/src/` layout — one top-level folder per source project, with
+feature subfolders inside:
 
 ```
 bishop/tests/Bishop.Tests/
-├── App/
-│   ├── Cards/          ← CardHandlerTests
-│   ├── Git/            ← GetRecentCommitsTests
-│   ├── Lanes/          ← LaneHandlerTests
-│   ├── Settings/       ← AppSettingsServiceTests
-│   ├── Skills/         ← DiscoverSkillsQueryHandlerTests
-│   ├── Terminal/       ← TerminalLauncherTests, TerminalSnapTests
-│   ├── Workspaces/     ← WorkspaceHandlerTests
-│   ├── BishopDbConnectionStringTests.cs
-│   └── DatabaseInitializerTests.cs
-├── Data/               ← DesignTimeDbContextFactoryTests
-├── DbFixture.cs        ← shared in-memory SQLite fixture
+├── App/            ← handler + service tests (Batches/, Cards/, Context/, Findings/,
+│                     Git/, Lanes/, Scripts/, Services/, Skills/, Tags/, Workspaces/)
+├── Architecture/   ← layer-rule tests (e.g. AppServicesLocatorRuleTests)
+├── Cli/            ← CLI command tests, mirroring Bishop.Cli's command folders
+├── Core/           ← entity + domain-primitive tests (BatchTests, TagNamesTests, …)
+├── Data/           ← DbContext, query-extension, and migration tests
+├── Docs/           ← doc drift tests (ContextMdFactBlockTests, schema tests)
+├── ViewModels/     ← ViewModel tests incl. layer rules (CodeBehindLayerRuleTests,
+│                     DataAccessLayerRuleTests)
+├── DbFixture.cs    ← shared in-memory SQLite fixture
 └── Bishop.Tests.csproj
 ```
 
@@ -33,4 +32,4 @@ bishop/tests/Bishop.Tests/
 
 ## Not present: Bishop.UI.Tests
 
-A `bishop/tests/Bishop.UI.Tests/` project does not exist and is not planned. WinUI 3 rendering and code-behind orchestration are intentionally out of test scope (see CONTEXT.md — "No tests target `net10.0-windows`"). The solution file references only `bishop/tests/Bishop.Tests/Bishop.Tests.csproj`.
+A `bishop/tests/Bishop.UI.Tests/` project does not exist and is not planned. WinUI 3 rendering and code-behind orchestration are intentionally out of test scope (see CONTEXT.md — "No tests target `net10.0-windows`"). `bishop/tests/Bishop.Tests/Bishop.Tests.csproj` is the only Bishop.AI test project in the solution; the Bishop.Life sibling has its own at `life/tests/Bishop.Life.Tests/`.

@@ -165,9 +165,9 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
         output.Should().Contain("## Auto-card permission contract");
         output.Should().Contain(".claude/settings.json");
-        output.Should().Contain("Bash(bishop:*)");
+        output.Should().Contain("bypassPermissions");
+        output.Should().Contain("bishop hook check-path");
         output.Should().Contain("git push");
-        output.Should().Contain("dotnet publish");
         output.Should().Contain("gh:*");
     }
 

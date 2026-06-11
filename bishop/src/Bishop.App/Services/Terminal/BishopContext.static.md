@@ -71,6 +71,17 @@ soul is the procedure itself — the agent reads steps in order.
   before moving it to "Done" and committing. **One card per session** —
   long-running sessions accumulate context that hurts cost and quality.
   Use when work is **already a card** and you want it implemented now.
+- `bish-life-init` — bootstraps `%APPDATA%/Bishop/life/bishop.life.json`
+  with the bishop.life v1 schema (six seeded areas, empty inbox and
+  stand-ups). Refuses to overwrite an existing file. Operates on the
+  bishop.life data file, not a Bishop workspace.
+- `bish-life-standup` — the daily bishop.life stand-up ritual: context
+  pack, thread-by-thread walk, then one atomic rewrite of
+  `bishop.life.json`. Operates on the bishop.life data file, not a
+  Bishop workspace.
+- `bish-life-add` — short-form bishop.life inbox capture; appends
+  `InboxItem` entries for later triage in the stand-up. Operates on the
+  bishop.life data file, not a Bishop workspace.
 
 ### Bishop-level / meta skills — operate on the skill family itself (`bishop.category: meta`)
 
@@ -111,42 +122,39 @@ the work that produced a change.
 
 ## Auto-card permission contract
 
-`bish-auto-card` runs unattended inside a permission scope defined in the project's
-`.claude/settings.json`. This section documents what is and is not permitted so you
-can audit the loop without source-diving.
+`bish-auto-card` runs unattended with `--permission-mode bypassPermissions`
+(passed by `ClaudeCliRunner` via `bishop batch run`) so the loop never stalls
+on per-tool approval prompts. Containment comes from deny rules and a path
+hook, not an allowlist — see DIRECTION.md ("Automated Claude runs use
+bypassPermissions") for the threat-model rationale. This section documents
+the boundaries so you can audit the loop without source-diving.
 
-### Allowlist (`.claude/settings.json`)
+### Containment layers
 
-**Bishop CLI**
-- `Bash(bishop:*)` — all `bishop` subcommands (card, lane, tag, workspace)
+- `BISHOP_AUTO_CARD=1` activates `bishop hook check-path` (`PreToolUse` on
+  `Edit` / `Write` / `NotebookEdit`), which blocks file writes outside the
+  workspace root.
+- The `deny` list in `.claude/settings.json` is still honoured under
+  `bypassPermissions` — deny rules apply even when prompts are bypassed.
+- The host (`RunBatchCommandHandler`) performs the final `git commit` itself;
+  the skill cannot push.
 
-**Git** (read + safe writes only)
-- `Bash(git status:*)`, `Bash(git add:*)`, `Bash(git commit:*)`,
-  `Bash(git diff:*)`, `Bash(git log:*)`
+### Denied (`.claude/settings.json` deny list)
 
-**Build and test**
-- `Bash(dotnet build:*)`, `Bash(dotnet test:*)`, `Bash(dotnet restore:*)`
-
-**File and agent tools**
-- `Read`, `Edit`, `Write`, `Glob`, `Grep`, `Agent`
-
-**Read-only inspection**
-- `Bash(wc:*)`, `Bash(xargs:*)` — line-count and argument-passing utilities; no destructive surface
-
-### Explicitly excluded
-
-The following are **not** on the allowlist and will prompt for user confirmation
-(or block outright) if the unattended loop attempts them:
+The following are refused outright if the unattended loop attempts them:
 
 - `git push` — no remote pushes; pushing is out of scope for automated loops
-- `dotnet publish` — no deployment artefacts
 - `gh:*` — no GitHub CLI calls (issue creation, PR management, etc.)
+- `curl` / `wget` — no network fetches
+- `sudo`, `chmod`, `icacls` — no privilege or ACL changes
+- `npm install`, `dotnet tool install` — no dependency installation
+- `kill`, `taskkill`, `shutdown` — no process or machine control
 
 ## Card model
 
 Bishop tracks work as **cards** inside **lanes** on a per-workspace kanban board.
 Cards are addressed by their workspace-scoped Number, written as `#N` (e.g. `#42`).
-Tags are workspace-scoped; a card holds at most one tag, stored as a nullable `TagName` string on the `Cards` table.
+Tags are a fixed global set of 8 names (`arch`, `bug`, `chore`, `docs`, `feature`, `security`, `spike`, `test`); a card holds at most one tag, stored as a nullable `TagName` string on the `Cards` table.
 
 ### Card body convention
 
@@ -186,11 +194,12 @@ they resolve from the current working directory.
 
 - `bishop card list [--json]`
 - `bishop card show <id> [--json]`
-- `bishop card create --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>...]`
+- `bishop card create --lane <name> --title <text> [--description <text> | --description-file <path>] [--tag <name>] [--bottom]`
 - `bishop card move <id> --to-lane <name> --to-position <int>` — moves the card; moving into `Done` also closes it
-- `bishop card edit <id> [--title <t>] [--description <d> | --description-file <path>] [--tag <name>...] [--clear-tags]`
+- `bishop card edit <id> [--title <t>] [--description <d> | --description-file <path> | --append-description-file <path>] [--tag <name>] [--to-lane <name>] [--commit-hash <sha>] [--commit-branch <name>]` — pass `--tag ""` to clear the tag
 - `bishop card claim [--lane <name>] [--tag <name>] [--json]` — pop the top card of a lane into "Doing"; with `--tag`, picks the first card carrying that tag
 - `bishop card close <id>` / `bishop card reopen <id>`
+- `bishop card set-commit <id> --hash <sha> --branch <name>` — record the commit that implemented a card
 
 ### Batch
 
@@ -215,6 +224,16 @@ they resolve from the current working directory.
 ### Tag
 
 - `bishop tag list`
+
+### Findings
+
+- `bishop findings record --skill <name> --sha <sha> --file <path> [--project <name>]` — persist a review skill's findings JSON; see `## Findings Recording Procedure` below for the full contract
+
+### Context
+
+- `bishop context print [--section <name>]` — print the workspace CONTEXT.md file, or a single named H2 section (ad-hoc / debug use; skills get these sections via the context pack)
+- `bishop context-pack <skill-name> [--card <n>] [--list]` — emit a pre-stuffed JSON context bundle (workspace + git + skill-specific data + conventions)
+- `bishop context-pack life-standup` — emit the bishop.life stand-up context pack (reads `bishop.life.json`, not the workspace DB)
 
 ### Skill
 
@@ -301,15 +320,14 @@ temp files anyway) so the temp-file path is the house style.
    Remove-Item ".bishop/tmp-card-<slug>.md"
    ```
 
-   `Bash(rm:*)` is in the project deny-list, so `rm` via the Bash tool
-   will be refused; and `Remove-Item` is a PowerShell cmdlet, so
-   invoking it via the Bash tool produces `command not found`
-   (exit 127). The cleanup step must use the `PowerShell` tool.
+   `Remove-Item` is a PowerShell cmdlet, so invoking it via the Bash
+   tool produces `command not found` (exit 127). The cleanup step
+   must use the `PowerShell` tool.
 
 - `<lane>` is normally `"To Do"`; `bish-grill-cards` allows `"Backlog"`
   when the user asks for a parking spot.
-- `<tag>` is a single workspace-scoped tag name (e.g. `arch`,
-  `security`, `test`, `bug`, `docs`, `feature`, `refactor`, `chore`).
+- `<tag>` is a single tag name from the fixed set (`arch`, `bug`,
+  `chore`, `docs`, `feature`, `security`, `spike`, `test`).
   Cards carry at most one tag.
 - `<slug>` is a short kebab-case hint of the card (e.g.
   `tmp-card-abandon-open.md`) so multiple cards in one session don't

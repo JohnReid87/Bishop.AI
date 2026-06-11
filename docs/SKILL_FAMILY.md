@@ -16,14 +16,14 @@ Skills divide into six categories. The category determines the restructure appro
 
 | Category | Current members | What the skill *is*, fundamentally |
 |---|---|---|
-| **Conversational** | `bish-grill-cards`, `bish-grill-docs` | An interview style — relentless interrogation. The soul is the *quality bar of the conversation*. |
+| **Conversational** | `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards` | An interview style — relentless interrogation. The soul is the *quality bar of the conversation*. |
 | **Code** | `bish-arch`, `bish-dead-code`, `bish-security` | Heuristic catalogue applied to production C# — structure, dead code, security. The soul is the *heuristic catalogue*. |
 | **Tests** | `bish-coverage`, `bish-tests` | Heuristic catalogue applied to the test surface — line coverage gaps, mutation/quality. The soul is the *heuristic catalogue*. |
 | **Review** | `bish-audit-docs`, `bish-triage` | Heuristic catalogue applied to artefacts that aren't production code or tests — docs drift, bug-skeleton walks. The soul is the *heuristic catalogue*. |
-| **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card` | A deterministic procedure that mutates state (filesystem, board, git). The soul is the *procedure itself*. |
+| **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card`, `bish-life-init`, `bish-life-standup`, `bish-life-add` | A deterministic procedure that mutates state (filesystem, board, git, or the bishop.life data file). The soul is the *procedure itself*. |
 | **Bishop-level / meta** | `bish-write-skill`, `bish-audit-skills` | Skills *about* the skill family — authoring guides, audits. Operate on `skills/` directly, not on a workspace's code. |
 
-The Conversational / Code / Tests / Review / Setup-Execute split is **workspace-level** — each skill targets the user's current Bishop workspace. Bishop-level skills are distinct: they treat the Bishop repository itself (or any `skills/` directory) as their subject. Keep them separate so workspace-level skills do not accumulate self-referential plumbing.
+The Conversational / Code / Tests / Review / Setup-Execute split is **workspace-level** — each skill targets the user's current Bishop workspace. Bishop-level skills are distinct: they treat the Bishop repository itself (or any `skills/` directory) as their subject. Keep them separate so workspace-level skills do not accumulate self-referential plumbing. The `bish-life-*` skills are a documented exception within Setup-Execute: they operate on the bishop.life data file (`bishop.life.json`) rather than a workspace, and are exempt from workspace context-pack entry (see §4).
 
 Code, Tests, and Review share the same restructure rules (see §2 "Review" row) — they are split only for menu navigability, not because their authoring contract differs.
 
@@ -93,6 +93,8 @@ A provider is one C# class implementing `IContextProvider` (in `Bishop.App.Conte
 | `bish-onboard` | The workspace doesn't exist yet at skill entry — `bishop context-pack` requires a registered workspace to resolve. |
 | `bish-audit-skills` | Meta-skill; operates on `skills/` itself, not a workspace's code. No workspace context is relevant. |
 | `bish-write-skill` | Meta-skill; same rationale as `bish-audit-skills`. |
+| `bish-life-init`, `bish-life-add` | Operate on the bishop.life data file, not a Bishop workspace. No workspace context is relevant. |
+| `bish-life-standup` | Same rationale, but uses the dedicated `bishop context-pack life-standup` subcommand (reads `bishop.life.json`, not the workspace DB). |
 
 `bish-audit-docs` is a partial exception: it calls `bishop context-pack audit-docs` with a soft fallback (`git rev-parse --show-toplevel`) for repos that aren't Bishop workspaces, because the skill is useful outside the Bishop toolchain.
 
@@ -142,10 +144,10 @@ For each skill in `skills/`:
 Finally, run this family-wide check (not per-skill):
 
 12. **Bundled-skills-list drift** — every skill in `skills/bish-*/` must appear at least once in each of these four canonical bundled-skills lists, grouped by category rather than as a flat list:
-    - `README.md` — "Getting started → After MSI install" bullet group.
+    - `README.md` — "Getting started → `bishop install-skills`" bullet group.
     - `CONTEXT.md` — both the `skills/` entry under "Repository layout" and the "Skill integration" paragraph.
     - `DIRECTION.md` — the "Skills live in this repo" decision block.
-    - `src/Bishop.App/Terminal/BishopContext.static.md` — the `## Workflow` section's `### *** skills` sub-headings.
+    - `bishop/src/Bishop.App/Services/Terminal/BishopContext.static.md` — the `## Workflow` section's `### *** skills` sub-headings.
 
     Each doc must group skills under labels that map 1:1 to the canonical six categories — either the doc-level names (Conversational / Code / Tests / Review / Setup-Execute / Bishop-level / meta) or equivalent labels that correspond 1:1 to the frontmatter `bishop.category` values (`discuss` / `code` / `tests` / `review` / `setup` and `execute` (as separate values) / `meta`). Flag:
     - **Missing skill** — a `skills/bish-*/` directory not named in one of the four docs.
