@@ -146,10 +146,15 @@ internal sealed class LifePlanHost : IDisposable
         if (string.IsNullOrEmpty(folder)) return;
         Directory.CreateDirectory(folder);
 
+        // Card #1085: stamp the one-time bypass-trust key before launching, so
+        // the invisible "do you trust this folder?" dialog can't stall the PTY
+        // on a fresh machine.
+        ClaudeConfigPatcher.EnsureBypassPermissionsAccepted();
+
         // Card #1059: pin a session id up front so the JSONL tailer can find the
         // on-disk transcript without a race against claude's first write.
         var sessionId = Guid.NewGuid().ToString();
-        _standup.Launch(folder, $"/bish-life-standup --session-id {sessionId}", sessionId);
+        _standup.Launch(folder, LifeClaudeArgs.Standup(sessionId), sessionId);
         _coordinator.NoteStandupLaunched(); // fires StateChanged → PlanController re-posts
     }
 
@@ -158,7 +163,7 @@ internal sealed class LifePlanHost : IDisposable
         var folder = Path.GetDirectoryName(_service.FilePath);
         if (string.IsNullOrEmpty(folder)) return;
         Directory.CreateDirectory(folder);
-        _launcher.LaunchClaude(folder, "/bish-life-init");
+        _launcher.LaunchClaude(folder, LifeClaudeArgs.Init());
         // Init seeds the file from scratch; window activation on return refreshes.
     }
 
@@ -167,7 +172,7 @@ internal sealed class LifePlanHost : IDisposable
         var folder = Path.GetDirectoryName(_service.FilePath);
         if (string.IsNullOrEmpty(folder)) return;
         Directory.CreateDirectory(folder);
-        _launcher.LaunchClaude(folder, "/bish-life-add");
+        _launcher.LaunchClaude(folder, LifeClaudeArgs.Add());
         _coordinator.NoteAddLaunched(); // fires StateChanged → PlanController re-posts
     }
 
