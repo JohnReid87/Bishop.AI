@@ -157,6 +157,7 @@ if (OperatingSystem.IsWindows())
     lifeAuthCmd.AddCommand(new AuthGoogleCliCommand());
     lifeCmd.AddCommand(lifeAuthCmd);
     lifeCmd.AddCommand(new SpeakCliCommand());
+    lifeCmd.AddCommand(new SpeakPreludeCliCommand());
 }
 root.AddCommand(lifeCmd);
 

@@ -158,7 +158,36 @@ internal sealed class LifePlanHost : IDisposable
         // on-disk transcript without a race against claude's first write.
         var sessionId = Guid.NewGuid().ToString();
         _standup.Launch(folder, LifeClaudeArgs.Standup(sessionId), sessionId);
+
+        // Card #1090: fill the ~10–30s silence while claude reads the skill and runs
+        // the context-pack with a short spoken acknowledgement. Fire-and-forget the
+        // bishop CLI so synthesis happens out-of-process and we don't block here.
+        TryStartSpeakPrelude();
+
         _coordinator.NoteStandupLaunched(); // fires StateChanged → PlanController re-posts
+    }
+
+    private static void TryStartSpeakPrelude()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            psi.ArgumentList.Add("/c");
+            psi.ArgumentList.Add("bishop");
+            psi.ArgumentList.Add("life");
+            psi.ArgumentList.Add("speak-prelude");
+            using var _ = Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            // Silent degradation — prelude is purely cosmetic and must never break launch.
+            Debug.WriteLine($"LifePlanHost: speak-prelude spawn failed: {ex.Message}");
+        }
     }
 
     private void LaunchInit()
