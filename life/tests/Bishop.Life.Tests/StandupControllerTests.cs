@@ -260,6 +260,111 @@ public class StandupControllerTests
     }
 
     [Fact]
+    public void PtyData_AfterLaunch_IsPostedAsTerminalDataEnvelope()
+    {
+        // Card #1086: every PTY byte fans out as terminal:data from session
+        // start so the debug-console xterm always holds the current TUI
+        // screen — toggling Ctrl+Shift+T must not show a torn re-attach.
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.Channel.Posts.Clear();
+
+        harness.FakePty.RaisePtyData("\x1b[2Jhello");
+
+        var ev = harness.Channel.Posts.Should().ContainSingle()
+            .Which.Should().BeOfType<TerminalDataEnvelope>().Subject;
+        ev.Type.Should().Be("terminal:data");
+        ev.Data.Should().Be("\x1b[2Jhello");
+    }
+
+    [Fact]
+    public void PtyData_BeforeLaunch_IsIgnored()
+    {
+        var harness = new Harness();
+
+        // No PTY attached — no subscription, so nothing to post. Asserting
+        // explicitly so a future regression that subscribes too eagerly fails.
+        harness.Channel.Posts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void PtyData_AfterDispose_IsNotPosted()
+    {
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.Controller.Dispose();
+        harness.Channel.Posts.Clear();
+
+        harness.FakePty.RaisePtyData("late");
+
+        harness.Channel.Posts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WriteRaw_AfterLaunch_WritesStraightToPty_BypassingSequencer()
+    {
+        // Card #1086: raw input from the debug-console overlay must skip the
+        // body/Enter split — write the bytes verbatim and nothing else.
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.Channel.Posts.Clear();
+
+        harness.Controller.WriteRaw("\x1b[A");
+
+        harness.FakePty.Writes.Should().ContainSingle().Which.Should().Be("\x1b[A");
+        harness.Channel.Posts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WriteRaw_WithoutPty_IsNoop()
+    {
+        var harness = new Harness();
+
+        harness.Controller.WriteRaw("x");
+
+        harness.FakePty.Writes.Should().BeEmpty();
+        harness.Channel.Posts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WriteRaw_EmptyOrNull_IsNoop()
+    {
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.FakePty.Writes.Clear();
+
+        harness.Controller.WriteRaw("");
+        harness.Controller.WriteRaw(null!);
+
+        harness.FakePty.Writes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WriteRaw_WhenPtyWriteThrows_DoesNotPropagate()
+    {
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.FakePty.NextWriteThrows = new InvalidOperationException("boom");
+
+        var act = () => harness.Controller.WriteRaw("x");
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void WriteRaw_AfterDispose_IsNoop()
+    {
+        var harness = new Harness();
+        harness.Controller.Launch("cwd", "args", "sid");
+        harness.Controller.Dispose();
+        harness.FakePty.Writes.Clear();
+
+        harness.Controller.WriteRaw("late");
+
+        harness.FakePty.Writes.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task HandleInput_AfterDispose_IsNoop()
     {
         var harness = new Harness();

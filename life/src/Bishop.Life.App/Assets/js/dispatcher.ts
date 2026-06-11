@@ -10,6 +10,7 @@ import {
   appendTranscriptEvent,
   appendSystemNote,
 } from "./standup.js";
+import { feedTerminalData } from "./debug-console.js";
 import {
   isDispatchedInbound,
   type DispatchedInboundEnvelope,
@@ -49,6 +50,12 @@ function dispatch(env: DispatchedInboundEnvelope, cb: DispatcherCallbacks): void
       return;
     case "terminal:systemNote":
       appendSystemNote(env.text ?? "");
+      return;
+    case "terminal:data":
+      // Card #1086: feed the hidden debug-console xterm continuously so
+      // Ctrl+Shift+T reveals the current TUI screen, not just bytes from
+      // the moment of toggle.
+      feedTerminalData(env.data);
       return;
     case "transcript:event":
       appendTranscriptEvent(env.kind, env.text ?? "");

@@ -21,6 +21,7 @@ import {
 import { postToHost } from "./message-bus.js";
 import { installDispatcher } from "./dispatcher.js";
 import { initStandup } from "./standup.js";
+import { initDebugConsole } from "./debug-console.js";
 import { initSpeakViz, startSpeakViz, stopSpeakViz, revealResting, hideSpeakViz } from "./speak-viz.js";
 import { focusView } from "./tabs/focus.js";
 import { mapView } from "./tabs/map.js";
@@ -251,6 +252,7 @@ initStandup({
   onVizReveal: () => revealResting(),
   onVizHide: () => hideSpeakViz(),
 });
+initDebugConsole();
 
 installDispatcher({
   applyEnvelope,

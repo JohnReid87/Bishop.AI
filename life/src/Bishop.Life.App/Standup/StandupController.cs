@@ -146,6 +146,27 @@ internal sealed class StandupController : IDisposable
     }
 
     /// <summary>
+    /// Writes raw bytes straight to the PTY, bypassing
+    /// <see cref="PtyInputSequencer"/>. Used by the debug-console overlay
+    /// (card #1086, <c>Ctrl+Shift+T</c>) where keystrokes must hit the TUI
+    /// without the body/Enter split and inter-write delay that the
+    /// stand-up input applies. Drops silently when no PTY is attached.
+    /// </summary>
+    public void WriteRaw(string data)
+    {
+        if (_disposed) return;
+        if (string.IsNullOrEmpty(data)) return;
+        try
+        {
+            _pty?.Write(data);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"StandupController: terminal:raw-input Write threw: {ex}");
+        }
+    }
+
+    /// <summary>
     /// Updates the controller's cached viewport and forwards to the PTY if one
     /// is attached. Sizes &lt; 1 (zero-sized layout pass) are ignored so they
     /// don't poison the cached defaults.
@@ -162,12 +183,19 @@ internal sealed class StandupController : IDisposable
         DetachPty();
         _pty = pty;
         _sequencer = new PtyInputSequencer((data, _) => { pty.Write(data); return Task.CompletedTask; });
+        // Card #1086: stream every PTY byte to the viewer as terminal:data from
+        // session start. The debug-console xterm consumes the feed into a hidden
+        // buffer so toggling Ctrl+Shift+T shows the current TUI screen instantly
+        // rather than a torn re-attach. Transcript rendering still comes from the
+        // JSONL tailer (card #1059); this channel is for raw screen state only.
+        pty.DataReceived += OnPtyData;
         pty.ProcessExited += OnPtyExited;
     }
 
     private void DetachPty()
     {
         if (_pty is null) return;
+        _pty.DataReceived -= OnPtyData;
         _pty.ProcessExited -= OnPtyExited;
         _pty.Dispose();
         _pty = null;
@@ -206,6 +234,9 @@ internal sealed class StandupController : IDisposable
         _tailer = null;
     }
 
+    private void OnPtyData(string data) =>
+        _uiPost(() => PostData(data));
+
     private void OnPtyExited() =>
         _uiPost(() =>
         {
@@ -233,6 +264,7 @@ internal sealed class StandupController : IDisposable
 
     private void PostShow() => _ = _channel.PostAsync(new BareEnvelope(Type: "terminal:show"));
     private void PostHide() => _ = _channel.PostAsync(new BareEnvelope(Type: "terminal:hide"));
+    private void PostData(string data) => _ = _channel.PostAsync(new TerminalDataEnvelope(Type: "terminal:data", Data: data));
     private void PostSystemNote(string text) => _ = _channel.PostAsync(new SystemNoteEnvelope(Type: "terminal:systemNote", Text: text));
     private void PostTranscript(string kind, string text) => _ = _channel.PostAsync(new TranscriptEventEnvelope(Type: "transcript:event", Kind: kind, Text: text));
 

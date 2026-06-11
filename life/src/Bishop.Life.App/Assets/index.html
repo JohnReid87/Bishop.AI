@@ -6,6 +6,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cascadia+Code:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<!-- xterm.js powers the Ctrl+Shift+T debug-console overlay (card #1086). Vendored
+     locally under Assets/xterm/; FitAddon is intentionally omitted — the console
+     is sized to the PTY spawn cols/rows, not the window. -->
+<link rel="stylesheet" href="xterm/xterm.css" />
+<script src="xterm/xterm.js"></script>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -28,6 +33,12 @@
   <div id="addBanner" class="standup-banner" hidden>Add in progress &mdash; inline edits paused.</div>
   <div id="vizPanel" class="viz-panel" hidden><canvas id="vizCanvas"></canvas></div>
   <div id="standupTerminal" class="standup-terminal" hidden></div>
+  <!-- Card #1086: debug-console overlay. Hidden until Ctrl+Shift+T toggles it
+       on; the xterm host below is fed terminal:data envelopes continuously from
+       session start so the first reveal already shows the current TUI screen. -->
+  <div id="debugConsole" class="debug-console" hidden>
+    <div id="debugConsoleXterm" class="debug-console-xterm"></div>
+  </div>
   <textarea id="standupInput" class="standup-input" hidden rows="1" spellcheck="false"
     placeholder="Type or dictate &mdash; Enter to send, Shift+Enter for newline"></textarea>
   <div id="container"></div>

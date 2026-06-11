@@ -304,6 +304,16 @@ body.standup-session-active #container .view > *:not(.today) { display: none !im
    latest-stand-up summary above it fits on one screen. */
 body.standup-session-active .standup-terminal { height: 42vh; }
 
+/* Card #1086: debug-console overlay. Sits over the transcript with the same
+   border/radius so the swap is visually contained, and uses a black xterm
+   background so the TUI looks correct out of the box. The xterm child sizes
+   itself to the PTY spawn cols/rows; the wrapper just lets it stretch. */
+.debug-console { position: fixed; inset: 8vh 8vw; background: #000;
+  border: 1px solid var(--line); border-radius: 9px; padding: 8px;
+  z-index: 1000; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  display: flex; align-items: stretch; justify-content: stretch; }
+.debug-console-xterm { flex: 1; min-width: 0; min-height: 0; }
+
 /* footer */
 .foot { display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--line); margin-top:32px; padding-top:13px; }
 .saved { font-size:11px; color:var(--ink-faint); }

@@ -94,10 +94,20 @@ export interface SystemNoteEnvelope {
   text: string;
 }
 
+export interface TerminalDataEnvelope {
+  type: string;
+  data: string;
+}
+
 export interface TerminalInputRequestEnvelope {
   type: string;
   data: string;
   submit: boolean;
+}
+
+export interface TerminalRawInputRequestEnvelope {
+  type: string;
+  data: string;
 }
 
 export interface TerminalResizeRequestEnvelope {

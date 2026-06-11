@@ -36,6 +36,11 @@ export interface TerminalSystemNoteEnvelope {
   text?: string;
 }
 
+export interface TerminalDataEnvelope {
+  type: "terminal:data";
+  data: string;
+}
+
 export interface TranscriptEventEnvelope {
   type: "transcript:event";
   kind: string;
@@ -50,6 +55,7 @@ export type DispatchedInboundEnvelope =
   | TerminalShowEnvelope
   | TerminalHideEnvelope
   | TerminalSystemNoteEnvelope
+  | TerminalDataEnvelope
   | TranscriptEventEnvelope;
 
 // The whole-plan envelope has no `type` field, so it can't be distinguished by
@@ -64,6 +70,7 @@ const DISPATCHED_TYPES: ReadonlySet<DispatchedInboundEnvelope["type"]> = new Set
   "terminal:show",
   "terminal:hide",
   "terminal:systemNote",
+  "terminal:data",
   "transcript:event",
 ]);
 
@@ -86,6 +93,11 @@ export interface TerminalInputOutboundEnvelope {
   submit: boolean;
 }
 
+export interface TerminalRawInputOutboundEnvelope {
+  type: "terminal:raw-input";
+  data: string;
+}
+
 export interface StandupEndOutboundEnvelope {
   type: "standup:end";
 }
@@ -93,6 +105,7 @@ export interface StandupEndOutboundEnvelope {
 export type OutboundEnvelope =
   | MutateOutboundEnvelope
   | TerminalInputOutboundEnvelope
+  | TerminalRawInputOutboundEnvelope
   | StandupEndOutboundEnvelope;
 
 // Bare-string commands recognised by the host on the JsonValueKind.String branch.
