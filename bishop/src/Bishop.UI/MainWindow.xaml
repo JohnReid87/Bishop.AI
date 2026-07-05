@@ -161,7 +161,7 @@
                                              inset so its ends sit within the pill's rounded corners. -->
                                         <Rectangle Height="2"
                                                    Fill="#00FF41"
-                                                   Margin="6,0,6,0"
+                                                   Margin="6,0,6,3"
                                                    VerticalAlignment="Bottom"
                                                    HorizontalAlignment="Stretch"
                                                    IsHitTestVisible="False"
@@ -197,6 +197,7 @@
                                     <Setter Property="Padding" Value="0"/>
                                     <Setter Property="Margin" Value="0,0,4,0"/>
                                     <Setter Property="MinHeight" Value="0"/>
+                                    <Setter Property="MinWidth" Value="0"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                     <Setter Property="VerticalContentAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
