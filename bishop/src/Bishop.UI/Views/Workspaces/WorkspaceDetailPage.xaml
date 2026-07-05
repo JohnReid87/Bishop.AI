@@ -434,7 +434,7 @@
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="vmWorkspaces:LaneViewModel">
-                            <Grid Width="220"
+                            <Grid Width="225"
                                   VerticalAlignment="Stretch"
                                   Background="{StaticResource AppLaneBackgroundBrush}"
                                   CornerRadius="8"

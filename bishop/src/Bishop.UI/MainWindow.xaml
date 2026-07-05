@@ -71,6 +71,12 @@
             IsBackButtonVisible="Collapsed"
             IsTitleBarAutoPaddingEnabled="False">
 
+            <NavigationView.Resources>
+                <!-- Trim the top pane from its 48px default so the workspace strip reads
+                     tighter; items and the active-border marker stretch to this height. -->
+                <x:Double x:Key="NavigationViewTopPaneHeight">38</x:Double>
+            </NavigationView.Resources>
+
             <NavigationView.PaneCustomContent>
                 <Grid Margin="4,0,4,0" HorizontalAlignment="Stretch">
                     <Grid.ColumnDefinitions>
@@ -83,10 +89,11 @@
                     <Button Grid.Column="0"
                             x:Name="AddWorkspaceButton"
                             VerticalAlignment="Center"
+                            MinHeight="0" MinWidth="0" Padding="8,3"
                             Style="{StaticResource SubtleIconButtonStyle}"
                             Click="AddWorkspaceButton_Click"
                             ToolTipService.ToolTip="Add workspace">
-                        <FontIcon Glyph="&#xE710;" FontSize="12" Foreground="{StaticResource AppTextPrimaryBrush}"/>
+                        <FontIcon Glyph="&#xE710;" FontSize="14" Foreground="{StaticResource AppTextPrimaryBrush}"/>
                     </Button>
 
                     <!-- Empty state -->
@@ -122,28 +129,44 @@
                                 <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#20FFFFFF"/>
                                 <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#30FFFFFF"/>
                                 <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#40FFFFFF"/>
-                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="#00FF41"/>
-                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPointerOverBrush" Color="#00FF41"/>
-                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPressedBrush" Color="#00FF41"/>
+                                <!-- Suppress the default edge selection bar; the active item is marked
+                                     by a full-height green border in the item template instead. -->
+                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="Transparent"/>
+                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPointerOverBrush" Color="Transparent"/>
+                                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorPressedBrush" Color="Transparent"/>
                             </ListView.Resources>
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="vm:WorkspaceItemViewModel">
                                     <Grid RightTapped="WorkspaceItem_RightTapped"
+                                          VerticalAlignment="Center"
                                           Opacity="{x:Bind cnv:XamlConvert.ToDimOpacity(IsHidden), Mode=OneWay}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0"
-                                                   Text="{x:Bind Name, Mode=OneWay}"
-                                                   VerticalAlignment="Center"/>
-                                        <FontIcon Grid.Column="1"
-                                                  Glyph="&#xE7BA;"
-                                                  FontSize="12"
-                                                  Foreground="{StaticResource BrushError}"
-                                                  Margin="4,0,0,0"
-                                                  VerticalAlignment="Center"
-                                                  Visibility="{x:Bind cnv:XamlConvert.ToVis(IsPathMissing), Mode=OneWay}"/>
+                                        <Grid Padding="12,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{x:Bind Name, Mode=OneWay}"
+                                                       VerticalAlignment="Center"/>
+                                            <FontIcon Grid.Column="1"
+                                                      Glyph="&#xE7BA;"
+                                                      FontSize="12"
+                                                      Foreground="{StaticResource BrushError}"
+                                                      Margin="4,0,0,0"
+                                                      VerticalAlignment="Center"
+                                                      Visibility="{x:Bind cnv:XamlConvert.ToVis(IsPathMissing), Mode=OneWay}"/>
+                                        </Grid>
+
+                                        <!-- Active-workspace marker: green underline beneath the name,
+                                             inset so its ends sit within the pill's rounded corners. -->
+                                        <Rectangle Height="2"
+                                                   Fill="#00FF41"
+                                                   Margin="6,0,6,0"
+                                                   VerticalAlignment="Bottom"
+                                                   HorizontalAlignment="Stretch"
+                                                   IsHitTestVisible="False"
+                                                   Visibility="{x:Bind cnv:XamlConvert.ToVis(IsSelected), Mode=OneWay}"/>
+
                                         <FlyoutBase.AttachedFlyout>
                                             <MenuFlyout>
                                                 <MenuFlyoutItem Text="Rename" Click="RenameWorkspace_Click">
@@ -171,8 +194,12 @@
                             </ListView.ItemTemplate>
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
-                                    <Setter Property="Padding" Value="12,0,12,0"/>
+                                    <Setter Property="Padding" Value="0"/>
                                     <Setter Property="Margin" Value="0,0,4,0"/>
+                                    <Setter Property="MinHeight" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                             </ListView.ItemContainerStyle>
                         </ListView>
@@ -183,52 +210,45 @@
                                   x:Name="ShowHiddenToggle"
                                   VerticalAlignment="Center"
                                   Margin="4,0,0,0"
+                                  MinHeight="0" MinWidth="0" Padding="8,3"
                                   IsChecked="{x:Bind ViewModel.ShowHidden, Mode=TwoWay}"
                                   ToolTipService.ToolTip="Show hidden workspaces">
-                        <FontIcon Glyph="&#xE890;" FontSize="12"/>
+                        <FontIcon Glyph="&#xE890;" FontSize="14"/>
                     </ToggleButton>
                 </Grid>
             </NavigationView.PaneCustomContent>
 
             <NavigationView.PaneFooter>
                 <Grid VerticalAlignment="Center">
+                    <Grid.Resources>
+                        <!-- Compact icon-only footer buttons: shed the default 32px MinHeight
+                             and chunky padding so they sit tight in the trimmed strip. -->
+                        <Style x:Key="StripFooterButtonStyle" TargetType="Button"
+                               BasedOn="{StaticResource DateTimePickerFlyoutButtonStyle}">
+                            <Setter Property="MinHeight" Value="0"/>
+                            <Setter Property="MinWidth" Value="0"/>
+                            <Setter Property="Padding" Value="8,3"/>
+                        </Style>
+                    </Grid.Resources>
                     <StackPanel Orientation="Horizontal" Spacing="4" Margin="4,0,8,0">
                         <!-- Life button -->
                         <Button x:Name="LifeButton"
-                                Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                Style="{StaticResource StripFooterButtonStyle}"
                                 Click="LifeButton_Click"
                                 ToolTipService.ToolTip="Life">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE00B;" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="Life"
-                                           FontSize="11"
-                                           VerticalAlignment="Center"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            </StackPanel>
+                            <FontIcon Glyph="&#xE00B;" FontSize="14" VerticalAlignment="Center"/>
                         </Button>
                         <!-- Scripts button -->
-                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                        <Button Style="{StaticResource StripFooterButtonStyle}"
                                 Click="ScriptsButton_Click"
                                 ToolTipService.ToolTip="Scripts">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE756;" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="Scripts"
-                                           FontSize="11"
-                                           VerticalAlignment="Center"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            </StackPanel>
+                            <FontIcon Glyph="&#xE756;" FontSize="14" VerticalAlignment="Center"/>
                         </Button>
                         <!-- Bishop tools button -->
-                        <Button Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                        <Button Style="{StaticResource StripFooterButtonStyle}"
                                 Click="SettingsButton_Click"
                                 ToolTipService.ToolTip="Bishop tools">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE713;" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="Bishop tools"
-                                           FontSize="11"
-                                           VerticalAlignment="Center"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            </StackPanel>
+                            <FontIcon Glyph="&#xE713;" FontSize="14" VerticalAlignment="Center"/>
                         </Button>
                     </StackPanel>
                     <TeachingTip x:Name="LifeLaunchErrorTip"
