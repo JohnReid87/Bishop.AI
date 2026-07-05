@@ -11,6 +11,7 @@ using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.ReorderWorkspaces;
 using Bishop.App.Workspaces.PurgeWorkspace;
 using Bishop.App.Workspaces.RemoveWorkspace;
+using Bishop.App.Workspaces.SetWorkspaceHidden;
 using Bishop.App.Workspaces.UpdateWorkspace;
 using Bishop.Core;
 using Bishop.Data;
@@ -558,6 +559,81 @@ public sealed class WorkspaceHandlerTests : IClassFixture<DbFixture>
         var handler = new ListWorkspacesQueryHandler(_factory);
 
         var result = await handler.Handle(new ListWorkspacesQuery(IncludeRemoved: true), default);
+
+        result.Should().Contain(w => w.Id == created.Id);
+    }
+
+    [Fact]
+    public async Task SetWorkspaceHidden_Hide_SetsIsHiddenAndHiddenAt()
+    {
+        var name = U("ToHide");
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        var handler = new SetWorkspaceHiddenCommandHandler(_factory, TimeProvider.System);
+
+        await handler.Handle(new SetWorkspaceHiddenCommand(created.Id, true), default);
+
+        var ws = await _db.Workspaces.FindAsync(created.Id);
+        ws!.IsHidden.Should().BeTrue();
+        ws.HiddenAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task SetWorkspaceHidden_Unhide_ClearsIsHiddenAndHiddenAt()
+    {
+        var name = U("ToUnhide");
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        var handler = new SetWorkspaceHiddenCommandHandler(_factory, TimeProvider.System);
+        await handler.Handle(new SetWorkspaceHiddenCommand(created.Id, true), default);
+        _db.ChangeTracker.Clear();
+
+        await handler.Handle(new SetWorkspaceHiddenCommand(created.Id, false), default);
+
+        var ws = await _db.Workspaces.FindAsync(created.Id);
+        ws!.IsHidden.Should().BeFalse();
+        ws.HiddenAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetWorkspaceHidden_WorkspaceNotFound_Throws()
+    {
+        var handler = new SetWorkspaceHiddenCommandHandler(_factory, TimeProvider.System);
+
+        var act = () => handler.Handle(new SetWorkspaceHiddenCommand(Guid.NewGuid(), true), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    [Fact]
+    public async Task ListWorkspaces_ExcludesHiddenWorkspaces()
+    {
+        var name = U("Hidden");
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        await new SetWorkspaceHiddenCommandHandler(_factory, TimeProvider.System)
+            .Handle(new SetWorkspaceHiddenCommand(created.Id, true), default);
+        _db.ChangeTracker.Clear();
+
+        var result = await new ListWorkspacesQueryHandler(_factory)
+            .Handle(new ListWorkspacesQuery(), default);
+
+        result.Should().NotContain(w => w.Id == created.Id);
+    }
+
+    [Fact]
+    public async Task ListWorkspaces_IncludeHidden_IncludesHiddenWorkspace()
+    {
+        var name = U("HiddenIncl");
+        var created = await new CreateWorkspaceCommandHandler(_factory, TestBootstrappers.NoOp)
+            .Handle(new CreateWorkspaceCommand(name, $@"C:\{name}"), default);
+        await new SetWorkspaceHiddenCommandHandler(_factory, TimeProvider.System)
+            .Handle(new SetWorkspaceHiddenCommand(created.Id, true), default);
+        _db.ChangeTracker.Clear();
+
+        var result = await new ListWorkspacesQueryHandler(_factory)
+            .Handle(new ListWorkspacesQuery(IncludeHidden: true), default);
 
         result.Should().Contain(w => w.Id == created.Id);
     }

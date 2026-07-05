@@ -46,8 +46,8 @@ public sealed class DbFixture : IDisposable
         var wsId = Guid.NewGuid();
         using var cmd = Connection.CreateCommand();
         var now = DateTimeOffset.UtcNow.ToString("O");
-        cmd.CommandText = @"INSERT INTO Workspaces (Id, Name, Path, Position, NextCardNumber, IsRemoved, CreatedAt, UpdatedAt)
-                            VALUES (@id, @name, @path, 0, 1, 0, @now, @now)";
+        cmd.CommandText = @"INSERT INTO Workspaces (Id, Name, Path, Position, NextCardNumber, IsRemoved, IsHidden, CreatedAt, UpdatedAt)
+                            VALUES (@id, @name, @path, 0, 1, 0, 0, @now, @now)";
         cmd.Parameters.AddWithValue("@id", wsId.ToString());
         cmd.Parameters.AddWithValue("@name", "test-ws-" + wsId.ToString("N")[..8]);
         cmd.Parameters.AddWithValue("@path", @"C:\test-" + wsId.ToString("N")[..8]);

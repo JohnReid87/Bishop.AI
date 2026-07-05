@@ -15,4 +15,8 @@ public static class XamlConvert
 
     public static Visibility ToVisInverse(bool value) =>
         value ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>Dims hidden workspace chips shown inline via the "Show hidden" toggle.</summary>
+    public static double ToDimOpacity(bool isHidden) =>
+        isHidden ? 0.45 : 1.0;
 }

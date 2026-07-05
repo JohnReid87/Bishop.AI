@@ -167,8 +167,8 @@ public sealed partial class MainWindow : Window
         for (var i = 0; i < listView.Items.Count; i++)
         {
             if (listView.ContainerFromIndex(i) is not ListViewItem item) continue;
-            var itemTop = item.TransformToVisual(listView).TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
-            if (dropPoint.Y < itemTop + item.ActualHeight / 2)
+            var itemLeft = item.TransformToVisual(listView).TransformPoint(new Windows.Foundation.Point(0, 0)).X;
+            if (dropPoint.X < itemLeft + item.ActualWidth / 2)
                 return i;
         }
         return listView.Items.Count;
@@ -238,6 +238,20 @@ public sealed partial class MainWindow : Window
             var folder = await picker.PickSingleFolderAsync();
             if (folder is not null)
                 await ViewModel.RepathWorkspaceAsync(item, folder.Path);
+        });
+
+    private async void HideWorkspace_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if ((sender as FrameworkElement)?.DataContext is WorkspaceItemViewModel item)
+                await ViewModel.HideWorkspaceAsync(item);
+        });
+
+    private async void UnhideWorkspace_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if ((sender as FrameworkElement)?.DataContext is WorkspaceItemViewModel item)
+                await ViewModel.UnhideWorkspaceAsync(item);
         });
 
     private async void DeleteWorkspace_Click(object sender, RoutedEventArgs e)
@@ -315,7 +329,7 @@ public sealed partial class MainWindow : Window
     private void ShowLifeLaunchError(string subtitle)
     {
         LifeLaunchErrorTip.Subtitle = subtitle;
-        LifeLaunchErrorTip.Target = ViewModel.IsPaneOpen ? LifeButtonExpanded : LifeButtonCollapsed;
+        LifeLaunchErrorTip.Target = LifeButton;
         LifeLaunchErrorTip.IsOpen = true;
     }
 

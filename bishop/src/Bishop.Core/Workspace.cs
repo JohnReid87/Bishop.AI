@@ -9,6 +9,8 @@ public sealed class Workspace : IAuditable
     public int NextCardNumber { get; set; } = 1;
     public bool IsRemoved { get; set; }
     public DateTimeOffset? RemovedAt { get; set; }
+    public bool IsHidden { get; set; }
+    public DateTimeOffset? HiddenAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
@@ -23,6 +25,8 @@ public sealed class Workspace : IAuditable
         NextCardNumber = NextCardNumber,
         IsRemoved = IsRemoved,
         RemovedAt = RemovedAt,
+        IsHidden = IsHidden,
+        HiddenAt = HiddenAt,
         CreatedAt = CreatedAt,
         UpdatedAt = UpdatedAt,
         Cards = Cards,

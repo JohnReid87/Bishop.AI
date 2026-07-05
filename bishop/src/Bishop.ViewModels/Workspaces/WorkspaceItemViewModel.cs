@@ -22,5 +22,8 @@ public sealed partial class WorkspaceItemViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsHidden { get; set; }
+
     public string FirstLetter => Name.Length > 0 ? Name[0..1].ToUpperInvariant() : "?";
 }

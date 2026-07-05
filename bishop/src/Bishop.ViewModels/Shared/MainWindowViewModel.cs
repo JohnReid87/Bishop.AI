@@ -7,6 +7,7 @@ using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.PurgeWorkspace;
 using Bishop.App.Workspaces.RemoveWorkspace;
 using Bishop.App.Workspaces.ReorderWorkspaces;
+using Bishop.App.Workspaces.SetWorkspaceHidden;
 using Bishop.App.Workspaces.UpdateWorkspace;
 using Bishop.ViewModels.Errors;
 using Bishop.ViewModels.Workspaces;
@@ -39,7 +40,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public partial WorkspaceItemViewModel? SelectedWorkspace { get; set; }
 
     [ObservableProperty]
-    public partial bool IsPaneOpen { get; set; } = true;
+    public partial bool ShowHidden { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsContentEmpty))]
@@ -77,17 +78,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _notifier.WorkspacesChanged += OnWorkspacesChanged;
     }
 
-    private void OnWorkspacesChanged()
+    private void OnWorkspacesChanged() =>
+        _dispatcher.TryEnqueue(ReloadPreservingSelectionAsync);
+
+    private async Task ReloadPreservingSelectionAsync()
     {
-        _dispatcher.TryEnqueue(async () =>
-        {
-            var currentId = SelectedWorkspace?.Id;
-            await ReloadWorkspacesListAsync();
-            if (currentId is null)
-                return;
-            SelectedWorkspace = Workspaces.FirstOrDefault(w => w.Id == currentId)
-                ?? Workspaces.FirstOrDefault();
-        });
+        var currentId = SelectedWorkspace?.Id;
+        await ReloadWorkspacesListAsync();
+        if (currentId is null)
+            return;
+        SelectedWorkspace = Workspaces.FirstOrDefault(w => w.Id == currentId)
+            ?? Workspaces.FirstOrDefault();
     }
 
     [RelayCommand]
@@ -102,9 +103,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             SelectedWorkspace = Workspaces.FirstOrDefault(w => w.Id == id);
     }
 
+    partial void OnShowHiddenChanged(bool value) =>
+        _dispatcher.TryEnqueue(ReloadPreservingSelectionAsync);
+
     private async Task ReloadWorkspacesListAsync()
     {
-        var workspaces = await _mediator.Send(new ListWorkspacesQuery());
+        var workspaces = await _mediator.Send(new ListWorkspacesQuery(IncludeHidden: ShowHidden));
         Workspaces.Clear();
         foreach (var w in workspaces)
             Workspaces.Add(ToViewModel(w));
@@ -129,8 +133,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         foreach (var w in Workspaces)
             w.IsSelected = w == selected;
     }
-
-    partial void OnIsPaneOpenChanged(bool value) => _dispatcher.TryEnqueue(async () => await SaveNavPrefsAsync());
 
     [RelayCommand]
     public async Task AddWorkspaceAsync(AddWorkspaceDialogViewModel dialogVm)
@@ -176,6 +178,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
         item.Path = workspace.Path;
     }
 
+    [RelayCommand]
+    public async Task HideWorkspaceAsync(WorkspaceItemViewModel item)
+    {
+        await _mediator.Send(new SetWorkspaceHiddenCommand(item.Id, true));
+        item.IsHidden = true;
+        await ReloadPreservingSelectionAsync();
+    }
+
+    [RelayCommand]
+    public async Task UnhideWorkspaceAsync(WorkspaceItemViewModel item)
+    {
+        await _mediator.Send(new SetWorkspaceHiddenCommand(item.Id, false));
+        item.IsHidden = false;
+        await ReloadPreservingSelectionAsync();
+    }
+
     public async Task PersistReorderAsync(IEnumerable<WorkspaceItemViewModel> orderedItems)
     {
         var ids = orderedItems.Select(w => w.Id).ToList();
@@ -187,7 +205,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     private static WorkspaceItemViewModel ToViewModel(Bishop.Core.Workspace w) =>
-        new() { Id = w.Id, Name = w.Name, Path = w.Path, Position = w.Position };
+        new() { Id = w.Id, Name = w.Name, Path = w.Path, Position = w.Position, IsHidden = w.IsHidden };
 
     private async Task<NavPrefs?> LoadNavPrefsAsync()
     {
@@ -195,10 +213,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             var json = await File.ReadAllTextAsync(NavPrefsFilePath);
-            var prefs = JsonSerializer.Deserialize<NavPrefs>(json);
-            if (prefs is not null)
-                IsPaneOpen = prefs.IsPaneOpen;
-            return prefs;
+            return JsonSerializer.Deserialize<NavPrefs>(json);
         }
         catch (Exception ex)
         {
@@ -212,12 +227,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(NavPrefsFilePath)!);
-            await File.WriteAllTextAsync(NavPrefsFilePath, JsonSerializer.Serialize(new NavPrefs(IsPaneOpen, SelectedWorkspace?.Id)));
+            await File.WriteAllTextAsync(NavPrefsFilePath, JsonSerializer.Serialize(new NavPrefs(SelectedWorkspace?.Id)));
         }
         catch (Exception ex) { Debug.WriteLine($"[Bishop] SaveNavPrefsAsync: {ex.Message}"); }
     }
 
     private string NavPrefsFilePath => _navPrefsFilePath;
 
-    private sealed record NavPrefs(bool IsPaneOpen, Guid? LastSelectedWorkspaceId = null);
+    private sealed record NavPrefs(Guid? LastSelectedWorkspaceId = null);
 }

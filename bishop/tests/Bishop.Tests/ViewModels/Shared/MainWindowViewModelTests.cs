@@ -5,6 +5,7 @@ using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
 using Bishop.App.Workspaces.ReorderWorkspaces;
+using Bishop.App.Workspaces.SetWorkspaceHidden;
 using Bishop.App.Workspaces.UpdateWorkspace;
 using Bishop.Core;
 using Bishop.ViewModels.Batches;
@@ -169,14 +170,13 @@ public class MainWindowViewModelTests
         try
         {
             await File.WriteAllTextAsync(tempPath,
-                $"{{\"IsPaneOpen\":false,\"LastSelectedWorkspaceId\":\"{targetId}\"}}");
+                $"{{\"LastSelectedWorkspaceId\":\"{targetId}\"}}");
 
             var vm = NewVm(mediator: mediator, navPrefsFilePath: tempPath);
             await vm.LoadAsync();
 
             vm.SelectedWorkspace.Should().NotBeNull();
             vm.SelectedWorkspace!.Id.Should().Be(targetId);
-            vm.IsPaneOpen.Should().BeFalse();
         }
         finally
         {
@@ -730,16 +730,21 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task OnIsPaneOpenChanged_PersistsNavPrefsToFile()
+    public async Task OnSelectedWorkspaceChanged_PersistsNavPrefsToFile()
     {
+        var id = Guid.NewGuid();
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
         try
         {
-            var vm = NewVm(dispatcher: new SynchronousDispatcher(), navPrefsFilePath: tempPath);
-            vm.IsPaneOpen = false;
+            var vm = NewVm(dispatcher: new SynchronousDispatcher(), safeAsync: new PassThroughSafeAsync(), navPrefsFilePath: tempPath);
+            var item = new WorkspaceItemViewModel { Id = id, Name = "ws" };
+            vm.Workspaces.Add(item);
 
+            vm.SelectedWorkspace = item;
+
+            await WaitForFileWrittenAsync(tempPath);
             var json = await File.ReadAllTextAsync(tempPath);
-            json.Should().Contain("\"IsPaneOpen\":false");
+            json.Should().Contain(id.ToString());
         }
         finally
         {
@@ -748,17 +753,19 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task SaveNavPrefsAsync_SwallowsIOException_WhenFileIsLocked()
+    public void SaveNavPrefsAsync_SwallowsIOException_WhenFileIsLocked()
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
         var lockStream = new FileStream(tempPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
         try
         {
-            var vm = NewVm(dispatcher: new SynchronousDispatcher(), navPrefsFilePath: tempPath);
+            var vm = NewVm(dispatcher: new SynchronousDispatcher(), safeAsync: new PassThroughSafeAsync(), navPrefsFilePath: tempPath);
+            var item = new WorkspaceItemViewModel { Id = Guid.NewGuid(), Name = "ws" };
+            vm.Workspaces.Add(item);
 
-            vm.IsPaneOpen = false;
+            vm.SelectedWorkspace = item;
 
-            vm.IsPaneOpen.Should().BeFalse();
+            vm.SelectedWorkspace.Should().BeSameAs(item);
         }
         finally
         {
@@ -793,15 +800,66 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public void IsPaneOpen_RaisesPropertyChanged_WhenToggled()
+    public void ShowHidden_RaisesPropertyChanged_WhenToggled()
     {
-        var vm = NewVm();
+        var vm = NewVm(dispatcher: new SynchronousDispatcher());
         var raised = new List<string?>();
         vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
 
-        vm.IsPaneOpen = false;
+        vm.ShowHidden = true;
 
-        raised.Should().Contain(nameof(vm.IsPaneOpen));
+        raised.Should().Contain(nameof(vm.ShowHidden));
+    }
+
+    [Fact]
+    public async Task ShowHidden_ReloadsWorkspacesWithIncludeHidden_WhenToggledOn()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>());
+        var vm = NewVm(mediator: mediator, dispatcher: new SynchronousDispatcher());
+
+        vm.ShowHidden = true;
+
+        await mediator.Received().Send(
+            Arg.Is<ListWorkspacesQuery>(q => q.IncludeHidden),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HideWorkspaceAsync_SendsSetWorkspaceHiddenCommand_WithHiddenTrue()
+    {
+        var id = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>());
+        var vm = NewVm(mediator: mediator, dispatcher: new SynchronousDispatcher());
+        var item = new WorkspaceItemViewModel { Id = id, Name = "ws" };
+
+        await vm.HideWorkspaceAsync(item);
+
+        await mediator.Received(1).Send(
+            Arg.Is<SetWorkspaceHiddenCommand>(c => c.Id == id && c.Hidden),
+            Arg.Any<CancellationToken>());
+        item.IsHidden.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UnhideWorkspaceAsync_SendsSetWorkspaceHiddenCommand_WithHiddenFalse()
+    {
+        var id = Guid.NewGuid();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>());
+        var vm = NewVm(mediator: mediator, dispatcher: new SynchronousDispatcher());
+        var item = new WorkspaceItemViewModel { Id = id, Name = "ws", IsHidden = true };
+
+        await vm.UnhideWorkspaceAsync(item);
+
+        await mediator.Received(1).Send(
+            Arg.Is<SetWorkspaceHiddenCommand>(c => c.Id == id && !c.Hidden),
+            Arg.Any<CancellationToken>());
+        item.IsHidden.Should().BeFalse();
     }
 
     // Polls for the file to appear and have content, up to timeoutMs.
@@ -821,6 +879,11 @@ public class MainWindowViewModelTests
     {
         public void TryEnqueue(Action work) => work();
         public void TryEnqueue(Func<Task> work) => work().GetAwaiter().GetResult();
+    }
+
+    private sealed class PassThroughSafeAsync : ISafeAsyncRunner
+    {
+        public Task RunAsync(Func<Task> action) => action();
     }
 
     private static MainWindowViewModel NewVm(

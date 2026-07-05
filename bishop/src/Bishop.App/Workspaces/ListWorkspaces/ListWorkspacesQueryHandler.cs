@@ -17,6 +17,8 @@ internal sealed class ListWorkspacesQueryHandler : IRequestHandler<ListWorkspace
         var query = db.Workspaces.AsNoTracking();
         if (!request.IncludeRemoved)
             query = query.Where(w => !w.IsRemoved);
+        if (!request.IncludeHidden)
+            query = query.Where(w => !w.IsHidden);
         return await query
             .OrderBy(w => w.Position)
             .ToListAsync(cancellationToken);
