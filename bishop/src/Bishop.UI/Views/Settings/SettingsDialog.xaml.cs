@@ -22,7 +22,13 @@ public sealed partial class SettingsDialog : ContentDialog
         ViewModel = vm;
         InitializeComponent();
         Animations.EntranceAnimation.ApplyDialogEntrance(Content as FrameworkElement);
-        Loaded += (_, _) => _safeAsync.RunAsync(LoadSkillsAsync);
+        Loaded += (_, _) => _safeAsync.RunAsync(InitializeAsync);
+    }
+
+    private async Task InitializeAsync()
+    {
+        await ViewModel.LoadGeneralAsync();
+        await LoadSkillsAsync();
     }
 
     private async Task LoadSkillsAsync()

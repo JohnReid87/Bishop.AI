@@ -1,6 +1,7 @@
 using Bishop.App.Batches.ReconcileOrphanedBatches;
 using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
+using Bishop.App.Services.Settings;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
@@ -10,6 +11,7 @@ using Bishop.App.Workspaces.ReorderWorkspaces;
 using Bishop.App.Workspaces.SetWorkspaceHidden;
 using Bishop.App.Workspaces.UpdateWorkspace;
 using Bishop.ViewModels.Errors;
+using Bishop.ViewModels.Settings;
 using Bishop.ViewModels.Workspaces;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -27,6 +29,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IUiDispatcher _dispatcher;
     private readonly IErrorBus _errorBus;
     private readonly ISafeAsyncRunner _safeAsync;
+    private readonly IAppSettings _appSettings;
+
+    // Guards the initial load: setting ShowHidden from the persisted value must not
+    // re-enter the reload path (LoadAsync already reloads the list right after).
+    private bool _suppressShowHiddenReload;
 
     public ICatModeService CatMode { get; }
 
@@ -54,19 +61,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private readonly string _navPrefsFilePath;
 
-    public MainWindowViewModel(ISender mediator, ICatModeService catMode, WorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, IErrorBus errorBus, ISafeAsyncRunner safeAsync)
-        : this(mediator, catMode, notifier, dispatcher, errorBus, safeAsync, Path.Combine(
+    public MainWindowViewModel(ISender mediator, ICatModeService catMode, WorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, IErrorBus errorBus, ISafeAsyncRunner safeAsync, IAppSettings appSettings)
+        : this(mediator, catMode, notifier, dispatcher, errorBus, safeAsync, appSettings, Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Bishop.AI", "nav-prefs.json"))
     { }
 
-    internal MainWindowViewModel(ISender mediator, ICatModeService catMode, WorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, IErrorBus errorBus, ISafeAsyncRunner safeAsync, string navPrefsFilePath)
+    internal MainWindowViewModel(ISender mediator, ICatModeService catMode, WorkspaceChangeNotifier notifier, IUiDispatcher dispatcher, IErrorBus errorBus, ISafeAsyncRunner safeAsync, IAppSettings appSettings, string navPrefsFilePath)
     {
         _mediator = mediator;
         _notifier = notifier;
         _dispatcher = dispatcher;
         _errorBus = errorBus;
         _safeAsync = safeAsync;
+        _appSettings = appSettings;
         CatMode = catMode;
         _navPrefsFilePath = navPrefsFilePath;
         Workspaces.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsWorkspaceListEmpty));
@@ -98,13 +106,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         await _mediator.Send(new ReconcileOrphanedBatchesCommand());
         var prefs = await LoadNavPrefsAsync();
+        await LoadShowHiddenAsync();
         await ReloadWorkspacesListAsync();
         if (prefs?.LastSelectedWorkspaceId is { } id)
             SelectedWorkspace = Workspaces.FirstOrDefault(w => w.Id == id);
     }
 
-    partial void OnShowHiddenChanged(bool value) =>
+    partial void OnShowHiddenChanged(bool value)
+    {
+        if (_suppressShowHiddenReload)
+            return;
         _dispatcher.TryEnqueue(ReloadPreservingSelectionAsync);
+    }
+
+    /// <summary>
+    /// Re-reads the persisted "show hidden workspaces" setting and applies it. Called
+    /// when the Settings dialog closes so a toggle there updates the strip without a
+    /// restart; changing <see cref="ShowHidden"/> drives the existing filter/reload path.
+    /// </summary>
+    public async Task RefreshShowHiddenAsync() =>
+        ShowHidden = await ReadShowHiddenAsync();
+
+    private async Task LoadShowHiddenAsync()
+    {
+        _suppressShowHiddenReload = true;
+        ShowHidden = await ReadShowHiddenAsync();
+        _suppressShowHiddenReload = false;
+    }
+
+    private async Task<bool> ReadShowHiddenAsync()
+    {
+        var raw = await _appSettings.GetAsync(AppSettingsKeys.ShowHiddenWorkspaces);
+        return bool.TryParse(raw, out var value) && value;
+    }
 
     private async Task ReloadWorkspacesListAsync()
     {

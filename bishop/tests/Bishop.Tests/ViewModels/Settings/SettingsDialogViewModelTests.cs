@@ -1,3 +1,4 @@
+using Bishop.App.Services.Settings;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
@@ -7,12 +8,19 @@ using Bishop.ViewModels.Shared;
 using Bishop.ViewModels.Skills;
 using Bishop.ViewModels.Workspaces;
 using FluentAssertions;
+using NSubstitute;
 
 namespace Bishop.Tests.ViewModels.Settings;
 
 public class SettingsDialogViewModelTests
 {
-    private static SettingsDialogViewModel Make() => new(null!);
+    private static SettingsDialogViewModel Make(IAppSettings? appSettings = null) =>
+        new(null!, appSettings ?? Substitute.For<IAppSettings>(), new PassThroughSafeAsync());
+
+    private sealed class PassThroughSafeAsync : ISafeAsyncRunner
+    {
+        public Task RunAsync(Func<Task> action) => action();
+    }
 
     [Fact]
     public void AppVersion_IsVersionStringOrDash()
@@ -65,5 +73,57 @@ public class SettingsDialogViewModelTests
         var vm = Make();
 
         vm.BuildConfiguration.Should().BeOneOf("Debug", "Release");
+    }
+
+    [Fact]
+    public async Task LoadGeneralAsync_SetsShowHiddenWorkspaces_FromPersistedValue()
+    {
+        var appSettings = Substitute.For<IAppSettings>();
+        appSettings.GetAsync("show_hidden_workspaces", Arg.Any<CancellationToken>())
+            .Returns("True");
+        var vm = Make(appSettings);
+
+        await vm.LoadGeneralAsync();
+
+        vm.ShowHiddenWorkspaces.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LoadGeneralAsync_DefaultsFalse_WhenSettingUnset()
+    {
+        var appSettings = Substitute.For<IAppSettings>();
+        appSettings.GetAsync("show_hidden_workspaces", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        var vm = Make(appSettings);
+
+        await vm.LoadGeneralAsync();
+
+        vm.ShowHiddenWorkspaces.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task LoadGeneralAsync_DoesNotPersist_WhenApplyingLoadedValue()
+    {
+        var appSettings = Substitute.For<IAppSettings>();
+        appSettings.GetAsync("show_hidden_workspaces", Arg.Any<CancellationToken>())
+            .Returns("True");
+        var vm = Make(appSettings);
+
+        await vm.LoadGeneralAsync();
+
+        await appSettings.DidNotReceive().SetAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void ShowHiddenWorkspaces_Toggled_PersistsViaSetAsync()
+    {
+        var appSettings = Substitute.For<IAppSettings>();
+        var vm = Make(appSettings);
+
+        vm.ShowHiddenWorkspaces = true;
+
+        appSettings.Received(1).SetAsync(
+            "show_hidden_workspaces", "True", Arg.Any<CancellationToken>());
     }
 }

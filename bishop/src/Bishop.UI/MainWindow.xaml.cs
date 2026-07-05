@@ -345,6 +345,7 @@ public sealed partial class MainWindow : Window
         {
             var dialogService = App.Services.GetRequiredService<IDialogService>();
             await dialogService.ShowSettingsDialogAsync(Content.XamlRoot);
+            await ViewModel.RefreshShowHiddenAsync();
         });
 
     private bool _isSnapping;

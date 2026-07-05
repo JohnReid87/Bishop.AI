@@ -114,7 +114,7 @@
                                 </Grid>
                             </StackPanel>
                         </Border>
-                        <Border Padding="0,8,0,4">
+                        <Border BorderBrush="{StaticResource AppDividerBrush}" BorderThickness="0,0,0,1" Padding="0,8,0,8">
                             <StackPanel Spacing="2">
                                 <TextBlock Text="Build"
                                            Style="{StaticResource CaptionTextBlockStyle}"
@@ -122,6 +122,25 @@
                                 <TextBlock Text="{x:Bind ViewModel.BuildConfiguration}"
                                            FontFamily="Cascadia Mono, Consolas, Courier New"/>
                             </StackPanel>
+                        </Border>
+                        <Border Padding="0,8,0,4">
+                            <Grid VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="Show hidden workspaces"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"
+                                           VerticalAlignment="Center"/>
+                                <ToggleSwitch Grid.Column="1"
+                                              x:Name="ShowHiddenWorkspacesToggle"
+                                              MinWidth="0"
+                                              OnContent=""
+                                              OffContent=""
+                                              IsOn="{x:Bind ViewModel.ShowHiddenWorkspaces, Mode=TwoWay}"/>
+                            </Grid>
                         </Border>
             </StackPanel>
 

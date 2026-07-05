@@ -204,17 +204,6 @@
                             </ListView.ItemContainerStyle>
                         </ListView>
                     </ScrollViewer>
-
-                    <!-- Show hidden toggle at the strip's right end -->
-                    <ToggleButton Grid.Column="2"
-                                  x:Name="ShowHiddenToggle"
-                                  VerticalAlignment="Center"
-                                  Margin="4,0,0,0"
-                                  MinHeight="0" MinWidth="0" Padding="8,3"
-                                  IsChecked="{x:Bind ViewModel.ShowHidden, Mode=TwoWay}"
-                                  ToolTipService.ToolTip="Show hidden workspaces">
-                        <FontIcon Glyph="&#xE890;" FontSize="14"/>
-                    </ToggleButton>
                 </Grid>
             </NavigationView.PaneCustomContent>
 

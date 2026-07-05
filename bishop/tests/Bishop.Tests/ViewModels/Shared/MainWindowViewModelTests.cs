@@ -1,6 +1,7 @@
 using Bishop.App.Batches.ReconcileOrphanedBatches;
 using Bishop.App.Services;
 using Bishop.App.Services.CatMode;
+using Bishop.App.Services.Settings;
 using Bishop.App.Workspaces.CreateWorkspace;
 using Bishop.App.Workspaces.InitWorkspace;
 using Bishop.App.Workspaces.ListWorkspaces;
@@ -827,6 +828,60 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_AppliesPersistedShowHidden_AndListsWithIncludeHidden()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>());
+        var appSettings = Substitute.For<IAppSettings>();
+        appSettings.GetAsync("show_hidden_workspaces", Arg.Any<CancellationToken>())
+            .Returns("True");
+        var vm = NewVm(mediator: mediator, appSettings: appSettings, dispatcher: new SynchronousDispatcher());
+
+        await vm.LoadAsync();
+
+        vm.ShowHidden.Should().BeTrue();
+        await mediator.Received().Send(
+            Arg.Is<ListWorkspacesQuery>(q => q.IncludeHidden),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LoadAsync_DefaultsShowHiddenFalse_WhenSettingUnset()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>());
+        var appSettings = Substitute.For<IAppSettings>();
+        appSettings.GetAsync("show_hidden_workspaces", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        var vm = NewVm(mediator: mediator, appSettings: appSettings, dispatcher: new SynchronousDispatcher());
+
+        await vm.LoadAsync();
+
+        vm.ShowHidden.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RefreshShowHiddenAsync_ReReadsSetting_AndReloadsWithIncludeHidden()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<ListWorkspacesQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Workspace>());
+        var appSettings = Substitute.For<IAppSettings>();
+        appSettings.GetAsync("show_hidden_workspaces", Arg.Any<CancellationToken>())
+            .Returns("True");
+        var vm = NewVm(mediator: mediator, appSettings: appSettings, dispatcher: new SynchronousDispatcher());
+
+        await vm.RefreshShowHiddenAsync();
+
+        vm.ShowHidden.Should().BeTrue();
+        await mediator.Received().Send(
+            Arg.Is<ListWorkspacesQuery>(q => q.IncludeHidden),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task HideWorkspaceAsync_SendsSetWorkspaceHiddenCommand_WithHiddenTrue()
     {
         var id = Guid.NewGuid();
@@ -893,6 +948,7 @@ public class MainWindowViewModelTests
         IUiDispatcher? dispatcher = null,
         IErrorBus? errorBus = null,
         ISafeAsyncRunner? safeAsync = null,
+        IAppSettings? appSettings = null,
         string? navPrefsFilePath = null) =>
         new(
             mediator ?? Substitute.For<IMediator>(),
@@ -901,5 +957,6 @@ public class MainWindowViewModelTests
             dispatcher ?? Substitute.For<IUiDispatcher>(),
             errorBus ?? Substitute.For<IErrorBus>(),
             safeAsync ?? Substitute.For<ISafeAsyncRunner>(),
+            appSettings ?? Substitute.For<IAppSettings>(),
             navPrefsFilePath ?? Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json"));
 }
