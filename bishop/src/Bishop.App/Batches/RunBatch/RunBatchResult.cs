@@ -5,6 +5,7 @@ public enum RunBatchStopReason
     Finished,
     CardFailure,
     HandoffMissing,
+    HandoffMalformed,
     DirtyWorktree,
     NotAGitRepo,
     GitNotFound,

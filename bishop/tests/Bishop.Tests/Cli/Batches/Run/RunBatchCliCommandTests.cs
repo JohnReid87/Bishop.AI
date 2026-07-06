@@ -154,7 +154,35 @@ public sealed class RunBatchCliCommandTests
             Environment.ExitCode = saved;
         }
 
-        errorOutput.ToString().Should().Contain("Batch stopped: card exited 0 but wrote no valid handoff.json; resolve and --resume or abandon.");
+        errorOutput.ToString().Should().Contain("Batch stopped: card exited 0 but wrote no handoff.json; resolve and --resume or abandon.");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_HandoffMalformed_SetsExitCodeOneAndWritesStderr()
+    {
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<RunBatchCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RunBatchResult(0, null, RunBatchStopReason.HandoffMalformed));
+
+        var cmd = new RunBatchCliCommand(mediator, TimeProvider.System);
+
+        var errorOutput = new StringWriter();
+        var originalErr = Console.Error;
+        var saved = Environment.ExitCode;
+        Console.SetError(errorOutput);
+        Environment.ExitCode = 0;
+        try
+        {
+            await cmd.InvokeAsync(["Sprint 1"]);
+            Environment.ExitCode.Should().Be(1);
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+            Environment.ExitCode = saved;
+        }
+
+        errorOutput.ToString().Should().Contain("handoff.invalid.json");
     }
 
 }

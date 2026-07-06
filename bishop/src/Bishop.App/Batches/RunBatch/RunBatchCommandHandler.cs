@@ -153,13 +153,16 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
 
                 if (runResult.ExitCode == 0)
                 {
-                    var handoff = await ReadAndDeleteHandoffAsync(batch.WorktreePath, cancellationToken);
+                    var handoff = await ReadHandoffAsync(batch.WorktreePath, cancellationToken);
 
-                    if (handoff is null)
-                        return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.HandoffMissing, cancellationToken);
+                    if (handoff.Outcome == HandoffOutcome.Missing)
+                        return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.HandoffMissing, runCostUsd, cancellationToken);
+                    if (handoff.Outcome == HandoffOutcome.Malformed)
+                        return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.HandoffMalformed, runCostUsd, cancellationToken);
 
+                    var payload = handoff.Payload!;
                     var prefix = TagToPrefix(card.TagName);
-                    var message = ComposeCommitMessage(prefix, card.Title, card.Number, handoff.CommitBodyBullets);
+                    var message = ComposeCommitMessage(prefix, card.Title, card.Number, payload.CommitBodyBullets);
 
                     string commitHash;
                     try
@@ -170,7 +173,7 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "Git stage/commit failed for card #{CardNumber} in batch {BatchName}", card.Number, batch.Name);
-                        return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.CardFailure, cancellationToken);
+                        return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.CardFailure, runCostUsd, cancellationToken);
                     }
 
                     var totals = runResult.Totals ?? new ClaudeRunTotals(0, 0);
@@ -185,14 +188,14 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
                             totals.CacheCreationTokens,
                             totals.CacheReadTokens,
                             totals.CostUsd,
-                            CombineNotes(handoff.Notes, costFinding)),
+                            CombineNotes(payload.Notes, costFinding)),
                         cancellationToken);
 
                     succeeded++;
                 }
                 else
                 {
-                    return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.CardFailure, cancellationToken);
+                    return await HandleCardFailureAsync(card, batch, succeeded, failedNumbers, RunBatchStopReason.CardFailure, runCostUsd, cancellationToken);
                 }
             }
 
@@ -211,11 +214,12 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
         int succeeded,
         List<int> failedNumbers,
         RunBatchStopReason stopReason,
+        decimal runCostUsd,
         CancellationToken cancellationToken)
     {
         await _git.ResetHardAsync(batch.WorktreePath, cancellationToken);
         await _git.CleanWorkingTreeAsync(batch.WorktreePath, cancellationToken);
-        await _sender.Send(new RecordCardFailureCommand(card.Id, batch.Id), cancellationToken);
+        await _sender.Send(new RecordCardFailureCommand(card.Id, batch.Id, runCostUsd), cancellationToken);
         failedNumbers.Add(card.Number);
         return new RunBatchResult(succeeded, ToNullableList(failedNumbers), stopReason);
     }
@@ -250,29 +254,52 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
         try { File.Delete(lockPath); } catch { }
     }
 
-    private async Task<HandoffPayload?> ReadAndDeleteHandoffAsync(string worktreePath, CancellationToken cancellationToken)
+    private async Task<HandoffReadResult> ReadHandoffAsync(string worktreePath, CancellationToken cancellationToken)
     {
         var path = Path.Combine(worktreePath, ".bishop", "handoff.json");
         if (!File.Exists(path))
-            return null;
+            return HandoffReadResult.Missing;
 
-        HandoffPayload? result = null;
         try
         {
             var json = await File.ReadAllTextAsync(path, cancellationToken);
-            result = JsonSerializer.Deserialize<HandoffPayload>(json);
+            var payload = JsonSerializer.Deserialize<HandoffPayload>(json);
+            if (payload is null)
+            {
+                PreserveMalformedHandoff(path, worktreePath);
+                return HandoffReadResult.Malformed;
+            }
+
+            // intentional: best-effort handoff-file cleanup after a clean read
+            try { File.Delete(path); } catch { }
+            return HandoffReadResult.Valid(payload);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to deserialise handoff.json in {WorktreePath}", worktreePath);
+            PreserveMalformedHandoff(path, worktreePath);
+            return HandoffReadResult.Malformed;
         }
-        finally
-        {
-            // intentional: best-effort handoff-file cleanup
-            try { File.Delete(path); } catch { }
-        }
+    }
 
-        return result;
+    private void PreserveMalformedHandoff(string handoffPath, string worktreePath)
+    {
+        var invalidPath = Path.Combine(worktreePath, ".bishop", "handoff.invalid.json");
+        // intentional: best-effort rename so a broken handoff survives for diagnosis instead of being lost
+        try { File.Move(handoffPath, invalidPath, overwrite: true); }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to preserve malformed handoff.json as handoff.invalid.json in {WorktreePath}", worktreePath);
+        }
+    }
+
+    private enum HandoffOutcome { Missing, Malformed, Valid }
+
+    private sealed record HandoffReadResult(HandoffOutcome Outcome, HandoffPayload? Payload)
+    {
+        public static readonly HandoffReadResult Missing = new(HandoffOutcome.Missing, null);
+        public static readonly HandoffReadResult Malformed = new(HandoffOutcome.Malformed, null);
+        public static HandoffReadResult Valid(HandoffPayload payload) => new(HandoffOutcome.Valid, payload);
     }
 
     private static string? CombineNotes(string? notes, string? costFinding)

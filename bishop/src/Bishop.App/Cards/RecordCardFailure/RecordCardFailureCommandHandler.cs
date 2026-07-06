@@ -24,6 +24,8 @@ internal sealed class RecordCardFailureCommandHandler : IRequestHandler<RecordCa
         var batch = await db.Batches.FirstOrDefaultAsync(b => b.Id == request.BatchId, cancellationToken)
             ?? throw new InvalidOperationException($"Batch {request.BatchId} not found.");
 
+        card.TotalCostUsd += request.CostUsd;
+
         var now = _timeProvider.GetUtcNow();
         card.LastAutoRunFailedAt = now;
         batch.StoppedAt = now;

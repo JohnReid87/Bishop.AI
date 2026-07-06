@@ -439,6 +439,24 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         saved.LastAutoRunFailedAt!.Value.Should().BeOnOrAfter(before);
     }
 
+    [Fact]
+    public async Task CardFailure_PersistsRunCost()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new ClaudeRunResult(7, new ClaudeRunTotals(0, 0, 0, 0, 0.15m), 0));
+
+        await CreateHandler(claude: claude)
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.TotalCostUsd.Should().Be(0.15m);
+    }
+
     // ── git stop conditions ────────────────────────────────────────────────────
 
     [Fact]
@@ -801,7 +819,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task ClaudeSucceeds_HandoffMalformed_ResetsAndStopsWithHandoffMissing()
+    public async Task ClaudeSucceeds_HandoffDeserialisesToNull_ResetsAndStopsWithHandoffMalformed()
     {
         var (workspace, lanes) = await CreateWorkspaceAsync();
         var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
@@ -819,7 +837,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
         var result = await CreateHandler(claude: claude)
             .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
-        result.StopReason.Should().Be(RunBatchStopReason.HandoffMissing);
+        result.StopReason.Should().Be(RunBatchStopReason.HandoffMalformed);
         result.FailedCardNumbers.Should().ContainSingle().Which.Should().Be(card.Number);
 
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
@@ -1013,7 +1031,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
     // ── handoff JSON parse failure ─────────────────────────────────────────────
 
     [Fact]
-    public async Task HandoffJsonSyntaxError_TreatedAsHandoffMissing()
+    public async Task HandoffJsonSyntaxError_TreatedAsHandoffMalformed()
     {
         var (workspace, lanes) = await CreateWorkspaceAsync();
         var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
@@ -1030,7 +1048,7 @@ public sealed class RunBatchCommandHandlerTests : IClassFixture<DbFixture>
 
         var result = await CreateHandler(claude: claude).Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
-        result.StopReason.Should().Be(RunBatchStopReason.HandoffMissing);
+        result.StopReason.Should().Be(RunBatchStopReason.HandoffMalformed);
         result.FailedCardNumbers.Should().ContainSingle().Which.Should().Be(card.Number);
 
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);

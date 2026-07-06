@@ -240,7 +240,7 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
     // ── malformed handoff ──────────────────────────────────────────────────────
 
     [Fact]
-    public async Task MalformedHandoff_TreatedAsFailure()
+    public async Task MalformedHandoff_TreatedAsFailure_WithExplicitReason()
     {
         var (workspace, lanes) = await CreateWorkspaceAsync();
         var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
@@ -253,14 +253,14 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
         var result = await CreateHandler(git: git, claude: claude)
             .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
-        result.StopReason.Should().Be(RunBatchStopReason.HandoffMissing);
+        result.StopReason.Should().Be(RunBatchStopReason.HandoffMalformed);
 
         var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
         saved.LastAutoRunFailedAt.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task MalformedHandoff_FileIsDeletedAfterProcessing()
+    public async Task MalformedHandoff_PreservedAsInvalidJson_NotDeleted()
     {
         var (workspace, lanes) = await CreateWorkspaceAsync();
         var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
@@ -273,7 +273,51 @@ public sealed class RunBatchHandoffTests : IClassFixture<DbFixture>
             .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
 
         var handoffPath = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+        var invalidPath = Path.Combine(_worktreePath, ".bishop", "handoff.invalid.json");
         File.Exists(handoffPath).Should().BeFalse();
+        File.Exists(invalidPath).Should().BeTrue();
+        (await File.ReadAllTextAsync(invalidPath)).Should().Be(malformedJson);
+    }
+
+    [Fact]
+    public async Task MalformedHandoff_PersistsRunCost()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                var path = Path.Combine(_worktreePath, ".bishop", "handoff.json");
+                await File.WriteAllTextAsync(path, "not valid json");
+                return new ClaudeRunResult(0, new ClaudeRunTotals(0, 0, 0, 0, 0.17m), 0);
+            });
+
+        await CreateHandler(claude: claude)
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.TotalCostUsd.Should().Be(0.17m);
+    }
+
+    [Fact]
+    public async Task MissingHandoff_PersistsRunCost()
+    {
+        var (workspace, lanes) = await CreateWorkspaceAsync();
+        var card = await AddCardAsync(workspace.Id, lanes.Single(l => l.Name == SystemLaneNames.ToDo).Name);
+        var batch = await CreateBatchAsync(card.Id);
+
+        var claude = Substitute.For<IClaudeCliRunner>();
+        claude.RunPromptAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new ClaudeRunResult(0, new ClaudeRunTotals(0, 0, 0, 0, 0.23m), 0));
+
+        await CreateHandler(claude: claude)
+            .Handle(new RunBatchCommand(batch.Name, Resume: false), default);
+
+        var saved = await _db.Cards.SingleAsync(c => c.Id == card.Id);
+        saved.TotalCostUsd.Should().Be(0.23m);
     }
 
     // ── commit failure ─────────────────────────────────────────────────────────

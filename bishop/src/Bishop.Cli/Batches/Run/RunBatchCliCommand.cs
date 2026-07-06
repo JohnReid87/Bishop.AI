@@ -36,7 +36,11 @@ internal sealed class RunBatchCliCommand : Command
                     Environment.ExitCode = 1;
                     break;
                 case RunBatchStopReason.HandoffMissing:
-                    Console.Error.WriteLine("Batch stopped: card exited 0 but wrote no valid handoff.json; resolve and --resume or abandon.");
+                    Console.Error.WriteLine("Batch stopped: card exited 0 but wrote no handoff.json; resolve and --resume or abandon.");
+                    Environment.ExitCode = 1;
+                    break;
+                case RunBatchStopReason.HandoffMalformed:
+                    Console.Error.WriteLine("Batch stopped: card exited 0 but wrote an unparseable handoff.json (preserved as handoff.invalid.json); resolve and --resume or abandon.");
                     Environment.ExitCode = 1;
                     break;
                 case RunBatchStopReason.DirtyWorktree:
