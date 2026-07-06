@@ -887,17 +887,6 @@
                                 <TextBlock Grid.Column="3" Text="Cards"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{StaticResource AppTextSecondaryBrush}"/>
-                                <Button Grid.Column="4"
-                                        x:Name="ClearClosedBatchesButton"
-                                        Padding="6,2"
-                                        FontSize="11"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Center"
-                                        Click="ClearClosedBatches_Click"
-                                        Visibility="{x:Bind Batches.HasClosedBatches, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                        ToolTipService.ToolTip="Remove all closed batch records; cards stay on the board">
-                                    <TextBlock Text="Clear closed batches" VerticalAlignment="Center"/>
-                                </Button>
                             </Grid>
 
                             <!-- Batch rows -->

@@ -3,6 +3,7 @@ using Bishop.App.Batches.LaunchBatchTerminal;
 using Bishop.App.Batches.ListBatches;
 using Bishop.App.Batches.RemoveCardFromBatch;
 using Bishop.App.Cards.MoveCard;
+using Bishop.App.Services.Settings;
 using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using Bishop.ViewModels.Batches;
@@ -21,6 +22,9 @@ namespace Bishop.Tests.ViewModels.Workspaces;
 
 public class WorkspaceBatchesViewModelTests
 {
+    private static WorkspaceBatchesViewModel Vm(ISender mediator, IAppSettings? appSettings = null)
+        => new(mediator, appSettings ?? Substitute.For<IAppSettings>());
+
     private static ISender MediatorReturning(IReadOnlyList<BatchSummary> summaries)
     {
         var mediator = Substitute.For<ISender>();
@@ -44,7 +48,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public void Batches_Empty_Initially()
     {
-        var vm = new WorkspaceBatchesViewModel(Substitute.For<ISender>());
+        var vm = Vm(Substitute.For<ISender>());
 
         vm.Batches.Should().BeEmpty();
     }
@@ -52,7 +56,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public void HasBatches_False_Initially()
     {
-        var vm = new WorkspaceBatchesViewModel(Substitute.For<ISender>());
+        var vm = Vm(Substitute.For<ISender>());
 
         vm.HasBatches.Should().BeFalse();
     }
@@ -60,7 +64,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public async Task LoadAsync_PopulatesBatches_WhenResultsReturned()
     {
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([Summary(), Summary("batch-2")]));
+        var vm = Vm(MediatorReturning([Summary(), Summary("batch-2")]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -70,7 +74,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public async Task LoadAsync_SetsHasBatchesTrue_WhenResultsReturned()
     {
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([Summary()]));
+        var vm = Vm(MediatorReturning([Summary()]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -80,7 +84,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public async Task LoadAsync_LeavesEmptyBatches_WhenNoBatchesExist()
     {
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([]));
+        var vm = Vm(MediatorReturning([]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -90,7 +94,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public async Task LoadAsync_SetsHasBatchesFalse_WhenNoBatchesExist()
     {
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([]));
+        var vm = Vm(MediatorReturning([]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -108,7 +112,7 @@ public class WorkspaceBatchesViewModelTests
             BranchName = "feat/my-branch",
             Status = BatchStatus.Working,
         };
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([new BatchSummary(batch, 5, null, null, false, false, false, [])]));
+        var vm = Vm(MediatorReturning([new BatchSummary(batch, 5, null, null, false, false, false, [])]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -130,7 +134,7 @@ public class WorkspaceBatchesViewModelTests
                 [Summary("second-a"), Summary("second-b")]);
         mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<TagInfo>)[]);
-        var vm = new WorkspaceBatchesViewModel(mediator);
+        var vm = Vm(mediator);
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
         await vm.LoadAsync(Guid.Empty, string.Empty);
@@ -142,7 +146,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public async Task RefreshCommand_PopulatesBatches()
     {
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([Summary()]));
+        var vm = Vm(MediatorReturning([Summary()]));
 
         await vm.RefreshCommand.ExecuteAsync(null);
 
@@ -152,7 +156,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public async Task LoadAsync_BadgeIsNotVisible_WhenNoBatchesHaveFinishedAt()
     {
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([Summary(), Summary("batch-2")]));
+        var vm = Vm(MediatorReturning([Summary(), Summary("batch-2")]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -163,7 +167,7 @@ public class WorkspaceBatchesViewModelTests
     public async Task LoadAsync_BadgeIsVisible_WhenAtLeastOneBatchHasFinishedAt()
     {
         var finished = DateTimeOffset.UtcNow;
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([Summary(), Summary("batch-2", finishedAt: finished)]));
+        var vm = Vm(MediatorReturning([Summary(), Summary("batch-2", finishedAt: finished)]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -174,7 +178,7 @@ public class WorkspaceBatchesViewModelTests
     public async Task LoadAsync_BadgeCount_MatchesFinishedBatchCount()
     {
         var finished = DateTimeOffset.UtcNow;
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning(
+        var vm = Vm(MediatorReturning(
         [
             Summary("batch-1"),
             Summary("batch-2", finishedAt: finished),
@@ -189,7 +193,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public async Task LoadAsync_BadgeColor_IsYellow_WhenReadyBatchesExist()
     {
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([Summary(finishedAt: DateTimeOffset.UtcNow)]));
+        var vm = Vm(MediatorReturning([Summary(finishedAt: DateTimeOffset.UtcNow)]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -199,7 +203,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public async Task LoadAsync_BadgeColor_IsEmpty_WhenNoReadyBatches()
     {
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([Summary()]));
+        var vm = Vm(MediatorReturning([Summary()]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -210,7 +214,7 @@ public class WorkspaceBatchesViewModelTests
     public async Task LoadAsync_BadgeTooltip_DescribesReadyCount()
     {
         var finished = DateTimeOffset.UtcNow;
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning(
+        var vm = Vm(MediatorReturning(
         [
             Summary("batch-1", finishedAt: finished),
             Summary("batch-2"),
@@ -224,7 +228,7 @@ public class WorkspaceBatchesViewModelTests
     [Fact]
     public async Task LoadAsync_BadgeTooltip_IsEmpty_WhenNoReadyBatches()
     {
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([Summary()]));
+        var vm = Vm(MediatorReturning([Summary()]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -241,7 +245,7 @@ public class WorkspaceBatchesViewModelTests
                 [Summary()]);
         mediator.Send(Arg.Any<ListTagsQuery>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<TagInfo>)[]);
-        var vm = new WorkspaceBatchesViewModel(mediator);
+        var vm = Vm(mediator);
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
         await vm.LoadAsync(Guid.Empty, string.Empty);
@@ -261,7 +265,7 @@ public class WorkspaceBatchesViewModelTests
             Status = BatchStatus.Working,
         };
         var summary = new BatchSummary(batch, 0, null, MergedAt: null, IsMerged: true, BranchExists: true, WorktreeExists: false, Cards: []);
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
+        var vm = Vm(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -277,7 +281,7 @@ public class WorkspaceBatchesViewModelTests
         var card = new Card { Id = Guid.NewGuid(), Number = 7, Title = "My card", LaneName = "To Do" };
         var batch = new Batch { Id = Guid.NewGuid(), Name = "b", Status = BatchStatus.Open };
         var summary = new BatchSummary(batch, 1, null, null, false, false, false, [card]);
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
+        var vm = Vm(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -294,7 +298,7 @@ public class WorkspaceBatchesViewModelTests
         var toDoCard = new Card { Id = Guid.NewGuid(), Number = 3, LaneName = "To Do" };
         var batch = new Batch { Id = Guid.NewGuid(), Name = "b", Status = BatchStatus.Working };
         var summary = new BatchSummary(batch, 2, null, null, false, false, false, [doingCard, toDoCard]);
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
+        var vm = Vm(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -309,7 +313,7 @@ public class WorkspaceBatchesViewModelTests
         var doingCard = new Card { Id = Guid.NewGuid(), Number = 1, LaneName = "Doing", LastAutoRunFailedAt = null };
         var batch = new Batch { Id = Guid.NewGuid(), Name = "b", Status = BatchStatus.Open };
         var summary = new BatchSummary(batch, 1, null, null, false, false, false, [doingCard]);
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
+        var vm = Vm(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -328,11 +332,39 @@ public class WorkspaceBatchesViewModelTests
         };
         var batch = new Batch { Id = Guid.NewGuid(), Name = "b", Status = BatchStatus.Working };
         var summary = new BatchSummary(batch, 1, null, null, false, false, false, [failedCard]);
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
+        var vm = Vm(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
         vm.Batches.Single().Cards.Single().IsInProgress.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RefreshAsync_PassesIncludeClosedTrue_WhenShowClosedBatchesEnabled()
+    {
+        var mediator = MediatorReturning([]);
+        var appSettings = Substitute.For<IAppSettings>();
+        appSettings.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("true");
+        var vm = Vm(mediator, appSettings);
+
+        await vm.LoadAsync(Guid.Empty, string.Empty);
+
+        await mediator.Received().Send(
+            Arg.Is<ListBatchesQuery>(q => q.IncludeClosed),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RefreshAsync_PassesIncludeClosedFalse_WhenShowClosedBatchesUnset()
+    {
+        var mediator = MediatorReturning([]);
+        var vm = Vm(mediator);
+
+        await vm.LoadAsync(Guid.Empty, string.Empty);
+
+        await mediator.Received().Send(
+            Arg.Is<ListBatchesQuery>(q => !q.IncludeClosed),
+            Arg.Any<CancellationToken>());
     }
 
     // ── New delegating methods ────────────────────────────────────────────────
@@ -340,7 +372,7 @@ public class WorkspaceBatchesViewModelTests
     private static (WorkspaceBatchesViewModel vm, ISender mediator) MakeVm()
     {
         var mediator = MediatorReturning([]);
-        return (new WorkspaceBatchesViewModel(mediator), mediator);
+        return (Vm(mediator), mediator);
     }
 
     [Fact]

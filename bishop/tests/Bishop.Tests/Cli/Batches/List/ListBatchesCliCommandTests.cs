@@ -208,6 +208,50 @@ public sealed class ListBatchesCliCommandTests
     }
 
     [Fact]
+    public async Task InvokeAsync_Default_QueriesWithIncludeClosedFalse()
+    {
+        var mediator = MediatorReturning([]);
+        var cmd = new ListBatchesCliCommand(mediator);
+
+        var original = Console.Out;
+        Console.SetOut(new StringWriter());
+        try
+        {
+            await cmd.InvokeAsync(["--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        await mediator.Received().Send(
+            Arg.Is<ListBatchesQuery>(q => !q.IncludeClosed),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_AllFlag_QueriesWithIncludeClosedTrue()
+    {
+        var mediator = MediatorReturning([]);
+        var cmd = new ListBatchesCliCommand(mediator);
+
+        var original = Console.Out;
+        Console.SetOut(new StringWriter());
+        try
+        {
+            await cmd.InvokeAsync(["--all", "--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        await mediator.Received().Send(
+            Arg.Is<ListBatchesQuery>(q => q.IncludeClosed),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task InvokeAsync_JsonFlag_KeepsRawStatusAndAddsDerivedDisplayState()
     {
         var batch = MakeBatch("merged-run");

@@ -211,7 +211,7 @@ they resolve from the current working directory.
 
 - `bishop batch create --name <text> [--branch <name>] [--base <branch>] [--cards <n,...>] [--tag <name>] [--lane <name>]` — create a batch and provision a git worktree
 - `bishop batch edit <name> --new-name <text>` — rename a batch
-- `bishop batch list [--json]`
+- `bishop batch list [--all] [--json]` — lists non-Closed batches; `--all` includes Closed
 - `bishop batch show <name> [--json]`
 - `bishop batch add-card <name> <card-id>` — assign a card to a batch
 - `bishop batch remove-card <name> <card-id>` — unassign a card from a batch

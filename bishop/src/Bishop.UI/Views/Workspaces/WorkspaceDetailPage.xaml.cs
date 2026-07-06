@@ -514,18 +514,6 @@ public sealed partial class WorkspaceDetailPage : Page
             }
         });
 
-    private async void ClearClosedBatches_Click(object sender, RoutedEventArgs e)
-        => await _safeAsync.RunAsync(async () =>
-        {
-            if (_item is null) return;
-            var closed = Batches.Batches.Where(b => b.CanRemove).ToList();
-            if (closed.Count == 0) return;
-            var message = $"Remove {closed.Count} closed {(closed.Count == 1 ? "batch" : "batches")}? Cards stay on the board.";
-            if (!await ConfirmFlyout.ShowAsync((FrameworkElement)sender, message, "Remove")) return;
-            await Batches.RemoveAllClosedAsync(closed);
-            await Batches.RefreshCommand.ExecuteAsync(null);
-        });
-
     // ── Board group-header batch controls (card #1115) ───────────────────────
     // The board renders one BatchGroupViewModel per lane; its header carries the same batch verbs as
     // the Batches table. Actions delegate to the existing WorkspaceBatchesViewModel methods, resolving

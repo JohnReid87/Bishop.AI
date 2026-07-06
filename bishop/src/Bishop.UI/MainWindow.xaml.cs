@@ -346,6 +346,10 @@ public sealed partial class MainWindow : Window
             var dialogService = App.Services.GetRequiredService<IDialogService>();
             await dialogService.ShowSettingsDialogAsync(Content.XamlRoot);
             await ViewModel.RefreshShowHiddenAsync();
+            // A "show closed batches" toggle inside Settings must update the visible board's
+            // Batches table without a restart; re-run the same setting-driven refresh path.
+            if (ContentFrame.Content is WorkspaceDetailPage detailPage)
+                await detailPage.Batches.RefreshCommand.ExecuteAsync(null);
         });
 
     private bool _isSnapping;

@@ -11,6 +11,7 @@ using Bishop.App.Batches.RequestStopBatch;
 using Bishop.App.Batches.RescueBatch;
 using Bishop.App.Batches.SalvageBatch;
 using Bishop.App.Cards.MoveCard;
+using Bishop.App.Services.Settings;
 using Bishop.App.Services.Terminal;
 using Bishop.App.Skills;
 using Bishop.App.Skills.LaunchSkill;
@@ -18,6 +19,7 @@ using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
+using Bishop.ViewModels.Settings;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediatR;
@@ -29,6 +31,7 @@ namespace Bishop.ViewModels.Workspaces;
 public sealed partial class WorkspaceBatchesViewModel : ObservableObject
 {
     private readonly ISender _mediator;
+    private readonly IAppSettings _appSettings;
     private Guid _workspaceId;
     private string _workspacePath = string.Empty;
 
@@ -36,12 +39,6 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _hasBatches;
-
-    [ObservableProperty]
-    private bool _hasClosedBatches;
-
-    [ObservableProperty]
-    private int _closedBatchCount;
 
     [ObservableProperty]
     private int _badgeCount;
@@ -55,9 +52,10 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
     [ObservableProperty]
     private string _badgeTooltip = string.Empty;
 
-    public WorkspaceBatchesViewModel(ISender mediator)
+    public WorkspaceBatchesViewModel(ISender mediator, IAppSettings appSettings)
     {
         _mediator = mediator;
+        _appSettings = appSettings;
     }
 
     public async Task LoadAsync(Guid workspaceId, string workspacePath)
@@ -70,7 +68,8 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
     [RelayCommand]
     private async Task RefreshAsync()
     {
-        var summaries = await _mediator.Send(new ListBatchesQuery(_workspaceId, _workspacePath));
+        var showClosed = await ReadShowClosedAsync();
+        var summaries = await _mediator.Send(new ListBatchesQuery(_workspaceId, _workspacePath, IncludeClosed: showClosed));
         var tags = await _mediator.Send(new ListTagsQuery());
         var tagColourByName = tags.ToDictionary(t => t.Name, t => t.Colour, StringComparer.OrdinalIgnoreCase);
 
@@ -125,9 +124,13 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
             Batches.Add(batchVm);
         }
         HasBatches = Batches.Count > 0;
-        ClosedBatchCount = Batches.Count(b => b.Status == BatchStatus.Closed);
-        HasClosedBatches = ClosedBatchCount > 0;
         UpdateBadge();
+    }
+
+    private async Task<bool> ReadShowClosedAsync()
+    {
+        var raw = await _appSettings.GetAsync(AppSettingsKeys.ShowClosedBatches);
+        return bool.TryParse(raw, out var value) && value;
     }
 
     private void UpdateBadge()
@@ -200,12 +203,6 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
 
     public async Task RemoveAsync(string batchName)
         => await _mediator.Send(new RemoveBatchCommand(batchName));
-
-    public async Task RemoveAllClosedAsync(IReadOnlyList<BatchItemViewModel> closed)
-    {
-        foreach (var batch in closed)
-            await _mediator.Send(new RemoveBatchCommand(batch.Name));
-    }
 
     public async Task<string> RenameAsync(string oldName, string newName)
     {

@@ -111,7 +111,7 @@ public sealed class ListBatchesQueryHandlerTests : IClassFixture<DbFixture>
     }
 
     [Fact]
-    public async Task IncludesClosedBatch()
+    public async Task ExcludesClosedBatch_ByDefault()
     {
         // Arrange
         var batch = await CreateBatchAsync(U("name"), U("br"));
@@ -119,6 +119,20 @@ public sealed class ListBatchesQueryHandlerTests : IClassFixture<DbFixture>
 
         // Act
         var results = await Handler().Handle(new ListBatchesQuery(_wsId, string.Empty), default);
+
+        // Assert
+        results.Select(s => s.Batch.Id).Should().NotContain(batch.Id);
+    }
+
+    [Fact]
+    public async Task IncludesClosedBatch_WhenIncludeClosedTrue()
+    {
+        // Arrange
+        var batch = await CreateBatchAsync(U("name"), U("br"));
+        await CloseAsync(batch.Id, BatchClosedReason.Abandoned);
+
+        // Act
+        var results = await Handler().Handle(new ListBatchesQuery(_wsId, string.Empty, IncludeClosed: true), default);
 
         // Assert
         results.Select(s => s.Batch.Id).Should().Contain(batch.Id);

@@ -7,4 +7,5 @@ namespace Bishop.ViewModels.Settings;
 internal static class AppSettingsKeys
 {
     public const string ShowHiddenWorkspaces = "show_hidden_workspaces";
+    public const string ShowClosedBatches = "show_closed_batches";
 }

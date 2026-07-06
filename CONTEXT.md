@@ -101,7 +101,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop install-skills` — copies the bundled skills under `skills/` to `%USERPROFILE%\.claude\skills\`. Run once on a fresh install; idempotent.
 - `bishop batch create --name <text> [--branch <name>] [--base <branch>] [--cards <n,...>] [--tag <name>] [--lane <name>] [-w]` — create a batch, provision a git worktree, and optionally assign cards by number, tag, or lane
 - `bishop batch edit <name> --new-name <text> [-w]` — rename a batch
-- `bishop batch list [--json]`
+- `bishop batch list [--all] [--json]` — lists non-Closed batches; `--all` includes Closed
 - `bishop batch show <name> [--json]`
 - `bishop batch add-card <name> <card-id> [-w]`
 - `bishop batch remove-card <name> <card-id> [-w]`

@@ -21,9 +21,12 @@ internal sealed class ListBatchesQueryHandler : IRequestHandler<ListBatchesQuery
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
-        var all = (await db.Batches.AsNoTracking()
-            .ByWorkspace(request.WorkspaceId)
-            .ToListAsync(cancellationToken))
+        var query = db.Batches.AsNoTracking()
+            .ByWorkspace(request.WorkspaceId);
+        if (!request.IncludeClosed)
+            query = query.Where(b => b.Status != BatchStatus.Closed);
+
+        var all = (await query.ToListAsync(cancellationToken))
             .OrderBy(b => b.CreatedAt)
             .ToList();
 

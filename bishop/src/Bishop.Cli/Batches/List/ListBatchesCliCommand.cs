@@ -16,16 +16,18 @@ internal sealed class ListBatchesCliCommand : Command
         ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
-    public ListBatchesCliCommand(ISender mediator) : base("list", "List non-Closed batches")
+    public ListBatchesCliCommand(ISender mediator) : base("list", "List non-Closed batches (use --all to include Closed)")
     {
         var resolver = new WorkspaceResolver(mediator);
+        var allOption = new Option<bool>("--all", "Include Closed batches");
         AddOption(CommonOptions.JsonOption);
         AddOption(CommonOptions.WorkspaceOption);
+        AddOption(allOption);
 
-        this.SetHandler(async (bool json, string? workspace) =>
+        this.SetHandler(async (bool json, string? workspace, bool all) =>
         {
             var ws = await resolver.ResolveAsync(workspace);
-            var summaries = await mediator.Send(new ListBatchesQuery(ws.Id, ws.Path));
+            var summaries = await mediator.Send(new ListBatchesQuery(ws.Id, ws.Path, IncludeClosed: all));
 
             if (json)
             {
@@ -65,7 +67,7 @@ internal sealed class ListBatchesCliCommand : Command
                 Console.WriteLine(
                     $"{s.Batch.Name.PadRight(nameWidth)}  {s.Batch.BranchName.PadRight(branchWidth)}  {DeriveDisplayState(s).PadRight(statusWidth)}  {s.CardCount}");
             }
-        }, CommonOptions.JsonOption, CommonOptions.WorkspaceOption);
+        }, CommonOptions.JsonOption, CommonOptions.WorkspaceOption, allOption);
     }
 
     private static string DeriveDisplayState(BatchSummary summary) =>

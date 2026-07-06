@@ -142,6 +142,25 @@
                                               IsOn="{x:Bind ViewModel.ShowHiddenWorkspaces, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
+                        <Border Padding="0,4,0,4">
+                            <Grid VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="Show closed batches"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{StaticResource AppTextSecondaryBrush}"
+                                           VerticalAlignment="Center"/>
+                                <ToggleSwitch Grid.Column="1"
+                                              x:Name="ShowClosedBatchesToggle"
+                                              MinWidth="0"
+                                              OnContent=""
+                                              OffContent=""
+                                              IsOn="{x:Bind ViewModel.ShowClosedBatches, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
             </StackPanel>
 
             <workspaces:ManageWorkspacesControl x:Name="WorkspacesContent"

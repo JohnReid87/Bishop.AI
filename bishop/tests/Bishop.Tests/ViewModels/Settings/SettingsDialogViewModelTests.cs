@@ -126,4 +126,42 @@ public class SettingsDialogViewModelTests
         appSettings.Received(1).SetAsync(
             "show_hidden_workspaces", "True", Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task LoadGeneralAsync_SetsShowClosedBatches_FromPersistedValue()
+    {
+        var appSettings = Substitute.For<IAppSettings>();
+        appSettings.GetAsync("show_closed_batches", Arg.Any<CancellationToken>())
+            .Returns("True");
+        var vm = Make(appSettings);
+
+        await vm.LoadGeneralAsync();
+
+        vm.ShowClosedBatches.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LoadGeneralAsync_DefaultsShowClosedBatchesFalse_WhenSettingUnset()
+    {
+        var appSettings = Substitute.For<IAppSettings>();
+        appSettings.GetAsync("show_closed_batches", Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        var vm = Make(appSettings);
+
+        await vm.LoadGeneralAsync();
+
+        vm.ShowClosedBatches.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShowClosedBatches_Toggled_PersistsViaSetAsync()
+    {
+        var appSettings = Substitute.For<IAppSettings>();
+        var vm = Make(appSettings);
+
+        vm.ShowClosedBatches = true;
+
+        appSettings.Received(1).SetAsync(
+            "show_closed_batches", "True", Arg.Any<CancellationToken>());
+    }
 }
