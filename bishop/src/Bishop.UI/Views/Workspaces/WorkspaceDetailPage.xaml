@@ -187,6 +187,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0"
                                                Text="{x:Bind BatchName, Mode=OneWay}"
@@ -207,6 +208,68 @@
                                                FontFamily="Cascadia Mono"
                                                VerticalAlignment="Center"
                                                Margin="4,0,4,0"/>
+                                    <StackPanel Grid.Column="3"
+                                                Orientation="Horizontal"
+                                                Spacing="2"
+                                                VerticalAlignment="Center"
+                                                Margin="4,0,0,0">
+                                        <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                               ToolTipService.ToolTip="Start batch run"
+                                                               Click="BatchGroupStart_Click"
+                                                               Padding="4" MinWidth="28" MinHeight="28"
+                                                               Visibility="{x:Bind CanStart, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <FontIcon Glyph="&#xE768;" FontSize="12"/>
+                                        </controls:HandCursorButton>
+                                        <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                               ToolTipService.ToolTip="Pause after the current card"
+                                                               Click="BatchGroupPause_Click"
+                                                               Padding="4" MinWidth="28" MinHeight="28"
+                                                               Visibility="{x:Bind CanPause, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <FontIcon Glyph="&#xE769;" FontSize="12"/>
+                                        </controls:HandCursorButton>
+                                        <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                               ToolTipService.ToolTip="Resume batch run"
+                                                               Click="BatchGroupResume_Click"
+                                                               Padding="4" MinWidth="28" MinHeight="28"
+                                                               Visibility="{x:Bind CanResume, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <FontIcon Glyph="&#xE768;" FontSize="12"/>
+                                        </controls:HandCursorButton>
+                                        <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                               ToolTipService.ToolTip="Review batch in a terminal session"
+                                                               Click="BatchGroupReview_Click"
+                                                               Padding="4" MinWidth="28" MinHeight="28"
+                                                               Visibility="{x:Bind CanReview, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <FontIcon Glyph="&#xE890;" FontSize="12"/>
+                                        </controls:HandCursorButton>
+                                        <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                               ToolTipService.ToolTip="Merge batch branch into base"
+                                                               Click="BatchGroupMerge_Click"
+                                                               Padding="4" MinWidth="28" MinHeight="28"
+                                                               Visibility="{x:Bind CanMerge, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <FontIcon Glyph="&#xE73E;" FontSize="12"/>
+                                        </controls:HandCursorButton>
+                                        <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                               ToolTipService.ToolTip="Salvage — deliver succeeded cards, eject the rest"
+                                                               Click="BatchGroupSalvage_Click"
+                                                               Padding="4" MinWidth="28" MinHeight="28"
+                                                               Visibility="{x:Bind CanSalvage, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <FontIcon Glyph="&#xE74E;" FontSize="12"/>
+                                        </controls:HandCursorButton>
+                                        <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                               ToolTipService.ToolTip="Clean up — remove worktree and branch"
+                                                               Click="BatchGroupCleanUp_Click"
+                                                               Padding="4" MinWidth="28" MinHeight="28"
+                                                               Visibility="{x:Bind CanCleanUp, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <FontIcon Glyph="&#xE894;" FontSize="12"/>
+                                        </controls:HandCursorButton>
+                                        <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                               ToolTipService.ToolTip="Abandon batch and remove its worktree"
+                                                               Click="BatchGroupAbandon_Click"
+                                                               Padding="4" MinWidth="28" MinHeight="28"
+                                                               Visibility="{x:Bind CanAbandon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <FontIcon Glyph="&#xE74D;" FontSize="12"/>
+                                        </controls:HandCursorButton>
+                                    </StackPanel>
                                 </Grid>
                             </Expander.Header>
                             <ItemsRepeater ItemsSource="{x:Bind Cards, Mode=OneWay}"

@@ -23,6 +23,7 @@ public sealed partial class CardViewModel : ObservableObject
     public BatchStatus? BatchStatus { get; init; }
     public DateTimeOffset? BatchFinishedAt { get; init; }
     public DateTimeOffset? BatchMergedAt { get; init; }
+    public DateTimeOffset? BatchStoppedAt { get; init; }
 
     [ObservableProperty]
     private bool _isSelected;

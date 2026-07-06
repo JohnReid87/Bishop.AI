@@ -8,9 +8,12 @@ using Bishop.App.Batches.RemoveBatch;
 using Bishop.App.Batches.RemoveCardFromBatch;
 using Bishop.App.Batches.RenameBatch;
 using Bishop.App.Batches.RequestStopBatch;
+using Bishop.App.Batches.RescueBatch;
+using Bishop.App.Batches.SalvageBatch;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Services.Terminal;
 using Bishop.App.Skills;
+using Bishop.App.Skills.LaunchSkill;
 using Bishop.App.Tags.ListTags;
 using Bishop.Core;
 using Bishop.ViewModels.Batches;
@@ -151,6 +154,46 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
 
     public async Task CleanUpAsync(string batchName, string workspacePath)
         => await _mediator.Send(new CleanUpBatchCommand(batchName, workspacePath));
+
+    public async Task<BatchRescueResult> RescueAsync(string batchName, bool confirmReset)
+    {
+        var r = await _mediator.Send(new RescueBatchCommand(batchName, confirmReset));
+        var outcome = r.Outcome switch
+        {
+            RescueBatchOutcome.Rescued => BatchRescueOutcome.Rescued,
+            RescueBatchOutcome.LockAlive => BatchRescueOutcome.LockAlive,
+            RescueBatchOutcome.NotRunning => BatchRescueOutcome.NotRunning,
+            RescueBatchOutcome.NeedsConfirmation => BatchRescueOutcome.NeedsConfirmation,
+            _ => throw new ArgumentOutOfRangeException(nameof(r.Outcome), r.Outcome, "Unhandled rescue outcome."),
+        };
+        return new BatchRescueResult(outcome, r.LockOwnerPid, r.DirtyPaths, r.RequeuedCardNumbers);
+    }
+
+    public async Task<BatchSalvageResult> SalvageAsync(string batchName, string workspacePath, bool confirm)
+    {
+        var r = await _mediator.Send(new SalvageBatchCommand(batchName, workspacePath, confirm));
+        var outcome = r.Outcome switch
+        {
+            SalvageBatchOutcome.NeedsConfirmation => BatchSalvageOutcome.NeedsConfirmation,
+            SalvageBatchOutcome.LockAlive => BatchSalvageOutcome.LockAlive,
+            SalvageBatchOutcome.NothingSucceeded => BatchSalvageOutcome.NothingSucceeded,
+            SalvageBatchOutcome.MergeConflict => BatchSalvageOutcome.MergeConflict,
+            SalvageBatchOutcome.Salvaged => BatchSalvageOutcome.Salvaged,
+            _ => throw new ArgumentOutOfRangeException(nameof(r.Outcome), r.Outcome, "Unhandled salvage outcome."),
+        };
+        return new BatchSalvageResult(
+            outcome,
+            r.LockOwnerPid,
+            r.MergedCardNumbers,
+            r.EjectedCardNumbers,
+            r.ClosedCardNumbers,
+            r.ConflictFiles,
+            r.ErrorMessage);
+    }
+
+    public async Task ReviewBatch(string workspacePath, string batchName, string model, Guid batchId, TerminalSnap snap)
+        => await _mediator.Send(new LaunchSkillCommand(
+            workspacePath, $"/bish-review-batch {batchName}", snap, model, batchId));
 
     public async Task AbandonAsync(string batchName, string workspacePath)
         => await _mediator.Send(new AbandonBatchCommand(batchName, workspacePath));

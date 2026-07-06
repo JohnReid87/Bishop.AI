@@ -12,7 +12,8 @@ public readonly record struct BatchStats(
     int AccentIndex,
     BatchStatus Status,
     DateTimeOffset? FinishedAt,
-    DateTimeOffset? MergedAt);
+    DateTimeOffset? MergedAt,
+    DateTimeOffset? StoppedAt);
 
 public sealed partial class BatchGroupViewModel : ObservableObject
 {
@@ -55,6 +56,11 @@ public sealed partial class BatchGroupViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(StatusLabel))]
     public partial DateTimeOffset? MergedAt { get; set; }
 
+    // Distinguishes a Running batch (Working, no StoppedAt) from a Stopped one (Working, StoppedAt set);
+    // the display state stays Working for both, so the split drives which header controls appear, not the label.
+    [ObservableProperty]
+    public partial DateTimeOffset? StoppedAt { get; set; }
+
     public string ProgressDisplay => $"({DoneCount}/{TotalCount})";
 
     private bool AllCardsDone => TotalCount > 0 && DoneCount == TotalCount;
@@ -62,5 +68,43 @@ public sealed partial class BatchGroupViewModel : ObservableObject
     public BatchDisplayState DisplayState => BatchDisplayStates.Derive(Status, FinishedAt, MergedAt, AllCardsDone);
     public string StatusLabel => DisplayState.ToString();
 
+    private bool IsWorking => DisplayState == BatchDisplayState.Working;
+    private bool IsStopped => IsWorking && StoppedAt is not null;
+
+    // State-driven header controls (see card #1115). Each state shows exactly its agreed set:
+    // Open → Start · Abandon; Running → Pause; Stopped → Resume · Salvage · Abandon;
+    // Finished → Review · Merge · Abandon; Merged → Clean up; Closed → none.
+    public bool CanStart => DisplayState == BatchDisplayState.Open;
+    public bool CanPause => IsWorking && StoppedAt is null;
+    public bool CanResume => IsStopped;
+    public bool CanSalvage => IsStopped;
+    public bool CanReview => DisplayState == BatchDisplayState.Finished;
+    public bool CanMerge => DisplayState == BatchDisplayState.Finished;
+    public bool CanCleanUp => DisplayState == BatchDisplayState.Merged;
+    public bool CanAbandon => DisplayState is BatchDisplayState.Open or BatchDisplayState.Finished || IsStopped;
+    public bool HasAnyControl => CanStart || CanPause || CanResume || CanSalvage || CanReview || CanMerge || CanCleanUp || CanAbandon;
+
     public ObservableCollection<CardViewModel> Cards { get; } = [];
+
+    // The action flags derive from Status / FinishedAt / MergedAt / StoppedAt / counts; keep x:Bind
+    // visibilities in sync by re-raising them whenever any of those observable inputs change.
+    partial void OnStatusChanged(BatchStatus value) => NotifyControlsChanged();
+    partial void OnFinishedAtChanged(DateTimeOffset? value) => NotifyControlsChanged();
+    partial void OnMergedAtChanged(DateTimeOffset? value) => NotifyControlsChanged();
+    partial void OnStoppedAtChanged(DateTimeOffset? value) => NotifyControlsChanged();
+    partial void OnTotalCountChanged(int value) => NotifyControlsChanged();
+    partial void OnDoneCountChanged(int value) => NotifyControlsChanged();
+
+    private void NotifyControlsChanged()
+    {
+        OnPropertyChanged(nameof(CanStart));
+        OnPropertyChanged(nameof(CanPause));
+        OnPropertyChanged(nameof(CanResume));
+        OnPropertyChanged(nameof(CanSalvage));
+        OnPropertyChanged(nameof(CanReview));
+        OnPropertyChanged(nameof(CanMerge));
+        OnPropertyChanged(nameof(CanCleanUp));
+        OnPropertyChanged(nameof(CanAbandon));
+        OnPropertyChanged(nameof(HasAnyControl));
+    }
 }

@@ -28,6 +28,7 @@ internal static class BoardCardFactory
             BatchStatus = card.Batch?.Status,
             BatchFinishedAt = card.Batch?.FinishedAt,
             BatchMergedAt = card.Batch?.MergedAt,
+            BatchStoppedAt = card.Batch?.StoppedAt,
             IsSkillsButtonVisible = isSkillsButtonVisible,
         };
     }
@@ -38,6 +39,7 @@ internal static class BoardCardFactory
         IReadOnlyDictionary<string, string> tagColourByName)
     {
         return ScalarFieldsMatch(vm, card)
+            && BatchStateMatches(vm, card)
             && TagMatches(vm, card, tagColourByName);
     }
 
@@ -47,6 +49,15 @@ internal static class BoardCardFactory
                    (card.Id, card.Title, card.Description, card.IsClosed)
                && (vm.LastAutoRunFailedAt, vm.LastAutoRunSucceededAt, vm.BatchId) ==
                    (card.LastAutoRunFailedAt, card.LastAutoRunSucceededAt, card.BatchId);
+    }
+
+    // A batch-level state change (e.g. running → stopped, or finished/merged) leaves the card's own
+    // fields untouched, so without this the card VM — and the derived board group header it feeds —
+    // would keep stale batch state through an in-place reconcile.
+    private static bool BatchStateMatches(CardViewModel vm, Bishop.Core.Card card)
+    {
+        return (vm.BatchStatus, vm.BatchFinishedAt, vm.BatchMergedAt, vm.BatchStoppedAt) ==
+               (card.Batch?.Status, card.Batch?.FinishedAt, card.Batch?.MergedAt, card.Batch?.StoppedAt);
     }
 
     private static bool TagMatches(

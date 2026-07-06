@@ -273,7 +273,7 @@ public class LaneViewModelTests
     public void RebuildLaneItems_BatchStats_AreAppliedToGroup()
     {
         var batchId = Guid.NewGuid();
-        var stats = new Dictionary<Guid, BatchStats> { [batchId] = new BatchStats("Sprint 1", 3, 1, 0, BatchStatus.Working, null, null) };
+        var stats = new Dictionary<Guid, BatchStats> { [batchId] = new BatchStats("Sprint 1", 3, 1, 0, BatchStatus.Working, null, null, null) };
         var vm = NewVm();
         vm.Cards.Add(new CardViewModel { Title = "C1", BatchId = batchId });
 
@@ -284,6 +284,26 @@ public class LaneViewModelTests
         group.TotalCount.Should().Be(3);
         group.DoneCount.Should().Be(1);
         group.ProgressDisplay.Should().Be("(1/3)");
+    }
+
+    [Fact]
+    public void RebuildLaneItems_ClosedBatch_StillKeepsItsBoardGroup()
+    {
+        // The group header controls hide for a Closed batch, but the cards must still render as a
+        // grouped board entry rather than falling out into ungrouped cards (card #1115).
+        var batchId = Guid.NewGuid();
+        var stats = new Dictionary<Guid, BatchStats> { [batchId] = new BatchStats("Sprint 1", 2, 2, 0, BatchStatus.Closed, null, null, null) };
+        var vm = NewVm();
+        vm.Cards.Add(new CardViewModel { Title = "C1", BatchId = batchId });
+        vm.Cards.Add(new CardViewModel { Title = "C2", BatchId = batchId });
+
+        vm.RebuildLaneItems(stats);
+
+        vm.LaneItems.Should().HaveCount(1);
+        var group = vm.LaneItems[0].Should().BeOfType<BatchGroupViewModel>().Subject;
+        group.Status.Should().Be(BatchStatus.Closed);
+        group.Cards.Should().HaveCount(2);
+        group.HasAnyControl.Should().BeFalse();
     }
 
     [Fact]

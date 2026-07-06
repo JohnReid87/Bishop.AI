@@ -120,4 +120,92 @@ public class BatchGroupViewModelTests
         changed.Should().Contain(nameof(BatchGroupViewModel.StatusLabel));
         vm.StatusLabel.Should().Be("Finished");
     }
+
+    // ── Header controls: exactly the agreed icon set per state (card #1115) ──────────────────────
+
+    [Fact]
+    public void Controls_Open_ShowsStartAndAbandonOnly()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Open, TotalCount = 2, DoneCount = 0 };
+
+        AssertControls(vm, start: true, abandon: true);
+    }
+
+    [Fact]
+    public void Controls_Running_ShowsPauseOnly()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Working, TotalCount = 2, DoneCount = 0, StoppedAt = null };
+
+        AssertControls(vm, pause: true);
+    }
+
+    [Fact]
+    public void Controls_Stopped_ShowsResumeSalvageAbandon()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Working, TotalCount = 2, DoneCount = 0, StoppedAt = DateTimeOffset.UtcNow };
+
+        AssertControls(vm, resume: true, salvage: true, abandon: true);
+    }
+
+    [Fact]
+    public void Controls_Finished_ShowsReviewMergeAbandon()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Working, TotalCount = 2, DoneCount = 2 };
+
+        AssertControls(vm, review: true, merge: true, abandon: true);
+    }
+
+    [Fact]
+    public void Controls_Merged_ShowsCleanUpOnly()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Working, MergedAt = DateTimeOffset.UtcNow, TotalCount = 2, DoneCount = 2 };
+
+        AssertControls(vm, cleanUp: true);
+    }
+
+    [Fact]
+    public void Controls_Closed_ShowsNone()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Closed, TotalCount = 2, DoneCount = 2 };
+
+        AssertControls(vm);
+        vm.HasAnyControl.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Controls_RaisePropertyChanged_WhenStoppedAtSet()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Working, TotalCount = 2, DoneCount = 0 };
+        var changed = new List<string?>();
+        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.StoppedAt = DateTimeOffset.UtcNow;
+
+        changed.Should().Contain(nameof(BatchGroupViewModel.CanPause));
+        changed.Should().Contain(nameof(BatchGroupViewModel.CanResume));
+        changed.Should().Contain(nameof(BatchGroupViewModel.CanSalvage));
+        vm.CanPause.Should().BeFalse();
+        vm.CanResume.Should().BeTrue();
+    }
+
+    private static void AssertControls(
+        BatchGroupViewModel vm,
+        bool start = false,
+        bool pause = false,
+        bool resume = false,
+        bool salvage = false,
+        bool review = false,
+        bool merge = false,
+        bool cleanUp = false,
+        bool abandon = false)
+    {
+        vm.CanStart.Should().Be(start);
+        vm.CanPause.Should().Be(pause);
+        vm.CanResume.Should().Be(resume);
+        vm.CanSalvage.Should().Be(salvage);
+        vm.CanReview.Should().Be(review);
+        vm.CanMerge.Should().Be(merge);
+        vm.CanCleanUp.Should().Be(cleanUp);
+        vm.CanAbandon.Should().Be(abandon);
+    }
 }

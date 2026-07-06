@@ -120,7 +120,7 @@ public class LaneItemsBuilderTests
     {
         var batchId = Guid.NewGuid();
         var cards = new List<CardViewModel> { new() { Title = "C1", BatchId = batchId } };
-        var stats = new Dictionary<Guid, BatchStats> { [batchId] = new("Sprint 1", 5, 2, 1, BatchStatus.Working, null, null) };
+        var stats = new Dictionary<Guid, BatchStats> { [batchId] = new("Sprint 1", 5, 2, 1, BatchStatus.Working, null, null, null) };
 
         var (activeGroups, _, _) = LaneItemsBuilder.Build(cards, stats, new Dictionary<Guid, BatchGroupViewModel>());
 

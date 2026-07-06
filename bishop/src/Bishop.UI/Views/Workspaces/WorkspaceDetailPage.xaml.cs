@@ -526,6 +526,168 @@ public sealed partial class WorkspaceDetailPage : Page
             await Batches.RefreshCommand.ExecuteAsync(null);
         });
 
+    // ── Board group-header batch controls (card #1115) ───────────────────────
+    // The board renders one BatchGroupViewModel per lane; its header carries the same batch verbs as
+    // the Batches table. Actions delegate to the existing WorkspaceBatchesViewModel methods, resolving
+    // the matching BatchItemViewModel for the model where a launch needs it.
+
+    private static BatchGroupViewModel? GetBatchGroupFromSender(object sender) =>
+        (sender as FrameworkElement)?.DataContext as BatchGroupViewModel;
+
+    private BatchItemViewModel? ResolveBatchItem(BatchGroupViewModel group) =>
+        Batches.Batches.FirstOrDefault(b => b.Id == group.BatchId);
+
+    private async void BatchGroupStart_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchGroupFromSender(sender) is not BatchGroupViewModel group) return;
+            if (ResolveBatchItem(group) is not BatchItemViewModel batch) return;
+            await Batches.LaunchBatch(_item.Path, group.BatchName, batch.Model, SnapHelper.ComputeSnap());
+        });
+
+    private async void BatchGroupPause_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (GetBatchGroupFromSender(sender) is not BatchGroupViewModel group) return;
+            await Batches.RequestStopAsync(group.BatchId);
+            await Task.WhenAll(Board.RefreshCommand.ExecuteAsync(null), Batches.RefreshCommand.ExecuteAsync(null));
+        });
+
+    private async void BatchGroupResume_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchGroupFromSender(sender) is not BatchGroupViewModel group) return;
+            if (ResolveBatchItem(group) is not BatchItemViewModel batch) return;
+
+            // Probe rescue first: an interrupted run (stale lock / dirty worktree) blocks resume. A live
+            // lock refuses; a dirty worktree needs a confirmed destructive reset; otherwise rescue is a
+            // no-op that clears any stale lock and re-queues stranded cards so resume can proceed.
+            var probe = await Batches.RescueAsync(group.BatchName, confirmReset: false);
+            if (probe.Outcome == BatchRescueOutcome.LockAlive)
+            {
+                await ConfirmFlyout.ShowAsync((FrameworkElement)sender,
+                    $"A batch run is still active (PID {probe.LockOwnerPid}). Stop it before resuming.", "OK");
+                return;
+            }
+            if (probe.Outcome == BatchRescueOutcome.NeedsConfirmation)
+            {
+                var count = probe.DirtyPaths?.Count ?? 0;
+                var msg = $"The worktree has {count} uncommitted change{(count == 1 ? "" : "s")}. Reset and resume?";
+                if (!await ConfirmFlyout.ShowAsync((FrameworkElement)sender, msg, "Reset & resume")) return;
+                await Batches.RescueAsync(group.BatchName, confirmReset: true);
+            }
+
+            await Batches.ResumeBatch(_item.Path, group.BatchName, batch.Model, SnapHelper.ComputeSnap());
+            await Task.WhenAll(Board.RefreshCommand.ExecuteAsync(null), Batches.RefreshCommand.ExecuteAsync(null));
+        });
+
+    private async void BatchGroupSalvage_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchGroupFromSender(sender) is not BatchGroupViewModel group) return;
+
+            // Preview (confirm: false) computes the merge/eject split without touching anything.
+            var preview = await Batches.SalvageAsync(group.BatchName, _item.Path, confirm: false);
+            switch (preview.Outcome)
+            {
+                case BatchSalvageOutcome.LockAlive:
+                    await ConfirmFlyout.ShowAsync((FrameworkElement)sender,
+                        $"A batch run is still active (PID {preview.LockOwnerPid}). Stop it before salvaging.", "OK");
+                    return;
+                case BatchSalvageOutcome.NothingSucceeded:
+                    await ConfirmFlyout.ShowAsync((FrameworkElement)sender,
+                        "No card succeeded — there is nothing to deliver. Abandon the batch instead.", "OK");
+                    return;
+                case BatchSalvageOutcome.NeedsConfirmation:
+                    var merged = preview.MergedCardNumbers?.Count ?? 0;
+                    var ejected = preview.EjectedCardNumbers?.Count ?? 0;
+                    var msg = $"Deliver {merged} succeeded card{(merged == 1 ? "" : "s")} and eject {ejected} to To Do?";
+                    if (!await ConfirmFlyout.ShowAsync((FrameworkElement)sender, msg, "Salvage")) return;
+                    break;
+                default:
+                    return;
+            }
+
+            BatchSalvageResult? result = null;
+            try
+            {
+                result = await Batches.SalvageAsync(group.BatchName, _item.Path, confirm: true);
+            }
+            finally
+            {
+                await Board.RefreshCommand.ExecuteAsync(null);
+                await Batches.RefreshCommand.ExecuteAsync(null);
+            }
+            if (result is { Outcome: BatchSalvageOutcome.MergeConflict })
+                BatchMergeFailureFlyout.Show((FrameworkElement)sender,
+                    new BatchMergeOutcome(false, result.ConflictFiles ?? [], result.ErrorMessage));
+        });
+
+    private async void BatchGroupReview_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchGroupFromSender(sender) is not BatchGroupViewModel group) return;
+            if (ResolveBatchItem(group) is not BatchItemViewModel batch) return;
+            await Batches.ReviewBatch(_item.Path, group.BatchName, batch.Model, group.BatchId, SnapHelper.ComputeSnap());
+        });
+
+    private async void BatchGroupMerge_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchGroupFromSender(sender) is not BatchGroupViewModel group) return;
+            BatchMergeOutcome? result = null;
+            try
+            {
+                result = await Batches.MergeAsync(group.BatchName, _item.Path);
+            }
+            finally
+            {
+                await Board.RefreshCommand.ExecuteAsync(null);
+                await Batches.RefreshCommand.ExecuteAsync(null);
+            }
+            if (result is { Success: false })
+                BatchMergeFailureFlyout.Show((FrameworkElement)sender, result);
+        });
+
+    private async void BatchGroupCleanUp_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchGroupFromSender(sender) is not BatchGroupViewModel group) return;
+            try
+            {
+                await Batches.CleanUpAsync(group.BatchName, _item.Path);
+            }
+            finally
+            {
+                await Board.RefreshCommand.ExecuteAsync(null);
+                await Batches.RefreshCommand.ExecuteAsync(null);
+            }
+        });
+
+    private async void BatchGroupAbandon_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (_item is null) return;
+            if (GetBatchGroupFromSender(sender) is not BatchGroupViewModel group) return;
+            if (!await ConfirmFlyout.ShowAsync((FrameworkElement)sender,
+                    $"Abandon '{group.BatchName}'? Cards return to To Do and the worktree is removed.", "Abandon")) return;
+            try
+            {
+                await Batches.AbandonAsync(group.BatchName, _item.Path);
+            }
+            finally
+            {
+                await Board.RefreshCommand.ExecuteAsync(null);
+                await Batches.RefreshCommand.ExecuteAsync(null);
+            }
+        });
+
     private void BatchNameTextBlock_Tapped(object sender, TappedRoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not BatchItemViewModel batch) return;

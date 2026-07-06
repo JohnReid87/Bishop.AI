@@ -12,7 +12,8 @@ internal static class BoardBatchStats
         DateTimeOffset? CreatedAt,
         BatchStatus Status,
         DateTimeOffset? FinishedAt,
-        DateTimeOffset? MergedAt);
+        DateTimeOffset? MergedAt,
+        DateTimeOffset? StoppedAt);
 
     public static IReadOnlyDictionary<Guid, BatchStats> Compute(IEnumerable<LaneViewModel> lanes)
     {
@@ -27,7 +28,8 @@ internal static class BoardBatchStats
                 indexByBatch[kvp.Key],
                 kvp.Value.Status,
                 kvp.Value.FinishedAt,
-                kvp.Value.MergedAt));
+                kvp.Value.MergedAt,
+                kvp.Value.StoppedAt));
     }
 
     private static Dictionary<Guid, Accumulator> AccumulatePerBatch(IEnumerable<LaneViewModel> lanes)
@@ -52,7 +54,8 @@ internal static class BoardBatchStats
             // them wins and later cards leave them unchanged.
             card.BatchStatus ?? e.Status,
             e.FinishedAt ?? card.BatchFinishedAt,
-            e.MergedAt ?? card.BatchMergedAt);
+            e.MergedAt ?? card.BatchMergedAt,
+            e.StoppedAt ?? card.BatchStoppedAt);
     }
 
     private static string ResolveName(string? existing, string? fromCard)
