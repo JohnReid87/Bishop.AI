@@ -24,9 +24,11 @@ internal sealed class InstallSkillsCliCommand : Command
             Directory.CreateDirectory(destRoot);
 
             var installed = 0;
+            var bundledNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var skillSourceDir in Directory.GetDirectories(sourceDir))
             {
                 var name = Path.GetFileName(skillSourceDir);
+                bundledNames.Add(name);
                 var sourceFiles = Directory.GetFiles(skillSourceDir, "*", SearchOption.AllDirectories);
                 if (sourceFiles.Length == 0)
                 {
@@ -46,6 +48,21 @@ internal sealed class InstallSkillsCliCommand : Command
                 }
                 Console.WriteLine($"Installed skill '{name}' to {skillDestDir}");
                 installed++;
+            }
+
+            // Prune orphaned bish-* skills: a removed skill's directory lingers in the
+            // destination because copy-only install never propagates deletions. Only touch
+            // bish-* directories — the user's own skills are out of bounds.
+            foreach (var destSkillDir in Directory.GetDirectories(destRoot))
+            {
+                var name = Path.GetFileName(destSkillDir);
+                if (!name.StartsWith("bish-", StringComparison.Ordinal) || bundledNames.Contains(name))
+                {
+                    continue;
+                }
+
+                Directory.Delete(destSkillDir, recursive: true);
+                Console.WriteLine($"Removed orphaned skill '{name}'");
             }
 
             if (installed == 0)
