@@ -40,7 +40,8 @@ internal sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFindi
             .FirstOrDefaultAsync(
                 r => r.WorkspaceId == request.WorkspaceId
                   && r.SkillName == request.SkillName
-                  && r.ProjectName == runProjectName,
+                  && r.ProjectName == runProjectName
+                  && r.BatchId == request.BatchId,
                 cancellationToken);
 
         if (run is null)
@@ -51,6 +52,7 @@ internal sealed class RecordFindingsCommandHandler : IRequestHandler<RecordFindi
                 WorkspaceId = request.WorkspaceId,
                 SkillName = request.SkillName,
                 ProjectName = runProjectName,
+                BatchId = request.BatchId,
                 GitSha = request.GitSha,
                 RecordedAt = recordedAt,
                 FindingsCount = document.Findings.Count,

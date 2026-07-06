@@ -30,6 +30,12 @@ the task instead of doing everything inside a single session.
 
 - `bish-audit-docs` — audits Markdown docs in the repo for drift against the
   code and edits the docs in place per agreed finding.
+- `bish-review-batch` — reviews a delivered batch as a unit before it merges.
+  Runs in the batch worktree over `git diff base...branch`, composing four
+  passes (correctness, architecture, security, and an acceptance check against
+  each member card's `### Acceptance`). Confirmed findings become fix cards added
+  to the same batch; findings persist keyed to the batch so a re-review never
+  re-litigates a dismissed finding.
 - `bish-triage` — interrogates a free-text bug description, validates the
   suspected cause against the repo via the Explore subagent, and pushes a
   structured `bug` card (or a `spike` + fix-stub pair when root cause is

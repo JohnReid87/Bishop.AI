@@ -22,11 +22,13 @@ internal sealed class PrintContextPackCliCommand : Command
     {
         var skillArg = new Argument<string?>("skill-name", () => null, "Registered provider name (e.g. work-on-card)");
         var cardOpt = new Option<int?>("--card", "Card number for skills that operate on a single card");
+        var batchOpt = new Option<string?>("--batch", "Batch name for skills that operate on a single batch (e.g. review-batch)");
         var listOpt = new Option<bool>("--list", "List registered providers and exit");
 
         AddArgument(skillArg);
         AddOption(CommonOptions.WorkspaceOption);
         AddOption(cardOpt);
+        AddOption(batchOpt);
         AddOption(listOpt);
 
         var providerList = providers.ToList();
@@ -54,11 +56,12 @@ internal sealed class PrintContextPackCliCommand : Command
 
             var workspaceOption = context.ParseResult.GetValueForOption(CommonOptions.WorkspaceOption);
             var card = context.ParseResult.GetValueForOption(cardOpt);
+            var batch = context.ParseResult.GetValueForOption(batchOpt);
 
             try
             {
                 var ws = await resolver.ResolveAsync(workspaceOption);
-                var pack = await mediator.Send(new BuildContextPackQuery(skill!, ws, new ContextPackArgs(card)));
+                var pack = await mediator.Send(new BuildContextPackQuery(skill!, ws, new ContextPackArgs(card, batch)));
                 Console.WriteLine(JsonSerializer.Serialize(pack, s_jsonOpts));
             }
             catch (InvalidOperationException ex)

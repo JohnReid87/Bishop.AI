@@ -680,4 +680,98 @@ public sealed class RecordFindingsCommandHandlerTests : IClassFixture<DbFixture>
         findings[0].LinkedCardId.Should().Be(42);
     }
 
+    private async Task<Batch> CreateBatchAsync(Guid workspaceId)
+    {
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = workspaceId,
+            Name = "batch-" + Guid.NewGuid().ToString("N")[..8],
+            BranchName = "bishop/batch-" + Guid.NewGuid().ToString("N")[..8],
+            BaseBranch = "main",
+            Status = BatchStatus.Working,
+            CreatedAt = DateTimeOffset.UtcNow,
+            WorktreePath = @"C:\wt\" + Guid.NewGuid().ToString("N")[..8],
+            Model = "claude-sonnet-5",
+        };
+
+        await using var seed = await _factory.CreateDbContextAsync();
+        seed.Batches.Add(batch);
+        await seed.SaveChangesAsync();
+        return batch;
+    }
+
+    [Fact]
+    public async Task Handle_BatchScopedRun_IsSeparateFromWholeSolutionRun()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var batch = await CreateBatchAsync(ws.Id);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-review-batch", ValidJson, "sha1"), default);
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-review-batch", ValidJson, "sha2", batch.Id), default);
+
+        var runs = await _db.WorkspaceSkillRuns.AsNoTracking()
+            .Where(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-review-batch")
+            .ToListAsync();
+        runs.Should().HaveCount(2, "a batch-scoped run must not collide with the null-batch whole-solution run");
+        runs.Should().ContainSingle(r => r.BatchId == null);
+        runs.Should().ContainSingle(r => r.BatchId == batch.Id);
+    }
+
+    [Fact]
+    public async Task Handle_TwoBatches_SameFinding_KeptSeparate()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var b1 = await CreateBatchAsync(ws.Id);
+        var b2 = await CreateBatchAsync(ws.Id);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string json = """
+            { "findings": [ { "title": "T", "body": "b", "outcome": "parked",
+                              "file": "src/F.cs", "rule": "Correctness", "symbol": "S" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-review-batch", json, "s1", b1.Id), default);
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-review-batch", json, "s2", b2.Id), default);
+
+        var runs = await _db.WorkspaceSkillRuns.AsNoTracking()
+            .Where(r => r.WorkspaceId == ws.Id && r.SkillName == "bish-review-batch")
+            .ToListAsync();
+        runs.Should().HaveCount(2);
+
+        var findings = await _db.Findings.AsNoTracking()
+            .Where(f => f.Run.WorkspaceId == ws.Id)
+            .ToListAsync();
+        findings.Should().HaveCount(2, "the same finding identity in two batches is two distinct rows");
+    }
+
+    [Fact]
+    public async Task Handle_SameBatch_PreservesDismissalAcrossReReview()
+    {
+        // Acceptance: re-running the review of a batch after a dismissal must not re-raise
+        // the dismissed finding — the dismissal survives the second record for the same batch.
+        var ws = await CreateWorkspaceAsync();
+        var batch = await CreateBatchAsync(ws.Id);
+        var sut = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string json = """
+            { "findings": [ { "title": "T", "body": "b", "outcome": "parked",
+                              "file": "src/F.cs", "rule": "Correctness", "symbol": "S" } ] }
+            """;
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-review-batch", json, "s1", batch.Id), default);
+
+        var f = await _db.Findings.Include(x => x.Run)
+            .SingleAsync(x => x.Run.WorkspaceId == ws.Id && x.Run.BatchId == batch.Id);
+        f.Status = "dismissed";
+        f.RebuttalText = "intended — acceptance permits this";
+        await _db.SaveChangesAsync();
+
+        await sut.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-review-batch", json, "s2", batch.Id), default);
+
+        var merged = await _db.Findings.AsNoTracking().Include(x => x.Run)
+            .SingleAsync(x => x.Run.WorkspaceId == ws.Id && x.Run.BatchId == batch.Id);
+        merged.Status.Should().Be("dismissed", "a re-review of the same batch must not re-raise a dismissed finding");
+        merged.RebuttalText.Should().Be("intended — acceptance permits this");
+    }
+
 }

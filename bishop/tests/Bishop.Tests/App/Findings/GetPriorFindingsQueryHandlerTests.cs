@@ -92,4 +92,48 @@ public sealed class GetPriorFindingsQueryHandlerTests : IClassFixture<DbFixture>
         var secA = await sut.Handle(new GetPriorFindingsQuery(wsA.Id, "bish-security"), default);
         secA.Should().HaveCount(1);
     }
+
+    [Fact]
+    public async Task Handle_WithBatchId_ScopesToThatBatch()
+    {
+        var ws = await CreateWorkspaceAsync();
+        var b1 = await CreateBatchAsync(ws.Id);
+        var b2 = await CreateBatchAsync(ws.Id);
+        var record = new RecordFindingsCommandHandler(_factory, TimeProvider.System);
+
+        const string b1Json = """{ "findings": [ { "title": "B1", "body": "b", "outcome": "dismissed", "file": "src/A.cs", "rule": "R", "symbol": "S" } ] }""";
+        const string b2Json = """{ "findings": [ { "title": "B2", "body": "b", "outcome": "dismissed", "file": "src/B.cs", "rule": "R", "symbol": "S" } ] }""";
+        const string wholeJson = """{ "findings": [ { "title": "Whole", "body": "b", "outcome": "dismissed" } ] }""";
+
+        await record.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-review-batch", b1Json, "s", b1.Id), default);
+        await record.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-review-batch", b2Json, "s", b2.Id), default);
+        await record.Handle(new RecordFindingsCommand(ws.Id, ws.Path, "bish-review-batch", wholeJson, "s"), default);
+
+        var sut = new GetPriorFindingsQueryHandler(_factory);
+        var forB1 = await sut.Handle(new GetPriorFindingsQuery(ws.Id, "bish-review-batch", b1.Id), default);
+
+        forB1.Should().HaveCount(1, "batch scoping must exclude the other batch and the whole-solution run");
+        forB1[0].Title.Should().Be("B1");
+    }
+
+    private async Task<Batch> CreateBatchAsync(Guid workspaceId)
+    {
+        var batch = new Batch
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = workspaceId,
+            Name = "batch-" + Guid.NewGuid().ToString("N")[..8],
+            BranchName = "bishop/batch-" + Guid.NewGuid().ToString("N")[..8],
+            BaseBranch = "main",
+            Status = BatchStatus.Working,
+            CreatedAt = DateTimeOffset.UtcNow,
+            WorktreePath = @"C:\wt\" + Guid.NewGuid().ToString("N")[..8],
+            Model = "claude-sonnet-5",
+        };
+
+        await using var seed = await _factory.CreateDbContextAsync();
+        seed.Batches.Add(batch);
+        await seed.SaveChangesAsync();
+        return batch;
+    }
 }

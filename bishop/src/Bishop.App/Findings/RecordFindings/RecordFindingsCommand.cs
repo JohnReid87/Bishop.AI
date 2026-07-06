@@ -7,4 +7,5 @@ internal sealed record RecordFindingsCommand(
     string WorkspacePath,
     string SkillName,
     string FindingsJson,
-    string GitSha) : IRequest<RecordFindingsResult>;
+    string GitSha,
+    Guid? BatchId = null) : IRequest<RecordFindingsResult>;

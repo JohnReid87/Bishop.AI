@@ -21,7 +21,8 @@ internal sealed class GetPriorFindingsQueryHandler
         return await db.Findings
             .AsNoTracking()
             .Where(f => f.Run.WorkspaceId == request.WorkspaceId
-                     && f.Run.SkillName == request.SkillName)
+                     && f.Run.SkillName == request.SkillName
+                     && (request.BatchId == null || f.Run.BatchId == request.BatchId))
             .OrderBy(f => f.Run.ProjectName)
             .ThenBy(f => f.Title)
             .Select(f => new PriorFindingRecord(

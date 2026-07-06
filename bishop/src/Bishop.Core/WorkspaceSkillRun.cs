@@ -6,6 +6,7 @@ public sealed class WorkspaceSkillRun
     public Guid WorkspaceId { get; set; }
     public string SkillName { get; set; } = string.Empty;
     public string? ProjectName { get; set; }
+    public Guid? BatchId { get; set; }
     public DateTimeOffset RecordedAt { get; set; }
     public string GitSha { get; set; } = string.Empty;
     public int FindingsCount { get; set; }

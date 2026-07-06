@@ -4,4 +4,5 @@ namespace Bishop.App.Findings.GetPriorFindings;
 
 internal sealed record GetPriorFindingsQuery(
     Guid WorkspaceId,
-    string SkillName) : IRequest<IReadOnlyList<PriorFindingRecord>>;
+    string SkillName,
+    Guid? BatchId = null) : IRequest<IReadOnlyList<PriorFindingRecord>>;
