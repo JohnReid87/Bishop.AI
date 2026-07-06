@@ -8,8 +8,6 @@ bishop.stage: false
 bishop.category: review
 ---
 
----
-
 Audit the repo's Markdown documentation for drift against the current code,
 confirm each finding with the user, and apply the agreed edits in place.
 

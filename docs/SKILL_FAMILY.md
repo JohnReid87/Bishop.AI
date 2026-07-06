@@ -44,18 +44,18 @@ Where the SKILL.md leads matters more than the total line count. Leading with me
 
 ---
 
-## 3. Boilerplate inventory (snapshot at card #218)
+## 3. Boilerplate inventory (card #218 snapshot → current state)
 
-Counts taken from `skills/*/SKILL.md` at the time the grill closed. Refresh before any future audit; the absolute numbers will drift, but the *pattern* (one shareable preamble dominating many skills) is the point.
+The left column is the count taken from `skills/*/SKILL.md` when the grill closed (the pre-migration snapshot); the right column is the current, post-refactor state. The absolute numbers drift, but the *pattern* — one shareable preamble that once dominated many skills — is the point. The refactor (cards #257–#261) landed, so the inline copies are now extracted to the shared surfaces described in §4.
 
-| Repeated block | Skills carrying it | Approximate size per copy |
+| Repeated block | Inline copies (card #218) | Inline copies now |
 |---|---|---|
-| Workspace detection preamble (`bishop workspace current --json` + STOP-message) | 11 | ~13 lines + a 4-line STOP message |
-| Card push procedure (`bishop card create` temp-file flow + `--bottom` + `--description-file <path>`) | 7 | ~10 lines |
-| Task-list preview format (H3 cards, Tag/Lane line, body sections, `---` separators) | ~7 | ~12 lines |
-| Source-card closing prompt (close / done / leave + CLI mapping) | 3 | ~15 lines |
+| Workspace detection preamble (now `bishop context-pack` / `bishop skill bootstrap`) | 11 | 1 (`bish-onboard` only — the documented exception) |
+| Card push procedure (`Card Push Procedure (STABLE)` in BISHOP_CONTEXT) | 7 | 0 |
+| Task-list preview format (`Task List Preview Format (STABLE)`) | ~7 | 0 |
+| Source-card closing prompt (`Source Card Closing Prompt (STABLE)`) | 3 | 0 |
 
-Total extractable mass when summed across all skills is in the low hundreds of lines — every invocation of every skill pays those tokens whether or not the surrounding logic ever runs. The refactor (cards #257–#261) reclaims them.
+At the snapshot, the total extractable mass summed across all skills was in the low hundreds of lines — every invocation of every skill paid those tokens whether or not the surrounding logic ran. The refactor reclaimed them: the deterministic mechanics moved into the `bishop` binary (`context-pack`, `skill bootstrap`) and the shared prose into the BISHOP_CONTEXT STABLE sections (see §4).
 
 ---
 
@@ -91,6 +91,8 @@ A provider is one C# class implementing `IContextProvider` (in `Bishop.App.Conte
 | Skill | Reason |
 |---|---|
 | `bish-onboard` | The workspace doesn't exist yet at skill entry — `bishop context-pack` requires a registered workspace to resolve. |
+| `bish-auto-card` | Runs unattended under `bishop batch run`, which injects a host-assembled `<bishop-context>` JSON block into the initial `claude -p` message — the same pack, pushed in rather than pulled via a CLI call. The skill reads that block and must **not** call `bishop context-pack` itself. |
+| `bish-scripts` | Authors a standalone PowerShell script into the global `%AppData%\Bishop.AI\scripts\` folder; it creates no cards and touches no board state, so no workspace context pack is relevant (exempt, not cut). |
 | `bish-life-init`, `bish-life-add` | Operate on the bishop.life data file, not a Bishop workspace. No workspace context is relevant. |
 | `bish-life-standup` | Same rationale, but uses the dedicated `bishop context-pack life-standup` subcommand (reads `bishop.life.json`, not the workspace DB). |
 
@@ -158,5 +160,5 @@ Flag findings (per-skill for items 1–11, family-wide for item 12) and walk the
 
 ## Source
 
-- Card #218 — `full review of the skills to card handling hand off process around token and performance efficiency, duplication of card handling processes in every skill`. The grill that produced this triage. Left open as a marker until the refactor lands.
+- Card #218 — `full review of the skills to card handling hand off process around token and performance efficiency, duplication of card handling processes in every skill`. The grill that produced this triage. The refactor (cards #257–#261) has landed and #218 is closed (Done).
 - Inspiration: Matt Pocock's `write-a-skill` — <https://github.com/mattpocock/skills/blob/main/skills/productivity/write-a-skill/SKILL.md>.

@@ -8,7 +8,9 @@ Single source of truth for "is this in scope or not". When the answer changes, u
 
 Deep Claude Code integration on top of the kanban + `bishop` CLI scaffolding that already exists.
 
-The kanban tracks work state per workspace. Skills (`bish-work-on-card`, `bish-grill-cards`, `bish-auto-card`) shell out to the `bishop` CLI to read and mutate that state. The user reviews everything material in the conversational loop. Bishop.UI is the interactive surface over the same state — a kanban view with a narrow set of direct mutations (see [Resolved scope decisions](#resolved-scope-decisions)). No agent observability dashboard, no embedded terminals, no plugin system.
+The kanban tracks work state per workspace. Skills (`bish-work-on-card`, `bish-grill-cards`, `bish-auto-card`) shell out to the `bishop` CLI to read and mutate that state. The user reviews everything material in the conversational loop. Bishop.UI is the interactive surface over the same state — a kanban view with a narrow set of direct mutations (see [Resolved scope decisions](#resolved-scope-decisions)). No embedded terminals, no plugin system.
+
+**Decision updated:** the previous stance was *"No agent observability dashboard, no embedded terminals, no plugin system."* A narrow, batch-and-review-scoped observability surface has since shipped and is deliberate: the workspace detail page's **Batches** view carries run controls (create / run / merge / clean-up, plus the board-group batch header row) and the **Monitoring** view lists each review skill's recorded runs (`Last run` / `Commits since`, fed by `bishop findings record`) with links to the findings reports. What remains out of scope is a *general* agent-telemetry dashboard — live per-agent metrics, token/cost charts, run timelines beyond the batch/monitoring surfaces above.
 
 The differentiator is the **layer above the editor** — cross-workspace orchestration + kanban as work-state source of truth + skill integration. The editor layer (VS Code + Claude extension) already exists; Bishop doesn't compete inside its box.
 

@@ -21,7 +21,7 @@ The shape, in four nouns:
 
 **Workspaces** — local directories you've registered with Bishop. Each one bound to a folder on disk. The left-hand nav of the UI.
 
-**Kanban** — every workspace owns four fixed lanes (Backlog, To Do, Doing, Done). Cards belong to a workspace; tags are workspace-scoped; lanes are not user-mutable. The kanban is the **work-state source of truth** — not the agent chat, not git history. Closing the terminal loses nothing, because the card captures intent and progress.
+**Kanban** — every workspace owns four fixed lanes (Backlog, To Do, Doing, Done). Cards belong to a workspace; tags are a global fixed set; lanes are not user-mutable. The kanban is the **work-state source of truth** — not the agent chat, not git history. Closing the terminal loses nothing, because the card captures intent and progress.
 
 **Skills** — Claude Code skills like `bish-grill-cards`, `bish-spec-cards`, `bish-work-on-card`, `bish-auto-card`. They shell out to the `bishop` CLI to read and mutate state. Triggered as slash-commands from a terminal, or as buttons on a workspace / card in the UI.
 
@@ -101,8 +101,8 @@ A guided tour for orientation. Dependency direction is **Core → Data → App �
 
 The filesystem is split into per-app peers: `bishop/` (this app + its CLI) and `life/` (the Bishop.Life sibling). Each carries its own `src/` and `tests/`.
 
-- **Domain types** (Workspace, Lane, Card, Tag): `bishop/src/Bishop.Core/`
-- **Persistence** (EF Core 9, SQLite WAL, migrations, repos): `bishop/src/Bishop.Data/`
+- **Domain types** (Workspace, Card, Batch): `bishop/src/Bishop.Core/`
+- **Persistence** (EF Core 9, SQLite WAL, migrations, query helpers): `bishop/src/Bishop.Data/`
 - **Application** (MediatR handlers, terminal launcher, validators): `bishop/src/Bishop.App/`
 - **ViewModels** (presentation-framework-agnostic, `IUiDispatcher` lives here): `bishop/src/Bishop.ViewModels/`
 - **UI** (WinUI 3 desktop app, Views, DI composition root): `bishop/src/Bishop.UI/`

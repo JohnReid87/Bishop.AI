@@ -39,7 +39,7 @@ Top-level filesystem is split into per-app peers — `bishop/` (the Bishop.AI de
 ### Layers
 Layered, with strict one-way dependencies. Modify in this order when implementing a feature:
 
-1. **Bishop.Core** — entities (Workspace, Lane, Card, Tag, CardTag), domain primitives, enums. No external deps.
+1. **Bishop.Core** — entities (Workspace, Card, AppSetting, WorkspaceSkillRun, Finding, Batch), domain primitives, enums. No external deps.
 2. **Bishop.Data** — `BishopDbContext`, EF Core configurations, migrations, query-extension helpers (`BatchQueries`, etc.). No repository abstractions. References Core.
 3. **Bishop.App** — MediatR `IRequest` types and handlers, application services (e.g. the terminal launcher), validators. References Core + Data.
 4. **Bishop.ViewModels** — presentation-framework-agnostic ViewModels. Targets `net10.0`; references `Bishop.App` so VMs can take `IMediator`. **Must not** reference `Microsoft.UI.*`, `Windows.UI.*`, or `Microsoft.WindowsAppSDK` — compile-time absence is the layer enforcement. UI-thread marshalling goes through the `IUiDispatcher` abstraction defined here; visual mapping (e.g. `Visibility`) lives in XAML converters, not VMs.
