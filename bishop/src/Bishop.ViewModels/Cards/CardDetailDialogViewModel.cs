@@ -32,6 +32,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     private readonly CardLinkRenderer _linkRenderer = new();
     private readonly CardExtrasLoader _extrasLoader;
     private Guid _cardId;
+    private Guid? _batchId;
 
     public Guid CardId => _cardId;
     public bool IsSkillsButtonVisible { get; }
@@ -131,6 +132,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         _workspacePath = workspacePath;
         _extrasLoader = new CardExtrasLoader(mediator, logger, errorBus);
         _cardId = card.Id;
+        _batchId = card.BatchId;
         Number = card.Number;
         LaneName = card.LaneName;
         Title = card.Title;
@@ -151,6 +153,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     public void NavigateTo(CardViewModel card, bool canGoBack)
     {
         _cardId = card.Id;
+        _batchId = card.BatchId;
         Number = card.Number;
         LaneName = card.LaneName;
         Title = card.Title;
@@ -357,7 +360,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
     {
         var items = new List<SkillLaunchItem>(CardSkills.Length);
         foreach (var menuItem in CardSkills)
-            items.Add(await SkillLaunchItemBuilder.BuildAsync(menuItem, Number, Title, Description, _workspacePath, _appSettings));
+            items.Add(await SkillLaunchItemBuilder.BuildAsync(menuItem, Number, Title, Description, _workspacePath, _appSettings, _batchId));
         return items;
     }
 
@@ -367,7 +370,7 @@ public sealed partial class CardDetailDialogViewModel : ObservableObject
         var command = string.IsNullOrWhiteSpace(sanitized)
             ? item.RenderedCommand
             : $"{item.RenderedCommand} {sanitized}";
-        await _mediator.Send(new LaunchSkillCommand(_workspacePath, command, snap, modelId));
+        await _mediator.Send(new LaunchSkillCommand(_workspacePath, command, snap, modelId, item.BatchId));
     }
 
     public async Task SetSkillModelAsync(string skillName, string modelId)

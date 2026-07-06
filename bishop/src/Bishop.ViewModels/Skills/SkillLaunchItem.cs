@@ -16,4 +16,5 @@ public sealed record SkillLaunchItem(
     string? StagePrefill,
     string MarkdownBody,
     bool StageProjects = false,
-    bool StageFilePicker = false);
+    bool StageFilePicker = false,
+    Guid? BatchId = null);

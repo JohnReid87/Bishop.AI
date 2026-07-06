@@ -53,7 +53,7 @@ internal sealed class BoardSkillsCoordinator
         var command = string.IsNullOrWhiteSpace(sanitized)
             ? item.RenderedCommand
             : $"{item.RenderedCommand} {sanitized}";
-        await _mediator.Send(new LaunchSkillCommand(_getWorkspacePath(), command, snap, modelId));
+        await _mediator.Send(new LaunchSkillCommand(_getWorkspacePath(), command, snap, modelId, item.BatchId));
     }
 
     public async Task LaunchWorkspaceByNameAsync(string skillName, string modelId, TerminalSnap snap)
@@ -78,6 +78,6 @@ internal sealed class BoardSkillsCoordinator
     {
         var workspacePath = _getWorkspacePath();
         return SkillLaunchItemBuilder.BuildAsync(menuItem, card?.Number, card?.Title, card?.Description,
-            workspacePath, _appSettings);
+            workspacePath, _appSettings, card?.BatchId);
     }
 }

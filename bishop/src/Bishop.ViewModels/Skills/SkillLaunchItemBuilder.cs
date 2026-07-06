@@ -19,9 +19,10 @@ internal static class SkillLaunchItemBuilder
         string? cardDescription,
         string workspacePath,
         IAppSettings appSettings,
+        Guid? batchId = null,
         CancellationToken cancellationToken = default) =>
         BuildAsync(menuItem.Skill, menuItem.Name, menuItem.GroupHeader,
-            cardNumber, cardTitle, cardDescription, workspacePath, appSettings, cancellationToken);
+            cardNumber, cardTitle, cardDescription, workspacePath, appSettings, batchId, cancellationToken);
 
     internal static async Task<SkillLaunchItem> BuildAsync(
         InstalledSkill skill,
@@ -32,6 +33,7 @@ internal static class SkillLaunchItemBuilder
         string? cardDescription,
         string workspacePath,
         IAppSettings appSettings,
+        Guid? batchId = null,
         CancellationToken cancellationToken = default)
     {
         var command = string.IsNullOrWhiteSpace(skill.Command)
@@ -57,6 +59,7 @@ internal static class SkillLaunchItemBuilder
             StagePrefill: string.IsNullOrEmpty(prefill) ? null : prefill,
             MarkdownBody: skill.MarkdownBody,
             StageProjects: skill.StageProjects,
-            StageFilePicker: skill.StageFilePicker);
+            StageFilePicker: skill.StageFilePicker,
+            BatchId: batchId);
     }
 }
