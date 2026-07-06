@@ -121,4 +121,86 @@ public sealed class ShowBatchCliCommandTests
         output.ToString().Should().Contain("#7");
         output.ToString().Should().Contain("My task");
     }
+
+    [Fact]
+    public async Task InvokeAsync_WorkingBatchWithFinishedAt_RendersFinishedStatus()
+    {
+        var batch = MakeBatch();
+        batch.Status = BatchStatus.Working;
+        batch.FinishedAt = DateTimeOffset.UtcNow;
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<GetBatchQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new GetBatchResult(batch, []));
+
+        var cmd = new ShowBatchCliCommand(mediator);
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        try
+        {
+            await cmd.InvokeAsync(["Sprint 1"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        output.ToString().Should().Contain("Status:   Finished");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_MergedBatch_RendersMergedStatus()
+    {
+        var batch = MakeBatch();
+        batch.Status = BatchStatus.Working;
+        batch.MergedAt = DateTimeOffset.UtcNow;
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<GetBatchQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new GetBatchResult(batch, []));
+
+        var cmd = new ShowBatchCliCommand(mediator);
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        try
+        {
+            await cmd.InvokeAsync(["Sprint 1"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        output.ToString().Should().Contain("Status:   Merged");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_JsonFlag_KeepsRawStatusAndAddsDerivedDisplayState()
+    {
+        var batch = MakeBatch("my-batch");
+        batch.Status = BatchStatus.Working;
+        batch.MergedAt = DateTimeOffset.UtcNow;
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<GetBatchQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new GetBatchResult(batch, []));
+
+        var cmd = new ShowBatchCliCommand(mediator);
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        try
+        {
+            await cmd.InvokeAsync(["my-batch", "--json"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        output.ToString().Should().Contain("\"status\": \"Working\"");
+        output.ToString().Should().Contain("\"displayState\": \"Merged\"");
+    }
 }

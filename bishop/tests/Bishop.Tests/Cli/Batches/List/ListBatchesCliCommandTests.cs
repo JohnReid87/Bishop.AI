@@ -112,4 +112,128 @@ public sealed class ListBatchesCliCommandTests
         exitCode.Should().Be(0);
         output.ToString().Should().Contain("\"my-batch\"");
     }
+
+    [Fact]
+    public async Task InvokeAsync_WorkingBatchWithFinishedAt_RendersFinished()
+    {
+        var batch = MakeBatch("done-run");
+        batch.Status = BatchStatus.Working;
+        batch.FinishedAt = DateTimeOffset.UtcNow;
+        var summaries = new List<BatchSummary>
+        {
+            new(batch, 0, batch.FinishedAt, null, false, false, false, [])
+        };
+        var cmd = new ListBatchesCliCommand(MediatorReturning(summaries));
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try
+        {
+            exitCode = await cmd.InvokeAsync(["--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        exitCode.Should().Be(0);
+        output.ToString().Should().Contain("Finished");
+        output.ToString().Should().NotContain("Working");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_HandWorkedBatchAllCardsDone_RendersFinished()
+    {
+        var batch = MakeBatch("hand-worked");
+        var card = new Card
+        {
+            Id = Guid.NewGuid(),
+            WorkspaceId = Guid.NewGuid(),
+            Number = 1,
+            Title = "task",
+            LaneName = SystemLaneNames.Done
+        };
+        var summaries = new List<BatchSummary>
+        {
+            new(batch, 1, null, null, false, false, false, [card])
+        };
+        var cmd = new ListBatchesCliCommand(MediatorReturning(summaries));
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try
+        {
+            exitCode = await cmd.InvokeAsync(["--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        exitCode.Should().Be(0);
+        output.ToString().Should().Contain("Finished");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_MergedBatch_RendersMerged()
+    {
+        var batch = MakeBatch("merged-run");
+        batch.Status = BatchStatus.Working;
+        batch.MergedAt = DateTimeOffset.UtcNow;
+        var summaries = new List<BatchSummary>
+        {
+            new(batch, 0, null, batch.MergedAt, true, false, false, [])
+        };
+        var cmd = new ListBatchesCliCommand(MediatorReturning(summaries));
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try
+        {
+            exitCode = await cmd.InvokeAsync(["--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        exitCode.Should().Be(0);
+        output.ToString().Should().Contain("Merged");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_JsonFlag_KeepsRawStatusAndAddsDerivedDisplayState()
+    {
+        var batch = MakeBatch("merged-run");
+        batch.Status = BatchStatus.Working;
+        batch.MergedAt = DateTimeOffset.UtcNow;
+        var summaries = new List<BatchSummary>
+        {
+            new(batch, 0, null, batch.MergedAt, true, false, false, [])
+        };
+        var cmd = new ListBatchesCliCommand(MediatorReturning(summaries));
+
+        var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        int exitCode;
+        try
+        {
+            exitCode = await cmd.InvokeAsync(["--json", "--workspace", "test-ws"]);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        exitCode.Should().Be(0);
+        output.ToString().Should().Contain("\"status\": \"Working\"");
+        output.ToString().Should().Contain("\"displayState\": \"Merged\"");
+    }
 }

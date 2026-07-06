@@ -1,4 +1,5 @@
 using Bishop.App.Batches.GetBatch;
+using Bishop.Core;
 using MediatR;
 using System.CommandLine;
 using System.Text.Json;
@@ -26,6 +27,13 @@ internal sealed class ShowBatchCliCommand : Command
         {
             var result = await mediator.Send(new GetBatchQuery(name));
 
+            var displayState = BatchDisplayStates.Derive(
+                result.Batch.Status,
+                result.Batch.FinishedAt,
+                result.Batch.MergedAt,
+                result.Cards.Count > 0 && result.Cards.All(c => c.LaneName == SystemLaneNames.Done))
+                .ToString();
+
             if (json)
             {
                 Console.WriteLine(JsonSerializer.Serialize(new
@@ -35,6 +43,7 @@ internal sealed class ShowBatchCliCommand : Command
                     branchName = result.Batch.BranchName,
                     baseBranch = result.Batch.BaseBranch,
                     status = result.Batch.Status.ToString(),
+                    displayState,
                     worktreePath = result.Batch.WorktreePath,
                     createdAt = result.Batch.CreatedAt,
                     closedAt = result.Batch.ClosedAt,
@@ -53,7 +62,7 @@ internal sealed class ShowBatchCliCommand : Command
             Console.WriteLine($"Batch:    {result.Batch.Name}");
             Console.WriteLine($"Branch:   {result.Batch.BranchName}");
             Console.WriteLine($"Base:     {result.Batch.BaseBranch}");
-            Console.WriteLine($"Status:   {result.Batch.Status}");
+            Console.WriteLine($"Status:   {displayState}");
             Console.WriteLine($"Worktree: {result.Batch.WorktreePath}");
 
             if (result.Cards.Count == 0)
