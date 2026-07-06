@@ -186,6 +186,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0"
                                                Text="{x:Bind BatchName, Mode=OneWay}"
@@ -194,6 +195,12 @@
                                                TextTrimming="CharacterEllipsis"
                                                VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1"
+                                               Text="{x:Bind StatusLabel, Mode=OneWay}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{StaticResource AppTextSecondaryBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="4,0,4,0"/>
+                                    <TextBlock Grid.Column="2"
                                                Text="{x:Bind ProgressDisplay, Mode=OneWay}"
                                                Style="{StaticResource CaptionTextBlockStyle}"
                                                Foreground="{StaticResource AppTextTertiaryBrush}"

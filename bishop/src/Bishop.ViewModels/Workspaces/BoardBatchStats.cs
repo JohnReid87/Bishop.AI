@@ -1,10 +1,18 @@
+using Bishop.Core;
 using Bishop.ViewModels.Batches;
 
 namespace Bishop.ViewModels.Workspaces;
 
 internal static class BoardBatchStats
 {
-    private record struct Accumulator(string Name, int TotalCount, int DoneCount, DateTimeOffset? CreatedAt);
+    private record struct Accumulator(
+        string Name,
+        int TotalCount,
+        int DoneCount,
+        DateTimeOffset? CreatedAt,
+        BatchStatus Status,
+        DateTimeOffset? FinishedAt,
+        DateTimeOffset? MergedAt);
 
     public static IReadOnlyDictionary<Guid, BatchStats> Compute(IEnumerable<LaneViewModel> lanes)
     {
@@ -12,7 +20,14 @@ internal static class BoardBatchStats
         var indexByBatch = AssignAccentIndices(raw);
         return raw.ToDictionary(
             kvp => kvp.Key,
-            kvp => new BatchStats(kvp.Value.Name, kvp.Value.TotalCount, kvp.Value.DoneCount, indexByBatch[kvp.Key]));
+            kvp => new BatchStats(
+                kvp.Value.Name,
+                kvp.Value.TotalCount,
+                kvp.Value.DoneCount,
+                indexByBatch[kvp.Key],
+                kvp.Value.Status,
+                kvp.Value.FinishedAt,
+                kvp.Value.MergedAt));
     }
 
     private static Dictionary<Guid, Accumulator> AccumulatePerBatch(IEnumerable<LaneViewModel> lanes)
@@ -31,8 +46,13 @@ internal static class BoardBatchStats
         raw[batchId] = new Accumulator(
             ResolveName(e.Name, card.BatchName),
             e.TotalCount + 1,
-            e.DoneCount + (card.LaneName == Bishop.Core.SystemLaneNames.Done ? 1 : 0),
-            e.CreatedAt ?? card.BatchCreatedAt);
+            e.DoneCount + (card.LaneName == SystemLaneNames.Done ? 1 : 0),
+            e.CreatedAt ?? card.BatchCreatedAt,
+            // Batch-level fields are constant across a batch's cards; the first card that carries
+            // them wins and later cards leave them unchanged.
+            card.BatchStatus ?? e.Status,
+            e.FinishedAt ?? card.BatchFinishedAt,
+            e.MergedAt ?? card.BatchMergedAt);
     }
 
     private static string ResolveName(string? existing, string? fromCard)

@@ -57,7 +57,7 @@ internal sealed class ListBatchesQueryHandler : IRequestHandler<ListBatchesQuery
         {
             var gs = gitStates[b.Id];
             var cards = cardsByBatch.GetValueOrDefault(b.Id, []);
-            return new BatchSummary(b, cards.Count, b.FinishedAt, gs.IsMerged, gs.BranchExists, gs.WorktreeExists, cards);
+            return new BatchSummary(b, cards.Count, b.FinishedAt, b.MergedAt, gs.IsMerged, gs.BranchExists, gs.WorktreeExists, cards);
         }).ToList();
     }
 }

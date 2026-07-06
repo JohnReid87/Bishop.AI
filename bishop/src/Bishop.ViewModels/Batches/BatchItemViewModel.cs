@@ -28,15 +28,16 @@ public sealed partial class BatchItemViewModel : ObservableObject
     public BatchStatus Status { get; init; }
     public int CardCount { get; init; }
     public DateTimeOffset? FinishedAt { get; init; }
+    public DateTimeOffset? MergedAt { get; init; }
     public DateTimeOffset? StoppedAt { get; init; }
-    public string StatusLabel => Status switch
-    {
-        BatchStatus.Working when IsMerged => "Merged",
-        BatchStatus.Working when FinishedAt is not null => "Ready",
-        BatchStatus.Working => "Working",
-        BatchStatus.Closed => "Closed",
-        _ => "Open"
-    };
+
+    // A batch is "done" for display purposes once every member card sits in the Done lane, even
+    // if it was never transitioned to Working (hand-worked deliveries stay Open). Zero cards is
+    // not done.
+    private bool AllCardsDone => Cards.Count > 0 && Cards.All(c => c.IsDoneLane);
+
+    public BatchDisplayState DisplayState => BatchDisplayStates.Derive(Status, FinishedAt, MergedAt, AllCardsDone);
+    public string StatusLabel => DisplayState.ToString();
     public string CardCountLabel => CardCount == 1 ? "1 card" : $"{CardCount} cards";
 
     public bool IsMerged { get; init; }

@@ -113,27 +113,64 @@ public class BatchItemViewModelTests
     }
 
     [Fact]
-    public void StatusLabel_ReturnsReadyWhenWorkingAndFinishedAtSet()
+    public void StatusLabel_ReturnsFinishedWhenWorkingAndFinishedAtSet()
     {
         var vm = new BatchItemViewModel { Status = BatchStatus.Working, FinishedAt = DateTimeOffset.UtcNow };
 
-        vm.StatusLabel.Should().Be("Ready");
+        vm.StatusLabel.Should().Be("Finished");
     }
 
     [Fact]
-    public void StatusLabel_ReturnsMergedWhenWorkingAndIsMerged()
+    public void StatusLabel_ReturnsFinishedWhenAllMemberCardsDone()
     {
-        var vm = new BatchItemViewModel { Status = BatchStatus.Working, IsMerged = true };
+        var vm = new BatchItemViewModel { Status = BatchStatus.Working };
+        vm.Cards.Add(new CardViewModel { Number = 1, Title = "a", LaneName = SystemLaneNames.Done });
+        vm.Cards.Add(new CardViewModel { Number = 2, Title = "b", LaneName = SystemLaneNames.Done });
+
+        vm.StatusLabel.Should().Be("Finished");
+    }
+
+    [Fact]
+    public void StatusLabel_ReturnsFinishedWhenHandWorkedOpenBatchAllCardsDone()
+    {
+        var vm = new BatchItemViewModel { Status = BatchStatus.Open };
+        vm.Cards.Add(new CardViewModel { Number = 1, Title = "a", LaneName = SystemLaneNames.Done });
+
+        vm.StatusLabel.Should().Be("Finished");
+    }
+
+    [Fact]
+    public void StatusLabel_StaysWorkingWhenNotAllCardsDone()
+    {
+        var vm = new BatchItemViewModel { Status = BatchStatus.Working };
+        vm.Cards.Add(new CardViewModel { Number = 1, Title = "a", LaneName = SystemLaneNames.Done });
+        vm.Cards.Add(new CardViewModel { Number = 2, Title = "b", LaneName = SystemLaneNames.Doing });
+
+        vm.StatusLabel.Should().Be("Working");
+    }
+
+    [Fact]
+    public void StatusLabel_ReturnsMergedWhenMergedAtSet()
+    {
+        var vm = new BatchItemViewModel { Status = BatchStatus.Working, MergedAt = DateTimeOffset.UtcNow };
 
         vm.StatusLabel.Should().Be("Merged");
     }
 
     [Fact]
-    public void StatusLabel_ReturnsMergedWhenWorkingAndIsMergedEvenWithFinishedAt()
+    public void StatusLabel_ReturnsMergedWhenMergedAtSetEvenWithFinishedAt()
     {
-        var vm = new BatchItemViewModel { Status = BatchStatus.Working, IsMerged = true, FinishedAt = DateTimeOffset.UtcNow };
+        var vm = new BatchItemViewModel { Status = BatchStatus.Working, MergedAt = DateTimeOffset.UtcNow, FinishedAt = DateTimeOffset.UtcNow };
 
         vm.StatusLabel.Should().Be("Merged");
+    }
+
+    [Fact]
+    public void StatusLabel_ClosedWinsOverMergedAt()
+    {
+        var vm = new BatchItemViewModel { Status = BatchStatus.Closed, MergedAt = DateTimeOffset.UtcNow };
+
+        vm.StatusLabel.Should().Be("Closed");
     }
 
     [Fact]

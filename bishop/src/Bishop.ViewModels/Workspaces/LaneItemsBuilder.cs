@@ -64,7 +64,8 @@ internal static class LaneItemsBuilder
             group = new BatchGroupViewModel { BatchId = batchId };
 
         if (batchStats.TryGetValue(batchId, out var s))
-            (group.BatchName, group.TotalCount, group.DoneCount, group.AccentIndex) = (s.Name, s.TotalCount, s.DoneCount, s.AccentIndex);
+            (group.BatchName, group.TotalCount, group.DoneCount, group.AccentIndex, group.Status, group.FinishedAt, group.MergedAt)
+                = (s.Name, s.TotalCount, s.DoneCount, s.AccentIndex, s.Status, s.FinishedAt, s.MergedAt);
         else
             group.BatchName = card.BatchName ?? string.Empty;
 

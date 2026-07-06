@@ -17,6 +17,7 @@ public sealed class Batch
     public string Model { get; set; } = string.Empty;
     public DateTimeOffset? StoppedAt { get; set; }
     public DateTimeOffset? FinishedAt { get; set; }
+    public DateTimeOffset? MergedAt { get; set; }
 
     [JsonIgnore]
     public ICollection<Card> Cards { get; set; } = [];

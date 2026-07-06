@@ -64,8 +64,8 @@ public sealed class ListBatchesCliCommandTests
     {
         var summaries = new List<BatchSummary>
         {
-            new(MakeBatch("sprint-1"), 3, null, false, false, false, []),
-            new(MakeBatch("sprint-2"), 1, null, false, false, false, [])
+            new(MakeBatch("sprint-1"), 3, null, null, false, false, false, []),
+            new(MakeBatch("sprint-2"), 1, null, null, false, false, false, [])
         };
         var cmd = new ListBatchesCliCommand(MediatorReturning(summaries));
 
@@ -92,7 +92,7 @@ public sealed class ListBatchesCliCommandTests
     {
         var summaries = new List<BatchSummary>
         {
-            new(MakeBatch("my-batch"), 2, null, false, false, false, [])
+            new(MakeBatch("my-batch"), 2, null, null, false, false, false, [])
         };
         var cmd = new ListBatchesCliCommand(MediatorReturning(summaries));
 

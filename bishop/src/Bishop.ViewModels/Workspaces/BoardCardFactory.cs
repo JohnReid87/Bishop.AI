@@ -25,6 +25,9 @@ internal static class BoardCardFactory
             BatchId = card.BatchId,
             BatchName = card.Batch?.Name,
             BatchCreatedAt = card.Batch?.CreatedAt,
+            BatchStatus = card.Batch?.Status,
+            BatchFinishedAt = card.Batch?.FinishedAt,
+            BatchMergedAt = card.Batch?.MergedAt,
             IsSkillsButtonVisible = isSkillsButtonVisible,
         };
     }

@@ -10,11 +10,13 @@ internal sealed class MergeBatchCommandHandler : IRequestHandler<MergeBatchComma
 {
     private readonly IDbContextFactory<BishopDbContext> _dbFactory;
     private readonly IGitCli _git;
+    private readonly TimeProvider _timeProvider;
 
-    public MergeBatchCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, IGitCli git)
+    public MergeBatchCommandHandler(IDbContextFactory<BishopDbContext> dbFactory, IGitCli git, TimeProvider timeProvider)
     {
         _dbFactory = dbFactory;
         _git = git;
+        _timeProvider = timeProvider;
     }
 
     public async Task<MergeBatchResult> Handle(MergeBatchCommand request, CancellationToken cancellationToken)
@@ -43,6 +45,17 @@ internal sealed class MergeBatchCommandHandler : IRequestHandler<MergeBatchComma
                 $"Cannot merge — HEAD is on '{currentBranch}', expected '{batch.BaseBranch}'. Check out '{batch.BaseBranch}' first.");
 
         var mergeResult = await _git.MergeAsync(request.WorkspacePath, batch.BranchName, cancellationToken);
+
+        // Stamp MergedAt on success so the batch reads as "Merged" until it is cleaned up,
+        // rather than lingering as "Working"/"Finished". The batch above is untracked (AsNoTracking),
+        // so update the stored row directly and leave Status untouched — clean-up is what closes it.
+        if (mergeResult.Success)
+        {
+            await db.Batches
+                .Where(b => b.Id == batch.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(b => b.MergedAt, _timeProvider.GetUtcNow()), cancellationToken);
+        }
+
         return new MergeBatchResult(mergeResult.Success, mergeResult.ConflictFiles, mergeResult.ErrorMessage);
     }
 }

@@ -39,7 +39,7 @@ public class WorkspaceBatchesViewModelTests
             Name = name,
             BranchName = "feat/batch-1",
             Status = BatchStatus.Open,
-        }, cardCount, finishedAt, false, false, false, cards ?? []);
+        }, cardCount, finishedAt, null, false, false, false, cards ?? []);
 
     [Fact]
     public void Batches_Empty_Initially()
@@ -108,7 +108,7 @@ public class WorkspaceBatchesViewModelTests
             BranchName = "feat/my-branch",
             Status = BatchStatus.Working,
         };
-        var vm = new WorkspaceBatchesViewModel(MediatorReturning([new BatchSummary(batch, 5, null, false, false, false, [])]));
+        var vm = new WorkspaceBatchesViewModel(MediatorReturning([new BatchSummary(batch, 5, null, null, false, false, false, [])]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
 
@@ -260,7 +260,7 @@ public class WorkspaceBatchesViewModelTests
             BranchName = "feat/my-branch",
             Status = BatchStatus.Working,
         };
-        var summary = new BatchSummary(batch, 0, null, IsMerged: true, BranchExists: true, WorktreeExists: false, Cards: []);
+        var summary = new BatchSummary(batch, 0, null, MergedAt: null, IsMerged: true, BranchExists: true, WorktreeExists: false, Cards: []);
         var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
@@ -276,7 +276,7 @@ public class WorkspaceBatchesViewModelTests
     {
         var card = new Card { Id = Guid.NewGuid(), Number = 7, Title = "My card", LaneName = "To Do" };
         var batch = new Batch { Id = Guid.NewGuid(), Name = "b", Status = BatchStatus.Open };
-        var summary = new BatchSummary(batch, 1, null, false, false, false, [card]);
+        var summary = new BatchSummary(batch, 1, null, null, false, false, false, [card]);
         var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
@@ -293,7 +293,7 @@ public class WorkspaceBatchesViewModelTests
         var doingCard = new Card { Id = Guid.NewGuid(), Number = 2, LaneName = "Doing", LastAutoRunFailedAt = null };
         var toDoCard = new Card { Id = Guid.NewGuid(), Number = 3, LaneName = "To Do" };
         var batch = new Batch { Id = Guid.NewGuid(), Name = "b", Status = BatchStatus.Working };
-        var summary = new BatchSummary(batch, 2, null, false, false, false, [doingCard, toDoCard]);
+        var summary = new BatchSummary(batch, 2, null, null, false, false, false, [doingCard, toDoCard]);
         var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
@@ -308,7 +308,7 @@ public class WorkspaceBatchesViewModelTests
     {
         var doingCard = new Card { Id = Guid.NewGuid(), Number = 1, LaneName = "Doing", LastAutoRunFailedAt = null };
         var batch = new Batch { Id = Guid.NewGuid(), Name = "b", Status = BatchStatus.Open };
-        var summary = new BatchSummary(batch, 1, null, false, false, false, [doingCard]);
+        var summary = new BatchSummary(batch, 1, null, null, false, false, false, [doingCard]);
         var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);
@@ -327,7 +327,7 @@ public class WorkspaceBatchesViewModelTests
             LastAutoRunFailedAt = DateTimeOffset.UtcNow,
         };
         var batch = new Batch { Id = Guid.NewGuid(), Name = "b", Status = BatchStatus.Working };
-        var summary = new BatchSummary(batch, 1, null, false, false, false, [failedCard]);
+        var summary = new BatchSummary(batch, 1, null, null, false, false, false, [failedCard]);
         var vm = new WorkspaceBatchesViewModel(MediatorReturning([summary]));
 
         await vm.LoadAsync(Guid.Empty, string.Empty);

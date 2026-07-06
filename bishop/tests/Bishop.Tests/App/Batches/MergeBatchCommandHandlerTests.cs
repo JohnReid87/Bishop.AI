@@ -57,7 +57,7 @@ public sealed class MergeBatchCommandHandlerTests : IClassFixture<DbFixture>
     }
 
     private MergeBatchCommandHandler CreateHandler(IGitCli? git = null) =>
-        new(_factory, git ?? GitMergeSucceeds());
+        new(_factory, git ?? GitMergeSucceeds(), TimeProvider.System);
 
     // ── status validation ──────────────────────────────────────────────────────
 
@@ -205,6 +205,34 @@ public sealed class MergeBatchCommandHandlerTests : IClassFixture<DbFixture>
         var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
         saved.Status.Should().Be(BatchStatus.Working);
         saved.ClosedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Success_StampsMergedAt()
+    {
+        var batch = await CreateWorkingBatchAsync();
+
+        await CreateHandler().Handle(new MergeBatchCommand(batch.Name, WorkspacePath), default);
+
+        var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
+        saved.MergedAt.Should().NotBeNull();
+        saved.Status.Should().Be(BatchStatus.Working);
+    }
+
+    [Fact]
+    public async Task MergeConflict_DoesNotStampMergedAt()
+    {
+        var batch = await CreateWorkingBatchAsync();
+        var git = Substitute.For<IGitCli>();
+        git.GetCurrentBranchAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("main");
+        git.MergeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new MergeResult(false, ["src/Foo.cs"]));
+
+        await CreateHandler(git).Handle(new MergeBatchCommand(batch.Name, WorkspacePath), default);
+
+        var saved = await _db.Batches.SingleAsync(b => b.Id == batch.Id);
+        saved.MergedAt.Should().BeNull();
     }
 
     [Fact]

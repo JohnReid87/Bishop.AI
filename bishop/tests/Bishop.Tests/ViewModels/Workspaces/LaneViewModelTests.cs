@@ -273,7 +273,7 @@ public class LaneViewModelTests
     public void RebuildLaneItems_BatchStats_AreAppliedToGroup()
     {
         var batchId = Guid.NewGuid();
-        var stats = new Dictionary<Guid, BatchStats> { [batchId] = new BatchStats("Sprint 1", 3, 1, 0) };
+        var stats = new Dictionary<Guid, BatchStats> { [batchId] = new BatchStats("Sprint 1", 3, 1, 0, BatchStatus.Working, null, null) };
         var vm = NewVm();
         vm.Cards.Add(new CardViewModel { Title = "C1", BatchId = batchId });
 

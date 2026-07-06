@@ -1,3 +1,4 @@
+using Bishop.Core;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
@@ -81,5 +82,42 @@ public class BatchGroupViewModelTests
         vm.AccentIndex = 2;
 
         changed.Should().Contain(nameof(BatchGroupViewModel.AccentColor));
+    }
+
+    [Fact]
+    public void StatusLabel_ReflectsWorkingRun()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Working, TotalCount = 2, DoneCount = 1 };
+
+        vm.StatusLabel.Should().Be("Working");
+    }
+
+    [Fact]
+    public void StatusLabel_IsFinished_WhenAllCardsDone()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Working, TotalCount = 2, DoneCount = 2 };
+
+        vm.StatusLabel.Should().Be("Finished");
+    }
+
+    [Fact]
+    public void StatusLabel_IsMerged_WhenMergedAtSet()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Working, MergedAt = DateTimeOffset.UtcNow, TotalCount = 2, DoneCount = 2 };
+
+        vm.StatusLabel.Should().Be("Merged");
+    }
+
+    [Fact]
+    public void StatusLabel_RaisesPropertyChanged_WhenDoneCountReachesTotal()
+    {
+        var vm = new BatchGroupViewModel { BatchId = Guid.NewGuid(), Status = BatchStatus.Working, TotalCount = 2, DoneCount = 1 };
+        var changed = new List<string?>();
+        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.DoneCount = 2;
+
+        changed.Should().Contain(nameof(BatchGroupViewModel.StatusLabel));
+        vm.StatusLabel.Should().Be("Finished");
     }
 }

@@ -1,10 +1,18 @@
+using Bishop.Core;
 using Bishop.ViewModels.Cards;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 
 namespace Bishop.ViewModels.Batches;
 
-public readonly record struct BatchStats(string Name, int TotalCount, int DoneCount, int AccentIndex);
+public readonly record struct BatchStats(
+    string Name,
+    int TotalCount,
+    int DoneCount,
+    int AccentIndex,
+    BatchStatus Status,
+    DateTimeOffset? FinishedAt,
+    DateTimeOffset? MergedAt);
 
 public sealed partial class BatchGroupViewModel : ObservableObject
 {
@@ -24,16 +32,35 @@ public sealed partial class BatchGroupViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProgressDisplay))]
+    [NotifyPropertyChangedFor(nameof(StatusLabel))]
     public partial int TotalCount { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProgressDisplay))]
+    [NotifyPropertyChangedFor(nameof(StatusLabel))]
     public partial int DoneCount { get; set; }
 
     [ObservableProperty]
     public partial bool IsExpanded { get; set; } = true;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusLabel))]
+    public partial BatchStatus Status { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusLabel))]
+    public partial DateTimeOffset? FinishedAt { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusLabel))]
+    public partial DateTimeOffset? MergedAt { get; set; }
+
     public string ProgressDisplay => $"({DoneCount}/{TotalCount})";
+
+    private bool AllCardsDone => TotalCount > 0 && DoneCount == TotalCount;
+
+    public BatchDisplayState DisplayState => BatchDisplayStates.Derive(Status, FinishedAt, MergedAt, AllCardsDone);
+    public string StatusLabel => DisplayState.ToString();
 
     public ObservableCollection<CardViewModel> Cards { get; } = [];
 }

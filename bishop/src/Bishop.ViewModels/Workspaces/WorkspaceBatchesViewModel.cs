@@ -83,6 +83,7 @@ public sealed partial class WorkspaceBatchesViewModel : ObservableObject
                 Status = s.Batch.Status,
                 CardCount = s.CardCount,
                 FinishedAt = s.FinishedAt,
+                MergedAt = s.MergedAt,
                 StoppedAt = s.Batch.StoppedAt,
                 IsMerged = s.IsMerged,
                 BranchExists = s.BranchExists,
