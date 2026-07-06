@@ -40,12 +40,12 @@ Cut because (a) workspaces attached from existing repos (FotM.IO-style) already 
 ### Skills live in this repo
 The bundled skills are vendored under `skills/` in the Bishop.AI repo, and `bishop install-skills` copies them to `%USERPROFILE%/.claude/skills/`. Skills version with Bishop; CLI evolution and skill text update in the same commit. They group into six categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
 
-- **Conversational:** `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
+- **Conversational:** `bish-grill-cards`, `bish-scripts`, `bish-spec-cards`
 - **Code:** `bish-arch`, `bish-dead-code`, `bish-security`
 - **Tests:** `bish-coverage`, `bish-tests`
-- **Review:** `bish-audit-docs`, `bish-review-batch`, `bish-triage`
+- **Review:** `bish-audit-docs`, `bish-review-batch`
 - **Setup-Execute:** `bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` (the `bish-life-*` skills operate on the bishop.life data file rather than a workspace)
-- **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code
+- **Bishop-level / meta:** _(none currently — skills that operate on `skills/` itself rather than a workspace's code live here)_
 
 ### Automated Claude runs use bypassPermissions, with check-path as the containment layer
 

@@ -56,13 +56,8 @@ public sealed class SkillContextPackSchemaTests : IClassFixture<DbFixture>
     [Theory]
     [InlineData("bish-work-on-card", "work-on-card")]
     [InlineData("bish-grill-cards", "grill-cards")]
-    [InlineData("bish-triage", "triage")]
     [InlineData("bish-auto-card", "auto-card")]
     [InlineData("bish-spec-cards", "spec-cards")]
-    // bish-write-skill is a meta-skill describing the pack schema for skill
-    // authors; it only references universal roots (workspace, conventions).
-    // grill-cards stands in for the skill_specific shape if any path snuck in.
-    [InlineData("bish-write-skill", "grill-cards")]
     public async Task SkillMd_DocumentedJsonPaths_ExistInSerializedContextPack(
         string skillDirName, string providerSkillName)
     {
@@ -255,7 +250,6 @@ public sealed class SkillContextPackSchemaTests : IClassFixture<DbFixture>
         "work-on-card" => new WorkOnCardContextProvider(),
         "grill-cards" => new GrillCardsContextProvider(),
         "spec-cards" => new SpecCardsContextProvider(),
-        "triage" => new TriageContextProvider(),
         "auto-card" => new AutoCardContextProvider(),
         _ => throw new ArgumentOutOfRangeException(nameof(skillName), skillName, "Unknown provider for drift test")
     };

@@ -11,7 +11,6 @@ internal static class SkillTagMap
             ["bish-coverage"] = "test",
             ["bish-dead-code"] = "chore",
             ["bish-audit-docs"] = "docs",
-            ["bish-triage"] = "bug",
         };
 
     public static string? GetTag(string skillName) =>

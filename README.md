@@ -11,11 +11,11 @@ See **[OVERVIEW.md](OVERVIEW.md)** for what Bishop is, who it's for, and how you
 - Tests: `dotnet test`
 - No installer — Bishop is built from source and run directly (there is no packaged distribution).
 - Skills: run `bishop install-skills` once to populate `~/.claude/skills/` with the bundled Claude Code skills. They group into six categories — see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the rationale:
-  - **Conversational:** `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
+  - **Conversational:** `bish-grill-cards`, `bish-scripts`, `bish-spec-cards`
   - **Code:** `bish-arch`, `bish-dead-code`, `bish-security`
   - **Tests:** `bish-coverage`, `bish-tests`
-  - **Review:** `bish-audit-docs`, `bish-review-batch`, `bish-triage`
+  - **Review:** `bish-audit-docs`, `bish-review-batch`
   - **Setup-Execute:** `bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` (the `bish-life-*` skills operate on the bishop.life data file rather than a workspace)
-  - **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code
+  - **Bishop-level / meta:** _(none currently — skills that operate on `skills/` itself rather than a workspace's code live here)_
 
 See [CONTEXT.md](CONTEXT.md) for tech stack, architecture, and conventions, and [DIRECTION.md](DIRECTION.md) for scope decisions.

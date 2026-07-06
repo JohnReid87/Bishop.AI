@@ -51,8 +51,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IContextProvider, AuditDocsContextProvider>();
         services.AddSingleton<IContextProvider, GrillCardsContextProvider>();
         services.AddSingleton<IContextProvider, SpecCardsContextProvider>();
-        services.AddSingleton<IContextProvider, GrillDocsContextProvider>();
-        services.AddSingleton<IContextProvider, TriageContextProvider>();
         services.AddSingleton<IContextProvider, ReviewBatchContextProvider>();
         return services;
     }

@@ -28,12 +28,12 @@ Top-level filesystem is split into per-app peers — `bishop/` (the Bishop.AI de
 - `life/tests/Bishop.Life.Tests/` — xUnit project for Bishop.Life.
 - `life/tools/Bishop.Life.SchemaCodegen/` — Roslyn-syntax-driven console tool that emits `life/src/Bishop.Life.App/Assets/js/schema.d.ts` from `Bishop.Life.Core/Schema/**`. Runs from a `BeforeBuild` target in `Bishop.Life.App.csproj` with `Inputs`/`Outputs` so incremental builds skip when neither the schema nor the tool sources changed.
 - `skills/` — vendored Claude Code skill files shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`. Grouped into six categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
-  - **Conversational:** `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`
+  - **Conversational:** `bish-grill-cards`, `bish-scripts`, `bish-spec-cards`
   - **Code:** `bish-arch`, `bish-dead-code`, `bish-security`
   - **Tests:** `bish-coverage`, `bish-tests`
-  - **Review:** `bish-audit-docs`, `bish-review-batch`, `bish-triage`
+  - **Review:** `bish-audit-docs`, `bish-review-batch`
   - **Setup-Execute:** `bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` (the `bish-life-*` skills operate on the bishop.life data file rather than a workspace)
-  - **Bishop-level / meta:** `bish-write-skill`, `bish-audit-skills` — operate on `skills/` itself rather than a workspace's code
+  - **Bishop-level / meta:** _(none currently — skills that operate on `skills/` itself rather than a workspace's code live here)_
 - `notes/_archive/` — pre-grill design notes; preserved for decision rationale but superseded by DIRECTION.md.
 
 ### Layers
@@ -146,7 +146,7 @@ Every wire shape is a `public sealed record` under `Bishop.Life.Core/Schema/Enve
 Adding a new envelope: drop a `public sealed record` under `Schema/Envelopes/`, use it from the relevant controller (`SpeakController` / `StandupController` / `PlanController`), rebuild — `schema.d.ts` updates automatically.
 
 ### Skill integration
-Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). They group into six categories — Conversational (`bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards`), Code (`bish-arch`, `bish-dead-code`, `bish-security`), Tests (`bish-coverage`, `bish-tests`), Review (`bish-audit-docs`, `bish-triage`), Setup-Execute (`bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` — the `bish-life-*` skills operate on the bishop.life data file rather than a workspace), and Bishop-level / meta (`bish-write-skill`, `bish-audit-skills`, which operate on `skills/` itself rather than a workspace's code). See [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the category rationale. Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
+Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). They group into six categories — Conversational (`bish-grill-cards`, `bish-scripts`, `bish-spec-cards`), Code (`bish-arch`, `bish-dead-code`, `bish-security`), Tests (`bish-coverage`, `bish-tests`), Review (`bish-audit-docs`, `bish-review-batch`), Setup-Execute (`bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` — the `bish-life-*` skills operate on the bishop.life data file rather than a workspace), and Bishop-level / meta (currently empty — reserved for skills that operate on `skills/` itself rather than a workspace's code). See [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the category rationale. Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
 
 - `name` — skill identifier (required).
 - `description` — user-facing summary.

@@ -36,10 +36,6 @@ the task instead of doing everything inside a single session.
   each member card's `### Acceptance`). Confirmed findings become fix cards added
   to the same batch; findings persist keyed to the batch so a re-review never
   re-litigates a dismissed finding.
-- `bish-triage` — interrogates a free-text bug description, validates the
-  suspected cause against the repo via the Explore subagent, and pushes a
-  structured `bug` card (or a `spike` + fix-stub pair when root cause is
-  unconfirmed).
 
 ### Conversational skills — explore and plan (`bishop.category: discuss`)
 
@@ -47,10 +43,6 @@ the task instead of doing everything inside a single session.
   then pushes the agreed-on tasks as cards on the board. Use when work is
   **not yet on the board** — you have an idea and need it stress-tested and
   broken down into trackable items.
-- `bish-grill-docs` — relentlessly interviews the user about a doc that needs
-  writing — purpose, audience, structure — then writes the markdown file
-  in-session at the agreed path. Sibling of `bish-grill-cards` for when the
-  follow-up to a grill is a document rather than code. Never pushes cards.
 - `bish-scripts` — interviews the user about what they want to automate, then
   drafts and saves a PowerShell `.ps1` to `%AppData%\Bishop.AI\scripts\` so
   it appears immediately in the ScriptsPage launcher. Writes new scripts only;
@@ -95,14 +87,8 @@ These skills do not target a workspace's code; they operate on `skills/`
 in the Bishop.AI repository. See [`docs/SKILL_FAMILY.md`](../docs/SKILL_FAMILY.md)
 for the category rationale.
 
-- `bish-write-skill` — authors a new Bishop skill. Interviews to pick a
-  category (Conversational / Code / Tests / Review / Setup-Execute /
-  Bishop-level), emits a skeleton `SKILL.md` to `skills/<name>/`, and
-  checks the result against the family's canonical patterns.
-- `bish-audit-skills` — audits the skill family against the canonical
-  patterns in `docs/SKILL_FAMILY.md` (category, leading content,
-  workspace-detection, STABLE-section references, heuristic content,
-  frontmatter), walks findings with the user, and pushes refactor cards.
+_None currently — the category is reserved for skills about the skill family
+itself (authoring guides, audits)._
 
 ### Choosing between `bish-spec-cards`, `bish-grill-cards`, and `bish-work-on-card`
 
@@ -388,7 +374,7 @@ print a preview that the user confirms or edits *before* any
 ## Source Card Closing Prompt (STABLE)
 
 When a skill was invoked against a *source* card (e.g. a `bish-grill-cards`
-or `bish-triage` run that turned the source card's idea into child
+or `bish-spec-cards` run that turned the source card's idea into child
 cards), prompt the user about the source card's fate after the
 children have been pushed. Use exactly this prompt and option set:
 

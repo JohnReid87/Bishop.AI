@@ -23,7 +23,7 @@ The shape, in four nouns:
 
 **Kanban** — every workspace owns four fixed lanes (Backlog, To Do, Doing, Done). Cards belong to a workspace; tags are workspace-scoped; lanes are not user-mutable. The kanban is the **work-state source of truth** — not the agent chat, not git history. Closing the terminal loses nothing, because the card captures intent and progress.
 
-**Skills** — Claude Code skills like `bish-grill-cards`, `bish-grill-docs`, `bish-work-on-card`, `bish-auto-card`. They shell out to the `bishop` CLI to read and mutate state. Triggered as slash-commands from a terminal, or as buttons on a workspace / card in the UI.
+**Skills** — Claude Code skills like `bish-grill-cards`, `bish-spec-cards`, `bish-work-on-card`, `bish-auto-card`. They shell out to the `bishop` CLI to read and mutate state. Triggered as slash-commands from a terminal, or as buttons on a workspace / card in the UI.
 
 **CLI (`bishop`)** — the automation surface. Skills mutate Bishop state through `bishop <command>`. Humans use the UI directly for interactive edits. Both writers share a SQLite DB in WAL mode.
 
@@ -82,7 +82,6 @@ Periodically you want a second pair of eyes. From inside a workspace terminal:
 - `/bish-security` — security audit (injection, secrets, weak crypto, missing authn/authz, dependency CVEs).
 - `/bish-coverage` — coverage scan; raises cards for under-covered classes.
 - `/bish-tests` — test-quality audit.
-- `/bish-triage` — turn a free-text bug description into a structured `bug` card.
 
 Each one walks findings with you one at a time and pushes agreed cards tagged appropriately.
 

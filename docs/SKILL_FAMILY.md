@@ -4,7 +4,7 @@ Captured from the grill on card #218 ("full review of the skills to card handlin
 
 Read this once before:
 
-- writing a new skill (especially via `bish-write-skill`),
+- writing a new skill,
 - restructuring an existing skill,
 - auditing the skill family for drift.
 
@@ -16,12 +16,12 @@ Skills divide into six categories. The category determines the restructure appro
 
 | Category | Current members | What the skill *is*, fundamentally |
 |---|---|---|
-| **Conversational** | `bish-grill-cards`, `bish-grill-docs`, `bish-scripts`, `bish-spec-cards` | An interview style — relentless interrogation. The soul is the *quality bar of the conversation*. |
+| **Conversational** | `bish-grill-cards`, `bish-scripts`, `bish-spec-cards` | An interview style — relentless interrogation. The soul is the *quality bar of the conversation*. |
 | **Code** | `bish-arch`, `bish-dead-code`, `bish-security` | Heuristic catalogue applied to production C# — structure, dead code, security. The soul is the *heuristic catalogue*. |
 | **Tests** | `bish-coverage`, `bish-tests` | Heuristic catalogue applied to the test surface — line coverage gaps, mutation/quality. The soul is the *heuristic catalogue*. |
-| **Review** | `bish-audit-docs`, `bish-triage` | Heuristic catalogue applied to artefacts that aren't production code or tests — docs drift, bug-skeleton walks. The soul is the *heuristic catalogue*. |
+| **Review** | `bish-audit-docs`, `bish-review-batch` | Heuristic catalogue applied to artefacts that aren't production code or tests — docs drift, delivered-batch review. The soul is the *heuristic catalogue*. |
 | **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card`, `bish-life-init`, `bish-life-standup`, `bish-life-add` | A deterministic procedure that mutates state (filesystem, board, git, or the bishop.life data file). The soul is the *procedure itself*. |
-| **Bishop-level / meta** | `bish-write-skill`, `bish-audit-skills` | Skills *about* the skill family — authoring guides, audits. Operate on `skills/` directly, not on a workspace's code. |
+| **Bishop-level / meta** | _(none currently)_ | Skills *about* the skill family — authoring guides, audits. Operate on `skills/` directly, not on a workspace's code. |
 
 The Conversational / Code / Tests / Review / Setup-Execute split is **workspace-level** — each skill targets the user's current Bishop workspace. Bishop-level skills are distinct: they treat the Bishop repository itself (or any `skills/` directory) as their subject. Keep them separate so workspace-level skills do not accumulate self-referential plumbing. The `bish-life-*` skills are a documented exception within Setup-Execute: they operate on the bishop.life data file (`bishop.life.json`) rather than a workspace, and are exempt from workspace context-pack entry (see §4).
 
@@ -82,7 +82,7 @@ Workspace-level skills (Conversational / Review / Setup-Execute) open with a sin
 - `skill_specific` — provider-built block (e.g. the loaded card body for `work-on-card` / `auto-card`).
 - `conventions` — the STABLE/TUNABLE sections sliced from `BishopContext.static.md` by the provider's `RequiredSections`.
 
-Inline `bishop context print --section "<name>"` links in skill prose duplicate what the pack already delivers. They are flagged by `bish-audit-skills`. `bishop context print` itself stays available for ad-hoc human / debug inspection — only the in-skill references are removed.
+Inline `bishop context print --section "<name>"` links in skill prose duplicate what the pack already delivers, and are drift. `bishop context print` itself stays available for ad-hoc human / debug inspection — only the in-skill references are removed.
 
 A provider is one C# class implementing `IContextProvider` (in `Bishop.App.Context.ContextPack`). Adding skill-specific context for a new skill is a one-class change registered in DI; the framework supplies the common blocks automatically.
 
@@ -91,8 +91,6 @@ A provider is one C# class implementing `IContextProvider` (in `Bishop.App.Conte
 | Skill | Reason |
 |---|---|
 | `bish-onboard` | The workspace doesn't exist yet at skill entry — `bishop context-pack` requires a registered workspace to resolve. |
-| `bish-audit-skills` | Meta-skill; operates on `skills/` itself, not a workspace's code. No workspace context is relevant. |
-| `bish-write-skill` | Meta-skill; same rationale as `bish-audit-skills`. |
 | `bish-life-init`, `bish-life-add` | Operate on the bishop.life data file, not a Bishop workspace. No workspace context is relevant. |
 | `bish-life-standup` | Same rationale, but uses the dedicated `bishop context-pack life-standup` subcommand (reads `bishop.life.json`, not the workspace DB). |
 
@@ -125,7 +123,7 @@ A short STABLE/TUNABLE convention note belongs at the top of BISHOP_CONTEXT.md s
 
 ## 6. Audit checklist
 
-Run through this list when auditing the skill family (the future `bish-audit-skills` skill walks it with the user).
+Run through this list when auditing the skill family. It is a manual checklist today; the mechanical items (frontmatter fields, entry-point pattern, bundled-list drift) are candidates for a fact-block-style conformance test.
 
 For each skill in `skills/`:
 

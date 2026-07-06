@@ -237,8 +237,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("audit-docs", new[] { "Shell selection", "Findings Recording Procedure" })]
     [InlineData("grill-cards", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure", "Source Card Closing Prompt" })]
     [InlineData("spec-cards", new[] { "Shell selection", "Card Granularity Rules", "Task List Preview Format", "Card Push Procedure", "Source Card Closing Prompt" })]
-    [InlineData("grill-docs", new[] { "Shell selection" })]
-    [InlineData("triage", new[] { "Shell selection", "Card Push Procedure", "Source Card Closing Prompt" })]
     public async Task NewProviders_DeliverExpectedConventionKeys(string skillName, string[] expectedKeys)
     {
         // Arrange
@@ -261,7 +259,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [Theory]
     [InlineData("grill-cards")]
     [InlineData("spec-cards")]
-    [InlineData("triage")]
     public async Task CardAwareProviders_LoadCardWhenArgProvided(string skillName)
     {
         // Arrange
@@ -283,7 +280,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
 
     [Theory]
     [InlineData("audit-docs")]
-    [InlineData("grill-docs")]
     [InlineData("dead-code")]
     public async Task WorkspaceOnlyProviders_SkillSpecificIsNull(string skillName)
     {
@@ -310,8 +306,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
         "audit-docs" => new AuditDocsContextProvider(),
         "grill-cards" => new GrillCardsContextProvider(),
         "spec-cards" => new SpecCardsContextProvider(),
-        "grill-docs" => new GrillDocsContextProvider(),
-        "triage" => new TriageContextProvider(),
         "auto-card" => new AutoCardContextProvider(),
         "work-on-card" => new WorkOnCardContextProvider(),
         "dead-code" => new DeadCodeContextProvider(),
@@ -323,7 +317,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("auto-card")]
     [InlineData("grill-cards")]
     [InlineData("spec-cards")]
-    [InlineData("triage")]
     public async Task CardProviders_NoRelatedSection_EmitsEmptyRelatedCards(string skillName)
     {
         // Arrange
@@ -348,7 +341,6 @@ public sealed class BuildContextPackQueryHandlerTests : IClassFixture<DbFixture>
     [InlineData("auto-card")]
     [InlineData("grill-cards")]
     [InlineData("spec-cards")]
-    [InlineData("triage")]
     public async Task CardProviders_WithRelatedSection_LoadsReferencedCards(string skillName)
     {
         // Arrange

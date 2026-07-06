@@ -19,7 +19,6 @@ public class SkillTagMapTests
     [InlineData("bish-coverage", "test")]
     [InlineData("bish-dead-code", "chore")]
     [InlineData("bish-audit-docs", "docs")]
-    [InlineData("bish-triage", "bug")]
     public void GetTag_MapsKnownSkills(string skill, string expected)
         => SkillTagMap.GetTag(skill).Should().Be(expected);
 

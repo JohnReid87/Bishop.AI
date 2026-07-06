@@ -124,7 +124,6 @@ public sealed class WorkspaceContextSeederTests : IClassFixture<DbFixture>
 
         output.Should().Contain("## Workflow");
         output.Should().Contain("`bish-grill-cards`");
-        output.Should().Contain("`bish-triage`");
         output.Should().Contain("`bish-work-on-card`");
         output.Should().Contain("`bish-auto-card`");
         output.Should().Contain("`bish-arch`");
