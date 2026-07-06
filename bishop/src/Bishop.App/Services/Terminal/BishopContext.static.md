@@ -210,6 +210,7 @@ they resolve from the current working directory.
 - `bishop batch add-card <name> <card-id>` — assign a card to a batch
 - `bishop batch remove-card <name> <card-id>` — unassign a card from a batch
 - `bishop batch run <name> [--resume] [--model <model-id>]` — run a batch end-to-end via `bish-auto-card`; stops on card failure; `--resume` continues from the next undone card
+- `bishop batch rescue <name> [--yes]` — recover an interrupted run: clear the lock when its PID is dead, reset a dirty worktree (confirmation required unless `--yes`), and re-queue the card stranded in Doing so `run --resume` succeeds; exits non-zero if the lock PID is still alive
 - `bishop batch merge <name>` — merge the batch branch into the base branch with `--no-ff`
 - `bishop batch clean-up <name>` — remove worktree, delete branch, close the batch, and close any Done-lane cards assigned to it (requires merge first); outputs `Closed card #N` for each card closed
 - `bishop batch abandon <name>` — abandon a batch and remove its worktree

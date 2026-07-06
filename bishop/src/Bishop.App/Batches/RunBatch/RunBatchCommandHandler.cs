@@ -102,7 +102,7 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
             worktreeWorkspace = ws.With(path: batch.WorktreePath);
         }
 
-        var lockPath = LockFilePath(batch.WorktreePath, batch.Id);
+        var lockPath = BatchLock.LockFilePath(batch.WorktreePath, batch.Id);
         try
         {
             WriteLockFile(lockPath);
@@ -204,7 +204,7 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
         }
         finally
         {
-            DeleteLockFile(lockPath);
+            BatchLock.DeleteLockFile(lockPath);
         }
     }
 
@@ -233,9 +233,6 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    private static string LockFilePath(string worktreePath, Guid batchId) =>
-        Path.Combine(worktreePath, ".bishop", $"batch-{batchId}.lock");
-
     private void WriteLockFile(string lockPath)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
@@ -246,12 +243,6 @@ internal sealed class RunBatchCommandHandler : IRequestHandler<RunBatchCommand, 
     {
         // intentional: best-effort lock-file refresh; failure does not interrupt batch execution
         try { File.WriteAllText(lockPath, $"{Environment.ProcessId}\t{_timeProvider.GetUtcNow():O}"); } catch { }
-    }
-
-    private static void DeleteLockFile(string lockPath)
-    {
-        // intentional: best-effort lock-file cleanup
-        try { File.Delete(lockPath); } catch { }
     }
 
     private async Task<HandoffReadResult> ReadHandoffAsync(string worktreePath, CancellationToken cancellationToken)

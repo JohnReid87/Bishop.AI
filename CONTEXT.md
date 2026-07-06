@@ -106,6 +106,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop batch add-card <name> <card-id> [-w]`
 - `bishop batch remove-card <name> <card-id> [-w]`
 - `bishop batch run <name> [--resume] [--model <model-id>]` — run a batch end-to-end in its worktree via `bish-auto-card`; stops on card failure; `--resume` continues from the next undone card
+- `bishop batch rescue <name> [--yes]` — recover an interrupted run: clear the lock when its PID is dead, reset a dirty worktree (confirmation required unless `--yes`), and re-queue the card stranded in `Doing`; refuses (non-zero) if the lock PID is still alive. Unblocks `run --resume` after a killed run without manual `git` surgery
 - `bishop batch merge <name> [-w]` — merge the batch branch into the base branch (normally local `main`) with `--no-ff`; never pushes or calls `gh`; on conflict aborts and exits non-zero with the conflicting file list
 - `bishop batch clean-up <name> [-w]` — remove the worktree, delete the branch, close the batch, and close any Done-lane cards assigned to it (requires `merge` first); prints `Closed card #N` per card
 - `bishop batch abandon <name> [-w]` — abandon a batch and remove its worktree

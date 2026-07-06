@@ -2,7 +2,6 @@ using Bishop.Core;
 using Bishop.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
 
 namespace Bishop.App.Batches.ReconcileOrphanedBatches;
 
@@ -56,7 +55,7 @@ internal sealed class ReconcileOrphanedBatchesCommandHandler : IRequestHandler<R
 
     internal static bool IsOrphaned(string worktreePath, Guid batchId, DateTimeOffset now)
     {
-        var lockPath = Path.Combine(worktreePath, ".bishop", $"batch-{batchId}.lock");
+        var lockPath = BatchLock.LockFilePath(worktreePath, batchId);
         if (!File.Exists(lockPath))
             return true;
 
@@ -69,26 +68,12 @@ internal sealed class ReconcileOrphanedBatchesCommandHandler : IRequestHandler<R
             if (DateTimeOffset.TryParse(parts[1], out var timestamp) && now - timestamp > s_lockStaleness)
                 return true;
 
-            return int.TryParse(parts[0], out var pid) && !IsProcessAlive(pid);
+            return int.TryParse(parts[0], out var pid) && !BatchLock.IsProcessAlive(pid);
         }
         catch
         {
             // intentional: unreadable lock file treated as orphaned
             return true;
-        }
-    }
-
-    private static bool IsProcessAlive(int pid)
-    {
-        try
-        {
-            using var process = Process.GetProcessById(pid);
-            return !process.HasExited;
-        }
-        catch
-        {
-            // intentional: GetProcessById throws if pid not found; absence means not alive
-            return false;
         }
     }
 }
