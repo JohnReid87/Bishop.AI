@@ -1279,6 +1279,49 @@ public class WorkspaceBoardViewModelTests
     }
 
     [Fact]
+    public async Task LoadSkillsAsync_ExcludesReviewCategorySkillsFromLauncher()
+    {
+        var (vm, mediator, _) = MakeVm();
+        mediator.Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<InstalledSkill>
+            {
+                new("bish-arch", "", ["workspace"], "/bish-arch", Category: SkillCategory.Code),
+                new("bish-audit-docs", "", ["workspace"], "/bish-audit-docs", Category: SkillCategory.Review),
+                new("bish-coverage", "", ["workspace"], "/bish-coverage", Category: SkillCategory.Tests),
+                new("bish-spec-cards", "", ["workspace"], "/bish-spec-cards", Category: SkillCategory.Discuss),
+                new("bish-grill-cards", "", ["card", "workspace"], "/bish-grill-cards", Category: SkillCategory.Discuss),
+            });
+
+        await vm.LoadSkillsAsync();
+
+        vm.WorkspaceSkills.Select(s => s.Name).Should().BeEquivalentTo(new[] { "bish-spec-cards", "bish-grill-cards" });
+        vm.WorkspaceSkills.Select(s => s.Name).Should()
+            .NotContain(new[] { "bish-arch", "bish-audit-docs", "bish-coverage" });
+    }
+
+    [Fact]
+    public async Task BuildWorkspaceSkillLaunchItemAsync_ResolvesReviewSkillHiddenFromLauncher()
+    {
+        var (vm, mediator, _) = MakeVm();
+        mediator.Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<InstalledSkill>
+            {
+                new("bish-arch", "", ["workspace"], "/bish-arch --cd {{workspace_path}}", Category: SkillCategory.Code),
+            });
+        await vm.LoadSkillsAsync();
+        vm.WorkspacePath = @"C:\repo";
+
+        // bish-arch is excluded from the launcher flyout...
+        vm.WorkspaceSkills.Should().BeEmpty();
+
+        // ...but Monitoring's "Run now" can still resolve and launch it by name.
+        var item = await vm.BuildWorkspaceSkillLaunchItemAsync("bish-arch");
+
+        item.Should().NotBeNull();
+        item!.RenderedCommand.Should().Be(@"/bish-arch --cd C:\repo");
+    }
+
+    [Fact]
     public async Task LaunchClaudeAsync_SendsLaunchWorkspaceCommand()
     {
         var (vm, mediator, _) = MakeVm();

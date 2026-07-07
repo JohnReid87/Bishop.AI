@@ -1,6 +1,8 @@
 using Bishop.App.Git.GetCommitCountSince;
+using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
 using Bishop.Core;
+using Bishop.Core.Skills;
 using Bishop.ViewModels.Batches;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Errors;
@@ -17,14 +19,23 @@ namespace Bishop.Tests.ViewModels.Workspaces;
 
 public class WorkspaceMonitoringViewModelTests
 {
-    private static readonly string[] TrackedSkills =
+    // Installed review/analysis skills (Code / Tests / Review categories) drive the
+    // Monitoring rows; declaration order matches the VM's category-then-name ordering.
+    private static readonly InstalledSkill[] InstalledSkills =
     [
-        "bish-arch",
-        "bish-tests",
-        "bish-coverage",
-        "bish-security",
-        "bish-dead-code",
+        new("bish-arch", "", ["workspace"], "/bish-arch", Category: SkillCategory.Code),
+        new("bish-dead-code", "", ["workspace"], "/bish-dead-code", Category: SkillCategory.Code),
+        new("bish-security", "", ["workspace"], "/bish-security", Category: SkillCategory.Code),
+        new("bish-coverage", "", ["workspace"], "/bish-coverage", Category: SkillCategory.Tests),
+        new("bish-tests", "", ["workspace"], "/bish-tests", Category: SkillCategory.Tests),
+        new("bish-audit-docs", "", ["workspace"], "/bish-audit-docs", Category: SkillCategory.Review),
+        new("bish-review-batch", "", ["workspace"], "/bish-review-batch", Category: SkillCategory.Review),
+        // Non-review skills must not appear in Monitoring.
+        new("bish-spec-cards", "", ["workspace"], "/bish-spec-cards", Category: SkillCategory.Discuss),
     ];
+
+    private static readonly string[] TrackedSkills =
+        InstalledSkills.Where(s => s.Category.IsMonitored()).Select(s => s.Name).ToArray();
 
     private readonly ISender _mediator = Substitute.For<ISender>();
     private readonly WorkspaceMonitoringViewModel _vm;
@@ -32,6 +43,9 @@ public class WorkspaceMonitoringViewModelTests
     public WorkspaceMonitoringViewModelTests()
     {
         _vm = new WorkspaceMonitoringViewModel(_mediator, TimeProvider.System);
+        _mediator
+            .Send(Arg.Any<DiscoverSkillsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<InstalledSkill>>(InstalledSkills));
         _mediator
             .Send(Arg.Any<GetWorkspaceSkillRunsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<WorkspaceSkillRun>>([]));
@@ -47,6 +61,16 @@ public class WorkspaceMonitoringViewModelTests
 
         _vm.Rows.Should().HaveCount(TrackedSkills.Length);
         _vm.Rows.Select(r => r.SkillName).Should().BeEquivalentTo(TrackedSkills);
+    }
+
+    [Fact]
+    public async Task LoadAsync_TracksReviewCategorySkills_AndExcludesNonReviewSkills()
+    {
+        await _vm.LoadAsync(Guid.NewGuid(), @"C:\fake");
+
+        var names = _vm.Rows.Select(r => r.SkillName).ToList();
+        names.Should().Contain(new[] { "bish-arch", "bish-coverage", "bish-audit-docs", "bish-review-batch" });
+        names.Should().NotContain("bish-spec-cards");
     }
 
     [Fact]

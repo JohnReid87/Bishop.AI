@@ -1,5 +1,7 @@
 using Bishop.App.Git.GetCommitCountSince;
+using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Workspaces.GetWorkspaceSkillRuns;
+using Bishop.Core.Skills;
 using Bishop.ViewModels.Findings;
 using Bishop.ViewModels.Skills;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -11,15 +13,6 @@ namespace Bishop.ViewModels.Workspaces;
 
 public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
 {
-    private static readonly string[] TrackedSkills =
-    [
-        "bish-arch",
-        "bish-tests",
-        "bish-coverage",
-        "bish-security",
-        "bish-dead-code",
-    ];
-
     private readonly ISender _mediator;
     private readonly TimeProvider _timeProvider;
     private Guid _workspaceId;
@@ -66,8 +59,10 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             .GroupBy(r => r.SkillName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.OrderBy(r => r.ProjectName, StringComparer.OrdinalIgnoreCase).ToList(), StringComparer.OrdinalIgnoreCase);
 
+        var trackedSkills = await GetTrackedSkillsAsync();
+
         var tasks = new List<Task<SkillRunRowViewModel>>();
-        foreach (var skillName in TrackedSkills)
+        foreach (var skillName in trackedSkills)
         {
             if (runsBySkill.TryGetValue(skillName, out var skillRuns) && skillRuns.Count > 0)
             {
@@ -87,6 +82,20 @@ public sealed partial class WorkspaceMonitoringViewModel : ObservableObject
             Rows.Add(row);
 
         UpdateBadge();
+    }
+
+    // The Monitoring view tracks every installed skill in a review/analysis category
+    // (Code / Tests / Review) — the same categories the board launcher hides — so those
+    // skills have exactly one UI home. Ordered by category then name for a stable layout.
+    private async Task<IReadOnlyList<string>> GetTrackedSkillsAsync()
+    {
+        var installed = await _mediator.Send(new DiscoverSkillsQuery());
+        return installed
+            .Where(s => s.Category.IsMonitored())
+            .OrderBy(s => (int)s.Category)
+            .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(s => s.Name)
+            .ToArray();
     }
 
     private async Task<SkillRunRowViewModel> BuildRowAsync(string skillName, Bishop.Core.WorkspaceSkillRun? run)

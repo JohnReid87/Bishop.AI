@@ -3,6 +3,7 @@ using Bishop.App.Services.Terminal;
 using Bishop.App.Skills;
 using Bishop.App.Skills.DiscoverSkills;
 using Bishop.App.Skills.LaunchSkill;
+using Bishop.Core.Skills;
 using Bishop.ViewModels.Cards;
 using Bishop.ViewModels.Skills;
 using MediatR;
@@ -14,6 +15,10 @@ internal sealed class BoardSkillsCoordinator
     private readonly ISender _mediator;
     private readonly IAppSettings _appSettings;
     private readonly Func<string> _getWorkspacePath;
+
+    // Full discovered set, retained so "Run now" in Monitoring can resolve review
+    // skills by name even though they are excluded from the launcher flyouts below.
+    private IReadOnlyList<InstalledSkill> _allSkills = [];
 
     public SkillMenuItem[] CardSkills { get; private set; } = [];
     public SkillMenuItem[] WorkspaceSkills { get; private set; } = [];
@@ -28,9 +33,14 @@ internal sealed class BoardSkillsCoordinator
 
     public async Task LoadAsync()
     {
-        var skills = await _mediator.Send(new DiscoverSkillsQuery());
-        CardSkills = SkillMenuBuilder.Build(skills, "card");
-        WorkspaceSkills = SkillMenuBuilder.Build(skills, "workspace");
+        _allSkills = await _mediator.Send(new DiscoverSkillsQuery());
+
+        // Review/analysis skills (Code / Tests / Review categories) live in the
+        // Monitoring view only — keep them out of the board launcher flyouts so each
+        // skill has a single UI home.
+        var launcherSkills = _allSkills.Where(s => !s.Category.IsMonitored()).ToArray();
+        CardSkills = SkillMenuBuilder.Build(launcherSkills, "card");
+        WorkspaceSkills = SkillMenuBuilder.Build(launcherSkills, "workspace");
         IsCardSkillsButtonVisible = CardSkills.Length > 0;
     }
 
@@ -42,9 +52,13 @@ internal sealed class BoardSkillsCoordinator
 
     public async Task<SkillLaunchItem?> BuildWorkspaceLaunchItemByNameAsync(string skillName)
     {
-        var menuItem = WorkspaceSkills.FirstOrDefault(s =>
-            string.Equals(s.Skill.Name, skillName, StringComparison.OrdinalIgnoreCase));
-        return menuItem is null ? null : await BuildLaunchItemAsync(menuItem, card: null);
+        // Resolve against the full discovered set (not the filtered launcher list) so
+        // Monitoring's "Run now" can launch review skills that the launcher hides.
+        var skill = _allSkills.FirstOrDefault(s =>
+            s.Command is not null
+            && s.Scope.Contains("workspace")
+            && string.Equals(s.Name, skillName, StringComparison.OrdinalIgnoreCase));
+        return skill is null ? null : await BuildLaunchItemAsync(new SkillMenuItem(skill.Name, skill), card: null);
     }
 
     public async Task LaunchAsync(SkillLaunchItem item, string? stagedText, TerminalSnap snap, string modelId)
