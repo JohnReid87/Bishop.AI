@@ -20,6 +20,7 @@ internal static class BoardCardFactory
             TagName = card.TagName,
             TagColour = ResolveTagColour(card.TagName, tagColourByName),
             IsClosed = card.IsClosed,
+            IsStarred = card.IsStarred,
             LastAutoRunFailedAt = card.LastAutoRunFailedAt,
             LastAutoRunSucceededAt = card.LastAutoRunSucceededAt,
             BatchId = card.BatchId,
@@ -45,8 +46,8 @@ internal static class BoardCardFactory
 
     private static bool ScalarFieldsMatch(CardViewModel vm, Bishop.Core.Card card)
     {
-        return (vm.Id, vm.Title, vm.Description, vm.IsClosed) ==
-                   (card.Id, card.Title, card.Description, card.IsClosed)
+        return (vm.Id, vm.Title, vm.Description, vm.IsClosed, vm.IsStarred) ==
+                   (card.Id, card.Title, card.Description, card.IsClosed, card.IsStarred)
                && (vm.LastAutoRunFailedAt, vm.LastAutoRunSucceededAt, vm.BatchId) ==
                    (card.LastAutoRunFailedAt, card.LastAutoRunSucceededAt, card.BatchId);
     }

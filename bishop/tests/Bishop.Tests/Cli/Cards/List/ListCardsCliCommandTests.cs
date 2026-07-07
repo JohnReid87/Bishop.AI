@@ -134,6 +134,26 @@ public sealed class ListCardsCliCommandTests
         item.GetProperty("number").GetInt32().Should().Be(1);
         item.GetProperty("title").GetString().Should().Be("Alpha");
         item.GetProperty("laneName").GetString().Should().Be("To Do");
+        item.GetProperty("isStarred").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_JsonFlag_StarredCard_ReportsIsStarredTrue()
+    {
+        var ws = DefaultWorkspace();
+        var cards = (IReadOnlyList<Card>)[
+            new Card { Id = Guid.NewGuid(), WorkspaceId = ws.Id, Number = 1, Title = "Alpha", LaneName = "To Do", Position = 0, IsStarred = true },
+        ];
+        var (_, cmd) = Build(ws, cards);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["--workspace", "test-ws", "--json"]); }
+        finally { Console.SetOut(originalOut); }
+
+        using var doc = JsonDocument.Parse(output.ToString());
+        doc.RootElement[0].GetProperty("isStarred").GetBoolean().Should().BeTrue();
     }
 
     [Fact]

@@ -2,6 +2,8 @@ using Bishop.App.Cards.CloseCard;
 using Bishop.App.Cards.MoveCard;
 using Bishop.App.Cards.RemoveCard;
 using Bishop.App.Cards.ReopenCard;
+using Bishop.App.Cards.StarCard;
+using Bishop.App.Cards.UnstarCard;
 using Bishop.App.Cards.UpdateCard;
 using Bishop.App.Services.Settings;
 using Bishop.App.Services.Terminal;
@@ -180,6 +182,14 @@ public sealed partial class WorkspaceBoardViewModel : ObservableObject
             await _mediator.Send(new ReopenCardCommand(cardId));
         else
             await _mediator.Send(new CloseCardCommand(cardId));
+    }
+
+    public async Task ToggleCardStarredAsync(Guid cardId, bool isStarred)
+    {
+        if (isStarred)
+            await _mediator.Send(new UnstarCardCommand(cardId));
+        else
+            await _mediator.Send(new StarCardCommand(cardId));
     }
 
     public async Task<IReadOnlyList<TagInfo>> GetTagsAsync()

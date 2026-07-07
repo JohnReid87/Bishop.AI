@@ -13,6 +13,7 @@ public sealed class Card : IAuditable
     public int Number { get; set; }
     public int Position { get; set; }
     public bool IsClosed { get; set; }
+    public bool IsStarred { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public int TotalInputTokens { get; set; }

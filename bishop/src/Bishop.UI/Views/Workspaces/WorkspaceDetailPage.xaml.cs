@@ -344,6 +344,17 @@ public sealed partial class WorkspaceDetailPage : Page
             Board.RefreshLaneItems();
         });
 
+    private async void CardStarButton_Click(object sender, RoutedEventArgs e)
+        => await _safeAsync.RunAsync(async () =>
+        {
+            if (GetCardFromSender(sender) is not CardViewModel card) return;
+
+            await Board.ToggleCardStarredAsync(card.Id, card.IsStarred);
+
+            card.IsStarred = !card.IsStarred;
+            Board.RefreshLaneItems();
+        });
+
     private async void CardTagChip_Click(object sender, RoutedEventArgs e)
         => await _safeAsync.RunAsync(async () =>
         {

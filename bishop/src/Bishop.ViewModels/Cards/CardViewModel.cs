@@ -17,6 +17,11 @@ public sealed partial class CardViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CloseReopenGlyph))]
     [NotifyPropertyChangedFor(nameof(CloseReopenTooltip))]
     private bool _isClosed;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StarGlyph))]
+    [NotifyPropertyChangedFor(nameof(StarColour))]
+    [NotifyPropertyChangedFor(nameof(StarTooltip))]
+    private bool _isStarred;
     public Guid? BatchId { get; init; }
     public string? BatchName { get; init; }
     public DateTimeOffset? BatchCreatedAt { get; init; }
@@ -36,6 +41,12 @@ public sealed partial class CardViewModel : ObservableObject
     public double CardOpacity => IsClosed ? 0.5 : 1.0;
     public string CloseReopenGlyph => IsClosed ? "\uE72C" : "\uE73E";
     public string CloseReopenTooltip => IsClosed ? "Reopen card" : "Close card";
+
+    // Segoe MDL2: FavoriteStarFill (filled) when starred, FavoriteStar (outline) when not.
+    public string StarGlyph => IsStarred ? "\uE735" : "\uE734";
+    // Prominent star gold when starred; faint white outline when not \u2014 see BRAND.md.
+    public string StarColour => IsStarred ? "#d4af37" : "#55FFFFFF";
+    public string StarTooltip => IsStarred ? "Unstar card" : "Star card";
 
     public bool IsDoneLane => LaneName == SystemLaneNames.Done;
     public double CardTitleFontSize => IsDoneLane ? 12.0 : 14.0;

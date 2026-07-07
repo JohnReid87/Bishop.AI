@@ -86,6 +86,49 @@ public sealed class ShowCardCliCommandTests
     }
 
     [Fact]
+    public async Task InvokeAsync_StarredCard_PrintsStarredLine()
+    {
+        var ws = DefaultWorkspace();
+        var card = new Card
+        {
+            Id = Guid.NewGuid(), WorkspaceId = ws.Id,
+            Number = 1, Title = "Test Card", LaneName = "To Do",
+            IsStarred = true
+        };
+        var (_, cmd) = Build(ws, card);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["#1", "--workspace", "test-ws"]); }
+        finally { Console.SetOut(originalOut); }
+
+        output.ToString().Should().Contain("Starred: yes");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_JsonFlag_IncludesIsStarred()
+    {
+        var ws = DefaultWorkspace();
+        var card = new Card
+        {
+            Id = Guid.NewGuid(), WorkspaceId = ws.Id,
+            Number = 1, Title = "Test Card", LaneName = "To Do",
+            IsStarred = true
+        };
+        var (_, cmd) = Build(ws, card);
+
+        var output = new StringWriter();
+        var originalOut = Console.Out;
+        Console.SetOut(output);
+        try { await cmd.InvokeAsync(["#1", "--workspace", "test-ws", "--json"]); }
+        finally { Console.SetOut(originalOut); }
+
+        using var doc = JsonDocument.Parse(output.ToString());
+        doc.RootElement.GetProperty("isStarred").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
     public async Task InvokeAsync_CardWithTag_PrintsTagLine()
     {
         var ws = DefaultWorkspace();

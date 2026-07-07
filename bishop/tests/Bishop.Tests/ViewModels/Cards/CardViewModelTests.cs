@@ -424,4 +424,57 @@ public class CardViewModelTests
 
         changed.Should().Contain(nameof(CardViewModel.CloseReopenTooltip));
     }
+
+    [Fact]
+    public void IsStarred_DefaultsFalse()
+    {
+        var vm = new CardViewModel();
+
+        vm.IsStarred.Should().BeFalse();
+    }
+
+    [Fact]
+    public void StarGlyph_DiffersBetweenStarredAndUnstarred()
+    {
+        var unstarred = new CardViewModel { IsStarred = false };
+        var starred = new CardViewModel { IsStarred = true };
+
+        unstarred.StarGlyph.Should().NotBeNullOrEmpty();
+        starred.StarGlyph.Should().NotBeNullOrEmpty();
+        starred.StarGlyph.Should().NotBe(unstarred.StarGlyph);
+    }
+
+    [Fact]
+    public void StarColour_IsGoldWhenStarredAndFaintWhenNot()
+    {
+        var unstarred = new CardViewModel { IsStarred = false };
+        var starred = new CardViewModel { IsStarred = true };
+
+        starred.StarColour.Should().Be("#d4af37");
+        unstarred.StarColour.Should().Be("#55FFFFFF");
+    }
+
+    [Fact]
+    public void StarTooltip_SwitchesOnStarredState()
+    {
+        var unstarred = new CardViewModel { IsStarred = false };
+        var starred = new CardViewModel { IsStarred = true };
+
+        unstarred.StarTooltip.Should().Be("Star card");
+        starred.StarTooltip.Should().Be("Unstar card");
+    }
+
+    [Fact]
+    public void IsStarred_RaisesPropertyChangedForStarProperties()
+    {
+        var vm = new CardViewModel();
+        var changed = new List<string?>();
+        ((System.ComponentModel.INotifyPropertyChanged)vm).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.IsStarred = true;
+
+        changed.Should().Contain(nameof(CardViewModel.StarGlyph));
+        changed.Should().Contain(nameof(CardViewModel.StarColour));
+        changed.Should().Contain(nameof(CardViewModel.StarTooltip));
+    }
 }

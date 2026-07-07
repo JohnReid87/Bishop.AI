@@ -94,6 +94,17 @@
                                 <FontIcon Glyph="&#xEBD2;" FontSize="12"/>
                             </controls:HandCursorButton>
                             <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
+                                                   ToolTipService.ToolTip="{x:Bind StarTooltip, Mode=OneWay}"
+                                                   Click="CardStarButton_Click"
+                                                   VerticalAlignment="Center"
+                                                   Padding="4"
+                                                   MinWidth="28"
+                                                   MinHeight="28">
+                                <FontIcon Glyph="{x:Bind StarGlyph, Mode=OneWay}"
+                                          Foreground="{x:Bind StarColour, Mode=OneWay, Converter={StaticResource HexColorToBrushConverter}}"
+                                          FontSize="12"/>
+                            </controls:HandCursorButton>
+                            <controls:HandCursorButton Style="{StaticResource DateTimePickerFlyoutButtonStyle}"
                                                    ToolTipService.ToolTip="{x:Bind CloseReopenTooltip, Mode=OneWay}"
                                                    Click="CardCloseButton_Click"
                                                    VerticalAlignment="Center"

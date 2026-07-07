@@ -45,6 +45,7 @@ internal sealed class ListCardsCliCommand : Command
                     laneName = c.LaneName,
                     position = c.Position,
                     isClosed = c.IsClosed,
+                    isStarred = c.IsStarred,
                     lastAutoRunFailedAt = c.LastAutoRunFailedAt,
                     lastAutoRunSucceededAt = c.LastAutoRunSucceededAt,
                     tag = c.TagName
@@ -68,7 +69,8 @@ internal sealed class ListCardsCliCommand : Command
                     {
                         var tagSuffix = c.TagName is not null ? $"  [{c.TagName}]" : "";
                         var closedMarker = c.IsClosed ? " [closed]" : "";
-                        Console.WriteLine($"  #{c.Number,-4}  {c.Title}{closedMarker}{tagSuffix}");
+                        var starMarker = c.IsStarred ? "★ " : "";
+                        Console.WriteLine($"  #{c.Number,-4}  {starMarker}{c.Title}{closedMarker}{tagSuffix}");
                     }
                 }
             }

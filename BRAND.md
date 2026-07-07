@@ -100,6 +100,12 @@ accent are placed.
 - **Red `#ff5555`** is reserved for true error / destructive states
   (validation failures, delete confirmations, failed runs). Do not use
   red for warnings, badges, or decoration.
+- **Star gold `#d4af37`** is the single focus-marker accent — the filled
+  star on a starred board card. It reads a touch brighter than the muted
+  `test` tag gold (`#c4a85f`, reserved for tag chips) so a starred card is
+  scannable at a glance. Reserved for the card star affordance; do not
+  reuse it for tags, badges, or decoration. The unstarred (outline) state
+  uses the faint `#55FFFFFF` text-tertiary white, not gold.
 
 ## State overlays
 

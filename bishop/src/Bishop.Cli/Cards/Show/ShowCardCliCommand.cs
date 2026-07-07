@@ -57,6 +57,7 @@ internal sealed class ShowCardCliCommand : Command
                     laneName = card.LaneName,
                     position = card.Position,
                     isClosed = card.IsClosed,
+                    isStarred = card.IsStarred,
                     createdAt = card.CreatedAt,
                     updatedAt = card.UpdatedAt,
                     totalInputTokens = card.TotalInputTokens,
@@ -74,6 +75,8 @@ internal sealed class ShowCardCliCommand : Command
                 Console.WriteLine($"Lane: {card.LaneName}");
                 if (card.IsClosed)
                     Console.WriteLine("Status: closed");
+                if (card.IsStarred)
+                    Console.WriteLine("Starred: yes");
                 if (card.TagName is not null)
                     Console.WriteLine($"Tag: {card.TagName}");
                 var claudeLine = ClaudeTotalsFormatter.Format(

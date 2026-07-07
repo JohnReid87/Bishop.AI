@@ -43,6 +43,27 @@ public class BoardCardFactoryTests
     }
 
     [Fact]
+    public void Build_MapsIsStarred()
+    {
+        var card = MakeCard();
+        card.IsStarred = true;
+
+        var vm = BoardCardFactory.Build(card, "To Do", EmptyColours, isSkillsButtonVisible: false);
+
+        vm.IsStarred.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Matches_DifferentIsStarred_ReturnsFalse()
+    {
+        var card = MakeCard();
+        var vm = BoardCardFactory.Build(card, "To Do", EmptyColours, isSkillsButtonVisible: false);
+        card.IsStarred = true;
+
+        BoardCardFactory.Matches(vm, card, EmptyColours).Should().BeFalse();
+    }
+
+    [Fact]
     public void Build_WithNullBatch_LeavesBatchFieldsNull()
     {
         var card = MakeCard();

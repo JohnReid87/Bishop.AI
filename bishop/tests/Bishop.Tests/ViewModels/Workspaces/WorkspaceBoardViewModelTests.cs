@@ -1479,6 +1479,34 @@ public class WorkspaceBoardViewModelTests
     }
 
     [Fact]
+    public async Task ToggleCardStarredAsync_WhenUnstarred_SendsStarCardCommand()
+    {
+        var (vm, mediator, _) = MakeVm();
+        var cardId = Guid.NewGuid();
+        mediator.Send(Arg.Any<Bishop.App.Cards.StarCard.StarCardCommand>(), Arg.Any<CancellationToken>()).Returns(new Bishop.Core.Card());
+
+        await vm.ToggleCardStarredAsync(cardId, isStarred: false);
+
+        await mediator.Received(1).Send(
+            Arg.Is<Bishop.App.Cards.StarCard.StarCardCommand>(c => c.CardId == cardId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ToggleCardStarredAsync_WhenStarred_SendsUnstarCardCommand()
+    {
+        var (vm, mediator, _) = MakeVm();
+        var cardId = Guid.NewGuid();
+        mediator.Send(Arg.Any<Bishop.App.Cards.UnstarCard.UnstarCardCommand>(), Arg.Any<CancellationToken>()).Returns(new Bishop.Core.Card());
+
+        await vm.ToggleCardStarredAsync(cardId, isStarred: true);
+
+        await mediator.Received(1).Send(
+            Arg.Is<Bishop.App.Cards.UnstarCard.UnstarCardCommand>(c => c.CardId == cardId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task MoveCardAsync_SendsMoveCardCommand()
     {
         var (vm, mediator, _) = MakeVm();

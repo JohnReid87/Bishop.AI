@@ -24,6 +24,8 @@ using Bishop.Cli.Cards.Remove;
 using Bishop.Cli.Cards.Reopen;
 using Bishop.Cli.Cards.SetCommit;
 using Bishop.Cli.Cards.Show;
+using Bishop.Cli.Cards.Star;
+using Bishop.Cli.Cards.Unstar;
 using Bishop.Cli.Findings.Record;
 using Bishop.App.Context.ContextPack;
 using Bishop.Cli.Context.Pack;
@@ -97,6 +99,8 @@ cardCmd.AddCommand(new ClaimCardCliCommand(mediator));
 cardCmd.AddCommand(new ListCardsCliCommand(mediator));
 cardCmd.AddCommand(new CloseCardCliCommand(mediator, cardResolver));
 cardCmd.AddCommand(new ReopenCardCliCommand(mediator, cardResolver));
+cardCmd.AddCommand(new StarCardCliCommand(mediator, cardResolver));
+cardCmd.AddCommand(new UnstarCardCliCommand(mediator, cardResolver));
 cardCmd.AddCommand(new SetCommitCardCliCommand(mediator, cardResolver));
 root.AddCommand(cardCmd);
 
