@@ -18,6 +18,12 @@ public sealed class ClaudeModelsTests
     }
 
     [Fact]
+    public void DisplayFor_WhenSonnet5_ReturnsSonnet5Display()
+    {
+        ClaudeModels.DisplayFor(ClaudeModels.Sonnet5).Should().Be(ClaudeModels.Sonnet5Display);
+    }
+
+    [Fact]
     public void DisplayFor_WhenSonnet46_ReturnsSonnet46Display()
     {
         ClaudeModels.DisplayFor(ClaudeModels.Sonnet46).Should().Be(ClaudeModels.Sonnet46Display);

@@ -11,6 +11,7 @@ public static class SkillModels
         new(ClaudeModels.Opus48,   ClaudeModels.Opus48Display),
         new(ClaudeModels.Opus47,   ClaudeModels.Opus47Display),
         new(ClaudeModels.Sonnet46, ClaudeModels.Sonnet46Display),
+        new(ClaudeModels.Sonnet5,  ClaudeModels.Sonnet5Display),
         new(ClaudeModels.Haiku45,  ClaudeModels.Haiku45Display),
     ];
 }
