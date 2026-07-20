@@ -75,14 +75,6 @@
        arch DLL to the output root so WebView2 can initialise in unpackaged apps.
        Uses $(TargetDir) — the absolute, TFM-resolved output path — not $(OutputPath)
        which omits the framework subfolder and would never find the source file. -->
-  <!-- Publish Bishop.Life.App into a Life\ subfolder of this app's publish output so
-       MainWindow's "Life" launcher button can find it next to Bishop.UI.exe. Kept as a
-       publish-time step (not a ProjectReference) to isolate the two WinUI runtimes and
-       avoid duplicate-file warnings between the two apps' Windows App SDK references. -->
-  <Target Name="PublishBishopLifeApp" AfterTargets="Publish">
-    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\..\..\life\src\Bishop.Life.App\Bishop.Life.App.csproj&quot; -c $(Configuration) -o &quot;$(PublishDir)Life&quot; --nologo" />
-  </Target>
-
   <Target Name="CopyWebView2Loader" AfterTargets="Build">
     <PropertyGroup>
       <_Wv2RID Condition="'$(PlatformTarget)' == 'x86'">win-x86</_Wv2RID>

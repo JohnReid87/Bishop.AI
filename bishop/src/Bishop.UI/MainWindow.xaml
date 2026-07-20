@@ -221,13 +221,6 @@
                         </Style>
                     </Grid.Resources>
                     <StackPanel Orientation="Horizontal" Spacing="4" Margin="4,0,8,0">
-                        <!-- Life button -->
-                        <Button x:Name="LifeButton"
-                                Style="{StaticResource StripFooterButtonStyle}"
-                                Click="LifeButton_Click"
-                                ToolTipService.ToolTip="Life">
-                            <FontIcon Glyph="&#xE00B;" FontSize="14" VerticalAlignment="Center"/>
-                        </Button>
                         <!-- Scripts button -->
                         <Button Style="{StaticResource StripFooterButtonStyle}"
                                 Click="ScriptsButton_Click"
@@ -241,10 +234,6 @@
                             <FontIcon Glyph="&#xE713;" FontSize="14" VerticalAlignment="Center"/>
                         </Button>
                     </StackPanel>
-                    <TeachingTip x:Name="LifeLaunchErrorTip"
-                                 Title="Couldn't launch Life"
-                                 PreferredPlacement="Bottom"
-                                 IsLightDismissEnabled="True"/>
                 </Grid>
             </NavigationView.PaneFooter>
 

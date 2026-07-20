@@ -9,11 +9,9 @@ using WinRT.Interop;
 namespace Bishop.Shared.Layout;
 
 /// <summary>
-/// Snaps a viewer <see cref="Window"/> to the half of its monitor work area
-/// opposite a given target rectangle (typically the main Bishop window). Both
-/// Bishop.UI viewer dialogs (<c>MarkdownViewerWindow</c>) and the Bishop.Life
-/// shell share this so the two stay in lockstep — Bishop.Life links this same
-/// file into its build via <c>&lt;Compile Include="..."&gt;</c>.
+/// Snaps a viewer <see cref="Window"/> (typically <c>MarkdownViewerWindow</c>) to
+/// the half of its monitor work area opposite a given target rectangle
+/// (typically the main Bishop window).
 /// </summary>
 [SupportedOSPlatform("windows10.0.17763.0")]
 internal static class OppositeHalfPositioner

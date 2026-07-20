@@ -33,3 +33,7 @@ Approved substitutes:
 - **`Flyout`** — for small inline confirms (precedent: `ManageWorkspacesControl.ConfirmFlyoutAsync` in `bishop/src/Bishop.UI/Views/ManageWorkspacesControl.xaml.cs`).
 - **`MarkdownViewerWindow`** — for displaying markdown content in a separate window.
 - **`TeachingTip`** — for transient, non-blocking information.
+
+## Out of scope
+
+- **bishop.life.** Removed (cards #1123/#1124) — the sister daily-reflection product (`life/` peer, `bish-life-*` skills) wasn't used and added ongoing repo complexity; recoverable from git history if ever needed. Mirrors the GitHub Issues sync removal precedent (cards #973/#974).

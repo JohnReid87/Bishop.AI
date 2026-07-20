@@ -15,7 +15,7 @@ See **[OVERVIEW.md](OVERVIEW.md)** for what Bishop is, who it's for, and how you
   - **Code:** `bish-arch`, `bish-dead-code`, `bish-security`
   - **Tests:** `bish-coverage`, `bish-tests`
   - **Review:** `bish-audit-docs`, `bish-review-batch`
-  - **Setup-Execute:** `bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` (the `bish-life-*` skills operate on the bishop.life data file rather than a workspace)
+  - **Setup-Execute:** `bish-auto-card`, `bish-onboard`, `bish-work-on-card`
   - **Bishop-level / meta:** _(none currently — skills that operate on `skills/` itself rather than a workspace's code live here)_
 
 See [CONTEXT.md](CONTEXT.md) for tech stack, architecture, and conventions, and [DIRECTION.md](DIRECTION.md) for scope decisions.

@@ -32,4 +32,4 @@ bishop/tests/Bishop.Tests/
 
 ## Not present: Bishop.UI.Tests
 
-A `bishop/tests/Bishop.UI.Tests/` project does not exist and is not planned. WinUI 3 rendering and code-behind orchestration are intentionally out of test scope (see CONTEXT.md — "No tests target `net10.0-windows`"). `bishop/tests/Bishop.Tests/Bishop.Tests.csproj` is the only Bishop.AI test project in the solution; the Bishop.Life sibling has its own at `life/tests/Bishop.Life.Tests/`.
+A `bishop/tests/Bishop.UI.Tests/` project does not exist and is not planned. WinUI 3 rendering and code-behind orchestration are intentionally out of test scope (see CONTEXT.md — "No tests target `net10.0-windows`"). `bishop/tests/Bishop.Tests/Bishop.Tests.csproj` is the only test project in the solution.

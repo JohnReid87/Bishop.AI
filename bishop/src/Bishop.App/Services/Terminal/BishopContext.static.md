@@ -69,17 +69,6 @@ soul is the procedure itself — the agent reads steps in order.
   before moving it to "Done" and committing. **One card per session** —
   long-running sessions accumulate context that hurts cost and quality.
   Use when work is **already a card** and you want it implemented now.
-- `bish-life-init` — bootstraps `%APPDATA%/Bishop/life/bishop.life.json`
-  with the bishop.life v1 schema (six seeded areas, empty inbox and
-  stand-ups). Refuses to overwrite an existing file. Operates on the
-  bishop.life data file, not a Bishop workspace.
-- `bish-life-standup` — the daily bishop.life stand-up ritual: context
-  pack, thread-by-thread walk, then one atomic rewrite of
-  `bishop.life.json`. Operates on the bishop.life data file, not a
-  Bishop workspace.
-- `bish-life-add` — short-form bishop.life inbox capture; appends
-  `InboxItem` entries for later triage in the stand-up. Operates on the
-  bishop.life data file, not a Bishop workspace.
 
 ### Bishop-level / meta skills — operate on the skill family itself (`bishop.category: meta`)
 
@@ -226,7 +215,6 @@ they resolve from the current working directory.
 
 - `bishop context print [--section <name>]` — print the workspace CONTEXT.md file, or a single named H2 section (ad-hoc / debug use; skills get these sections via the context pack)
 - `bishop context-pack <skill-name> [--card <n>] [--list]` — emit a pre-stuffed JSON context bundle (workspace + git + skill-specific data + conventions)
-- `bishop context-pack life-standup` — emit the bishop.life stand-up context pack (reads `bishop.life.json`, not the workspace DB)
 
 ### Skill
 

@@ -20,19 +20,16 @@ A Windows desktop app for managing AI-assisted coding workflows. The user has ma
 ## Architecture
 
 ### Repository layout
-Top-level filesystem is split into per-app peers — `bishop/` (the Bishop.AI desktop app and its CLI) and `life/` (the Bishop.Life sibling app). Each peer carries its own `src/` and `tests/`. This mirrors the `.slnx` grouping verbatim.
+Top-level filesystem holds the `bishop/` directory — the Bishop.AI desktop app and its CLI — with its own `src/` and `tests/`. This mirrors the `.slnx` grouping verbatim.
 
 - `bishop/src/` — Bishop.AI .NET projects (Core, Data, App, ViewModels, Cli, UI).
 - `bishop/tests/Bishop.Tests/` — xUnit project for Bishop.AI.
-- `life/src/` — Bishop.Life .NET projects (Core, App).
-- `life/tests/Bishop.Life.Tests/` — xUnit project for Bishop.Life.
-- `life/tools/Bishop.Life.SchemaCodegen/` — Roslyn-syntax-driven console tool that emits `life/src/Bishop.Life.App/Assets/js/schema.d.ts` from `Bishop.Life.Core/Schema/**`. Runs from a `BeforeBuild` target in `Bishop.Life.App.csproj` with `Inputs`/`Outputs` so incremental builds skip when neither the schema nor the tool sources changed.
 - `skills/` — vendored Claude Code skill files shipped with `bishop.exe` and installed to `~/.claude/skills/` via `bishop install-skills`. Grouped into six categories (see [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for rationale):
   - **Conversational:** `bish-grill-cards`, `bish-scripts`, `bish-spec-cards`
   - **Code:** `bish-arch`, `bish-dead-code`, `bish-security`
   - **Tests:** `bish-coverage`, `bish-tests`
   - **Review:** `bish-audit-docs`, `bish-review-batch`
-  - **Setup-Execute:** `bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` (the `bish-life-*` skills operate on the bishop.life data file rather than a workspace)
+  - **Setup-Execute:** `bish-auto-card`, `bish-onboard`, `bish-work-on-card`
   - **Bishop-level / meta:** _(none currently — skills that operate on `skills/` itself rather than a workspace's code live here)_
 - `notes/_archive/` — pre-grill design notes; preserved for decision rationale but superseded by DIRECTION.md.
 
@@ -116,12 +113,7 @@ The `bishop` console executable is the primary integration surface for skills (e
 - `bishop skill bootstrap [--json]` — emit workspace + tag/lane info for a skill preamble; non-zero exit if not in a workspace
 - `bishop context print [--section <name>] [-w]` — print the workspace CONTEXT.md file, or a single named H2 section
 - `bishop context-pack <skill-name> [--card <n>] [-w] [--list]` — emit a pre-stuffed JSON context bundle (workspace + git + skill-specific data + conventions); `--list` enumerates registered providers
-- `bishop context-pack life-standup` — emit the bishop.life stand-up context pack as JSON (plan summary plus upcoming Google Calendar events when authorized); reads `bishop.life.json`, not the workspace DB
-- `bishop life auth google` — installed-app OAuth flow granting read access to the primary Google Calendar; requires the Google OAuth client env vars; stores the refresh token DPAPI-encrypted
-- `bishop life speak [<text>]` — synthesize text (stdin when omitted) to speech and play synchronously
-- `bishop life speak-prelude` — speak a short random acknowledgement to fill pre-context silence at stand-up launch
 - `bishop hook check-path` — `PreToolUse` hook: reads tool-use JSON from stdin and exits non-zero if the target path is outside the workspace; only active when `BISHOP_AUTO_CARD` is set
-- `bishop hook speak-on-stop` — `Stop` hook: speaks the last assistant message aloud when the active skill is an opted-in `bish-life-*` skill; never blocks the conversation
 
 Card identifiers accept a workspace-scoped Number (`42`, `#42`). CLI output renders `#N` (e.g. `#42`) rather than the full UUID.
 
@@ -138,15 +130,8 @@ Bishop.UI is the interactive surface; the CLI remains the automation surface for
 - **Settings:** app-level settings dialog (General / Workspaces / Skills sections; version, database path, build info).
 - **Theming:** dark theme applied across shell, nav, board chrome, and dialogs.
 
-### Bishop.Life host↔viewer wire contract
-`Bishop.Life.App` hosts a `WebView2` whose page is `Assets/index.html` + TypeScript modules under `Assets/js/` (compiled to `Assets/js-build/` at build time). The host and viewer talk over `CoreWebView2.PostWebMessageAsJson` / `WebMessageReceived`, exchanging JSON envelopes with a `type` discriminator (host→viewer envelopes for `speak.*`, `terminal:*`, `transcript:event`, plus a no-discriminator plan-state envelope; viewer→host envelopes for `standup`/`init`/`add` bare strings, `mutate`, `terminal:input`, `terminal:resize`).
-
-Every wire shape is a `public sealed record` under `Bishop.Life.Core/Schema/Envelopes/`, alongside the plan schema records in `Bishop.Life.Core/Schema/`. The `Bishop.Life.SchemaCodegen` tool walks both directories via Roslyn and emits `life/src/Bishop.Life.App/Assets/js/schema.d.ts` — the single TypeScript source of truth for both ends of the channel. The file is regenerated on every `Bishop.Life.App` build (Inputs/Outputs gate skip incremental builds) and committed for review visibility.
-
-Adding a new envelope: drop a `public sealed record` under `Schema/Envelopes/`, use it from the relevant controller (`SpeakController` / `StandupController` / `PlanController`), rebuild — `schema.d.ts` updates automatically.
-
 ### Skill integration
-Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). They group into six categories — Conversational (`bish-grill-cards`, `bish-scripts`, `bish-spec-cards`), Code (`bish-arch`, `bish-dead-code`, `bish-security`), Tests (`bish-coverage`, `bish-tests`), Review (`bish-audit-docs`, `bish-review-batch`), Setup-Execute (`bish-auto-card`, `bish-life-add`, `bish-life-init`, `bish-life-standup`, `bish-onboard`, `bish-work-on-card` — the `bish-life-*` skills operate on the bishop.life data file rather than a workspace), and Bishop-level / meta (currently empty — reserved for skills that operate on `skills/` itself rather than a workspace's code). See [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the category rationale. Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
+Bundled Claude Code skills under `skills/` ship with `bishop.exe` and are installed to `%USERPROFILE%\.claude\skills\` via `bishop install-skills` (overwrites on each run). They group into six categories — Conversational (`bish-grill-cards`, `bish-scripts`, `bish-spec-cards`), Code (`bish-arch`, `bish-dead-code`, `bish-security`), Tests (`bish-coverage`, `bish-tests`), Review (`bish-audit-docs`, `bish-review-batch`), Setup-Execute (`bish-auto-card`, `bish-onboard`, `bish-work-on-card`), and Bishop-level / meta (currently empty — reserved for skills that operate on `skills/` itself rather than a workspace's code). See [docs/SKILL_FAMILY.md](docs/SKILL_FAMILY.md) for the category rationale. Each skill is a directory containing a `SKILL.md` whose YAML frontmatter declares:
 
 - `name` — skill identifier (required).
 - `description` — user-facing summary.

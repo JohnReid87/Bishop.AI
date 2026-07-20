@@ -30,8 +30,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $strykerArgs = @()
 
 if ($Project) {
-    $appRoot = if ($Project -like 'Bishop.Life.*') { 'life' } else { 'bishop' }
-    $projPath = Join-Path $repoRoot $appRoot 'src' $Project "$Project.csproj"
+    $projPath = Join-Path $repoRoot 'bishop' 'src' $Project "$Project.csproj"
     if (-not (Test-Path $projPath)) {
         Write-Error "Project not found: $projPath"
         exit 1

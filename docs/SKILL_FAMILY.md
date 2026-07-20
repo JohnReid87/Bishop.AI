@@ -20,10 +20,10 @@ Skills divide into six categories. The category determines the restructure appro
 | **Code** | `bish-arch`, `bish-dead-code`, `bish-security` | Heuristic catalogue applied to production C# — structure, dead code, security. The soul is the *heuristic catalogue*. |
 | **Tests** | `bish-coverage`, `bish-tests` | Heuristic catalogue applied to the test surface — line coverage gaps, mutation/quality. The soul is the *heuristic catalogue*. |
 | **Review** | `bish-audit-docs`, `bish-review-batch` | Heuristic catalogue applied to artefacts that aren't production code or tests — docs drift, delivered-batch review. The soul is the *heuristic catalogue*. |
-| **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card`, `bish-life-init`, `bish-life-standup`, `bish-life-add` | A deterministic procedure that mutates state (filesystem, board, git, or the bishop.life data file). The soul is the *procedure itself*. |
+| **Setup-Execute** | `bish-onboard`, `bish-auto-card`, `bish-work-on-card` | A deterministic procedure that mutates state (filesystem, board, or git). The soul is the *procedure itself*. |
 | **Bishop-level / meta** | _(none currently)_ | Skills *about* the skill family — authoring guides, audits. Operate on `skills/` directly, not on a workspace's code. |
 
-The Conversational / Code / Tests / Review / Setup-Execute split is **workspace-level** — each skill targets the user's current Bishop workspace. Bishop-level skills are distinct: they treat the Bishop repository itself (or any `skills/` directory) as their subject. Keep them separate so workspace-level skills do not accumulate self-referential plumbing. The `bish-life-*` skills are a documented exception within Setup-Execute: they operate on the bishop.life data file (`bishop.life.json`) rather than a workspace, and are exempt from workspace context-pack entry (see §4).
+The Conversational / Code / Tests / Review / Setup-Execute split is **workspace-level** — each skill targets the user's current Bishop workspace. Bishop-level skills are distinct: they treat the Bishop repository itself (or any `skills/` directory) as their subject. Keep them separate so workspace-level skills do not accumulate self-referential plumbing.
 
 Code, Tests, and Review share the same restructure rules (see §2 "Review" row) — they are split only for menu navigability, not because their authoring contract differs.
 
@@ -93,8 +93,6 @@ A provider is one C# class implementing `IContextProvider` (in `Bishop.App.Conte
 | `bish-onboard` | The workspace doesn't exist yet at skill entry — `bishop context-pack` requires a registered workspace to resolve. |
 | `bish-auto-card` | Runs unattended under `bishop batch run`, which injects a host-assembled `<bishop-context>` JSON block into the initial `claude -p` message — the same pack, pushed in rather than pulled via a CLI call. The skill reads that block and must **not** call `bishop context-pack` itself. |
 | `bish-scripts` | Authors a standalone PowerShell script into the global `%AppData%\Bishop.AI\scripts\` folder; it creates no cards and touches no board state, so no workspace context pack is relevant (exempt, not cut). |
-| `bish-life-init`, `bish-life-add` | Operate on the bishop.life data file, not a Bishop workspace. No workspace context is relevant. |
-| `bish-life-standup` | Same rationale, but uses the dedicated `bishop context-pack life-standup` subcommand (reads `bishop.life.json`, not the workspace DB). |
 
 `bish-audit-docs` is a partial exception: it calls `bishop context-pack audit-docs` with a soft fallback (`git rev-parse --show-toplevel`) for repos that aren't Bishop workspaces, because the skill is useful outside the Bishop toolchain.
 

@@ -99,7 +99,7 @@ No metrics, no KPIs — qualitative measures of "did this stay in the loop":
 
 A guided tour for orientation. Dependency direction is **Core → Data → App → { ViewModels → UI, Cli }**.
 
-The filesystem is split into per-app peers: `bishop/` (this app + its CLI) and `life/` (the Bishop.Life sibling). Each carries its own `src/` and `tests/`.
+The filesystem holds the `bishop/` directory (this app + its CLI), with its own `src/` and `tests/`.
 
 - **Domain types** (Workspace, Card, Batch): `bishop/src/Bishop.Core/`
 - **Persistence** (EF Core 9, SQLite WAL, migrations, query helpers): `bishop/src/Bishop.Data/`
@@ -108,7 +108,6 @@ The filesystem is split into per-app peers: `bishop/` (this app + its CLI) and `
 - **UI** (WinUI 3 desktop app, Views, DI composition root): `bishop/src/Bishop.UI/`
 - **CLI** (the `bishop` console executable — the automation surface): `bishop/src/Bishop.Cli/`
 - **Tests** (xUnit + FluentAssertions): `bishop/tests/Bishop.Tests/`
-- **Bishop.Life** (sibling WinUI 3 app + its core): `life/src/Bishop.Life.{Core,App}/`, tests at `life/tests/Bishop.Life.Tests/`
 - **Bundled skills** (installed to `~/.claude/skills/` via `bishop install-skills`): `skills/`
 
 UI and CLI both go through MediatR handlers in App for everything; neither references Data directly. For the full CLI surface and architectural conventions, see [CONTEXT.md](CONTEXT.md).

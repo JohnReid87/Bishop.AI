@@ -10,14 +10,4 @@
   <Folder Name="/bishop/tests/">
     <Project Path="bishop/tests/Bishop.Tests/Bishop.Tests.csproj" />
   </Folder>
-  <Folder Name="/life/src/">
-    <Project Path="life/src/Bishop.Life.Core/Bishop.Life.Core.csproj" />
-    <Project Path="life/src/Bishop.Life.App/Bishop.Life.App.csproj" />
-  </Folder>
-  <Folder Name="/life/tests/">
-    <Project Path="life/tests/Bishop.Life.Tests/Bishop.Life.Tests.csproj" />
-  </Folder>
-  <Folder Name="/life/tools/">
-    <Project Path="life/tools/Bishop.Life.SchemaCodegen/Bishop.Life.SchemaCodegen.csproj" />
-  </Folder>
 </Solution>
